@@ -53,7 +53,7 @@ async def assert_concentration(world: SimpleNamespace, holds: bool) -> None:
     guest = world.ids[1]
     expected = SPELL if holds else None
     assert world.ctx.userdata.member_state(guest).concentration.spell_id == expected
-    assert await read_player_concentration(guest, conn=world.pool) == {"spell_id": expected}
+    assert (await read_player_concentration(guest, conn=world.pool))["spell_id"] == expected
 
 
 @pytest.mark.parametrize("inside", [True, False], ids=["inside", "outside"])

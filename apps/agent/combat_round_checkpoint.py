@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 import asyncpg
 
 import db_content_queries
+import db_mutations_concentration
 import db_queries
 import enemy_pockets
 from action_contracts import positive_integer
@@ -85,7 +86,11 @@ async def capture(
     session_flags: dict[str, dict[str, bool]] | None = None,
 ) -> None:
     if entry:
+        from concentration_lifetime import combat_entry
+
         await enemy_pockets.initialize(state, conn=conn, queries=queries, content=content)
+        for pid, record in combat_entry(session, state).items():
+            await db_mutations_concentration.update_player_concentration(pid, record, conn=conn)
     flags = (
         session_flags
         if session_flags is not None

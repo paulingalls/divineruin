@@ -96,12 +96,15 @@ const _typeGuard: ConditionType = "exhausted";
 void _typeGuard;
 
 test.each([
-  ["iron_resolve", "Iron Resolve"],
-  ["iron_stance", "Iron Stance"],
-])("%s has a beneficial display", (type, label) => {
+  ["iron_resolve", "Iron Resolve", "shield-plus"],
+  ["iron_stance", "Iron Stance", "shield-plus"],
+  ["divine_ward", "Divine Ward", "shield-plus"],
+  ["beacon_of_hope", "Beacon of Hope", "shield-sun"],
+  ["protection_from_hollow", "Protection from Hollow", "shield-plus"],
+] as const)("%s has a beneficial display", (type, label, icon) => {
   expect(getConditionDisplay(type)).toEqual({
     label,
-    icon: "shield-plus",
+    icon,
     color: BrandColors.hollow,
   });
 });

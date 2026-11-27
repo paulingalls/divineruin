@@ -35,7 +35,9 @@ from combat_ability_gate import (
     war_cry_targets,
 )
 from combat_action_availability import require_available
+from combat_enhancers import PLAIN_ATTACK
 from combat_order_riders import FIELD_MEDIC_NAME, select_field_medic
+from combat_spell_profile import recipient_spec
 from combat_structures import THORNWALL, action_has_direct_line, blocked_reason, line_blocker, require_line
 from condition_restrictions import cannot_act, declaration_costs, required_attack_sources, speed_zero
 from declarations import Declaration, DeclarationType, ManeuverIntent
@@ -161,7 +163,12 @@ def validate_declaration(
         _require_taunt_target(next_state, actor, declaration, concealed)
     pool_action = _find_action(actor, declaration.action)
     martial = combat_martial.attack_ability(declaration)
-    if declaration.type is DeclarationType.ATTACK and declaration.rider and martial is None:
+    if (
+        declaration.type is DeclarationType.ATTACK
+        and declaration.rider
+        and declaration.rider != PLAIN_ATTACK
+        and martial is None
+    ):
         raise ValueError(f"Unknown attack rider {declaration.rider!r}.")
     if martial is not None and martial in ELECTIVE_RIDER_ABILITIES and actor.type != "player":
         raise ValueError(f"{actor.name} hasn't learned {abilities.get_ability(martial).name}.")
@@ -266,7 +273,8 @@ def validate_declaration(
         return
     if pool_action is not None and not action_has_direct_line(pool_action):
         return
-    if spell is not None and spell.combat_damage and spell.combat_damage.get("recipients"):
+
+    if spell is not None and recipient_spec(spell):
         return
     melee = pool_action is not None and combat_melee_approach.is_melee(pool_action)
     physical = melee or declaration.type is DeclarationType.MANEUVER

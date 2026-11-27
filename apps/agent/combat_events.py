@@ -14,9 +14,10 @@ that atomicity and must be made rollback-safe:
 import logging
 from collections import deque
 from contextlib import asynccontextmanager, contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
+from caster_state import ConcentrationState
 from game_events import publish_game_event
 from patron_ability_events import publish_patron_abilities
 
@@ -161,7 +162,7 @@ class _CombatScratchSnapshot:
     recent_events: list[str]
     companion_is_conscious: bool | None
     companion_memories: list[str] | None
-    concentration_spell_ids: dict[str, str | None]
+    concentrations: dict[str, ConcentrationState]
 
     @classmethod
     def capture(cls, session) -> "_CombatScratchSnapshot":
@@ -172,7 +173,7 @@ class _CombatScratchSnapshot:
             recent_events=list(session.recent_events),
             companion_is_conscious=companion.is_conscious if companion is not None else None,
             companion_memories=list(companion.session_memories) if companion is not None else None,
-            concentration_spell_ids={m.player_id: m.concentration.spell_id for m in session.party.members},
+            concentrations={m.player_id: replace(m.concentration) for m in session.party.members},
         )
 
     def restore(self, session) -> None:
@@ -182,10 +183,10 @@ class _CombatScratchSnapshot:
             if member is not None:
                 member.weapon_used = used
                 member.weapon_crit_vs_heavy = self.weapon_crit_vs_heavy[player_id]
-        for player_id, spell_id in self.concentration_spell_ids.items():
+        for player_id, concentration in self.concentrations.items():
             member = session.party.member(player_id)
             if member is not None:
-                member.concentration.spell_id = spell_id
+                member.concentration = concentration
         companion = session.companion
         if companion is not None and self.companion_memories is not None:
             companion.is_conscious = self.companion_is_conscious

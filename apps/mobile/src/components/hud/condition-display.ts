@@ -1,3 +1,6 @@
+import type { MaterialCommunityIcons } from "@expo/vector-icons";
+import type { ComponentProps } from "react";
+
 import { BrandColors } from "@/constants/theme";
 
 // Glanceable condition->icon display map for the combat HUD (M4.3, story-005). Kept in a
@@ -15,6 +18,10 @@ import { BrandColors } from "@/constants/theme";
 // the union below derives from it and the test can iterate the full set.
 export const CONDITION_TYPES = [
   "wounded",
+  "outlined",
+  "guiding_light_mark",
+  "invisible",
+  "slowed",
   "stunned",
   "prone",
   "grappled",
@@ -38,8 +45,13 @@ export const CONDITION_TYPES = [
   "regenerating",
   "precise_strike",
   "iron_stance",
+  "divine_ward",
+  "beacon_of_hope",
+  "protection_from_hollow",
   "reckless_assault",
   "crippled",
+  "frost_slowed",
+  "reactions_suppressed",
   "studied_weakness",
   "hollowed",
   "iron_resolve",
@@ -54,7 +66,7 @@ export type ConditionType = (typeof CONDITION_TYPES)[number];
 
 export interface ConditionDisplay {
   label: string;
-  icon: string; // MaterialCommunityIcons glyph name; kept as string to stay RN-free.
+  icon: ComponentProps<typeof MaterialCommunityIcons>["name"];
   color: string;
 }
 
@@ -67,6 +79,10 @@ export const CONDITION_DISPLAY: Record<ConditionType, ConditionDisplay> = {
   incorporeal: { label: "Incorporeal", icon: "ghost", color: BrandColors.hollow },
   mark_of_justice: { label: "Mark of Justice", icon: "target", color: BrandColors.ember },
   iron_resolve: { label: "Iron Resolve", icon: "shield-plus", color: BrandColors.hollow },
+  guiding_light_mark: { label: "Guiding Light", icon: "target", color: BrandColors.ember },
+  invisible: { label: "Invisible", icon: "eye-off", color: BrandColors.hollow },
+  outlined: { label: "Outlined", icon: "target", color: BrandColors.ember },
+  slowed: { label: "Slowed", icon: "walk", color: BrandColors.ember },
   wounded: { label: "Wounded", icon: "heart-broken", color: BrandColors.ember },
   stunned: { label: "Stunned", icon: "star-circle", color: BrandColors.ember },
   prone: { label: "Prone", icon: "arrow-down-bold-circle", color: BrandColors.ash },
@@ -88,7 +104,20 @@ export const CONDITION_DISPLAY: Record<ConditionType, ConditionDisplay> = {
   cursed: { label: "Cursed", icon: "skull", color: BrandColors.ember },
   taunted: { label: "Taunted", icon: "target", color: BrandColors.ember },
   crippled: { label: "Crippled", icon: "walk", color: BrandColors.ember },
+  frost_slowed: { label: "Frost Slowed", icon: "snowflake", color: BrandColors.ember },
+  reactions_suppressed: {
+    label: "Reactions Suppressed",
+    icon: "flash-off-outline",
+    color: BrandColors.ember,
+  },
   studied_weakness: { label: "Studied Weakness", icon: "target", color: BrandColors.hollow },
+  divine_ward: { label: "Divine Ward", icon: "shield-plus", color: BrandColors.hollow },
+  beacon_of_hope: { label: "Beacon of Hope", icon: "shield-sun", color: BrandColors.hollow },
+  protection_from_hollow: {
+    label: "Protection from Hollow",
+    icon: "shield-plus",
+    color: BrandColors.hollow,
+  },
   iron_stance: { label: "Iron Stance", icon: "shield-plus", color: BrandColors.hollow },
   reckless_assault: { label: "Reckless Assault", icon: "target", color: BrandColors.ember },
   precise_strike: { label: "Precise Strike", icon: "target", color: BrandColors.hollow },

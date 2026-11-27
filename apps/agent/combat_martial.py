@@ -58,6 +58,7 @@ from combat_structures import blocked_reason, line_blocker
 from condition_catalog import CRIPPLED, STUDIED_WEAKNESS
 from condition_sources import DeliveryRefused, require_hostile_targets
 from declarations import Declaration, DeclarationType
+from healing_dice import maximum_healing
 from mentor_variants import MentorVariant
 from patron_synergy_combat import grant_marshal_rally
 from session_data import CombatState
@@ -340,7 +341,7 @@ async def second_wind(
 ) -> dict:
     await pay(actor.id, resolved, queries=queries, conn=conn)
     combat_recharge.spend(actor, combat_recharge.SECOND_WIND_BUDGET, state.round_number)
-    rolled = dice.roll("1d10").total
+    rolled = dice.maximum("1d10") if maximum_healing(actor.conditions) else dice.roll("1d10").total
     healed = await combat_spell_heal.restore(
         actor, rolled + actor.level, conn=conn, mutations=mutations, queries=queries
     )

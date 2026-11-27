@@ -101,6 +101,8 @@ def apply_condition(
     source: str | None = None,
     max_stacks: int | None = None,
     originating_participant_id: str | None = None,
+    sustaining_caster_id: str | None = None,
+    tick_save: str | None = None,
     inspire_attack_upgrade: bool = False,
 ) -> list[dict]:
     """Return a new condition list with ``condition_type`` applied.
@@ -137,6 +139,15 @@ def apply_condition(
     if originating_participant_id is not None:
         applied["originating_participant_id"] = originating_participant_id
 
+    if sustaining_caster_id is not None:
+        prior_casters = (
+            (existing or {}).get("sustaining_caster_ids", []) if existing and existing.get("source") == source else []
+        )
+        applied["sustaining_caster_ids"] = sorted({*prior_casters, sustaining_caster_id})
+
+    if tick_save is not None:
+        applied["tick_save"] = tick_save
+
     if condition_type == "hollowed":
         if existing is not None:
             existing["stage"] = min(existing["stage"] + 1, _HOLLOWED_MAX_STAGE)
@@ -157,6 +168,9 @@ def apply_condition(
             existing.pop("choir_melody", None)
         if condition_type == "frightened":
             existing.pop("turn_undead", None)
+        existing.pop("sustaining_caster_ids", None)
+        existing.pop("tick_save", None)
+        existing.pop("originating_participant_id", None)
         existing.update(applied)
         return result
 
@@ -174,7 +188,7 @@ def remove_conditions(conditions: list[dict], condition_types: tuple[str, ...]) 
     """Return a new condition list with every instance of each type in ``condition_types`` removed.
 
     The plural fold for consume-on-use (M4.8 story-003): a roll can spend more than one beneficial
-    die (a bearer who is both Blessed and Inspired), so remove the whole consumed set in one pass.
+    effect (a bearer who is both Shaken and Inspired), so remove the whole consumed set in one pass.
     No-op (a fresh copy) when ``condition_types`` is empty. Never mutates the input."""
     drop = set(condition_types)
     return [dict(c) for c in conditions if c["type"] not in drop]
@@ -194,17 +208,15 @@ def tick_conditions(conditions: list[dict]) -> tuple[list[dict], list[dict]]:
     """Advance conditions one phase. Return ``(survivors, save_events)``.
 
     Integer durations decrement; conditions hitting 0 are dropped. ``None`` durations
-    persist until explicitly cleared. Conditions whose catalog spec names a recurring
-    ``tick_save`` (Frightened and Paralyzed) surface a save event so the wrap
-    caller (story-002) can resolve the save-to-clear — this module only *signals* it,
-    it never rolls. Never mutates the input.
+    persist until explicitly cleared. A recurring save from the instance or catalog
+    becomes a save event for the wrap. Never mutates the input.
     """
     survivors: list[dict] = []
     save_events: list[dict] = []
     for c in conditions:
-        spec = CONDITION_CATALOG[c["type"]]
-        if spec.tick_save is not None:
-            event = {"type": c["type"], "save": spec.tick_save, "source": c.get("source")}
+        save = c.get("tick_save", CONDITION_CATALOG[c["type"]].tick_save)
+        if save is not None:
+            event = {"type": c["type"], "save": save, "source": c.get("source")}
             if "originating_participant_id" in c:
                 event["originating_participant_id"] = c["originating_participant_id"]
             save_events.append(event)

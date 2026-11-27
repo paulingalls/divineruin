@@ -129,9 +129,9 @@ async def test_guest_skill_consumes_inspired():
 
 
 @pytest.mark.asyncio
-async def test_guest_save_uses_proficiency_and_consumes_blessed():
+async def test_guest_save_uses_proficiency_and_consumes_inspired():
     rows = actors()
-    rows["player_2"]["conditions"] = apply_condition([], "blessed")
+    rows["player_2"]["conditions"] = apply_condition([], "inspired")
     ctx, queries = setup(rows)
     conditions_mutations = MagicMock(remove_player_conditions=AsyncMock())
     with bind(ctx), fixed_roll():
@@ -143,7 +143,7 @@ async def test_guest_save_uses_proficiency_and_consumes_blessed():
     assert result["modifier"] >= 7
     assert result["total"] == 15 + result["modifier"]
     queries.get_player.assert_awaited_once_with("player_2")
-    assert conditions_mutations.remove_player_conditions.await_args.args[:2] == ("player_2", ("blessed",))
+    assert conditions_mutations.remove_player_conditions.await_args.args[:2] == ("player_2", ("inspired",))
 
 
 @pytest.mark.asyncio
@@ -412,7 +412,7 @@ WRITES = (
 STALE_CASES = [
     ("skill", 15, "inspired", "get_player", ["update_skill_advancement", "remove_player_conditions"]),
     ("skill", 15, None, "get_player", ["update_skill_advancement"]),
-    ("save", 15, "blessed", "get_player", ["remove_player_conditions"]),
+    ("save", 15, "inspired", "get_player", ["remove_player_conditions"]),
     ("social", 19, "inspired", "get_player", ["set_npc_disposition", "remove_player_conditions"]),
     ("social", 19, None, "get_player", ["set_npc_disposition"]),
     ("social", 1, "inspired", "get_player", ["remove_player_conditions"]),

@@ -5,13 +5,17 @@ from livekit.agents.llm import ToolError
 import cast_modifiers
 import combat_spell_heal
 import combat_voice_rules
+import db_mutations_conditions
 import patron_echo_choice
 import spell_condition_cleanse
+import spell_invisibility
 import spell_item_resolution
 import spell_knowledge
 import spells
 import veythar_wellspring
 import wild_shape
+from condition_catalog import CONDITION_CATALOG, INVISIBLE
+from condition_produce import resolve_effective_targets
 from declarations import Declaration, DeclarationType
 from party_state import PartyMember
 from resource_costs import gate_pool
@@ -87,6 +91,26 @@ async def _prepare_cast(
             raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")
         raise ToolError(f"{voice_spell.name} needs combat targets.")
 
+    condition_kind = voice_spell.applies_condition
+    if combat_state is None and (
+        voice_spell.save_condition is not None
+        or (condition_kind is not None and CONDITION_CATALOG[condition_kind].clearance == "start_of_caster_next_turn")
+    ):
+        raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")
+
+    if combat_state is None and session.combat_state is not None:
+        spell_invisibility.guard_direct_cast(session.combat_state, voice_spell, player_id, target_id, target_ids)
+
+    prior_spell_id = caster.concentration.spell_id
+    prior = spells_mod.get_spell(prior_spell_id) if voice_spell.concentration and prior_spell_id is not None else None
+    if (
+        combat_state is None
+        and session.in_combat
+        and prior is not None
+        and (prior.save_condition is not None or prior.applies_condition is not None)
+    ):
+        raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")
+
     is_cleanse = spell_id == spell_condition_cleanse.GREATER_RESTORATION
     if (voice_spell.heal is not None or is_cleanse) and combat_state is None and session.in_combat:
         raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")
@@ -103,12 +127,20 @@ async def _prepare_cast(
         lock_target_ids = (
             session.party.member_ids if heal is not None and heal["recipients"] == "all_allies" else target_ids
         )
+        prior_recipients = (
+            await db_mutations_conditions.sustaining_recipient_ids(
+                prior.id, prior.applies_condition, player_id, conn=conn
+            )
+            if prior is not None and prior.applies_condition is not None
+            else ()
+        )
         locked_rows, player = await condition_produce_mod.lock_ooc_caster_and_targets(
             produces_ooc=produces_ooc or item_target is not None or heal is not None or is_cleanse,
             player_id=player_id,
             target_id=item_target[0] if item_target else target_id,
             target_ids=lock_target_ids,
             party_member_ids=session.party.member_ids,
+            prior_recipient_ids=prior_recipients,
             queries_mod=queries_mod,
             conn=conn,
         )
@@ -163,4 +195,9 @@ async def _prepare_cast(
             target_ids = spells_mod.normalize_target_list(spell, target_id, target_ids)
     except ValueError as e:
         raise ToolError(str(e)) from e
+    if combat_state is not None and spell.applies_condition == INVISIBLE:
+        for recipient_id in resolve_effective_targets(target_ids, target_id, self_value=player_id):
+            recipient = combat_state.get_participant(recipient_id)
+            assert recipient is not None
+            spell_invisibility.require_clear_outline(recipient)
     return spell, player, target_ids, item_target, locked_rows, heal_rows, cleanse

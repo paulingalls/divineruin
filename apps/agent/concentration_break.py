@@ -6,15 +6,18 @@ DM-facing response rather than pushed as a client event nothing would consume.
 
 from functools import partial
 
+import asyncpg
+
 import check_resolution_save
 import concentration
-import conditions
+import db
 import db_mutations_concentration
+import db_mutations_conditions
 import db_queries
 import encounter_facts
 import spells
 from combat_fate_rolls import packet_save
-from session_data import SessionData
+from session_data import CombatState, ConcentrationState, SessionData
 
 
 async def break_concentration_on_damage(
@@ -76,13 +79,9 @@ async def break_concentration_on_damage(
             # The player row is gone (a data glitch — an in-combat caster should always exist). Fail
             # safe: don't roll an unfounded save and don't strip their spell; leave concentration as-is.
             return None
-        # Thread the caster's in-combat conditions into the CON save (M4.3): Exhausted -1/stack
-        # lowers it. Conditions live on the in-memory CombatParticipant, not the DB player row;
-        # out of combat there are none ([]).
         participant = cstate.get_participant(damaged_player_id) if cstate else None
-        player["conditions"] = participant.conditions if participant is not None else []
-        # Damage-triggered CON save is engine-auto: it never spends the caster's beneficial +1d4
-        # (M4.8 story-003) — only player-initiated saves do.
+        if participant is not None:
+            player["conditions"] = participant.conditions
         save = await packet_save(
             progress,
             session,
@@ -149,6 +148,56 @@ async def break_concentration_on_incapacitation(
     )
 
 
+def _release_sustained(conditions: list[dict], spell_id: str, applied: str, caster_id: str) -> list[dict]:
+    remaining = []
+    for condition in conditions:
+        if (condition["type"], condition.get("source")) == (applied, spell_id):
+            casters = [cid for cid in condition.get("sustaining_caster_ids", []) if cid != caster_id]
+            if casters:
+                remaining.append({**condition, "sustaining_caster_ids": casters})
+        else:
+            remaining.append(condition)
+    return remaining
+
+
+async def release_persisted_spell_conditions(
+    state: CombatState | None,
+    spell_id: str,
+    applied: str,
+    caster_id: str,
+    *,
+    conn,
+    locked_rows: dict[str, dict] | None = None,
+) -> None:
+    if locked_rows is None:
+        recipients = await db_mutations_conditions.sustaining_recipient_ids(spell_id, applied, caster_id, conn=conn)
+        # The checkpoint restores the roster and concentration. Participant rows reconcile at combat end.
+        participants = {p.id for p in state.participants} if state is not None else set()
+        lock_ids = sorted((set(recipients) | {caster_id}) - participants)
+        locked_rows = await db_queries.get_players_for_update(lock_ids, conn=conn)
+    writes = {}
+    for pid, row in locked_rows.items():
+        before = row.get("conditions") or []
+        after = _release_sustained(before, spell_id, applied, caster_id)
+        if before != after:
+            writes[pid] = after
+    await db_mutations_conditions.save_many_player_conditions(writes, conn=conn)
+    for pid, updated in writes.items():
+        locked_rows[pid]["conditions"] = updated
+
+
+def remove_owned_spell_conditions(state: CombatState, spell_id: str, caster_id: str, *, applied: str | None) -> None:
+    for participant in state.participants:
+        active = [
+            condition
+            for condition in participant.conditions
+            if (condition.get("source"), condition.get("originating_participant_id")) != (spell_id, caster_id)
+        ]
+        participant.conditions = (
+            _release_sustained(active, spell_id, applied, caster_id) if applied is not None else active
+        )
+
+
 async def end_concentration(
     session: SessionData,
     player_id: str,
@@ -157,47 +206,35 @@ async def end_concentration(
     conn,
     concentration_mutations=db_mutations_concentration,
     spells_mod=spells,
+    updates: dict[str, ConcentrationState] | None = None,
+    record: ConcentrationState | None = None,
+    release_combat_rows: bool = False,
 ) -> str | None:
     member = session.member_state(player_id)
-    spell_id = member.concentration.spell_id
+    spell_id = (record if record is not None else member.concentration).spell_id
     if spell_id is None:
         return None
     cstate = combat_state if combat_state is not None else session.combat_state
-
-    # Persist the end BEFORE clearing the in-memory SSOT (mirrors cast_spell's commit-then-sync):
-    # a failed write leaves the member's concentration intact rather than diverging from the DB,
-    # which would otherwise re-populate the old spell on the next session reload.
-    await concentration_mutations.update_player_concentration(player_id, None, conn=conn)
-    member.concentration.spell_id = None
-
-    # Concentration→condition lifecycle (M4.8 story-006, risk 0899a89ef0da): a concentration spell
-    # that granted a beneficial condition (Bless → blessed) loses it when the spell ends, so the +1d4
-    # does not outlive the broken concentration. Strip the spell's applies_condition from the
-    # in-combat participants it buffed; the mutation rides the phase loop's save_combat_state (like
-    # the combat-ability consume). OOC breaks (no combat_state) leave OOC buffs as-is.
-    #
-    # ...but only when NO OTHER member still sustains a spell granting that same condition. A
-    # condition records its spell as `source`, never its caster, so two members' Bless are one
-    # indistinguishable `blessed` instance: stripping on the first break silently negated the
-    # second caster's live spell. The buff outlives this break because someone is still holding it up.
     applied = spells_mod.get_spell(spell_id).applies_condition
-    still_held = _another_member_sustains(session, player_id, applied, spells_mod) if applied else False
-    if applied is not None and cstate is not None and not still_held:
-        for participant in cstate.participants:
-            participant.conditions = conditions.remove_conditions(participant.conditions, (applied,))
+
+    async def persist(connection) -> None:
+        if applied is not None:
+            await release_persisted_spell_conditions(
+                None if release_combat_rows else cstate, spell_id, applied, player_id, conn=connection
+            )
+        await concentration_mutations.update_player_concentration(player_id, None, conn=connection)
+
+    if applied is not None and (conn is None or isinstance(conn, asyncpg.Pool)):
+        pool = conn or await db.get_pool()
+        async with pool.acquire() as connection, connection.transaction():
+            await persist(connection)
+    else:
+        await persist(conn)
+
+    if cstate is not None:
+        remove_owned_spell_conditions(cstate, spell_id, player_id, applied=applied)
+    if updates is None:
+        member.concentration = ConcentrationState()
+    else:
+        updates[player_id] = ConcentrationState()
     return spell_id
-
-
-def _another_member_sustains(session, broken_player_id: str, condition_type: str, spells_mod) -> bool:
-    """Whether a party member OTHER than the one who just broke is still concentrating on a spell
-    that grants ``condition_type``. Their spell is what keeps the buff standing."""
-    for member in session.party.members:
-        if member.player_id == broken_player_id:
-            continue
-        other_spell_id = member.concentration.spell_id
-        if other_spell_id is None:
-            continue
-        other_spell = spells_mod.get_spell(other_spell_id)
-        if other_spell is not None and other_spell.applies_condition == condition_type:
-            return True
-    return False

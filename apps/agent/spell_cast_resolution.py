@@ -7,6 +7,7 @@ import cast_modifiers
 import character_spells
 import combat_hollow_resonance
 import concealment
+import concentration_break
 import condition_produce
 import conditions
 import db_content_queries
@@ -22,6 +23,7 @@ import patron_cast_context
 import racial_resonance
 import resonance as resonance_mod
 import resonance_events
+import spell_invisibility
 import spell_item_resolution
 import spells
 import vaelti_echo_warning
@@ -29,10 +31,11 @@ import veil_ward as veil_ward_mod
 import veythar_wellspring
 import ward_resolution
 from combat_terrain import resolve_terrain
+from condition_catalog import INVISIBLE
 from party_state import PartyMember
-from session_data import CombatState, SessionData
+from session_data import CombatState, ConcentrationState, SessionData
 from spell_cast_effects import _finish_cast
-from spell_cast_result import _UNCHANGED, CastResult
+from spell_cast_result import CastResult
 from spell_cast_validation import _prepare_cast
 
 
@@ -152,6 +155,18 @@ async def _resolve_cast(
             session.validate_acting_player(player_id)
         concealment_packet = await concealment.transition(player_id, player, False, ended_by="cast", conn=conn)
 
+    visibility_receipt = {}
+    if spell.hostile and not combat_spell_attack:
+        if combat_state is not None:
+            actor = combat_state.get_participant(player_id)
+            assert actor is not None
+            visibility_receipt = spell_invisibility.reveal_invisible(actor)
+        elif conditions_mod.has_condition(player.get("conditions") or [], INVISIBLE):
+            if revalidate_actor:
+                session.validate_acting_player(player_id)
+            await conditions_mutations_mod.remove_player_conditions(player_id, (INVISIBLE,), conn=conn)
+            visibility_receipt = {"condition_removed": INVISIBLE}
+
     purified = None
     if item_target is not None:
         purified = await spell_item_resolution.purify_item(
@@ -179,12 +194,27 @@ async def _resolve_cast(
         await resonance_mutations_mod.update_player_resonance(player_id, effective_resonance, conn=conn)
         combat_hollow_resonance.stage_total(combat_state, player_id, effective_resonance)
 
-    concentration_spell_id: object = _UNCHANGED
+    concentration_update: ConcentrationState | None = None
     if spell.concentration:
         if revalidate_actor:
             session.validate_acting_player(player_id)
-        await concentration_mutations_mod.update_player_concentration(player_id, spell_id, conn=conn)
-        concentration_spell_id = spell_id
+        prior_spell_id = caster.concentration.spell_id
+        if prior_spell_id is not None:
+            prior = spells_mod.get_spell(prior_spell_id)
+            if prior.applies_condition is not None:
+                await concentration_break.release_persisted_spell_conditions(
+                    combat_state, prior_spell_id, prior.applies_condition, player_id, conn=conn, locked_rows=locked_rows
+                )
+            if combat_state is not None:
+                concentration_break.remove_owned_spell_conditions(
+                    combat_state, prior_spell_id, player_id, applied=prior.applies_condition
+                )
+        concentration_update = ConcentrationState(spell_id)
+        active_combat = combat_state or session.combat_state
+        if active_combat is not None:
+            concentration_update.combat_id = active_combat.combat_id
+            concentration_update.started_round = active_combat.round_number
+        await concentration_mutations_mod.update_player_concentration(player_id, concentration_update, conn=conn)
 
     result = await _finish_cast(
         session=session,
@@ -198,7 +228,7 @@ async def _resolve_cast(
         generated=generated,
         effective_resonance=effective_resonance,
         new_resonance=new_resonance,
-        concentration_spell_id=concentration_spell_id,
+        concentration_update=concentration_update,
         ward_active=ward_active,
         patron=patron,
         race=race,
@@ -227,6 +257,7 @@ async def _resolve_cast(
         conditions_mod=conditions_mod,
         conditions_mutations_mod=conditions_mutations_mod,
     )
+    result.packet.update(visibility_receipt)
     if echo is not None:
         result.packet["wellspring_echo"] = echo
         result.packet["dm_cue"] = veythar_wellspring.describe_cast(echo)

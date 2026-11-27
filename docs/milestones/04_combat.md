@@ -306,11 +306,11 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 
 ### Milestone 4.8 — Beneficial Conditions
 
-**Goal:** Carry Bless and Inspire through production, consumption, and narration.
+**Goal:** Carry Bless and Inspire through application, rolls, expiration, and narration.
 
 **Acceptance criteria:**
-- [x] Bless adds 1d4 to an eligible saving throw, is consumed once, and its removal persists. <!-- verified apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_bless_save_folds_consumes_and_persists_removal -->
-- [x] A Blessed combat attack consumes the bonus once in combat state. <!-- verified apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_bless_in_combat_attack_consumes_once -->
+- [x] Bless adds 1d4 to each rolled save while sustained. The die and its removal persist across reload. <!-- verified apps/agent/tests/acceptance/test_spell_bless_lifecycle.py::test_bless_survives_reloaded_saves_until_ooc_replacement -->
+- [x] Each Blessed combat attack gets 1d4, including misses and attacks resumed after a Fate pause. <!-- verified apps/agent/tests/acceptance/test_spell_bless_lifecycle.py::test_bless_applies_to_each_attack_hit_and_miss apps/agent/tests/acceptance/test_spell_bless_lifecycle.py::test_held_bless_attack_keeps_the_original_die -->
 - [x] Inspire adds 1d4 to the next eligible roll and expires after that use. <!-- verified apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_inspire_folds_once_then_expires -->
-- [x] Engine automatic saves neither use nor consume a player's bonus die. <!-- verified apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_engine_auto_save_never_consumes -->
-- [x] A multi-target Bless names every affected ally for narration; breaking concentration removes Bless. <!-- verified apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_multitarget_bless_voices_every_ally apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_breaking_bless_concentration_drops_blessed -->
+- [x] Engine automatic saves never consume a single-use bonus die. Bless applies to every rolled save. <!-- verified apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_engine_auto_save_never_consumes -->
+- [x] A multi-target Bless names every affected ally for narration. Each ally keeps one die until their last sustaining caster stops. <!-- verified apps/agent/tests/acceptance/test_m48_beneficial_conditions_capstone.py::test_multitarget_bless_voices_every_ally apps/agent/tests/acceptance/test_bless_caster_guard.py::test_exclusive_bless_ends_without_touching_other_caster apps/agent/tests/acceptance/test_bless_caster_guard.py::test_persisted_shared_bless_last_caster_removes_die -->

@@ -4,7 +4,7 @@ import combat_grapple
 import condition_voice_rules
 import conditions
 from combat_participant import CombatParticipant
-from condition_catalog import CONDITION_CATALOG
+from condition_catalog import CONDITION_CATALOG, GUIDING_LIGHT_MARK
 from condition_produce import resolve_effective_targets
 from condition_restrictions import cannot_act
 
@@ -33,6 +33,10 @@ def _land_condition_on_one(
     *,
     packet: dict,
     duration: int | None = None,
+    skip_first_wrap: bool = False,
+    originating_participant_id: str | None = None,
+    sustaining_caster_id: str | None = None,
+    tick_save: str | None = None,
     inspire_attack_upgrade: bool = False,
 ) -> bool:
     """Land a condition (beneficial or hostile) on ONE in-combat participant (M4.8; M13 story-002
@@ -51,9 +55,15 @@ def _land_condition_on_one(
         source=attacker.id if cond_type == "charmed" else source,
         duration=duration,
         inspire_attack_upgrade=inspire_attack_upgrade,
-        originating_participant_id=attacker.id if spec is not None and spec.tick_save is not None else None,
+        originating_participant_id=attacker.id
+        if tick_save or (spec and spec.tick_save)
+        else originating_participant_id,
+        tick_save=tick_save,
+        sustaining_caster_id=sustaining_caster_id,
     )
-    if duration is not None and not attacker.is_ally and attacker.type == "enemy":
+    if cond_type == GUIDING_LIGHT_MARK or (
+        duration is not None and (skip_first_wrap or (not attacker.is_ally and attacker.type == "enemy"))
+    ):
         for condition in cond_target.conditions:
             if condition["type"] == cond_type:
                 condition["inflicted_round"] = state.round_number
@@ -73,6 +83,10 @@ def land_condition_on_participant(
     source: str,
     *,
     packet: dict,
+    duration: int | None = None,
+    skip_first_wrap: bool = False,
+    originating_participant_id: str | None = None,
+    tick_save: str | None = None,
     inspire_attack_upgrade: bool = False,
 ) -> bool:
     """Single-target landing rule for the combat producers (the spell path in _resolve_ability_packet
@@ -80,7 +94,17 @@ def land_condition_on_participant(
     ``decl.target_id`` (self when absent). Returns True iff it landed. Thin wrapper over
     ``_land_condition_on_one``; ``packet`` receives any release caused by the condition."""
     return _land_condition_on_one(
-        state, decl.target_id, attacker, cond_type, source, packet=packet, inspire_attack_upgrade=inspire_attack_upgrade
+        state,
+        decl.target_id,
+        attacker,
+        cond_type,
+        source,
+        packet=packet,
+        duration=duration,
+        skip_first_wrap=skip_first_wrap,
+        originating_participant_id=originating_participant_id,
+        tick_save=tick_save,
+        inspire_attack_upgrade=inspire_attack_upgrade,
     )
 
 
@@ -93,6 +117,8 @@ def land_condition_on_participants(
     *,
     packet: dict,
     inspire_attack_upgrade: bool = False,
+    sustaining_caster_id: str | None = None,
+    originating_participant_id: str | None = None,
 ) -> list[str]:
     """Land ``cond_type`` on EACH participant of a multi-target declaration (M4.8 story-012).
 
@@ -105,7 +131,15 @@ def land_condition_on_participants(
     voiced: list[str] = []
     for target_id in targets:
         if _land_condition_on_one(
-            state, target_id, attacker, cond_type, source, packet=packet, inspire_attack_upgrade=inspire_attack_upgrade
+            state,
+            target_id,
+            attacker,
+            cond_type,
+            source,
+            packet=packet,
+            inspire_attack_upgrade=inspire_attack_upgrade,
+            sustaining_caster_id=sustaining_caster_id,
+            originating_participant_id=originating_participant_id,
         ):
             voiced.append(target_id if target_id is not None else attacker.id)
     return voiced

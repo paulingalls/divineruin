@@ -10,12 +10,19 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from copy import deepcopy
 from typing import TYPE_CHECKING
 
+import db
 import db_mutations
 import event_types as E
 import room_admin
 import session_outcome
+import spells
+from caster_state import ConcentrationState
+from combat_round_checkpoint import combat_image
+from combat_state import CombatState
+from concentration_break import end_concentration, remove_owned_spell_conditions
 from game_events import publish_game_event
 from host_handoff import promote_after_departure
 from session_summary import generate_session_summary
@@ -69,9 +76,11 @@ async def run_guest_departure(sd: SessionData, player_id: str, session) -> None:
         payload = {**payload, "player_id": player_id}
         await publish_game_event(sd.room, E.SESSION_END, payload, sd.event_bus)
         end_published = True
-        await room_admin.remove_player(sd.room.name, player_id)
-        removed = True
-        lifecycle.mark_departed(player_id)
+        async with sd.combat_state_lock:
+            await _end_departing_concentration(sd, player_id)
+            await room_admin.remove_player(sd.room.name, player_id)
+            removed = True
+            lifecycle.mark_departed(player_id)
         if player_id == sd.primary_player_id:
             summary_in_progress = True
             await db_mutations.save_session_summary(player_id, sd.session_id, payload)
@@ -124,6 +133,34 @@ async def run_guest_departure(sd: SessionData, player_id: str, session) -> None:
         # out of the party, so a member still in it keeps the grace that retries their departure.
         if sd.reconnection_owner is not None and not sd.party.contains(player_id):
             sd.reconnection_owner.member_departed(player_id)
+
+
+async def _end_departing_concentration(sd: SessionData, player_id: str) -> None:
+    member = sd.member_state(player_id)
+    if not member.concentration.is_active and sd.combat_state is None:
+        return
+    state = deepcopy(sd.combat_state)
+    updates = {}
+    async with db.transaction() as conn:
+        await end_concentration(sd, player_id, combat_state=state, conn=conn, updates=updates, release_combat_rows=True)
+        if state is not None:
+            _forget_caster_in_history(state, player_id, member.concentration.spell_id)
+            await db_mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
+    member.concentration = updates.get(player_id, member.concentration)
+    sd.combat_state = state
+
+
+def _forget_caster_in_history(state: CombatState, caster_id: str, spell_id: str | None) -> None:
+    """Edit each round image so a rewind cannot restore effects a departed caster sustained."""
+    for checkpoint in state.round_checkpoints:
+        data = checkpoint["players"].get(caster_id, {}).get("data", {})
+        held = ConcentrationState.from_record(data.get("concentration")).spell_id
+        if "concentration" in data:
+            data["concentration"] = {"spell_id": None}
+        image = CombatState.from_dict(checkpoint["combat"])
+        for sid in {sid for sid in (spell_id, held) if sid is not None}:
+            remove_owned_spell_conditions(image, sid, caster_id, applied=spells.get_spell(sid).applies_condition)
+        checkpoint["combat"] = combat_image(image)
 
 
 async def run_session_end(sd: SessionData) -> None:

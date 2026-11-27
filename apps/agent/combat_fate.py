@@ -32,6 +32,7 @@ from combat_support import _resolve_attack_packet, apply_rolled_attack
 from equipment_rules import resolve_weapon_profile, with_weapon_magic
 from patron_synergy_combat import attack_player, veiled_strike
 from session_data import CombatParticipant
+from spell_invisibility import reveal_attack
 
 
 async def attack_sequence(
@@ -52,7 +53,7 @@ async def attack_sequence(
     # below. attack_sequence is [action] when the actor has no mechanical enhancer (AC3: no
     # phantom expansion → the summary stays the flat single-attack shape).
     martial = combat_martial.attack_ability(packet.declaration)
-    enhancers = attacker.enhancers
+    enhancers = combat_enhancers.attack_enhancers(attacker.enhancers, packet.declaration)
     if martial == SHIELD_BASH:
         enhancers = [enhancer for enhancer in enhancers if enhancer != combat_enhancers.SHIELD_BASH]
     if attack_cursor is None:
@@ -131,7 +132,9 @@ async def continue_attack(
 ):
     decl = packet.declaration
     attack_summaries = attack_cursor.get("summaries", [])
-    concealment_packet = attack_cursor.get("concealment")
+    reveal_receipt = attack_cursor.get("reveal_receipt", {})
+    if (legacy_concealment := attack_cursor.get("concealment")) is not None:
+        reveal_receipt.setdefault("concealment", legacy_concealment)
     # The declaration's melee approach (made before any roll) and its shared movement allowance;
     # a resumed cursor carries both so a held swing never moves the attacker twice.
     movement = attack_cursor.get("movement", movement or {})
@@ -148,7 +151,7 @@ async def continue_attack(
             enemies_remaining=enemies_remaining,
             is_first_attack=is_first_attack,
             summaries=attack_summaries,
-            concealment=concealment_packet,
+            reveal_receipt=reveal_receipt,
             movement=movement,
             movement_budget=movement_budget,
         )
@@ -236,14 +239,12 @@ async def continue_attack(
             attack_summaries.append({**swing_move, **interception})
             break
         swing = progress.scope("swing").with_origin(attacker.id) if progress is not None else None
-        reveal = (
-            attacker.type == "player"
-            and not resumed_swing
-            and (not attack_summaries if swing_targets is None else all(sub.get("skipped") for sub in attack_summaries))
+        reveal = not resumed_swing and (
+            not attack_summaries if swing_targets is None else all(sub.get("skipped") for sub in attack_summaries)
         )
         strike_mode = None
         player = None
-        if reveal and prepared_data is None:
+        if reveal and attacker.type == "player" and prepared_data is None:
             player = await attack_player(attacker, queries=queries, conn=conn)
             assert player is not None
             if concealment.gift_lifetime(player):
@@ -301,7 +302,7 @@ async def continue_attack(
                     **interception,
                 }
         if reveal:
-            concealment_packet = await concealment.reveal_attacker(attacker.id, conn=conn, queries=queries)
+            reveal_receipt.update(await reveal_attack(attacker, conn=conn, queries=queries))
         last_swing = index == len(actions) - 1
         bash = martial == SHIELD_BASH and last_swing
         crippling = martial == CRIPPLING_STRIKE and last_swing
@@ -447,8 +448,7 @@ async def continue_attack(
     )
     if swing_targets is not None:
         summary.update(action=decl.action, declaration_type=str(decl.type))
-    if concealment_packet is not None:
-        summary["concealment"] = concealment_packet
+    summary.update(reveal_receipt)
     if interrupted is None and martial == combat_cunning_action.CUNNING_ACTION and "hit" in summary:
         summary["cunning_action"] = {"rider": decl.rider}
         if decl.rider == "hide":

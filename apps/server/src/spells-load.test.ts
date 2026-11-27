@@ -10,7 +10,7 @@ import type { Spell } from "@divineruin/shared";
 // spells.py) so the cross-language contract is enforced on both sides. M3.3 makes
 // spells.json the FULL casting-data SSOT (decision spell-catalog-full-casting-ssot),
 // superseding the M8 elective-only seam (235ae150c5d3): caster core spells now live in
-// the catalog too. This TS loader stays lenient on the M3.3 fields (ignores the extra
+// the catalog too. This TS loader stays lenient on resonance and audio cue (ignores the extra
 // JSONB) pending the strict-mirror work tracked as concern 26ab12def2a3.
 
 const SPELLS_PATH = new URL("../../../content/spells.json", import.meta.url);
@@ -25,13 +25,51 @@ async function loadSpellsJson(): Promise<Record<string, unknown>[]> {
   return raw as Record<string, unknown>[];
 }
 
+const DURATIONS: Record<string, number> = {
+  primal_tsunami: 36,
+  arcane_hold_person: 60,
+  arcane_haste: 60,
+  arcane_slow: 60,
+  divine_bless: 60,
+  divine_beacon_of_hope: 60,
+  divine_banishment: 60,
+  divine_holy_aura: 60,
+  primal_entangle: 60,
+  primal_faerie_fire: 60,
+  primal_guardian_of_nature: 60,
+  primal_earthquake: 60,
+  primal_storm_of_vengeance: 60,
+  arcane_detect_magic: 600,
+  arcane_fly: 600,
+  arcane_wall_of_force: 600,
+  arcane_maze: 600,
+  divine_detect_hollow: 600,
+  primal_call_lightning: 600,
+  primal_protection_from_hollow: 600,
+  primal_wall_of_thorns: 600,
+  arcane_invisibility: 3600,
+  arcane_arcane_eye: 3600,
+  primal_conjure_animals: 3600,
+  primal_animal_shapes: 86400,
+};
+
+test.each([undefined, null, true, -1, 0, 1.5])(
+  "concentration rejects duration %p",
+  async (value) => {
+    const row = (await loadSpellsJson()).find((row) => row.id === "divine_bless")!;
+    expect(() =>
+      parseSpellRow("divine_bless", { ...row, concentration_duration_seconds: value }),
+    ).toThrow(/concentration_duration_seconds/);
+  },
+);
+
 describe("content/spells.json — parseSpellRow conformance", () => {
   test(`exactly ${SPELL_COUNT} entries, each parses via the production parseSpellRow loader`, async () => {
     const rows = await loadSpellsJson();
     expect(rows).toHaveLength(SPELL_COUNT);
     for (const row of rows) {
       const id = typeof row.id === "string" ? row.id : "<no-id>";
-      expect(() => parseSpellRow(id, row)).not.toThrow();
+      expect(parseSpellRow(id, row).concentration_duration_seconds).toBe(DURATIONS[id]);
     }
   });
 
@@ -119,6 +157,7 @@ describe("parseSpellRow — fail-loud validation", () => {
     narration_cue: "A thing happens.",
     verbal: true,
     hostile: false,
+    concentration: false,
   };
 
   test("accepts a valid row", () => {
@@ -152,8 +191,8 @@ describe("parseSpellRow — fail-loud validation", () => {
   });
 });
 
-describe("required speech and hostility metadata", () => {
-  for (const field of ["verbal", "hostile"] as const) {
+describe("required spell flags", () => {
+  for (const field of ["verbal", "hostile", "concentration"] as const) {
     for (const value of [undefined, null, 0, 1, "true", "false", [], {}]) {
       test(`${field} rejects ${JSON.stringify(value)}`, async () => {
         const [row] = await loadSpellsJson();
@@ -241,4 +280,87 @@ test("complete hostile classification survives the actual TypeScript loader", as
   expect(new Set(spells.filter((spell) => spell.hostile).map((spell) => spell.id))).toEqual(
     EXPECTED_HOSTILE,
   );
+});
+
+test("real hostile condition spells retain their typed profiles", async () => {
+  const rows = await loadSpellsJson();
+  const parse = (id: string) =>
+    parseSpellRow(
+      id,
+      rows.find((row) => row.id === id),
+    );
+  expect(parse("arcane_hold_person").save_condition).toEqual({
+    save: "wisdom",
+    condition: "paralyzed",
+    resave: "wisdom",
+    attribute: "intelligence",
+    target_category: "humanoid",
+  });
+  expect(parse("arcane_power_word_stun").save_condition).toEqual({
+    save: null,
+    condition: "stunned",
+    resave: "constitution",
+    hp_ceiling: 75,
+  });
+  expect(parse("arcane_fireball").save_condition).toBeUndefined();
+});
+
+test.each([
+  ["condition", "?"],
+  ["save", "?"],
+  ["resave", []],
+  ["attribute", "?"],
+  ["target_category", "?"],
+  ["hp_ceiling", true],
+  ["hp_ceiling", 0],
+])("hostile condition profiles reject invalid %s", async (field, value) => {
+  const id = "arcane_hold_person";
+  const row = (await loadSpellsJson()).find((entry) => entry.id === id);
+  const profile = {
+    save: "wisdom",
+    condition: "paralyzed",
+    resave: "wisdom",
+    attribute: "intelligence",
+  };
+  expect(() =>
+    parseSpellRow(id, { ...row, save_condition: { ...profile, [String(field)]: value } }),
+  ).toThrow(new RegExp(`${id}.*save_condition.*${field}`));
+});
+
+test("condition spells preserve Slow's cap and Faerie Fire's cube and null re-save", async () => {
+  const rows = await loadSpellsJson();
+  const slow = parseSpellRow(
+    "arcane_slow",
+    rows.find((row) => row.id === "arcane_slow"),
+  );
+  expect(slow.max_targets).toBe(3);
+  expect(slow.save_condition).toEqual({
+    save: "wisdom",
+    attribute: "intelligence",
+    condition: "slowed",
+    resave: "wisdom",
+  });
+  const fire = rows.find((row) => row.id === "primal_faerie_fire");
+  expect(parseSpellRow("primal_faerie_fire", fire).save_condition).toEqual({
+    save: "dexterity",
+    attribute: "wisdom",
+    condition: "outlined",
+    resave: null,
+    recipients: { shape: "cube", side_ft: 20 },
+  });
+  const profile = { save: "dexterity", attribute: "wisdom", condition: "outlined" };
+  for (const malformed of [
+    profile,
+    { ...profile, resave: null, condition: "unknown" },
+    { ...profile, resave: null, recipients: { shape: "radius", side_ft: 20 } },
+    { ...profile, resave: null, recipients: { shape: "cube", side_ft: 0 } },
+    { ...profile, resave: null, recipients: { shape: "cube", side_ft: Infinity } },
+    { ...profile, resave: null, recipients: { shape: "cube", side_ft: 20, placements: 2 } },
+  ]) {
+    const field =
+      "recipients" in malformed ? "recipients" : "resave" in malformed ? "condition" : "resave";
+    expect(() =>
+      parseSpellRow("primal_faerie_fire", { ...fire, save_condition: malformed }),
+    ).toThrow(`save_condition.${field}`);
+  }
 });

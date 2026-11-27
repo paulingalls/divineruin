@@ -97,7 +97,13 @@ async def _advance_member(
 
 def _resave(player: dict, clock: still_charm.DwellClock) -> bool:
     result = check_resolution_save.resolve_saving_throw(
-        player, "wisdom", PARADISE_TRAP_DC, "charmed", bonus_dice_eligible=False, modifier_bonus=clock["saves"]
+        player,
+        "wisdom",
+        PARADISE_TRAP_DC,
+        "charmed",
+        bonus_dice_eligible=False,
+        hollow_source=True,
+        modifier_bonus=clock["saves"],
     )
     clock["saves"] += 1
     return result.success

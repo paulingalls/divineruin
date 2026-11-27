@@ -195,7 +195,9 @@ async def test_concentration_settlement_retries_without_replaying_committed_dama
     state = _build_state(host, host, [_enemy("foe", 30)])
     state.participants.append(_player(victim))
     state.initiative_order.insert(1, victim)
-    required_player(state, victim).conditions = apply_condition([], "blessed", source="divine_bless")
+    required_player(state, victim).conditions = apply_condition(
+        [], "blessed", source="divine_bless", sustaining_caster_id=victim
+    )
     place_actors(state)
     session = world.ctx.userdata
     session.combat_state = state
@@ -225,12 +227,13 @@ async def test_concentration_settlement_retries_without_replaying_committed_dama
         await call("resolve_phase")
         with (
             session._bind_authenticated_actor(host, 1, lifecycle.require_authorized),
-            patch("check_resolution.dice_roll", side_effect=[_d20(19), _d20(7)]) as dice,
+            patch("check_resolution.dice_roll", side_effect=[_d20(19), _d20(5)]) as dice,
             patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)) as damage,
+            patch("condition_bonus.dice_roll", return_value=_damage_die(1)),
         ):
             attack_offer = (await call("resolve_phase"))["fate_offer"]
             save_offer = (await keep(attack_offer))["fate_offer"]
-            assert save_offer["roller_id"] == victim and save_offer["die"] == 7
+            assert save_offer["roller_id"] == victim and save_offer["die"] == 5
             before = session.combat_state.to_dict()
             published = published_payloads(session.room)
             assert (await row(world))["hp"]["current"] == 96

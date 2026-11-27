@@ -275,4 +275,7 @@ async def test_intercepted_hit_tests_guardian_concentration(fight: MawlingHarnes
     await fight.drain()
     held = db_mutations_concentration.read_player_concentration
     assert await held(guardian, conn=fight.pool) == {"spell_id": None}
-    assert await held(ally, conn=fight.pool) == {"spell_id": SPELL}
+    assert fight.sd.combat_state is not None
+    combat_id = fight.sd.combat_state.combat_id
+    carried = {"spell_id": SPELL, "elapsed_seconds": 0, "combat_id": combat_id, "started_round": 1}
+    assert await held(ally, conn=fight.pool) == carried

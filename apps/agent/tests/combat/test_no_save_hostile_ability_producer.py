@@ -58,4 +58,15 @@ def test_exempt_conditions_are_catalog_buffs():
 
 
 def test_spell_exemptions_are_exactly_the_runtime_beneficial_conditions():
-    assert {"blessed", "shielded", "enraged", "inspired", "precise_strike", "iron_stance"} == SPELL_BUFF_CONDITIONS
+    assert {
+        "blessed",
+        "invisible",
+        "shielded",
+        "enraged",
+        "inspired",
+        "precise_strike",
+        "iron_stance",
+        "divine_ward",
+        "beacon_of_hope",
+        "protection_from_hollow",
+    } == SPELL_BUFF_CONDITIONS

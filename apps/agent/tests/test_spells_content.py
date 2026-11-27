@@ -41,6 +41,49 @@ def test_ids_are_unique():
     assert len(ids) == len(set(ids)) == 87
 
 
+_DURATIONS = {
+    "primal_tsunami": 36,
+    "arcane_hold_person": 60,
+    "arcane_haste": 60,
+    "arcane_slow": 60,
+    "divine_bless": 60,
+    "divine_beacon_of_hope": 60,
+    "divine_banishment": 60,
+    "divine_holy_aura": 60,
+    "primal_entangle": 60,
+    "primal_faerie_fire": 60,
+    "primal_guardian_of_nature": 60,
+    "primal_earthquake": 60,
+    "primal_storm_of_vengeance": 60,
+    "arcane_detect_magic": 600,
+    "arcane_fly": 600,
+    "arcane_wall_of_force": 600,
+    "arcane_maze": 600,
+    "divine_detect_hollow": 600,
+    "primal_call_lightning": 600,
+    "primal_protection_from_hollow": 600,
+    "primal_wall_of_thorns": 600,
+    "arcane_invisibility": 3600,
+    "arcane_arcane_eye": 3600,
+    "primal_conjure_animals": 3600,
+    "primal_animal_shapes": 86400,
+}
+
+
+@pytest.mark.parametrize("value", [None, True, -1, 0, 1.5])
+def test_concentration_requires_positive_integer_duration(value: object) -> None:
+    row = next(row for row in _RAW if row["id"] == "divine_bless")
+    with pytest.raises(ValueError, match="concentration_duration_seconds"):
+        parse_spell_row(row["id"], {**row, "concentration_duration_seconds": value})
+
+
+def test_concentration_requires_duration() -> None:
+    row = dict(next(row for row in _RAW if row["id"] == "divine_bless"))
+    row.pop("concentration_duration_seconds", None)
+    with pytest.raises(ValueError, match="concentration_duration_seconds"):
+        parse_spell_row(row["id"], row)
+
+
 @pytest.mark.parametrize("row", _RAW, ids=[r["id"] for r in _RAW])
 def test_every_row_carries_all_required_fields(row):
     missing = [f for f in _REQUIRED_FIELDS if f not in row]
@@ -49,7 +92,9 @@ def test_every_row_carries_all_required_fields(row):
 
 @pytest.mark.parametrize("row", _RAW, ids=[r["id"] for r in _RAW])
 def test_every_row_parses_through_the_strict_loader(row):
-    assert isinstance(parse_spell_row(row["id"], row), Spell)
+    parsed = parse_spell_row(row["id"], row)
+    assert isinstance(parsed, Spell)
+    assert parsed.concentration_duration_seconds == _DURATIONS.get(row["id"])
 
 
 @pytest.mark.parametrize("row", _RAW, ids=[r["id"] for r in _RAW])

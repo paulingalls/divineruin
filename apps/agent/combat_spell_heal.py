@@ -15,6 +15,7 @@ from combat_down import is_terminally_down, revive
 from combat_enemy_active import heal, healed_hp
 from combat_structures import line_blocker
 from conditions import apply_condition
+from healing_dice import maximum_healing, shared_roll
 from patron_synergy_heal import INSPIRE_HEAL, for_cast
 from rules_engine import attribute_modifier
 from spells import normalize_target_list
@@ -111,11 +112,9 @@ def exploration_recipients(
     return {tid: present[tid] for tid in targets}
 
 
-def _healing_roll(profile: HealProfile, attributes: dict[str, int], dice_mod) -> tuple[int, int]:
-    rolled = dice_mod.roll(profile["dice"]).total
+def _healing_modifier(profile: HealProfile, attributes: dict[str, int]) -> int:
     attribute = profile.get("attribute")
-    modifier = attribute_modifier(attributes.get(attribute, 10)) if attribute is not None else 0
-    return rolled, modifier
+    return attribute_modifier(attributes.get(attribute, 10)) if attribute is not None else 0
 
 
 def _receipt(
@@ -194,12 +193,15 @@ async def land(
     conn,
     resonance_updates: dict[str, int] | None = None,
 ) -> list[HealingResult]:
-    rolled, modifier = _healing_roll(profile, caster.attributes, dice)
-    base_heal = rolled + modifier
+    roll = shared_roll(profile["dice"], dice.roll)
+    modifier = _healing_modifier(profile, caster.attributes)
     results = []
     for target in recipients:
+        maximized = maximum_healing(target.conditions)
+        rolled = roll(maximized)
+        base_heal = rolled + modifier
         before = target.hp_current
-        components = synergy(target.id, before, base_heal) if synergy is not None else []
+        components = synergy(target.id, before, base_heal, maximized) if synergy is not None else []
         await restore(target, base_heal + sum(c["bonus"] for c in components if "bonus" in c), conn=conn)
         if rounds := profile.get("regeneration_rounds"):
             target.conditions = apply_condition(target.conditions, "regenerating", source=caster.id)
@@ -290,14 +292,17 @@ async def land_exploration(
     dice_mod,
     resonance_updates: dict[str, int] | None = None,
 ) -> list[HealingResult]:
-    rolled, modifier = _healing_roll(profile, caster.get("attributes", {}), dice_mod)
-    base_heal = rolled + modifier
+    roll = shared_roll(profile["dice"], dice_mod.roll)
+    modifier = _healing_modifier(profile, caster.get("attributes", {}))
     caster_current = caster["hp"]["current"]
     results = []
     for pid, row in recipients.items():
         current = row["hp"]["current"]
         maximum = patron_passives.effective_hp(row)["max"]
-        components = synergy(pid, current, base_heal) if synergy is not None else []
+        maximized = maximum_healing(row.get("conditions") or [])
+        rolled = roll(maximized)
+        base_heal = rolled + modifier
+        components = synergy(pid, current, base_heal, maximized) if synergy is not None else []
         ticks = profile.get("regeneration_rounds", 0)
         initial = base_heal + sum(c["bonus"] for c in components if "bonus" in c)
         amount = initial + ticks

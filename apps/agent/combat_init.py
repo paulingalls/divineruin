@@ -16,6 +16,7 @@ import architect_scene
 import choir_scene
 import combat_resolution as combat_resolution
 import combat_spatial
+import concentration_lifetime
 import db
 import db_content_queries
 import db_mutations
@@ -242,6 +243,7 @@ async def _start_combat_locked(
         choir_facts = await choir_scene.start(
             session, combat_state, retained_choir, mutations=mutations, queries=queries, db_mod=db_mod, content=content
         )
+    concentration_lifetime.adopt(session, concentration_lifetime.combat_entry(session, combat_state))
     session.combat_state = combat_state
 
     # Reset per-encounter weapon durability flags so each encounter is self-contained

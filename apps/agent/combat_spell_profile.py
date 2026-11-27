@@ -1,7 +1,15 @@
 """Catalog-owned spell formulas and combat recipient preflight."""
 
 import re
-from typing import Literal, NotRequired, TypedDict, cast
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, Literal, NotRequired, TypedDict, cast
+
+from condition_catalog import CONDITION_CATALOG, REACTIONS_SUPPRESSED
+from creature_schema import CATEGORIES
+
+if TYPE_CHECKING:
+    from abilities import Ability
+    from spells import Spell
 
 ATTRIBUTES = frozenset({"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"})
 DAMAGE_TYPES = frozenset(
@@ -22,6 +30,65 @@ DAMAGE_TYPES = frozenset(
     }
 )
 DICE = re.compile(r"([1-9][0-9]*)d([1-9][0-9]*)(?:\+([0-9]+))?")
+
+
+class CubeRecipients(TypedDict):
+    shape: Literal["cube"]
+    side_ft: float
+
+
+class SaveConditionProfile(TypedDict):
+    save: str | None
+    condition: str
+    resave: str | None
+    recipients: NotRequired[CubeRecipients]
+    attribute: NotRequired[str]
+    target_category: NotRequired[str]
+    hp_ceiling: NotRequired[int]
+
+
+def parse_save_condition(raw: object) -> SaveConditionProfile:
+    if not isinstance(raw, dict) or raw.keys() - {
+        "save",
+        "condition",
+        "resave",
+        "recipients",
+        "attribute",
+        "target_category",
+        "hp_ceiling",
+    }:
+        raise ValueError("save_condition must contain only supported fields")
+
+    def validate(field: str, vocabulary) -> None:
+        value = raw.get(field)
+        if not isinstance(value, str) or value not in vocabulary:
+            raise ValueError(f"save_condition.{field} must name a known value")
+
+    validate("condition", CONDITION_CATALOG)
+    if "resave" not in raw or raw["resave"] is not None:
+        validate("resave", ATTRIBUTES)
+    if "recipients" in raw:
+        from combat_spell_recipients import validate_spec
+
+        spec = raw["recipients"]
+        if not isinstance(spec, dict) or spec.get("shape") != "cube":
+            raise ValueError("save_condition.recipients must specify a cube")
+        try:
+            validate_spec(spec)
+        except ValueError as error:
+            raise ValueError(f"save_condition.recipients: {error}") from error
+    if "save" not in raw or raw["save"] is not None:
+        validate("save", ATTRIBUTES)
+        validate("attribute", ATTRIBUTES)
+    elif "attribute" in raw:
+        raise ValueError("save_condition.attribute requires an initial save")
+    if "target_category" in raw:
+        validate("target_category", CATEGORIES)
+    if "hp_ceiling" in raw:
+        ceiling = raw["hp_ceiling"]
+        if type(ceiling) is not int or ceiling < 1:
+            raise ValueError("save_condition.hp_ceiling must be a positive integer")
+    return cast(SaveConditionProfile, dict(raw))
 
 
 class HealProfile(TypedDict):
@@ -100,6 +167,7 @@ def parse_profile(raw):
         "restriction",
         "hollow_dice",
         "optional_target",
+        "rider",
         "deferred",
     }
     if raw.keys() - allowed:
@@ -128,6 +196,18 @@ def parse_profile(raw):
         raise ValueError("combat_damage attack requires ranged policy")
     if raw["resolution"] == "save" and (raw.get("save") not in ATTRIBUTES or type(raw.get("half")) is not bool):
         raise ValueError("combat_damage save requires save and half policy")
+    if "rider" in raw:
+        rider = raw["rider"]
+        if (
+            raw["resolution"] not in {"attack", "save"}
+            or not isinstance(rider, dict)
+            or set(rider) != {"condition", "expires"}
+            or not isinstance(rider["condition"], str)
+            or rider["condition"] not in CONDITION_CATALOG
+            or rider["expires"] not in ("target_turn_end", "caster_turn_start")
+            or (rider["expires"] == "caster_turn_start") != (rider["condition"] == REACTIONS_SUPPRESSED)
+        ):
+            raise ValueError("invalid combat_damage rider")
     for key in ("damage_attribute", "other_recipients", "optional_target"):
         if key in raw and type(raw[key]) is not bool:
             raise ValueError(f"combat_damage {key} must be boolean")
@@ -179,8 +259,21 @@ def scaled(profile, key, base, level):
     return next((count for threshold, count in reversed(profile.get(key, [])) if level >= threshold), base)
 
 
+def recipient_spec(spell: "Spell | Ability") -> Mapping[str, Any] | None:
+    for profile in (getattr(spell, "save_condition", None), getattr(spell, "combat_damage", None)):
+        if profile and "recipients" in profile:
+            return profile["recipients"]
+    return None
+
+
 def validate_target(state, caster, declaration, spell):
+    from combat_ability_save import BENEFICIAL_CONDITIONS
+    from combat_down import is_terminally_down
+    from condition_catalog import INVISIBLE
+    from condition_produce import resolve_effective_targets
     from spell_condition_cleanse import GREATER_RESTORATION, combat_target
+    from spell_invisibility import require_clear_outline
+    from spells import validate_target_count
 
     if spell.id == GREATER_RESTORATION:
         combat_target(state, caster.id, declaration.target_id, declaration.target_ids)
@@ -189,6 +282,23 @@ def validate_target(state, caster, declaration, spell):
         from combat_spell_heal import combat_recipients
 
         combat_recipients(state, caster, declaration, spell, heal)
+        return
+    if spell.save_condition is not None:
+        from combat_spell_condition import validate_targets as validate_condition_targets
+
+        validate_condition_targets(state, caster, declaration, spell)
+        return
+    if spell.applies_condition in BENEFICIAL_CONDITIONS:
+        targets = resolve_effective_targets(
+            declaration.target_ids, declaration.target_id, self_value=caster.id, dedup=True
+        )
+        validate_target_count(spell, targets)
+        for target_id in targets:
+            target = state.get_participant(target_id)
+            if target is None or not target.is_ally or is_terminally_down(target):
+                raise ValueError(f"{spell.name} requires an ally in the fight who is alive: {target_id}")
+            if spell.applies_condition == INVISIBLE:
+                require_clear_outline(target)
         return
     profile = getattr(spell, "combat_damage", None)
     if profile is None or profile["resolution"] == "deferred":

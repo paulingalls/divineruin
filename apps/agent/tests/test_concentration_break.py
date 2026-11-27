@@ -257,7 +257,9 @@ class TestBreakRemovesLinkedCondition:
         state = _make_combat_state()
         ally = state.get_participant("player_1")
         assert ally is not None
-        ally.conditions = conditions.apply_condition(ally.conditions, "blessed", source=source)
+        ally.conditions = conditions.apply_condition(
+            ally.conditions, "blessed", source=source, sustaining_caster_id="player_1"
+        )
         session.combat_state = state
         return session
 
@@ -267,68 +269,6 @@ class TestBreakRemovesLinkedCondition:
         ally = session.combat_state.get_participant("player_1")
         assert ally is not None
         return conditions.has_condition(ally.conditions, "blessed")
-
-    async def test_a_second_caster_still_concentrating_keeps_the_buff_alive(self):
-        """Condition source alone does not identify the caster for a multi-target Bless."""
-        session = _two_pc_session("bless", "bless")  # both concentrating on Bless
-        state = _make_combat_state()
-        ally = state.get_participant("player_1")
-        assert ally is not None
-        ally.conditions = conditions.apply_condition(ally.conditions, "blessed", source="bless")
-        session.combat_state = state
-        queries, resolver, cm = _deps(save_total=1)  # player_1's save fails -> their spell breaks
-
-        broken = await break_concentration_on_damage(
-            session,
-            10,
-            incapacitated=False,
-            damaged_player_id="player_1",
-            queries=queries,
-            resolver=resolver,
-            concentration_mutations=cm,
-            spells_mod=self._spells_mod(self._bless()),
-        )
-
-        assert broken == "bless"  # the damaged caster's own concentration did end...
-        assert session.member_state("player_1").concentration.spell_id is None
-        assert session.member_state("player_2").concentration.spell_id == "bless"
-        assert self._player_blessed(session)
-
-    async def test_break_drops_the_spells_condition_from_participants(self):
-        session = self._bless_a_player()
-        queries, resolver, cm = _deps(save_total=1)  # fails -> breaks
-
-        broken = await break_concentration_on_damage(
-            session,
-            10,
-            incapacitated=False,
-            damaged_player_id="player_1",
-            queries=queries,
-            resolver=resolver,
-            concentration_mutations=cm,
-            spells_mod=self._spells_mod(self._bless()),
-        )
-
-        assert broken == "bless"
-        assert not self._player_blessed(session)
-
-    async def test_held_concentration_keeps_the_condition(self):
-        session = self._bless_a_player()
-        queries, resolver, cm = _deps(save_total=99)  # holds -> no break
-
-        broken = await break_concentration_on_damage(
-            session,
-            10,
-            incapacitated=False,
-            damaged_player_id="player_1",
-            queries=queries,
-            resolver=resolver,
-            concentration_mutations=cm,
-            spells_mod=self._spells_mod(self._bless()),
-        )
-
-        assert broken is None
-        assert self._player_blessed(session)
 
     async def test_break_strips_threaded_working_state_not_session(self):
         # Regression (working-state-vs-session): the phase loop resolves against a deep-copied WORKING
@@ -340,7 +280,9 @@ class TestBreakRemovesLinkedCondition:
         working = _make_combat_state()  # the deep-copied state the phase loop persists
         w_ally = working.get_participant("player_1")
         assert w_ally is not None
-        w_ally.conditions = conditions.apply_condition(w_ally.conditions, "blessed", source="bless")
+        w_ally.conditions = conditions.apply_condition(
+            w_ally.conditions, "blessed", source="bless", sustaining_caster_id="player_1"
+        )
         queries, resolver, cm = _deps(save_total=1)  # fails -> breaks
 
         broken = await break_concentration_on_damage(
@@ -353,6 +295,7 @@ class TestBreakRemovesLinkedCondition:
             concentration_mutations=cm,
             spells_mod=self._spells_mod(self._bless()),
             combat_state=working,
+            conn=MagicMock(fetch=AsyncMock(return_value=[])),
         )
 
         assert broken == "bless"

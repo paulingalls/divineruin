@@ -16,12 +16,14 @@ async def send(room):
     await room.local_participant.publish_data(b'{"type":"leave_requested"}', reliable=True, topic="player_hints")
 
 
-async def end_packet(queue):
+async def end_packet(queue, seen=None):
     async with asyncio.timeout(15):
         while True:
             packet = json.loads((await queue.get())[0])
             if packet["type"] == "session_end":
                 return packet
+            if seen is not None:
+                seen.append(packet["type"])
 
 
 async def join_end(sd):
@@ -168,12 +170,21 @@ async def test_party_leaves(livekit_server, reset_db_pool, monkeypatch):
                 register_data_packet_collector(departing_room, topic="game_events", queue=queue)
                 disconnected = asyncio.Event()
                 departing_room.on("disconnected", disconnected.set)
-                async with asyncio.timeout(15):
-                    await send(departing_room)
-                    packet = await end_packet(queue)
-                    await disconnected.wait()
-                    assert sd.departure_task is not None
-                    await sd.departure_task
+                seen: list[str] = []
+                try:
+                    async with asyncio.timeout(15):
+                        await send(departing_room)
+                        packet = await end_packet(queue, seen)
+                        await disconnected.wait()
+                        assert sd.departure_task is not None
+                        await sd.departure_task
+                except TimeoutError as error:
+                    # Capture where a stalled leave stopped: hint, recap, publish or room removal.
+                    raise AssertionError(
+                        f"leave stalled after {seen}; departing={sd.departing_player_id} "
+                        f"departure={sd.departure_task!r} end={sd.session_end_task!r} "
+                        f"party={sd.party.member_ids} disconnected={disconnected.is_set()}"
+                    ) from error
                 assert packet["player_id"] == leaver
                 row = await db_queries.get_last_session_summary(leaver)
                 assert row and row["summary"] == packet["summary"]

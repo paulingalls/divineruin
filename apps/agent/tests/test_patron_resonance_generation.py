@@ -168,7 +168,7 @@ async def test_other_patron_casts(patron, spell_id, kwargs, expected):
 @pytest.mark.parametrize(
     "patron,spell_id,kwargs",
     [
-        ("kaelen", "arcane_hold_person", {}),
+        ("kaelen", "arcane_dispel_magic", {}),
         ("kaelen", "divine_zone_of_truth", {}),
         ("thyra", "primal_blight", {"terrain": "city"}),
         ("thyra", "arcane_fireball", {"terrain": "village"}),

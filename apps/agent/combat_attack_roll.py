@@ -13,7 +13,7 @@ import thyra_seasons
 from archetypes import get_archetype_chassis
 from architect_encounter import cathedral_bonus
 from combat_participant import BARK_SKIN_AC_BONUS, SHIELD_SPELL_AC_BONUS
-from condition_catalog import INCORPOREAL, STUDIED_WEAKNESS, WAR_CRY_RALLY
+from condition_catalog import GUIDING_LIGHT_MARK, INCORPOREAL, PROTECTION_FROM_HOLLOW, STUDIED_WEAKNESS, WAR_CRY_RALLY
 from dramatic import DramaticContext, evaluate_dramatic_context
 from equipment_rules import needs_weapon_profile, resolve_weapon_profile, with_weapon_magic
 from oath_justice import attack_receipt
@@ -113,6 +113,9 @@ def attack_roll_inputs(
 
         if take_advantage(combat_state, attacker, target):
             attacker_data["quick_fingers_advantage"] = True
+    if conditions.has_condition(target.conditions, GUIDING_LIGHT_MARK):
+        target.conditions = conditions.remove_condition(target.conditions, GUIDING_LIGHT_MARK)
+        attacker_data["guiding_light_advantage"] = True
     if attacker.is_ally:
         if (rider := combat_order_riders.select(combat_state, attacker.id, target.id)) is not None:
             attacker_data["order_rider"] = rider
@@ -229,8 +232,11 @@ def attack_roll_inputs(
             attack_mod += patron_synergy_combat.spell_attack_bonus(player, target)
     if combat_state is not None:
         attack_mod += combat_marks.attack_bonus(combat_state, attacker, target)
-        if (
-            attacker.hollow is not None
+    if attacker.hollow is not None:
+        if conditions.has_condition(target.conditions, PROTECTION_FROM_HOLLOW):
+            attacker_data["attack_disadvantage_source"] = PROTECTION_FROM_HOLLOW
+        elif (
+            combat_state is not None
             and target.orenthel_beacon
             and target.id not in combat_state.beacon_attacks.get(attacker.id, ())
         ):

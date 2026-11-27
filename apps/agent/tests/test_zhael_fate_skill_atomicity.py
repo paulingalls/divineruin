@@ -8,6 +8,7 @@ from _zhael_fate_skills_fixtures import DESTINATION, FATE, INSPIRED, ORIGIN, SKI
 from _zhael_fate_skills_fixtures import party as party
 from _zhael_fate_skills_fixtures import travel_quest as travel_quest
 from acceptance._capstone_helpers import _d20
+from acceptance.seeds import seed_known_spells
 from livekit.agents.llm import ToolError
 from sample_fixtures import published_payloads
 
@@ -19,6 +20,10 @@ async def test_travel_settlement_rolls_back_then_retires_before_publication(worl
     call, agent = party
     host, guest = world.ids
     session = world.ctx.userdata
+    spell = "primal_animal_shapes"
+    await seed_known_spells(world.pool, host, (spell,))
+    await call(0, "activate", id=spell)
+    session.room.local_participant.publish_data.reset_mock()
     advance = quest_progress.advance_on_arrival_db
 
     async def abort_after_quest(*args, conn, **kwargs):
@@ -27,6 +32,7 @@ async def test_travel_settlement_rolls_back_then_retires_before_publication(worl
 
     with patch("check_resolution.dice_roll", side_effect=[_d20(1), _d20(20)]) as d20:
         hold = (await call(1, "travel", destination_id=DESTINATION, mode="scenic"))["fate_offer"]
+        assert (await row(world, 0))["concentration"]["elapsed_seconds"] == 0
         choice = {"id": FATE, "offer_id": hold["offer_id"]}
         await call(0, "activate", **choice)
         executing_offer = session.fate_offer
@@ -38,6 +44,7 @@ async def test_travel_settlement_rolls_back_then_retires_before_publication(worl
         ):
             await call(0, "activate", **choice, keep="reroll")
         assert session.fate_offer is executing_offer
+        assert session.concentration.elapsed_seconds == 0
         assert [await row(world, i) for i in range(2)] == players_before
         assert await quest_stage(host, travel_quest) == 0
         assert await db_queries.get_inventory_item(host, "medicinal_herb") is None
@@ -56,6 +63,7 @@ async def test_travel_settlement_rolls_back_then_retires_before_publication(worl
         with pytest.raises(ToolError, match="current Fate"):
             await call(0, "activate", **choice, keep="reroll")
     assert d20.call_count == 2
+    assert session.concentration.elapsed_seconds == (await row(world, 0))["concentration"]["elapsed_seconds"] == 14400
     for index, player_id in enumerate(world.ids):
         player = await row(world, index)
         assert player["travel_hours_since_rest"] == 4

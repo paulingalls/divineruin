@@ -19,7 +19,7 @@ one declaration per acting combatant — each names its actor_id and its kind. S
 attack — action is the EXACT name of one of the actor's Combatants[].actions (a player's equipped weapons, \
 or in Wild Shape the natural attacks from the latest participants[].actions), and \
 target_id is who they strike. A warrior using Shield Bash sets rider="shield_bash" on a melee Attack. \
-Use an empty rider for ordinary attacks. Rogues can use rider="dash" to double approach movement \
+Use rider="plain" for a single attack without automatic enhancers, including when Slowed. Use an empty rider for the default attack. Rogues can use rider="dash" to double approach movement \
 or rider="hide" to attempt Stealth after the attack. Use rider="disengage" on Attack or Retreat with learned \
 Cunning Action and enough stamina to pay its cost and prevent enemy opportunity attacks. Narrate Hide from cunning_action.concealed. \
 Warriors who know Precision Strike or Reckless Assault declare an Attack with their equipped weapon, \
@@ -65,7 +65,8 @@ deals maximum Sneak Attack dice and spends the study. Unused studies expire at t
 Areas center on named participants; lines and cones aim from the source toward one. \
 Meteor Swarm accepts up to four centers. Chain Lightning names its primary then optional arcs; \
 without explicit arcs the engine chooses nearest enemies. Repeat Magic Missile target ids in dart order, \
-or name one recipient for all darts. Send argument_type as an empty string except for Elemental Burst \
+or name one recipient for all darts. For Devastating Strike, argument_type="plain" uses one strike without an automatic extra swing. \
+Otherwise send argument_type as an empty string except for Elemental Burst \
 (fire, cold, or lightning), de_escalate (below), Greater Restoration (charmed or petrified when both are present), or Wild Shape (druid_wild_shape or primal_wild_shape, a form id from get_spell_info(primal_wild_shape), with empty targets). Greater Restoration names one party player or uses empty targets for self. Read its cast receipt for the condition removed and Wisdom restored. resolve_phase handles ability costs, \
 weapon damage, and any Focus and Resonance for spells. \
 ability_move — Shadow Step uses action="rogue_shadow_step" or its active variant id and destination \
@@ -136,9 +137,9 @@ allies, name EACH so every buffed companion is heard, never left silent on the s
 When a packet carries condition_inflicted, a HOSTILE condition took hold on "target" — \
 voice the affliction on that target, never as a boon: fear gripping them (Frightened), a \
 will bent (Charmed), venom burning (Poisoned), or grappled when a hit seized them. \
-Narrate each condition_results recipient and whether the condition took hold. \
+Use condition_results or cast.condition_results to voice each recipient’s outcome. \
 Narrate rally_targets as allies gaining +1 to attacks for the round. \
-Narrate every cast.damage_results recipient with its own save and damage. Absorbed receipts had no spell effect; never redistribute their darts or arcs. An empty damage_results list landed no damage.
+Narrate each cast.damage_results recipient with its own save, damage, and condition outcome. Absorbed receipts had no spell effect; never redistribute their darts or arcs. An empty damage_results list landed no damage.
 
 When a damage packet carries save_success, the save has already resolved: damage_halved means \
 the target made the save and took the reported reduced damage; otherwise it took the reported full damage. \

@@ -1,3 +1,4 @@
+import type { CreatureStatBlock } from "./creature";
 import { isObject, validateLegendary, type Shape } from "./legendary_contracts";
 import { validateTurnTraits } from "./creature_turn_traits";
 import { validateCreatureTraits } from "./creature_damage_affinity";
@@ -12,7 +13,14 @@ import {
   validateEncounterActionShape,
 } from "./encounter";
 
-const CATEGORIES = ["hollow", "beast", "humanoid", "construct", "undead", "elemental"];
+export const CATEGORIES: readonly CreatureStatBlock["category"][] = [
+  "hollow",
+  "beast",
+  "humanoid",
+  "construct",
+  "undead",
+  "elemental",
+];
 const ATTACK_TYPES = ["melee", "ranged", "area"];
 const HOLLOW_CLASSES = ["drift", "rend", "wrack", "named"];
 const ATTRIBUTES = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
@@ -77,7 +85,7 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
 
   for (const key of ["id", "name"]) field(creature, key, "", "string");
   const category = field(creature, "category", "", "string");
-  if (typeof category === "string" && !CATEGORIES.includes(category))
+  if (typeof category === "string" && !CATEGORIES.some((candidate) => candidate === category))
     problems.push(`category: expected ${CATEGORIES.join("|")}`);
   const tier = field(creature, "tier", "", "integer");
   if (typeof tier === "number" && ![1, 2, 3, 4].includes(tier))

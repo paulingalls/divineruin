@@ -77,12 +77,23 @@ MARK_OF_JUSTICE = "mark_of_justice"
 INCORPOREAL = "incorporeal"
 TAUNTED = "taunted"
 CRIPPLED = "crippled"
+REACTIONS_SUPPRESSED = "reactions_suppressed"
 STUDIED_WEAKNESS = "studied_weakness"
 IRON_STANCE = "iron_stance"
 WAR_CRY_RALLY = "war_cry_rally"
+DIVINE_WARD = "divine_ward"
+BEACON_OF_HOPE = "beacon_of_hope"
+PROTECTION_FROM_HOLLOW = "protection_from_hollow"
+
+
+GUIDING_LIGHT_MARK = "guiding_light_mark"
+INVISIBLE = "invisible"
 
 
 CONDITION_CATALOG: dict[str, ConditionSpec] = {
+    DIVINE_WARD: ConditionSpec(clearance="start_of_caster_next_turn", restrictions=("damage_resistance_all",)),
+    BEACON_OF_HOPE: ConditionSpec(clearance="concentration", advantage_scopes=("wis", "death_save")),
+    PROTECTION_FROM_HOLLOW: ConditionSpec(clearance="concentration"),
     INCORPOREAL: ConditionSpec(
         clearance="duration",
         advantage_scopes=("attack",),
@@ -110,7 +121,19 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
         persists_across_encounters=True,
         restrictions=("reduced_max_hp",),
     ),
+    GUIDING_LIGHT_MARK: ConditionSpec(clearance="end_of_caster_next_turn"),
+    INVISIBLE: ConditionSpec(
+        clearance="concentration", advantage_scopes=("stealth",), restrictions=("incoming_disadvantage",)
+    ),
+    "outlined": ConditionSpec(clearance="duration", restrictions=("incoming_advantage",)),
+    "slowed": ConditionSpec(
+        clearance="duration",
+        ac_modifier=-2,
+        restrictions=("speed_halved", "no_reactions", "action_or_quick_action"),
+    ),
     CRIPPLED: ConditionSpec(clearance="duration", restrictions=("speed_halved",)),
+    "frost_slowed": ConditionSpec(clearance="end_of_next_turn", restrictions=("speed_minus_10",)),
+    REACTIONS_SUPPRESSED: ConditionSpec(clearance="start_of_caster_next_turn", restrictions=("no_reactions",)),
     STUDIED_WEAKNESS: ConditionSpec(clearance="duration"),
     "stunned": ConditionSpec(
         clearance="end_of_next_turn",
@@ -146,13 +169,9 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
         disadvantage_scopes=("str", "dex", "con"),
     ),
     "blessed": ConditionSpec(
-        clearance="consumed_on_use",
-        # +1d4 on the bearer's next attack or saving throw, consumed on use (M4.8). NOT advantage:
-        # the prior advantage_scopes=("next_roll",) never intersected any resolver scope and
-        # mismodelled a flat die as roll-twice.
+        clearance="concentration",
         bonus_die="1d4",
         bonus_die_scopes=("attack", "save"),
-        restrictions=("consumed_on_use",),
     ),
     "shielded": ConditionSpec(
         clearance="duration",

@@ -11,7 +11,7 @@ from weapon_fixtures import DAGGER
 
 import spells
 from session_data import CombatParticipant, CombatState
-from spell_casting import _UNCHANGED, CastResult
+from spell_casting import CastResult
 
 
 def _mp_state(*, player_ids=("player_1", "player_2"), enemy_hp=20, attacks_only=False):
@@ -126,7 +126,7 @@ def _cast_resolver_recording(new_resonance_by_id=None):
         return CastResult(
             packet={"effect": "A bolt of force.", "state": "flickering"},
             new_resonance=new_resonance_by_id.get(caster.player_id if caster else None),
-            concentration_spell_id=_UNCHANGED,
+            concentration_update=None,
             generated=6,
             events=[],
         )
@@ -268,7 +268,7 @@ class TestMultiplayerGenerationDecayE2E:
             return CastResult(
                 packet={"effect": "bolt", "state": "flickering"},
                 new_resonance=caster.resonance.current + 5,
-                concentration_spell_id=_UNCHANGED,
+                concentration_update=None,
                 generated=5,
                 events=[],
             )

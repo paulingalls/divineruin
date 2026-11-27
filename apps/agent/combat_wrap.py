@@ -15,6 +15,7 @@ import combat_phase
 import combat_recharge
 import combat_round_checkpoint
 import concealment
+import concentration_lifetime
 import conditions
 import encounter_facts
 import event_types as E
@@ -261,6 +262,9 @@ async def wrap_phase(
                 if decayed != base:
                     pending_by_member[m.player_id] = decayed
                     await resonance_mutations.update_player_resonance(m.player_id, decayed, conn=conn)
+        updates, expired = await concentration_lifetime.settle_combat(session, state, conn=conn)
+        concentration_lifetime.adopt(session, updates)
+        wrap.concentration_expired.extend(expired)
         await combat_round_checkpoint.capture(
             session,
             state,
