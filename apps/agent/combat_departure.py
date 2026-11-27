@@ -93,7 +93,6 @@ def _drop_turn(state: "CombatState", player_id: str) -> bool:
     cancelled_turn = False
     if state.inner_fire_continuation is not None and state.inner_fire_continuation["player_id"] == player_id:
         state.inner_fire_continuation = None
-        cancelled_turn = True
     cursor = state.ally_continuation
     if cursor is not None:
         turns = cursor["turns"]
@@ -109,7 +108,6 @@ def _drop_turn(state: "CombatState", player_id: str) -> bool:
         events = wrap["wrap"]["tick_conditions_due"]
         index = wrap["index"]
         if index < len(events) and events[index]["actor_id"] == player_id:
-            cancelled_turn = True
             wrap.pop("save", None)
         wrap["index"] = sum(event["actor_id"] != player_id for event in events[:index])
         wrap["wrap"]["tick_conditions_due"] = _without(events, player_id, "actor_id")

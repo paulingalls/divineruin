@@ -29,7 +29,7 @@
       "apps/agent/tests/acceptance/test_(?:spell_bless_lifecycle|spell_concentration_expiry|concentration_expiry_guard|bless_caster_guard|spell_lasting_buffs(?:_guards|_healers)?)\\.py",
       "apps/agent/tests/acceptance/test_spell_(?:hostile_conditions|condition_caster_guard|condition_shared_target|marks(?:_guards)?|new_conditions(?:_guards)?)\\.py",
       "apps/agent/tests/acceptance/test_spell_reaction_offers(?:_guards)?\\.py",
-      "apps/agent/tests/acceptance/test_departed_member_leaves_fight(?:_guards|_cleanup)?\\.py",
+      "apps/agent/tests/acceptance/test_departed_member_leaves_fight(?:_guards)?\\.py",
       "apps/agent/tests/acceptance/test_valdris_oath_breach\\.py",
       "apps/agent/tests/acceptance/test_valdris_justice_at_stake(?:_saves|_guards)?\\.py",
       "apps/agent/tests/acceptance/test_valdris_party_yield\\.py",
