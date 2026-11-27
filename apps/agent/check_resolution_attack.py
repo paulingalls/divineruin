@@ -70,6 +70,10 @@ class AttackResult:
     mortaen_ac_clause_id: str | None = None
     orenthel_ac_bonus: int = 0
     orenthel_ac_clause_id: str | None = None
+    nythera_attack_bonus: int = 0
+    nythera_attack_clause_id: str | None = None
+    nythera_ac_bonus: int = 0
+    nythera_ac_clause_id: str | None = None
     valdris_ac_bonus: int = 0
     valdris_ac_clause_id: str | None = None
     war_songs_bonus: int = 0
@@ -421,6 +425,10 @@ def finish_attack(
         mortaen_ac_clause_id=attacker_data.get("mortaen_ac_clause_id"),
         orenthel_ac_bonus=attacker_data.get("orenthel_ac_bonus", 0),
         orenthel_ac_clause_id=attacker_data.get("orenthel_ac_clause_id"),
+        nythera_attack_bonus=attacker_data.get("nythera_attack_bonus", 0),
+        nythera_attack_clause_id=attacker_data.get("nythera_attack_clause_id"),
+        nythera_ac_bonus=attacker_data.get("nythera_ac_bonus", 0),
+        nythera_ac_clause_id=attacker_data.get("nythera_ac_clause_id"),
         valdris_ac_bonus=attacker_data.get("valdris_ac_bonus", 0),
         valdris_ac_clause_id=attacker_data.get("valdris_ac_clause_id"),
         war_songs_bonus=prepared.war_songs_bonus,

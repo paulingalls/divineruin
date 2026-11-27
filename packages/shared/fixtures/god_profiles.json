@@ -18380,5 +18380,29 @@
         }
       }
     }
-  ]
+  ],
+  "deck_footing": {
+    "type": "divine",
+    "name": "Deckborn Balance",
+    "clauses": [
+      {
+        "effect": "Gain +1 to melee attack rolls while aboard a moving vessel.",
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "nythera_deck_footing"
+      }
+    ]
+  },
+  "gangway_guard": {
+    "type": "divine",
+    "name": "Harbor Watch",
+    "clauses": [
+      {
+        "effect": "Gain +1 AC while defending an ally boarding or leaving a vessel.",
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "nythera_gangway_guard"
+      }
+    ]
+  }
 }

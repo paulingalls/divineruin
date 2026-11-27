@@ -203,6 +203,7 @@ async def _start_combat_locked(
         terrain=terrain,
         faction_id=combat_faction_id,
         testimony=testimony,
+        vessel=encounter.get("vessel"),
         spatial=spatial,
     )
 

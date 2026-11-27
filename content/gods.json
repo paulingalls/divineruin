@@ -2724,8 +2724,9 @@
         "clauses": [
           {
             "effect": "Gain +1 to melee attack rolls while aboard a moving vessel.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_deck_footing"
           }
         ]
       },
@@ -2735,8 +2736,9 @@
         "clauses": [
           {
             "effect": "Gain +1 AC while defending an ally boarding or leaving a vessel.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_gangway_guard"
           }
         ]
       },

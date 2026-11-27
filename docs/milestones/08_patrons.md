@@ -208,7 +208,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 
 **Review:** The human approved the final 180-row table on 2026-11-18 (table SHA-256 `5dee713a…`, content SHA-256 `c3238a53…`, commit `903ac541`), closing AC3. The approved table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md` with every changed number. Content and design share the approved corrections, including Nythera’s live Animal Handling +1 instead of advantage. Pending clauses are unavailable.
 
-Layer 4 lookup covers 180 pairings and 200 clauses. 112 are active/engine, 85 are active/narrated, and 3 are pending/engine. Rally at Dawn adds 1 temporary HP to each recipient of an Orenthel marshal’s Rally within the shared pool. Evidence: `test_patron_synergy_engine.py` and `god-synergy.test.ts`.
+Layer 4 lookup covers 180 pairings and 200 clauses. 114 are active/engine, 85 are active/narrated, and 1 is pending/engine. Rally at Dawn adds 1 temporary HP to each recipient of an Orenthel marshal’s Rally within the shared pool. Evidence: `test_patron_synergy_engine.py` and `god-synergy.test.ts`.
 
 Renewing Spark gives 1 temporary HP to the recipient of an Orenthel mage’s Shield, Fly, Invisibility or Haste. The ward keeps any higher pool. `test_orenthel_mage_warding.py` exercises settlement, interruptions, target eligibility and the Shield damage receipt.
 
@@ -253,6 +253,8 @@ Justice at Stake gives Valdris paladins with an active, unsuppressed oath +2 on 
 Saltwind Casting gives Nythera mages +1 to spell attack rolls on their first stay at a Sunward Coast location. The cast receipt names the bonus. `test_nythera_unseen_coast.py` covers eligibility and Fate’s Thread continuation after checkpoint reload.
 
 Landfall Orders gives a Nythera marshal and each ally who hears their opening call +1 initiative on the marshal’s first stay. Each recipient gains the bonus once, and it stacks with Lawful Command. `test_nythera_first_order.py` covers registered entry, initiative receipts, the combat handoff and the saved checkpoint.
+
+Deckborn Balance gives Nythera warriors +1 on melee attacks aboard a moving vessel. Harbor Watch gives Nythera guardians +1 AC with a standing ally within 5 feet during boarding or disembarking (`test_nythera_vessel.py`).
 
 **Key references:**
 - *Game Mechanics Patrons — Archetype Synergies*

@@ -994,5 +994,94 @@
         }
       }
     }
+  },
+  {
+    "id": "sunward_ship_deck",
+    "name": "Ship Deck Under Sail",
+    "description": "Deck boards creak as the ship leans into the swell. Wet rope smells of salt. A tail cracks against the hull, and a lurker claws over the rail.",
+    "vessel": "aboard_moving",
+    "difficulty": "moderate",
+    "enemies": [
+      {
+        "id": "deck_lurker",
+        "creature_id": "saltmarsh_lurker",
+        "role": "standard"
+      }
+    ],
+    "recommended_party_level": 2,
+    "scene_placement": {
+      "party_start": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "companion_start": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "actors": {
+        "deck_lurker": {
+          "x": 10,
+          "y": 0,
+          "z": 0
+        }
+      },
+      "locations": {
+        "deck_rail": {
+          "x": 10,
+          "y": 5,
+          "z": 0
+        }
+      },
+      "zones": {}
+    }
+  },
+  {
+    "id": "sunward_dock_boarding",
+    "name": "Dock Boarding Fight",
+    "description": "A gangplank knocks against the jetty. Tar and brine hang in the air. A lurker scrapes up the pilings toward the crossing.",
+    "vessel": "boarding",
+    "difficulty": "moderate",
+    "enemies": [
+      {
+        "id": "boarding_lurker",
+        "creature_id": "saltmarsh_lurker",
+        "role": "standard"
+      }
+    ],
+    "recommended_party_level": 2,
+    "scene_placement": {
+      "party_start": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "companion_start": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "actors": {
+        "boarding_lurker": {
+          "x": 10,
+          "y": 0,
+          "z": 0
+        }
+      },
+      "locations": {
+        "gangplank": {
+          "x": 5,
+          "y": 0,
+          "z": 0
+        },
+        "jetty": {
+          "x": 0,
+          "y": 5,
+          "z": 0
+        }
+      },
+      "zones": {}
+    }
   }
 ]
