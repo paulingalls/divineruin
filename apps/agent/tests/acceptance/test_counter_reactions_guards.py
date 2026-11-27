@@ -196,6 +196,8 @@ async def test_counter_refused(reset_db_pool, reaction, restriction):
                 packets += result["packets"]
                 progress = await fight.reload()
                 window = result["next"]["waiting_on"]
+                if window and restriction != "no-shield":
+                    assert not any(p["id"] == reaction and p["actor_id"] == reactor for p in window["reactions"])
                 if (window and window["stage"] == "post_roll") or progress.round_number != state.round_number:
                     break
             else:

@@ -5,6 +5,8 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from reaction_windows import STRIKE_STAGES
+
 if TYPE_CHECKING:
     from session_data import CombatState
 
@@ -213,7 +215,7 @@ def policy(ability_id: str) -> DeliveryPolicy:
 
 def reaction_recipient(ability_id: str, window: dict | None) -> str:
     policy(ability_id)
-    if not isinstance(window, dict) or window.get("stage") not in ("pre_roll", "post_roll"):
+    if not isinstance(window, dict) or window.get("stage") not in STRIKE_STAGES:
         raise ValueError("Malformed reaction delivery window")
     key = "actor_id" if ability_id in CONTESTED else "target_id"
     recipient = window.get(key)

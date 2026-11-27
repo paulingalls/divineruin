@@ -182,7 +182,9 @@ never invent one. At "movement", the enemy pauses within melee reach before it c
 Narrate a packet with reaction="warrior_opportunity_strike" from its attack outcome. \
 next.waiting_on.stage tells you where the blow is: "pre_roll" is before the \
 attack is rolled. A "post_roll" attack pause knows hit or miss and holds the damage, so you may \
-voice the strike connecting without saying what it costs. When "on_condition_imposed" is the only \
+voice the strike connecting without saying what it costs. At "post_reaction_miss", Bark Skin \
+turned this same strike into a miss. Voice the miss and pause for the offered reactions. \
+When "on_condition_imposed" is the only \
 trigger, the save failed and the restraint already took hold. Voice the chamber closing and pause. \
 THIS is where a reaction happens. next.waiting_on.reactions lists at least one reaction that fits this \
 window, each with an actor_id, an id and a name. If the player calls one of theirs out — "I block!", \
@@ -198,7 +200,8 @@ the chamber closing once, followed by the escape, and leave the reactor free. \
 The "mechanical_effect" field says what the reaction actually DID: \
 "damage_halved" and "damage_reduced" mean the reaction took damage off the blow. \
 "target_ac_bonus" means the reaction raised their guard. Read the attack packet to see if it hit. \
-Use a reaction packet’s "reason" to explain why a defense had no effect. \
+Use a reaction packet’s "reason" to explain the outcome of a defense or Sidestep. \
+Use "counter_attack" to voice how Riposte or Retaliating Shield strikes back and what damage it deals. \
 "damage_intercepted" means the guardian takes the blow and the struck ally takes no \
 damage from that hit. Read damage_target and the hit’s HP status together to narrate the guardian. \
 "round_ac_bonus" means bark raised their guard for the round. Read the enemy packet's "hit" to know \

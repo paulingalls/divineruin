@@ -34,7 +34,8 @@ POST_REACTION_MISS = "post_reaction_miss"
 
 MOVEMENT = "movement"
 ENEMY_MOVE = "on_enemy_move"
-STAGES = (MOVEMENT, PRE_ROLL, POST_ROLL, POST_REACTION_MISS)
+STRIKE_STAGES = (PRE_ROLL, POST_ROLL, POST_REACTION_MISS)
+STAGES = (MOVEMENT, *STRIKE_STAGES)
 
 
 def pre_roll_triggers(action: dict) -> tuple[str, ...]:
