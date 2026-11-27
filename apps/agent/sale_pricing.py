@@ -105,7 +105,7 @@ def validate_npc_pool_bindings(rows: list[dict], pools: dict[str, InventoryPool]
         if pool_id is None:
             continue
         pool_id = parse_str(pool_id, ctx)
-        if not pool_id.strip() or pool_id not in pools:
+        if pool_id not in pools:
             raise ValueError(f"{ctx} references unknown pool {pool_id!r}")
 
 

@@ -10,7 +10,7 @@ Finding the journal grants it and completes the search atomically.
 Artifact choices persist once with their effects.
 Leave now requests a recap before disconnect, with a 15-second home fallback.
 
-**Position: 437 / 717 acceptance criteria — 61%** (the sum of the per-phase
+**Position: 438 / 717 acceptance criteria — 61%** (the sum of the per-phase
 counts in `README.md`). **279 criteria remain unchecked.** Phases 2, 5, 6 and 10 have all recorded
 criteria checked. Phase 3 remains Partial at 34/34. The
 [spell ledger](03_spell_ledger.md) records 12 engine, 4 narrated, 71 unwired

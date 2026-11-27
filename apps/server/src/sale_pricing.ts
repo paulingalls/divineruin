@@ -93,7 +93,7 @@ export function validateNpcPoolBindings(
     const binding = asRecord(data, `npcs[${id}]`).inventory_pool;
     if (binding === null) continue;
     const poolId = parseString(binding, ctx);
-    if (!poolId.trim() || !pools.has(poolId)) {
+    if (!pools.has(poolId)) {
       throw new Error(`${ctx} references unknown pool '${poolId}'`);
     }
   }
