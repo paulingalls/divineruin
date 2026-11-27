@@ -171,6 +171,8 @@ async def test_expiry_restores_inventory_once(reset_db_pool: str, monkeypatch: p
         assert len(publications) == (2 if read == "sale" else 1)
         packet, snapshot = publications[-1]
         assert packet["type"] == E.INVENTORY_UPDATED and packet["player_id"] == owner.player_id
+        if read == "ledger":
+            assert reader.inventory_destinations[owner.player_id] == [owner.player_id]
         assert packet["inventory_revision"] == str(after_player["inventory_revision"])
         assert {(item["id"], item["tainted"]): item["slot_info"] for item in packet["inventory"]} == after_inventory
         assert snapshot == (after_player, after_inventory)

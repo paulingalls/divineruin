@@ -117,10 +117,13 @@ class SaleSession:
         self.session = AgentSession(userdata=self.data, llm=self.model)
         self.packets: list[dict] = []
         self.publications: list[tuple[dict, tuple[dict, dict]]] = []
+        self.inventory_destinations: dict[str, object] = {}
 
-    async def capture_packet(self, payload: bytes, **_kwargs: object) -> None:
+    async def capture_packet(self, payload: bytes, **kwargs: object) -> None:
         packet = json.loads(payload)
         self.packets.append(packet)
+        if packet["type"] == E.INVENTORY_UPDATED:
+            self.inventory_destinations[packet["player_id"]] = kwargs.get("destination_identities")
         if packet["type"] in SALE_EVENTS:
             self.publications.append((packet, await rows(packet["player_id"])))
 

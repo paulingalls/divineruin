@@ -20,7 +20,7 @@ import sale_pricing
 from consignment import Consignment, expires_on, proceeds_sp
 from db_errors import db_tool
 from game_events import publish_game_event
-from inventory_refresh import publish_inventory
+from inventory_refresh import inventory_payload
 from session_data import SessionData
 from tool_preconditions import require_npc_present
 from tool_support import _validate_id
@@ -75,7 +75,13 @@ async def merchant_visit(context: RunContext[SessionData], npc_id: str) -> Async
     if visit.currency is not None:
         await publish_game_event(session.room, E.CURRENCY_GAINED, visit.currency, event_bus=session.event_bus)
     for owner in sorted(merchant.inventory_owners):
-        await publish_inventory(session, owner)
+        await publish_game_event(
+            session.room,
+            E.INVENTORY_UPDATED,
+            await inventory_payload(owner),
+            event_bus=session.event_bus,
+            destination_identities=[owner] if owner != player_id else None,
+        )
 
 
 def _ledger_entry(entry: Consignment, today: int) -> dict:
