@@ -212,11 +212,12 @@ def milestone_updates(docs: Path) -> tuple[dict[Path, str], list[str]]:
     for phase, row in inventory.items():
         if row["file"] != delivered[phase]["file"]:
             raise ValueError(f"README.md: Phase {phase} file differs between the phase tables")
-        criteria = re.findall(
-            r"^[ \t]*- \[([x ])\](?=[ \t]|$)",
-            (readme_file.parent / row["file"]).read_text(),
-            re.MULTILINE,
-        )
+        phase_file = readme_file.parent / row["file"]
+        text = phase_file.read_text()
+        criteria = re.findall(r"^[ \t]*- \[([x ])\](?=[ \t]|$)", text, re.MULTILINE)
+        boxes = re.findall(r"^[ \t]*(?:[-*+]|\d+\.)[ \t]+\[[^\]\n]\]", text, re.MULTILINE)
+        if len(boxes) != len(criteria):
+            raise ValueError(f"{row['file']}: write every criterion as '- [ ]' or '- [x]'")
         checked = criteria.count("x")
         counts[phase] = (checked, len(criteria))
         readme_edits.append(
