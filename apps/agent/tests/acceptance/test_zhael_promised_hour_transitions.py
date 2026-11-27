@@ -8,17 +8,20 @@ from unittest.mock import patch
 import pytest
 from _patron_engine_fixtures import configure
 from _unbound_path_fixtures import world as world
-from _zhael_fate_fixtures import attack
+from _zhael_fate_fixtures import attack, game_tools
 from acceptance._capstone_helpers import _d20, _damage_die
 from acceptance._promised_hour_fixtures import manual_save, oath_record, promised_fight, select_oath, wrap
+from acceptance.test_paladin_oath_swear import assert_refused, patch_player, stored, timed
 from acceptance.test_valdris_oath_breach import dev_db_pool as dev_db_pool
 from livekit.agents.llm import ToolError
-from test_encounter_facts_damage import GOBLIN, OTHER, dice, goblin_strike
+from test_encounter_facts_damage import GOBLIN, OTHER, Fight, dice, goblin_strike
 from voice_condition_fixtures import participant, place_actors
 
 import db
 import db_mutations
 import db_queries
+from mode_tools import enter_mode
+from oaths import TimedOath, receipt
 
 
 async def assert_change(f, result, oath, status, reason, round_number):
@@ -36,9 +39,63 @@ async def assert_change(f, result, oath, status, reason, round_number):
     return record
 
 
+async def timed_selection(f: Fight) -> dict:
+    offer = (await f.call("query_info", kind="combat"))["oath_choice"]
+    return timed(offer, target=GOBLIN)
+
+
+async def assert_encounter_oath_spent(f: Fight, original: dict, settled: dict) -> None:
+    state = await f.reload()
+    book = await stored(f.hero)
+    assert book is not None
+    assert await f.call("select", **original) == receipt(TimedOath.model_validate(settled))
+    assert await stored(f.hero) == book
+
+    next_choice = {"choice_id": f"oath_{f.hero}_timed_{state.combat_id}_{len(book['records'])}"}
+    await assert_refused(
+        f.session,
+        "one Promised Hour oath may be sworn per encounter",
+        **timed(next_choice, target=OTHER, deadline=state.round_number),
+    )
+    for kind in ("combat", "abilities"):
+        assert (await f.call("query_info", kind=kind))["oath_choice"] is None
+
+
+async def assert_next_encounter_offer(f: Fight, settled: dict) -> None:
+    await f.call("end_combat", outcome="fled")
+    await patch_player(f.hero, speed=30)
+    await patch_player(f.ally, speed=30)
+    enter = game_tools(f.session, enter_mode)
+    agent, _ = await enter("enter_mode", mode="combat", encounter_id="ruins_mawling_pair")
+    state = f.session.combat_state
+    try:
+        assert state.combat_id != settled["combat_id"]
+        assert state.encounter_id == "ruins_mawling_pair"
+        f.call = game_tools(f.session, agent=agent)
+        offer = (await f.call("query_info", kind="combat"))["oath_choice"]
+        assert offer is not None and offer["options"] == ["timed"]
+        assert offer["combat_id"] == state.combat_id
+        target = offer["eligible_targets"]["defeat_target"][0]
+        registered = await f.call("select", **timed(offer, target=target, deadline=state.round_number))
+        book = await stored(f.hero)
+        assert book is not None
+        original, new = book["records"]
+        assert original == settled
+        assert (new["id"], new["status"], new["combat_id"]) == (registered["oath_id"], "active", state.combat_id)
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)
+
+
+@pytest.fixture
+def mock_combat_agent_factory() -> None:
+    return None
+
+
 async def test_target_defeat_settles_with_attack(world) -> None:
     async with promised_fight(world, goblin_hp=4) as f:
-        oath = await select_oath(f)
+        f.session.combat_state.encounter_id = "ruins_mawling_pair"
+        selection = await timed_selection(f)
+        oath = await f.call("select", **selection)
         await f.round(faces=())
         await f.declare(attack(f.hero, GOBLIN))
         with dice(19):
@@ -49,11 +106,14 @@ async def test_target_defeat_settles_with_attack(world) -> None:
         assert (save["total"], save["oath_timed"]["modifier"]) == (9, 0)
         assert "oath_changes" not in await wrap(f)
         assert await oath_record(f) == record
+        await assert_encounter_oath_spent(f, selection, record)
+        await assert_next_encounter_offer(f, record)
 
 
 async def test_missed_deadline_has_no_penalty(world) -> None:
     async with promised_fight(world, goblin_hp=4) as f:
-        oath = await select_oath(f)
+        selection = await timed_selection(f)
+        oath = await f.call("select", **selection)
         before = await db_queries.get_player(f.hero)
         await f.round(faces=())
         await f.declare()
@@ -71,6 +131,7 @@ async def test_missed_deadline_has_no_penalty(world) -> None:
             result = await f.call("resolve_phase")
         assert "oath_changes" not in result
         assert await oath_record(f) == lapsed
+        await assert_encounter_oath_spent(f, selection, lapsed)
 
 
 async def test_death_save_due_at_deadline_uses_outgoing_round_once(world) -> None:
