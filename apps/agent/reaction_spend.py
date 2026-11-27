@@ -22,6 +22,12 @@ logger = logging.getLogger("divineruin.tools")
 INTERCEPT = "guardian_intercept"
 
 
+RETALIATE = "guardian_retaliating_shield"
+RIPOSTE = "skirmisher_riposte"
+SIDESTEP = "skirmisher_sidestep"
+COUNTERS = frozenset({RETALIATE, RIPOSTE})
+
+
 def unspent() -> dict:
     """The round's reaction, granted and not yet used."""
     return {"spent": False, "ability_id": None, "window_id": None, "stage": None, "held_seq": None}

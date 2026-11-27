@@ -7,8 +7,8 @@ from sample_fixtures import make_context
 from voice_condition_fixtures import place_actors
 
 import conditions
-from combat_damage import _handle_hp_zero
 from combat_enemy_active import heal
+from combat_zero_hp import _handle_hp_zero
 from session_data import CombatParticipant, CombatState, CompanionState
 from tool_support import SOUND_HOLLOW_RISE, SOUND_PLAYER_FALLEN
 
@@ -276,7 +276,7 @@ class TestTheDoorIsTheOnlyDoor:
             ("patron_zero_hp.py", "trigger_death_ward"),
             ("still_encounter.py", "after_damage"),
             ("draethar_inner_fire.py", "_inner_fire_locked"),
-            ("combat_damage.py", "_handle_hp_zero"),
+            ("combat_zero_hp.py", "_handle_hp_zero"),
             ("combat_structures.py", "collapse_wall"),
             ("architect_constructs.py", "collapse"),
             ("combat_down.py", "revive"),
@@ -286,7 +286,7 @@ class TestTheDoorIsTheOnlyDoor:
 
     def test_fall_and_revival_writers_match_the_inventory(self):
         assert _attribute_writers("is_fallen") == {
-            ("combat_damage.py", "_handle_hp_zero"),
+            ("combat_zero_hp.py", "_handle_hp_zero"),
             ("combat_structures.py", "collapse_wall"),
             ("architect_constructs.py", "collapse"),
             ("combat_down.py", "revive"),

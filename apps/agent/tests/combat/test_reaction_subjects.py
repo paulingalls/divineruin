@@ -5,6 +5,7 @@ from sample_fixtures import catalog_encounters
 from voice_condition_fixtures import place_actors
 
 import combat_hold
+import combat_hold_windows
 import reaction_spend
 import reaction_windows
 from reaction_gate import HOLLOW_CATEGORIES, is_hollow, offered_reactions, validate_reaction_activation
@@ -87,8 +88,9 @@ def test_the_held_action_producer_puts_the_real_kind_on_the_window():
         "declaration": {"type": "attack", "action": "Rally", "target_id": "player_1"},
     }
 
-    combat_hold._open(
-        state, combat_hold._window(state, head, reaction_windows.PRE_ROLL, reaction_windows.pre_roll_triggers({}))
+    combat_hold_windows.open_window(
+        state,
+        combat_hold_windows._window(state, head, reaction_windows.PRE_ROLL, reaction_windows.pre_roll_triggers({})),
     )
 
     assert state.open_window is not None

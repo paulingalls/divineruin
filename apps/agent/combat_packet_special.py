@@ -28,6 +28,7 @@ async def resolve(
     concentration_break_mod,
     sink,
     reaction_save_advantage: bool,
+    psychic_shield_id: str | None = None,
 ) -> dict | None:
     import still_encounter
 
@@ -64,6 +65,7 @@ async def resolve(
                 queries=queries,
                 concentration=concentration_break_mod,
                 sink=sink,
+                psychic_shield_id=psychic_shield_id,
                 advantage=reaction_save_advantage,
             )
     if action_kind(action) == architect_constructs.KIND:

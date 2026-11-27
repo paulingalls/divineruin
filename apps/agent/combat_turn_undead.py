@@ -3,8 +3,8 @@
 from functools import partial
 
 import check_resolution_save
-import combat_damage
 import combat_spatial as spatial
+import combat_zero_hp
 import conditions
 import db_queries
 import encounter_facts
@@ -104,7 +104,7 @@ async def _resolve_target(
     if save.success:
         return {**result, "outcome": "unaffected", "reason": "Succeeded on its Wisdom save."}
     if destroys:
-        death = await combat_damage.destroy_creature(session, state, target, queries=queries, conn=conn, sink=sink)
+        death = await combat_zero_hp.destroy_creature(session, state, target, queries=queries, conn=conn, sink=sink)
         return {**result, **death, "outcome": "destroyed"}
     previous = next((c.get("turn_undead") for c in target.conditions if c["type"] == "frightened"), None)
     landed = _land_condition_on_one(

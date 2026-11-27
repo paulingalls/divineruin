@@ -287,14 +287,16 @@ async def test_spring_dawns_embrace_restores_the_recipient(world):
     from test_patron_engine_dawns_embrace import caught
     from test_patron_engine_death_ward import enemy_damage, resolve_until
 
-    import combat_hold
+    import combat_hold_windows
 
     async with embrace_fight(world, patron="thyra", archetype="rogue") as call:
         await aim(world, call, world.ids[0])
         with (
             patch.object(world_season, "current_season", new=AsyncMock(return_value="spring")),
             patch.object(
-                combat_hold, "build_attack_dice_roll_payload", wraps=combat_hold.build_attack_dice_roll_payload
+                combat_hold_windows,
+                "build_attack_dice_roll_payload",
+                wraps=combat_hold_windows.build_attack_dice_roll_payload,
             ) as preview,
             rolls(15, 15, 7, damage=10),
         ):

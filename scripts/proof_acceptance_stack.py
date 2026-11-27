@@ -189,7 +189,7 @@ def main(action):
                         raise
                     time.sleep(0.2)
         if action in ("start", "native-start"):
-            before = {c.id for c in client.containers.list()}
+            before = {c.id for c in client.containers.list(sparse=True)}
             server = ensure_livekit_server()
             print(
                 f"proof LiveKit {'reuse' if server.container.id in before else 'start'} {server.container.id}",

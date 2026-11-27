@@ -8,7 +8,7 @@ from _unbound_path_fixtures import world as world
 from _zhael_fate_fixtures import attack
 from test_patron_engine_death_ward import resolve_until
 
-import combat_hold
+import combat_hold_windows
 import db_mutations
 import db_queries
 import patron_zero_hp
@@ -96,8 +96,8 @@ async def test_terminal_donor_cannot_spend(world, death):
 async def test_held_preview_preserves_spend(world, spent):
     async with embrace_fight(world, archetype="rogue", gifts=SPENT if spent else {}) as call:
         await aim(world, call, world.ids[0])
-        build = combat_hold.build_attack_dice_roll_payload
-        with rolls(15, 15), patch.object(combat_hold, "build_attack_dice_roll_payload", wraps=build) as preview:
+        build = combat_hold_windows.build_attack_dice_roll_payload
+        with rolls(15, 15), patch.object(combat_hold_windows, "build_attack_dice_roll_payload", wraps=build) as preview:
             await resolve_until(call, lambda r: (r["next"].get("waiting_on") or {}).get("stage") == "post_roll")
         assert preview.call_args.args[1].target_hp_remaining == (0 if spent else 10)
         state = active(world)

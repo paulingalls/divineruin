@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.87.0
+
+Eight combat reactions that used to spend their cost and do nothing now work:
+
+- Warriors can Brace for Impact to take less damage from a hit.
+- Mages can raise a Shield Spell barrier (+3 AC) that lasts until their next turn starts.
+- Whispers can use Thought Shield to halve psychic damage from the action that targeted them.
+- Guardians with a shield strike back with Retaliating Shield.
+- Skirmishers can Riposte against a missed melee swing, including one that Bark Skin turned aside. Sidestep moves a skirmisher 5 ft without provoking, and leaves shorter weapons swinging at air.
+- Bards can spend 2 Focus on Dissonant Whisper. An attacker that fails its Wisdom save attacks at disadvantage.
+- Whispers can spend 2 Focus on Implant Doubt after an enemy attack hits. If the attacker fails its Wisdom save, it rerolls at disadvantage and keeps the reroll.
+
+When a reaction has no effect, the DM is told why.
+
+Release steps:
+- After deploying the code and before starting the new agent processes, run `SEED_PRODUCTION=1 bun run seed` from the deployed repository root with the production environment. The command is unpaid and writes production content.
+
 ## 0.86.0
 
 Druids, beastcallers and wardens can now really take a beast's shape in a fight. From level 5 they can become a grey wolf, a wild boar or a steppe bison, and from level 10 a dire bear. The beast has its own HP and AC, and it fights with its own bite, gore or claws, opportunity strikes included. Damage comes off the beast first, and anything left over reaches the character when the form drops. A shaped character can't cast spells until level 10 (cantrips only) or level 20 (everything). They can end the form by saying so, and it ends on its own when the fight is over. Followers of Thyra take the shape with 5 temporary HP.

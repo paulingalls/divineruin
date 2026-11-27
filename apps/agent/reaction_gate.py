@@ -6,9 +6,12 @@ import math
 
 import abilities
 import ability_voice_rules
+import combat_counter_reactions
 import combat_melee_approach
 import reaction_spend
 import reaction_windows
+from ability_voice_rules import DISSONANT_WHISPER, IMPLANT_DOUBT
+from combat_ability import _find_action
 from combat_spatial import distance, inside, position, require_spatial
 from combat_structures import blocked_reason, line_blocker
 from communication_voice_rules import DeliveryRefused
@@ -124,6 +127,12 @@ def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, win
     if ability_id not in actor.reaction_ids:
         raise ReactionUnavailable(f"player {actor_id!r} does not own reaction {ability_id!r}")
 
+    if ability_id == IMPLANT_DOUBT and state.held_actions:
+        from combat_hold_actions import _attack_action
+
+        if _attack_action(state, state.held_actions[0]) is None:
+            raise ReactionUnavailable("Implant Doubt only answers enemy attack rolls.")
+
     if window is None:
         raise ReactionUnavailable("no reaction window is open; a reaction interrupts a held enemy action")
 
@@ -169,6 +178,21 @@ def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, win
         if blocker := line_blocker(state, actor_id, mover.id, melee=True):
             raise ReactionUnavailable(blocked_reason(blocker))
 
+    if ability_id == DISSONANT_WHISPER:
+        from combat_hold_actions import _attack_action
+
+        if _attack_action(state, state.held_actions[0]) is None:
+            raise ReactionUnavailable("Dissonant Whisper only answers enemy attack rolls.")
+    if ability_id == IMPLANT_DOUBT:
+        if window["stage"] != reaction_windows.POST_ROLL:
+            raise ReactionUnavailable("Implant Doubt requires the post-roll window of an attack.")
+        head = state.held_actions[0]
+        if head["roll"] is not None:
+            if not head["roll"]["attack_result"]["hit"]:
+                raise ReactionUnavailable("Implant Doubt requires a successful attack roll.")
+            if "attack_context" not in head:
+                raise ReactionUnavailable("Implant Doubt needs an attack with saved reroll context.")
+
     _validate_social_subject(state, actor_id, ability_id, window)
 
     if catalog_window in SELF_TARGETED_REACTION_WINDOWS:
@@ -179,6 +203,20 @@ def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, win
             )
     elif catalog_window not in UNBOUND_REACTION_WINDOWS:
         raise ValueError(f"unclassified reaction window {catalog_window!r} has no target-binding policy")
+
+    if ability_id in (*reaction_spend.COUNTERS, reaction_spend.SIDESTEP):
+        attacker = state.get_participant(window["actor_id"])
+        assert attacker is not None
+        head = state.held_actions[0]
+        action = _find_action(attacker, head["declaration"]["action"])
+        if action is None or not combat_melee_approach.is_melee(action):
+            raise ReactionUnavailable(f"{ability_id} requires an incoming melee attack.")
+        if ability_id == reaction_spend.RIPOSTE:
+            weapon = next(iter(actor.action_pool), None)
+            try:
+                combat_counter_reactions.validate_weapon(state, actor_id, attacker.id, weapon)
+            except ValueError as error:
+                raise ReactionUnavailable(str(error)) from error
 
     recipient_ids = []
     if delivery_policy in (
@@ -211,5 +249,8 @@ def offers_for_window(state: CombatState, window: dict | None) -> list[dict]:
                 _validate_for_window(state, participant.id, ability_id, window)
             except (ReactionUnavailable, DeliveryRefused):
                 continue
-            offered.append({"actor_id": participant.id, "id": ability_id, "name": ability.name})
+            entry = {"actor_id": participant.id, "id": ability_id, "name": ability.name}
+            if ability_id == reaction_spend.SIDESTEP:
+                entry["destination"] = combat_counter_reactions.SIDESTEP_CUE
+            offered.append(entry)
     return offered

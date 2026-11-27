@@ -38,7 +38,7 @@ EXPECTED: dict[str, str] = {
     "warrior_brace_for_impact": "reachable",
     "guardian_intercept": "reachable",
     "skirmisher_riposte": "reachable",
-    "whisper_implant_doubt": "reachable",  # "when an enemy succeeds an attack or ability"
+    "whisper_implant_doubt": "reachable",
     "diplomat_objection": "reachable",  # any non-Hollow action, before it rolls
     "spy_plausible_deniability": "reachable",  # the Sergeant's accusation
     "marshal_countermand": "reachable",  # five authored commands

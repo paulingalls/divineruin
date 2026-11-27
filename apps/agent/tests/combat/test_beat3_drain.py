@@ -4,6 +4,7 @@ import pytest
 from combat._helpers import _call, _ctx_at_resolution, _resolve_deps
 
 import combat_hold
+import combat_hold_windows
 import combat_turn
 
 
@@ -72,7 +73,7 @@ async def test_iteration_with_no_pop_unresolved_summary_or_new_window_raises(mon
     committed = ctx.userdata.combat_state
     committed_queue = deepcopy(committed.held_actions)
     deps["mutations"].save_combat_state.reset_mock()
-    monkeypatch.setattr(combat_hold, "_open", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(combat_hold_windows, "open_window", lambda *_args, **_kwargs: None)
 
     with pytest.raises(RuntimeError, match=r"goblin_scout_1.*made no progress"):
         await combat_turn._resolve_phase_impl(ctx, **deps)

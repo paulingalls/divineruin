@@ -12,7 +12,7 @@ import patron_synergy_combat
 import thyra_seasons
 from archetypes import get_archetype_chassis
 from architect_encounter import cathedral_bonus
-from combat_participant import BARK_SKIN_AC_BONUS
+from combat_participant import BARK_SKIN_AC_BONUS, SHIELD_SPELL_AC_BONUS
 from condition_catalog import INCORPOREAL, STUDIED_WEAKNESS, WAR_CRY_RALLY
 from dramatic import DramaticContext, evaluate_dramatic_context
 from equipment_rules import needs_weapon_profile, resolve_weapon_profile, with_weapon_magic
@@ -44,6 +44,7 @@ def roll_attack(
     veiled_strike: VeiledStrike | None = None,
     season: Season | None = None,
     oath_justice: dict | None = None,
+    attack_disadvantage_source: str | None = None,
 ) -> tuple:
     """Roll without applying HP changes; held reactions pause before impact."""
     attacker_data, effective_ac, attack_mod = attack_roll_inputs(
@@ -61,6 +62,7 @@ def roll_attack(
         valdris_ac_bonus=valdris_ac_bonus,
         veiled_strike=veiled_strike,
         season=season,
+        attack_disadvantage_source=attack_disadvantage_source,
     )
     if oath_justice is not None:
         attacker_data["oath_justice"] = oath_justice
@@ -94,6 +96,7 @@ def attack_roll_inputs(
     orenthel_ac_override: int | None = None,
     veiled_strike: VeiledStrike | None = None,
     season: Season | None = None,
+    attack_disadvantage_source: str | None = None,
 ):
     """The attacker data, effective AC and to-hit bonus a d20 attack is prepared from.
 
@@ -211,6 +214,7 @@ def attack_roll_inputs(
     effective_ac = (
         target.ac
         + (BARK_SKIN_AC_BONUS if target.bark_skin_active else 0)
+        + (SHIELD_SPELL_AC_BONUS if target.shield_spell_active else 0)
         + target_ac_bonus
         + target_condition_ac
         + synergy_ac
@@ -231,6 +235,8 @@ def attack_roll_inputs(
             and target.id not in combat_state.beacon_attacks.get(attacker.id, ())
         ):
             attacker_data["attack_disadvantage_source"] = BEACON
+    if attack_disadvantage_source is not None:
+        attacker_data.setdefault("attack_disadvantage_source", attack_disadvantage_source)
     return attacker_data, effective_ac, attack_mod
 
 

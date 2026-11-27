@@ -131,16 +131,12 @@ async def test_final_stillness_threshold_and_single_use(still, duration, face):
             f"still_charm:{state.location_id}",
             json.dumps(dict(location_id=state.location_id, kind="serenitys_touch", remaining_zone_hours=1)),
         )
-        actor = (await still.reload()).get_participant(still.players[0])
-        actor.has_reaction_ability = True
-        actor.reaction_ids = ["whisper_implant_doubt"]
-        await still.persist()
     await declare(still, actor_id=owner, **final)
     if face == 1:
         await still.command("resolve_phase", {})
-        paused = await still.command("resolve_phase", {})
-        assert paused["next"]["waiting_on"]["action"] == "Final Stillness"
-        await fresh_session(still, await still.reload())
+        saved = await still.reload()
+        assert saved.held_actions[0]["declaration"]["action"] == "Final Stillness"
+        await fresh_session(still, saved)
     with (
         patch("dice.roll", return_value=SimpleNamespace(total=duration)) as roll,
         patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(face)),

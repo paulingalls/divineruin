@@ -5,6 +5,8 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from reaction_windows import STRIKE_STAGES
+
 if TYPE_CHECKING:
     from session_data import CombatState
 
@@ -19,6 +21,9 @@ class DeliveryPolicy(StrEnum):
     HEARING = "hearing"
     SPELL = "spell"
 
+
+DISSONANT_WHISPER = "bard_dissonant_whisper"
+IMPLANT_DOUBT = "whisper_implant_doubt"
 
 BOTH = frozenset(
     {
@@ -36,7 +41,7 @@ BOTH = frozenset(
         "bard_cutting_words",
         "bard_inspire",
         "bard_mass_inspire",
-        "bard_dissonant_whisper",
+        DISSONANT_WHISPER,
         "bard_countercharm",
         "bard_song_of_rest",
         "bard_cutting_retort",
@@ -154,7 +159,7 @@ NEITHER = frozenset(
         "whisper_fog_of_mind",
         "whisper_redirect_attention",
         "whisper_thought_shield",
-        "whisper_implant_doubt",
+        IMPLANT_DOUBT,
     }
 )
 
@@ -213,9 +218,9 @@ def policy(ability_id: str) -> DeliveryPolicy:
 
 def reaction_recipient(ability_id: str, window: dict | None) -> str:
     policy(ability_id)
-    if not isinstance(window, dict) or window.get("stage") not in ("pre_roll", "post_roll"):
+    if not isinstance(window, dict) or window.get("stage") not in STRIKE_STAGES:
         raise ValueError("Malformed reaction delivery window")
-    key = "actor_id" if ability_id in CONTESTED else "target_id"
+    key = "actor_id" if ability_id in CONTESTED or ability_id == DISSONANT_WHISPER else "target_id"
     recipient = window.get(key)
     if not isinstance(recipient, str) or not recipient:
         raise ValueError(f"Reaction delivery window requires {key}")
@@ -256,5 +261,7 @@ def reaction_effect_eligible(state: CombatState, head: dict, spend: dict) -> boo
     requirement = policy(spend["ability_id"])
     if requirement not in (DeliveryPolicy.BOTH, DeliveryPolicy.HEARING):
         return True
-    recipient = head["actor_id"] if spend["ability_id"] in CONTESTED else head["declaration"].get("target_id")
+    ability_id = spend["ability_id"]
+    against_attacker = ability_id in CONTESTED or ability_id == DISSONANT_WHISPER
+    recipient = head["actor_id"] if against_attacker else head["declaration"].get("target_id")
     return can_hear(state, recipient)
