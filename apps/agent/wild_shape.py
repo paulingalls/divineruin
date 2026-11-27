@@ -41,16 +41,14 @@ def require_casting(actor: CombatParticipant, spell: Spell) -> None:
         raise DeliveryRefused("Wild Shape allows only cantrips until level 20.")
 
 
-def require_dismissal(actor: CombatParticipant, decl: Declaration) -> WildShapeState:
+def require_dismissal(actor: CombatParticipant) -> WildShapeState:
     if actor.type != "player" or actor.wild_shape is None:
         raise DeliveryRefused("Only a player in Wild Shape can dismiss it.")
-    if decl.target_id is not None or decl.target_ids:
-        raise DeliveryRefused("Wild Shape dismissal affects only the caster. Leave targets empty.")
     return actor.wild_shape
 
 
-def dismiss(actor: CombatParticipant, decl: Declaration) -> dict[str, str]:
-    form = require_dismissal(actor, decl)
+def dismiss(actor: CombatParticipant) -> dict[str, str]:
+    form = require_dismissal(actor)
     actor.ac = form["original_ac"]
     actor.wild_shape = None
     return {"actor_id": actor.id, "form_id": form["form_id"], "reason": "dismissed"}

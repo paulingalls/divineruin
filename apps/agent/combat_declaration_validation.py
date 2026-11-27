@@ -261,7 +261,7 @@ def validate_declaration(
             )
 
     if declaration.type is DeclarationType.INTERACT and declaration.action == wild_shape.DISMISS_ACTION:
-        wild_shape.require_dismissal(actor, declaration)
+        wild_shape.require_dismissal(actor)
     if declaration.type not in (DeclarationType.ATTACK, DeclarationType.ABILITY, DeclarationType.MANEUVER):
         return
     if pool_action is not None and not action_has_direct_line(pool_action):

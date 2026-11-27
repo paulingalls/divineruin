@@ -212,7 +212,7 @@ async def _resolve_action_packet(
                 "actor_id": attacker.id,
                 "resolved": True,
                 "declaration_type": str(decl.type),
-                "wild_shape_ended": [wild_shape.dismiss(attacker, decl)],
+                "wild_shape_ended": [wild_shape.dismiss(attacker)],
             }
     except DeliveryRefused as e:
         return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}

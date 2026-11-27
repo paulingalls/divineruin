@@ -23,7 +23,11 @@ def finish(
     end_data: dict,
     build_handoff_agent: Callable[[SessionData, str, ChatContext], Agent | None],
 ) -> tuple:
-    """Clear session state and build the gameplay handoff after combat commits."""
+    """Clear session state and build the gameplay handoff after combat commits.
+
+    No DB writes and no events, so nothing here is reachable on a rollback. Every mutation is
+    synchronous; only the injected handoff builder can raise, and it must not escape past the
+    already-cleared combat_state."""
     xp_total = end_data["xp_total"]
     xp_granted = end_data["xp_granted"]
     defeated_enemies = end_data["defeated_enemies"]
