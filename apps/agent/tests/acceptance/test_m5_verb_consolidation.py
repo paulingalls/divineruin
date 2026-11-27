@@ -16,11 +16,14 @@ from check_tools import check
 from choice_tools import select
 from inventory_tools import _transact_impl, transact
 from llm_config import MAX_STRICT_TOOLS
+from merchant_tools import conclude_trade
 from mode_tools import enter_mode
 from patron_action_tools import record_patron_action
+from query_tools import query_info
 from recipe_tools import _learn_recipe_impl, learn
 from reputation_tools import adjust_faction_reputation
 from rest_tools import rest
+from sell_item import sell_item
 
 # verb -> the EXACT set of agents that must hold it (grep-verified against the tool
 # lists). Updated for M7: the three region rows fold into "exploration". A future sprint
@@ -32,6 +35,9 @@ VERB_PRESENCE = [
     (learn, "learn", {"dispatch"}),
     (check, "check", {"exploration", "combat", "onboarding", "dispatch"}),
     (enter_mode, "enter_mode", {"exploration"}),
+    (sell_item, "sell_item", {"merchant"}),
+    (conclude_trade, "conclude_trade", {"merchant"}),
+    (query_info, "query_info", {"exploration", "combat", "onboarding", "dispatch", "blacksmith", "merchant"}),
     (select, "select", {"exploration", "dispatch", "combat"}),
     # M23 story-002: the faction reputation DM verb sits beside update_npc_disposition on the
     # single exploration agent (world-state mutation verbs live there, per M7's collapse).

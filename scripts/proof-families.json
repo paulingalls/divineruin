@@ -8,6 +8,19 @@
     "reads": ["content/creatures.json"]
   },
   {
+    "name": "merchant-sales",
+    "tests": ["apps/agent/tests/acceptance/test_sell_to_merchant(?:_guards)?\\.py"],
+    "owns": ["apps/agent/(?:merchant_agent|merchant_tools|sale_pricing|sell_item)\\.py"],
+    "reads": [
+      "content/action_sounds.json",
+      "content/inventory_pools.json",
+      "content/items.json",
+      "content/locations.json",
+      "content/npcs.json",
+      "content/pricing.json"
+    ]
+  },
+  {
     "name": "npc-repair",
     "tests": ["apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:durability_e2e)\\.py"],
     "owns": [

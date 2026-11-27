@@ -1,6 +1,6 @@
 """Probe provider strict compilation; every paid run needs explicit human approval.
 
-Default Anthropic mode probes all six agents. Luna mode sends one request through
+Default Anthropic mode probes all seven agents. Luna mode sends one request through
 production's LiveKit OpenAI factory, with both retry layers disabled:
 
     uv run python probe_strict_limits.py --provider openai-luna --agent combat
@@ -27,6 +27,7 @@ from dispatch_agent import DISPATCH_TOOLS
 from exploration_agent import EXPLORATION_TOOLS
 from gameplay_llm import create_luna_llm
 from llm_config import MODEL
+from merchant_agent import MERCHANT_TOOLS
 from onboarding_agent import ONBOARDING_TOOLS
 
 AGENTS = [
@@ -35,6 +36,7 @@ AGENTS = [
     ("dispatch", DISPATCH_TOOLS),
     ("onboarding", ONBOARDING_TOOLS),
     ("blacksmith", BLACKSMITH_TOOLS),
+    ("merchant", MERCHANT_TOOLS),
     ("creation", CREATION_TOOLS),
 ]
 

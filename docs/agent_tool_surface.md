@@ -64,6 +64,7 @@ the exact call the plugin makes (`livekit-plugins-anthropic` 1.6.1 → `to_fnc_c
 | dispatch | 9 | **23** | 9.3k | `begin_activity` 11, `check` 9, `resolve_activity` 1, `learn` 1, `query_info` 1 |
 | onboarding | 6 | 10 | 5.8k | `check` 9, `query_info` 1 |
 | blacksmith | 3 | 1 | 2.5k | `query_info` 1 |
+| merchant (2026-11-27) | 3 | 1 | 4.0k | `query_info` 1 |
 | creation | 3 | 0 | 1.1k | — |
 
 Where the unions come from: every Python default (`skill: str = ""`, `dc: int = 0`,

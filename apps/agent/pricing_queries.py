@@ -14,6 +14,8 @@ import json
 import logging
 import math
 
+import asyncpg
+
 import db
 from catalog_parse import parse_dict
 from sale_pricing import SALE_DISPOSITIONS
@@ -78,7 +80,7 @@ def _validate_economy_pricing(data: dict) -> dict:
     return data
 
 
-async def get_economy_pricing() -> dict:
+async def get_economy_pricing(*, conn: asyncpg.Connection | None = None) -> dict:
     """Return the `economy` pricing row for repair, sales and currency conversion.
 
     Fail loud if the row is absent — every priced tool depends on it, so a missing
@@ -89,8 +91,8 @@ async def get_economy_pricing() -> dict:
     if cached is not None:
         return _validate_economy_pricing(json.loads(cached))
 
-    pool = await db.get_pool()
-    row = await pool.fetchrow("SELECT data FROM pricing WHERE id = $1", _ECONOMY_ID)
+    connection = conn or await db.get_pool()
+    row = await connection.fetchrow("SELECT data FROM pricing WHERE id = $1", _ECONOMY_ID)
     if row is None:
         raise RuntimeError("pricing: no 'economy' row in the pricing table (run seed_content)")
 

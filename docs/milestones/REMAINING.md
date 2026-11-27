@@ -56,7 +56,7 @@ establish native capture or paid speech-recognition quality.
   encounter lifetime, round expiry, real-time anchor expiry and removal of
   legacy player ward state pass. README's dagger distinguishes this shipped
   substrate and Phase 10 terrain gates from Phase 11 world wards.
-- **Phase 9 is 6/83.** The four authored merchants have inventory pool bindings and both runtimes validate their pools’ buying rules.
+- **Phase 9 is 7/83.** Voice sales settle player items and gold at the engine price. Four authored merchants have validated pool bindings. Merchant gold pools, buyback limits and consignment remain open.
 
 ## 2. Residual inside the documentation phase (1 AC)
 

@@ -113,6 +113,7 @@ class SessionData:
     pre_combat_agent_type: str | None = None
     pre_dispatch_agent_type: str | None = None
     pre_blacksmith_agent_type: str | None = None
+    pre_trade_agent_type: str | None = None
     # Serialises every path that saves or adopts a whole combat_state — start and end included — so
     # no holder writes back a snapshot that predates another holder's change. Readers do not take
     # it. Held for the WHOLE call and acquired BEFORE any DB transaction: an end released before its
