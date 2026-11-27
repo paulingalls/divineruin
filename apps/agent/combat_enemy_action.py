@@ -152,6 +152,7 @@ async def resolve_combined_attack_action(
     target_ac_bonus: int,
     shield_reaction: str | None,
     damage_target: CombatParticipant | None = None,
+    psychic_shield_id: str | None = None,
     enemies_remaining: int,
     is_first_attack_of_combat: bool,
     reaction_save_advantage: bool,
@@ -168,6 +169,7 @@ async def resolve_combined_attack_action(
             target,
             target_ac_bonus=target_ac_bonus,
             shield_reaction=shield_reaction,
+            psychic_shield_id=psychic_shield_id,
             damage_target=damage_target,
             enemies_remaining=enemies_remaining,
             is_first_attack_of_combat=is_first_attack_of_combat,
@@ -221,6 +223,7 @@ async def resolve_save_damage_action(
     sink,
     reaction_save_advantage: bool,
     progress=None,
+    psychic_shield_id: str | None = None,
 ) -> dict:
     target, waste = _resolve_condition_target(
         state, attacker, decl, allow_self=action.get("resolution") == "save", damage=True
@@ -318,6 +321,7 @@ async def resolve_save_damage_action(
         conn=conn,
         sink=sink,
         publish_roll=False,
+        psychic_shield_id=psychic_shield_id,
         progress=progress,
     )
     if progress is not None and progress.paused:
@@ -367,6 +371,7 @@ async def resolve_enemy_strike(
     reaction_ac_bonus,
     shield_reaction,
     damage_target: CombatParticipant | None = None,
+    psychic_shield_id: str | None = None,
     reaction_save_advantage,
     publish_roll,
     progress=None,
@@ -385,6 +390,7 @@ async def resolve_enemy_strike(
             sink=sink,
             reaction_save_advantage=reaction_save_advantage,
             progress=progress,
+            psychic_shield_id=psychic_shield_id,
         )
 
     if not attacker.is_ally and action is not None and is_combined_attack_action(action):
@@ -408,6 +414,7 @@ async def resolve_enemy_strike(
             sink=sink,
             target_ac_bonus=state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
             shield_reaction=shield_reaction,
+            psychic_shield_id=psychic_shield_id,
             damage_target=damage_target,
             enemies_remaining=sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen),
             is_first_attack_of_combat=not state.first_attack_resolved,

@@ -168,6 +168,7 @@ async def pump(
         reacted = state.held_actions[0]
         reason = await concealed_target_reason(state, reacted, _held_declaration(reacted), packet_deps=packet_deps)
         if reason is not None:
+            summaries.extend(combat_reaction_effect.finish_thought_shield(reacted, {}))
             summaries.append(_concealed_summary(reacted, reason))
             state.held_actions.pop(0)
             reacted = None
@@ -181,9 +182,11 @@ async def pump(
         await patron_synergy_combat.restore_guard_stamina(
             reaction_packets, queries=packet_deps["queries"], conn=packet_deps["conn"]
         )
+        reaction_packets = combat_reaction_effect.defer_thought_shield(reacted, reaction_packets)
         summaries.extend(reaction_packets)
         hesitation_reason = combat_reaction_contest.hesitation_reason(reacted)
         if hesitation_reason is not None:
+            summaries.extend(combat_reaction_effect.finish_thought_shield(reacted, {}))
             summaries.append(
                 strike_summary(
                     reacted,
@@ -352,6 +355,7 @@ async def pump(
         except HeldActionUnresolvable as exc:
             summary = {"actor_id": head["actor_id"], "resolved": False, "reason": str(exc)}
             logger.error("beat 3: held action for %s unresolved: %s", head["actor_id"], exc)
+            summaries.extend(combat_reaction_effect.finish_thought_shield(head, summary))
             summaries.append(strike_summary(head, _with_reshape(head, summary)))
             assert_iteration_progress(state, head, summaries, summary_start)
             state.held_actions.pop(0)
@@ -366,14 +370,13 @@ async def pump(
         deferred_reactions = head.pop("pending_reaction_packets", [])
         recorded_reactions = reaction_packets if head is reacted else deferred_reactions
         if recorded_reactions:
-            combat_reaction_effect.record_intercept(recorded_reactions, summary)
-            combat_reaction_effect.record_shield_wear(recorded_reactions, state, head, summary)
-            combat_reaction_effect.record_save_advantage(recorded_reactions, summary)
+            combat_reaction_effect.record_settled(recorded_reactions, state, head, summary)
             damage = summary.get("damage", 0)
             await patron_synergy_combat.restore_guard_stamina(
                 recorded_reactions, queries=packet_deps["queries"], conn=packet_deps["conn"], damage=damage
             )
         summaries.extend(deferred_reactions)
+        summaries.extend(combat_reaction_effect.finish_thought_shield(head, summary))
         if window_action is not None and (
             candidate := combat_hold_conditions.window_for(state, head, window_action, summary)
         ):
@@ -467,6 +470,7 @@ async def _resolve_held(
             else None,
         ),
         shield_reaction=combat_reaction_effect.shield_reaction(state, head),
+        psychic_shield_id=combat_reaction_effect.psychic_shield_id(state, head),
         damage_target=damage_target,
         grapple_blocked=combat_reaction_effect.grapple_blocked(state, head),
         mark_cancelled=mark_cancelled,

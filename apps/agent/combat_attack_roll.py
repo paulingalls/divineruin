@@ -12,7 +12,7 @@ import patron_synergy_combat
 import thyra_seasons
 from archetypes import get_archetype_chassis
 from architect_encounter import cathedral_bonus
-from combat_participant import BARK_SKIN_AC_BONUS
+from combat_participant import BARK_SKIN_AC_BONUS, SHIELD_SPELL_AC_BONUS
 from condition_catalog import INCORPOREAL, STUDIED_WEAKNESS, WAR_CRY_RALLY
 from dramatic import DramaticContext, evaluate_dramatic_context
 from equipment_rules import needs_weapon_profile, resolve_weapon_profile, with_weapon_magic
@@ -207,6 +207,7 @@ def attack_roll_inputs(
     effective_ac = (
         target.ac
         + (BARK_SKIN_AC_BONUS if target.bark_skin_active else 0)
+        + (SHIELD_SPELL_AC_BONUS if target.shield_spell_active else 0)
         + target_ac_bonus
         + target_condition_ac
         + synergy_ac

@@ -196,8 +196,10 @@ itself, alongside the enemy's. "restraint_escaped" means Slippery freed the reac
 named by chamber_id. The enemy packet with that chamber_id records the initial restraint. Voice \
 the chamber closing once, followed by the escape, and leave the reactor free. \
 The "mechanical_effect" field says what the reaction actually DID: \
-"damage_halved" for a blow they turned into a graze, "target_ac_bonus" for a guard that made the \
-strike go wide, "damage_intercepted" when the guardian takes the blow and the struck ally takes no \
+"damage_halved" and "damage_reduced" mean the reaction took damage off the blow. \
+"target_ac_bonus" means the reaction raised their guard. Read the attack packet to see if it hit. \
+Use a reaction packet’s "reason" to explain why a defense had no effect. \
+"damage_intercepted" means the guardian takes the blow and the struck ally takes no \
 damage from that hit. Read damage_target and the hit’s HP status together to narrate the guardian. \
 "round_ac_bonus" means bark raised their guard for the round. Read the enemy packet's "hit" to know \
 whether this blow was turned. \

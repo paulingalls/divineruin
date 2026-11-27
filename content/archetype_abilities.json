@@ -47,7 +47,7 @@
     "ability_type": "reaction",
     "level_requirement": 1,
     "cost": { "stamina": 2, "focus": 0, "scaling": null },
-    "effect": "Reaction when hit: reduce the damage by 1d6 + CON mod.",
+    "effect": "Reaction when hit: reduce the triggering damage by 1d6 + your CON modifier, to a minimum of 0 damage.",
     "narration_cue": "Boots dig in, muscles lock, the blow glances off.",
     "window": "on_hit"
   },
@@ -724,7 +724,7 @@
     "ability_type": "reaction",
     "level_requirement": 1,
     "cost": { "stamina": 0, "focus": 1, "scaling": null },
-    "effect": "Reaction: raise an arcane barrier against an incoming attack. The unarmored caster's lifeline.",
+    "effect": "Reaction when targeted by an attack: gain +3 AC against that attack and until the start of your next turn.",
     "narration_cue": "A shimmering disc of force flares into being just in time.",
     "window": "on_targeted"
   },
@@ -1218,7 +1218,7 @@
     "ability_type": "reaction",
     "level_requirement": 1,
     "cost": { "stamina": 0, "focus": 1, "scaling": null },
-    "effect": "Reaction when targeted by psychic damage or mind-reading: halve the damage or block the read.",
+    "effect": "Reaction when targeted: halve psychic damage you take from the triggering action. Other damage types are unchanged.",
     "narration_cue": "Your thoughts close like a shuttered window.",
     "window": "on_targeted"
   },

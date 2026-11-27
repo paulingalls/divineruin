@@ -6,6 +6,7 @@ import temp_hp
 from encounter_roles import EncounterRole
 
 BARK_SKIN_AC_BONUS = 2
+SHIELD_SPELL_AC_BONUS = 3
 
 
 @dataclass
@@ -23,6 +24,7 @@ class CombatParticipant:
     sneak_attack_round: int | None = None
     iron_resolve_spent: bool = False
     bark_skin_active: bool = False
+    shield_spell_active: bool = False
     is_fallen: bool = False
     # Instant death (M4.4 story-002): a single hit whose overkill (excess damage past 0) >= hp_max
     # kills outright — skips the Fallen state and death saves entirely. Distinct from is_fallen
