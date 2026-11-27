@@ -5,7 +5,7 @@ The [catalog](../../content/spells.json) supplies the IDs. The [magic design](..
 
 ## Classification
 
-The 87 spells include **17 engine**, **4 narrated**, **66 unwired** and **0 uncertified**.
+The 87 spells include **18 engine**, **4 narrated**, **65 unwired** and **0 uncertified**.
 
 - **engine** — The named function resolves the effect and the linked committed test asserts the outcome.
 - **narrated** — The design assigns the result to the DM’s narration.
@@ -41,7 +41,7 @@ The dead-reactions sprint is changing the archetype `mage_shield_spell`, which h
 | `arcane_lightning_bolt` | engine | `combat_spell_recipients.select + combat_spell_damage.land`. [`test_authored_shapes_land_on_union_once`](../../apps/agent/tests/combat/test_area_spell_recipients.py). The Lightning Bolt case checks line aim, boundary exclusions and persisted damage. |
 | `arcane_wall_of_force` | unwired | RUN `arcane_wall_of_force` (5 Focus). Concentration started. The foe crossed the cast area at ordinary cost and no barrier was persisted. [M14.1](14_engine_completeness.md#spell-arcane_wall_of_force). |
 | `arcane_haste` | unwired | RUN `arcane_haste` (5 Focus). Concentration started on the ally. Speed, AC and action state stayed unchanged. [M14.1](14_engine_completeness.md#spell-arcane_haste). |
-| `arcane_slow` | unwired | RUN `arcane_slow` (5 Focus). Concentration started. There was no WIS save or slow condition on the target. [M14.1](14_engine_completeness.md#spell-arcane_slow). |
+| `arcane_slow` | engine | `combat_spell_condition.land_deliveries` settles up to three WIS saves. `condition_restrictions.effective_speed`, `no_reactions`, and attack AC aggregation enforce the penalties. `combat_voice_rules.guard_declaration` blocks paired quick actions, and `combat_wrap._roll_tick_save` clears each target independently. The bandit captain’s bonus-action Cunning Action, Command Lesser, and Quick Change have no mechanical quick-action producer. [Phase and reload coverage](../../apps/agent/tests/acceptance/test_spell_new_conditions.py) and [reaction and interruption coverage](../../apps/agent/tests/acceptance/test_spell_new_conditions_guards.py). |
 | `arcane_arcane_eye` | unwired | RUN `arcane_arcane_eye` (5 Focus). Concentration started, with no sensor, remote observation, movement or discovery result. [M14.1](14_engine_completeness.md#spell-arcane_arcane_eye). |
 | `arcane_chain_lightning` | engine | `combat_spell_recipients.select + combat_spell_damage.land`. [`test_chain_primary_range_cap_and_secondary_damage`](../../apps/agent/tests/combat/test_area_spell_recipients.py). Explicit and automatic arcs persist primary and secondary damage with range and cap. |
 | `arcane_disintegrate` | unwired | RUN `arcane_disintegrate` (7 Focus). A lethal force hit landed. The ordinary zero-HP path left a fallen combat participant and emitted no disintegration result. [M14.1](14_engine_completeness.md#spell-arcane_disintegrate). |

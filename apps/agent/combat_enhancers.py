@@ -35,7 +35,7 @@ def enhancers_from_flags(flags: dict | None) -> list[str]:
 
 
 def attack_enhancers(enhancers: list[str], decl: Declaration) -> list[str]:
-    return [] if decl.rider == PLAIN_ATTACK else enhancers
+    return [] if PLAIN_ATTACK in (decl.rider, decl.argument_type) else enhancers
 
 
 def _extra_swing(enhancers: list[str]) -> bool:
@@ -43,14 +43,17 @@ def _extra_swing(enhancers: list[str]) -> bool:
 
 
 def carries_quick_action(enhancers: list[str], decl: Declaration) -> bool:
-    from combat_ability_gate import CUNNING_ACTION, QUICK_FINGERS
+    from combat_ability_gate import CUNNING_ACTION, DEVASTATING_STRIKE, QUICK_FINGERS
     from combat_ability_gate import SHIELD_BASH as BASH_ABILITY
     from combat_martial import attack_ability
 
-    if attack_ability(decl) in (CUNNING_ACTION, QUICK_FINGERS, BASH_ABILITY):
+    martial = attack_ability(decl)
+    if martial in (CUNNING_ACTION, QUICK_FINGERS, BASH_ABILITY):
         return True
     effective = attack_enhancers(enhancers, decl)
-    return decl.type is DeclarationType.ATTACK and (_extra_swing(effective) or HIT_AND_RUN in effective)
+    if decl.type is DeclarationType.ATTACK:
+        return _extra_swing(effective) or HIT_AND_RUN in effective
+    return martial == DEVASTATING_STRIKE and _extra_swing(effective)
 
 
 def attack_sequence(enhancers: list[str], base_action: dict) -> list[dict]:
