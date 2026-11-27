@@ -262,6 +262,7 @@ async def _resolve_ability_packet(
         if progress is not None and progress.paused:
             return {}
     elif spell.save_condition is not None:
+        cast_packet.pop("damage_dice", None)
         condition_progress = progress.scope("spell_condition") if progress is not None else None
         if multi_condition:
             assert deliveries is not None

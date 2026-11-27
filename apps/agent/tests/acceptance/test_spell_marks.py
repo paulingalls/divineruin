@@ -63,7 +63,7 @@ async def mark_fight(ctx, ac=12):
 async def mark(ctx, caster, foe="foe"):
     packets, state = await play(ctx, cast_spell(caster, GUIDING, foe))
     cast = receipt(packets, caster)
-    assert "save" not in cast and "damage_result" not in cast
+    assert not {"save", "damage_result", "damage_dice"}.intersection(cast)
     assert participant(state, foe).hp_current == 100
     return state
 

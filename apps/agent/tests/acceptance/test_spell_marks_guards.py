@@ -28,6 +28,7 @@ from acceptance.test_spell_marks import spell_fight as spell_fight
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_vanish import walk as walk
 from combat.test_spell_damage_lands import saved_player
+from livekit.agents import ToolError
 from voice_condition_fixtures import participant, spatial_record
 from weapon_fixtures import DAGGER
 
@@ -36,6 +37,7 @@ import combat_turn
 import db
 import db_mutations
 from activate_tools import activate
+from combat_structures import add_wall
 from session_data import SessionData
 
 
@@ -70,8 +72,6 @@ async def test_marked_attack_resumes_once_after_fate(spell_fight, spell):
         call = game_tools(ctx.userdata, combat_turn.resolve_phase, activate)
         with patch("check_resolution_attack.dice_roll", return_value=_damage_die(2)) as damage:
             resolved = await call("resolve_phase")
-            damage.assert_called_once()
-        assert rolls.call_count == 2
     if spell:
         cast = next(p["cast"] for p in resolved["packets"] if p["actor_id"] == ally)
         assert cast["condition_removed"] == INVISIBLE
@@ -81,6 +81,8 @@ async def test_marked_attack_resumes_once_after_fate(spell_fight, spell):
         result = swing(resolved["packets"], ally)
         assert result["roll"] == 17 and result["condition_removed"] == INVISIBLE
     assert result["hit"]
+    assert rolls.call_count == 2
+    damage.assert_called_once()
     state = await reload(ctx)
     assert participant(state, "foe").hp_current == 100 - result["damage"]
     assert not has(state, ally, INVISIBLE)
@@ -209,3 +211,19 @@ async def test_exploration_invisibility_carries_into_a_real_encounter(walk):
     with patch("check_resolution.dice_roll", side_effect=[_d20(17), _d20(3)]):
         packets = await walk.drain()
     assert swing(packets, foe)["roll"] == 3
+
+
+async def test_guiding_light_refuses_non_foes_before_declaring(spell_fight):
+    ctx = spell_fight
+    caster, ally = await mark_fight(ctx)
+    state = ctx.userdata.combat_state
+    add_wall(state, "wall", "Wall", {"x": 40, "y": -5, "z": 0}, {"x": 40, "y": 5, "z": 0})
+    fallen = participant(state, "control")
+    fallen.hp_current = 0
+    fallen.is_fallen = fallen.is_dead = True
+    await db_mutations.save_combat_state(state.combat_id, state.to_dict())
+    before = (await reload(ctx)).to_dict()
+    for target in (ally, "wall", "control"):
+        with pytest.raises(ToolError, match="standing enemy"):
+            await combat_turn.declare_phase(ctx, [cast_spell(caster, GUIDING, target)])
+        assert (await reload(ctx)).to_dict() == before
