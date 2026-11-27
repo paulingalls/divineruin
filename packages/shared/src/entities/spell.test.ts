@@ -23,8 +23,12 @@ const SPELL_FIELDS = {
   narration_cue: true,
   verbal: true,
   hostile: true,
+  wild_shape: true,
 } as const satisfies Record<keyof Spell, true>;
-const readerSpell: Required<Spell> = arcaneBolt;
+const readerSpell: Required<Spell> = {
+  ...arcaneBolt,
+  wild_shape: { stamina_cost: 3, forms: [{ creature_id: "grey_wolf", min_level: 5 }] },
+};
 
 const OMITTED_M33_FIELDS: ReadonlyArray<{ field: string; reason: string }> = [
   {
@@ -60,8 +64,8 @@ describe("Spell — content/spells.json row shape (reader-gated TS mirror)", () 
     expect(readerSpell.hostile).toBe(true);
   });
 
-  test("the TS Spell mirrors exactly the 9 reader-backed fields", () => {
-    expect(Object.keys(arcaneBolt).sort()).toEqual(Object.keys(SPELL_FIELDS).sort());
+  test("the TS Spell mirrors the reader-backed fields", () => {
+    expect(Object.keys(readerSpell).sort()).toEqual(Object.keys(SPELL_FIELDS).sort());
   });
 
   test("the 4 M3.3/M17 fields are intentionally omitted for lack of a TS reader", () => {

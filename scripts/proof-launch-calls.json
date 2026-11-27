@@ -1,4 +1,16 @@
 {
+  "apps/agent/tests/acceptance/test_wild_shape.py": [
+    {
+      "call": "asyncio.create_subprocess_exec('bun', '--no-env-file', '-e', '\\n        import { loadSpells, getSpell } from \"./apps/server/src/spells.ts\";\\n        import { sql } from \"./apps/server/src/db.ts\";\\n        const { original_data, bad_rows, id } = await Bun.stdin.json();\\n        try {\\n          await loadSpells();\\n          console.log(JSON.stringify(getSpell(id).wild_shape));\\n          for (const [row, diagnostic] of bad_rows) {\\n            await sql`UPDATE spells SET data=${JSON.stringify(row)}::text::jsonb WHERE id=${id}`;\\n            let refusal;\\n            try { await loadSpells(); } catch (error) { refusal = error.message; }\\n            if (!refusal?.includes(id) || !refusal.includes(diagnostic)) {\\n              throw new Error(`Expected ${id} and ${diagnostic}, got ${refusal}`);\\n            }\\n          }\\n        } finally {\\n          await sql`UPDATE spells SET data=${JSON.stringify(original_data)}::text::jsonb WHERE id=${id}`;\\n          await sql.close();\\n        }\\n        ', cwd=ROOT, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)",
+      "roots": [
+        "apps/server/src/spells.ts"
+      ],
+      "reason": "Runs the real TypeScript spell startup loader against the acceptance database.",
+      "bindings": [
+        "ROOT = Path(__file__).resolve().parents[4]"
+      ]
+    }
+  ],
   "apps/agent/tests/_db_lifecycle.py": [
     {
       "call": "subprocess.run(['bash', str(_OWNER_HELPER), 'authorize', intent], capture_output=True, text=True, check=False, cwd=_REPO_ROOT, env=_authority_env())",

@@ -26,6 +26,7 @@ preparation (story-006).
 
 import json
 import logging
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal, get_args
 
@@ -38,6 +39,8 @@ from combat_spell_profile import (
     parse_item_creation,
     parse_profile,
 )
+from wild_shape import WildShapeProfile
+from wild_shape import parse_profile as parse_wild_shape_profile
 
 if TYPE_CHECKING:
     from abilities import Ability  # type-only: abilities.py imports spells, so never import at runtime
@@ -102,6 +105,7 @@ class Spell:
     combat_damage: dict | None = None
     heal: HealProfile | None = None
     creates_item: ItemCreationProfile | None = None
+    wild_shape: WildShapeProfile | None = None
 
 
 # Module-level runtime-loaded spells, keyed by spell id. Populated by load_spells()
@@ -181,6 +185,7 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
             combat_damage=parse_profile(data.get("combat_damage")),
             heal=heal,
             creates_item=creates_item,
+            wild_shape=parse_wild_shape_profile(spell_id, data),
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed spells row {spell_id!r}: {e}") from e
@@ -246,6 +251,22 @@ def is_loaded() -> bool:
     return bool(_spells)
 
 
+def parse_spell_catalog(rows: Iterable[Mapping], creatures: Iterable[Mapping]) -> dict[str, Spell]:
+    beast_ids = {row["id"] for row in creatures if row["category"] == "beast"}
+    loaded = {}
+    for row in rows:
+        data = json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]
+        spell = parse_spell_row(row["id"], data)
+        if spell.wild_shape is not None:
+            for form in spell.wild_shape["forms"]:
+                if form["creature_id"] not in beast_ids:
+                    raise ValueError(
+                        f"spell {spell.id!r} wild_shape creature {form['creature_id']!r} must name a catalog beast"
+                    )
+        loaded[spell.id] = spell
+    return loaded
+
+
 async def load_spells() -> None:
     """Load the spell catalog from the DB into _spells.
 
@@ -258,10 +279,6 @@ async def load_spells() -> None:
 
     pool = await db.get_pool()
     rows = await pool.fetch("SELECT id, data FROM spells")
-    loaded: dict[str, Spell] = {}
-    for row in rows:
-        data = json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]
-        loaded[row["id"]] = parse_spell_row(row["id"], data)
-    _spells.clear()
-    _spells.update(loaded)
+    creatures = await pool.fetch("SELECT id, data->>'category' AS category FROM creatures")
+    set_spells(parse_spell_catalog(rows, creatures))
     logger.info("Loaded %d spells", len(_spells))

@@ -66,7 +66,7 @@ Areas center on named participants; lines and cones aim from the source toward o
 Meteor Swarm accepts up to four centers. Chain Lightning names its primary then optional arcs; \
 without explicit arcs the engine chooses nearest enemies. Repeat Magic Missile target ids in dart order, \
 or name one recipient for all darts. Send argument_type as an empty string except for Elemental Burst \
-(fire, cold, or lightning), de_escalate (below), or Greater Restoration (charmed or petrified when both are present). Greater Restoration names one party player or uses empty targets for self. Read its cast receipt for the condition removed and Wisdom restored. resolve_phase handles ability costs, \
+(fire, cold, or lightning), de_escalate (below), Greater Restoration (charmed or petrified when both are present), or Wild Shape (druid_wild_shape or primal_wild_shape, a form id from get_spell_info(primal_wild_shape), with empty targets). Greater Restoration names one party player or uses empty targets for self. Read its cast receipt for the condition removed and Wisdom restored. resolve_phase handles ability costs, \
 weapon damage, and any Focus and Resonance for spells. \
 ability_move — Shadow Step uses action="rogue_shadow_step" or its active variant id and destination \
 with x, y, z coordinates from combat facts. Move up to effective speed using normal movement rules. \
