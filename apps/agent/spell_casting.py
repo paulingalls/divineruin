@@ -20,6 +20,7 @@ import dice
 import hollow_echo as hollow_echo_mod
 import hollow_echo_events
 import leveling
+import mage_warding_direct
 import racial_resonance
 import resonance as resonance_mod
 import resonance_events
@@ -69,9 +70,10 @@ async def _cast_spell_impl(
     condition_produce_mod=condition_produce,
     character_spells_mod=character_spells,
 ) -> str:
-    """Out-of-combat cast entry. Opens its own transaction, delegates the cast to the shared
+    """Direct cast entry. Opens its own transaction, delegates the cast to the shared
     ``_resolve_cast`` core, then syncs the in-memory SSOT and flushes the deferred events
-    post-commit. In-combat casting flows through declare_phase/resolve_phase instead (story-007)."""
+    post-commit. Declared in-combat casts settle through declare_phase/resolve_phase (story-007); a
+    direct cast during combat updates the combat image only through ``mage_warding_direct``."""
     context.disallow_interruptions()
     _validate_id(spell_id, "spell_id")
     session: SessionData = context.userdata
@@ -112,7 +114,20 @@ async def _cast_spell_impl(
                 character_spells_mod=character_spells_mod,
                 **choice,
             )
+            warded_state = await mage_warding_direct.settle(
+                session,
+                spells_mod.get_spell(spell_id),
+                player_id,
+                target_id,
+                target_ids,
+                result.packet,
+                result.events,
+                conn=conn,
+                queries=queries_mod,
+            )
 
+        if warded_state is not None:
+            session.combat_state = warded_state
         # Transaction committed cleanly — sync the in-memory SSOT to the persisted values, then release
         # the deferred client events. A rolled-back tx skips this (the `async with` re-raises), so the
         # session stays pristine and no event fires.

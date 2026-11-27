@@ -16,6 +16,8 @@ export function validateEncounterReferences(
     if (typeof size !== "number" || !Number.isInteger(size) || size < 1)
       throw new Error(`${label}: recommended_party_size must be a positive integer`);
   }
+  if (Object.hasOwn(row, "vessel") && !["aboard_moving", "boarding"].includes(row.vessel as string))
+    throw new Error(`${label}: vessel must be aboard_moving or boarding`);
   if (!Array.isArray(row.enemies) || !row.enemies.length)
     throw new Error(`${label}: enemies must be a nonempty list`);
   const seen = new Set<string>();

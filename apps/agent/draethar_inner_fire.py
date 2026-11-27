@@ -99,7 +99,7 @@ async def _inner_fire_locked(
         impact = temp_hp.absorb(
             fire_damage,
             hp_before,
-            temp_hp.player_pool(participant),
+            temp_hp.combat_pool(participant),
             beast=temp_hp.beast_pool(participant),
             hp_floor=conditions.damage_hp_floor(participant.conditions),
         )

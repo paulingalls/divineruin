@@ -54,7 +54,7 @@ def _project_combatant(p: CombatParticipant, active_id: str | None) -> dict:
         "yielded": p.yielded,
         "hpCurrent": p.hp_current,
         "hpMax": p.hp_max,
-        "tempHp": temp_hp.player_pool(p),
+        "tempHp": temp_hp.combat_pool(p),
         "conditions": [_project_condition(c) for c in p.conditions],
         "isActive": p.id == active_id,
     }

@@ -290,6 +290,7 @@ export interface Encounter {
   recommended_party_size?: number;
   difficulty: string; // "easy" | "moderate" | "hard"
   enemies: EncounterEnemy[];
+  vessel?: "aboard_moving" | "boarding";
   witness?: string;
   accused?: string[];
   stance_gate?: StanceGate;

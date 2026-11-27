@@ -4,7 +4,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from functools import cache
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import choir_effects
 import combat_order_riders
@@ -149,6 +149,7 @@ class CombatState:
     quick_fingers_wary: dict[str, dict[str, Wary]] = field(default_factory=dict)
     round_checkpoints: list[dict] = field(default_factory=list)
     testimony: Testimony | None = None
+    vessel: Literal["aboard_moving", "boarding"] | None = None
 
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
@@ -189,6 +190,7 @@ class CombatState:
 
         state = cls(
             encounter_id=data.get("encounter_id", ""),
+            vessel=data.get("vessel"),
             architect_encounter=data.get("architect_encounter"),
             still_encounter=data.get("still_encounter"),
             choir_encounter=data.get("choir_encounter"),
