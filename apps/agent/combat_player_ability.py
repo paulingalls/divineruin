@@ -70,13 +70,15 @@ async def resolve(
             attacker, decl, locked, wild_shape.druid_profile(), focus_cost=cost.focus, stamina_cost=cost.stamina
         )
         beast = await wild_shape.prepare_form(form_id, conn)
-        form = await wild_shape.transform(attacker, form_id, beast, focus=focus, stamina=stamina, conn=conn)
+        transformation = await wild_shape.transform(
+            attacker, form_id, beast, player=locked, focus=focus, stamina=stamina, conn=conn
+        )
         return {
             "actor_id": attacker.id,
             "resolved": True,
             "declaration_type": str(decl.type),
             "action": decl.action,
-            "wild_shape": form,
+            **transformation,
             "effect": ability.effect,
             "narration_cue": ability.narration_cue,
         }

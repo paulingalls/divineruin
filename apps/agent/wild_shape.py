@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, NamedTuple, TypedDict
 from livekit.agents.llm import ToolError
 
 import ability_persistence
+import patron_synergy
+import temp_hp
 from catalog_parse import parse_str
 from condition_sources import DeliveryRefused
 from creature_catalog import query_creature_by_id
@@ -134,6 +136,7 @@ async def transform(
     form_id: str,
     beast: PreparedForm,
     *,
+    player: dict,
     focus: int | None,
     stamina: int | None,
     conn: asyncpg.Connection,
@@ -152,4 +155,8 @@ async def transform(
     actor.ac = ac
     actor.action_pool = attacks
     actor.deferred_effects = deferred_effects
-    return {"form_id": form_id, "name": name, "hp_current": hp, "hp_max": hp}
+    receipt = {"wild_shape": {"form_id": form_id, "name": name, "hp_current": hp, "hp_max": hp}}
+    if bonus := patron_synergy.wild_shape_bonus(player):
+        before, after = await temp_hp.grant(actor.id, player, 5, participant=actor, conn=conn)
+        receipt["wild_shape_synergy"] = {**bonus, "temp_hp": after, "granted": after - before}
+    return receipt

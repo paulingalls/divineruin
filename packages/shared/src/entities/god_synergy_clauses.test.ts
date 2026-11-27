@@ -260,3 +260,19 @@ test("Zhael's bard and diplomat have the registered Foretold Words clause", () =
     });
   }
 });
+
+test("Thyra's Wild Kinship grants temporary HP to all three Wild Shape archetypes", () => {
+  const thyra = validateGods(catalog).find((god) => god.god_id === "thyra");
+  for (const archetype of ["druid", "beastcaller", "warden"] as const) {
+    const row = thyra?.layer_4_synergy_matrix[archetype];
+    expect(row).toMatchObject({ type: "natural", name: "Wild Kinship" });
+    expect(row?.clauses.filter((clause) => clause.effect === "Wild Shape +5 temp HP")).toEqual([
+      {
+        effect: "Wild Shape +5 temp HP",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "thyra_wild_shape",
+      },
+    ]);
+  }
+});
