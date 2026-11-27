@@ -34,7 +34,7 @@ from activate_tools import activate
 from check_resolution import D20Roll
 from combat_agent import create_combat_agent
 from patron_passives import effective_hp
-from session_data import CombatParticipant, CompanionState
+from session_data import CombatParticipant, CombatState, CompanionState
 
 CLAUSE = "orenthel_mage_warding"
 FLY = "arcane_fly"
@@ -64,6 +64,15 @@ async def check_pools(expected: dict[str, int], state=None) -> None:
         assert temp_hp.from_player(await player_row(pid)) == pool, pid
         if state is not None:
             assert participant(state, pid).temp_hp == pool, pid
+
+
+async def mark_fallen(state: CombatState, player_id: str) -> None:
+    fallen = participant(state, player_id)
+    fallen.hp_current = 0
+    fallen.is_fallen = True
+    before = await player_row(player_id)
+    await update_player(player_id, hp={**before["hp"], "current": 0})
+    await db_mutations.save_combat_state(state.combat_id, state.to_dict())
 
 
 @pytest.fixture
@@ -186,12 +195,21 @@ async def test_direct_combat_cast_wards_both_stores(mage_party, spell, self_cast
     assert participant(stored, recipient).temp_hp == 1
 
 
-async def test_direct_combat_cast_on_a_foe_wards_no_one(mage_party):
+@pytest.mark.parametrize(("spell", "target"), [(HASTE, "foe"), (HASTE, "fallen"), (MAGE_LIGHT, "ally"), (BOLT, "self")])
+async def test_direct_combat_exclusions(mage_party, spell, target):
     ctx, mage, ally, control = mage_party
-    cast = json.loads(await activate(ctx, HASTE, target_id="foe"))
+    state = ctx.userdata.combat_state
+    if target == "fallen":
+        await mark_fallen(state, ally)
+    recipient = {"foe": "foe", "fallen": ally, "ally": ally, "self": mage}[target]
+    cast = json.loads(await activate(ctx, spell, target_id=recipient))
+    assert cast["target_id"] == recipient
     assert "mage_warding" not in cast
-    assert participant(ctx.userdata.combat_state, "foe").temp_hp == 0
-    await check_pools({mage: 0, ally: 0, control: 0}, ctx.userdata.combat_state)
+    assert all(actor.temp_hp == 0 for actor in ctx.userdata.combat_state.participants)
+    stored = await db_mutations.load_combat_state(state.combat_id)
+    assert stored is not None
+    await check_pools({mage: 0, ally: 0, control: 0}, stored)
+    assert participant(stored, "foe").temp_hp == 0
 
 
 async def test_exploration_ward_follows_applied_condition_targets(mage_party):
@@ -262,12 +280,7 @@ async def test_combat_exclusions(mage_party, spell, target):
         participant(state, ally).condition_immunities = {"invisible": "innate immunity"}
         await db_mutations.save_combat_state(state.combat_id, state.to_dict())
     if target == "fallen":
-        fallen = participant(state, ally)
-        fallen.hp_current = 0
-        fallen.is_fallen = True
-        before = await player_row(ally)
-        await update_player(ally, hp={**before["hp"], "current": 0})
-        await db_mutations.save_combat_state(state.combat_id, state.to_dict())
+        await mark_fallen(state, ally)
     packets, state = await play(ctx, cast_spell(mage, spell, recipient))
     cast = receipt(packets, mage)
     await check_pools({mage: 0, ally: 0, control: 0}, state)
