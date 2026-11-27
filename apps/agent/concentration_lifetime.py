@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
@@ -63,7 +64,12 @@ async def settle_combat(
 
 
 async def settle_time(
-    session: SessionData, players: dict[str, dict], seconds: int, *, conn: asyncpg.Connection, long_rest: bool = False
+    session: SessionData,
+    players: dict[str, dict],
+    seconds: int,
+    *,
+    conn: asyncpg.Connection,
+    long_rest_ids: Collection[str] = (),
 ) -> tuple[dict[str, ConcentrationState], list[dict[str, str]]]:
     updates: dict[str, ConcentrationState] = {}
     expired: list[dict[str, str]] = []
@@ -73,7 +79,7 @@ async def settle_time(
         if spell_id is None:
             continue
         elapsed = current.elapsed_seconds + seconds
-        if long_rest or elapsed >= _duration(spell_id):
+        if pid in long_rest_ids or elapsed >= _duration(spell_id):
             await end_concentration(session, pid, combat_state=None, conn=conn, updates=updates, record=current)
             expired.append({"caster_id": pid, "spell_id": spell_id})
         else:

@@ -93,7 +93,7 @@ async def test_rest_keeps_only_spells_longer_than_an_hour(world) -> None:
         assert joined == session.member_state(guest).concentration
         await rest("rest", rest_type="long", use_song_of_rest=False)
         assert not (await reload_guest(host, guest, session.location_id)).is_active
-        assert await save_total(remote) == plain + 3
+        assert await save_total(remote) == plain
 
 
 async def test_rest_settles_a_caster_who_moved_away(world) -> None:

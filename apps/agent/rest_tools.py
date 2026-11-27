@@ -76,14 +76,16 @@ async def rest(context: RunContext[SessionData], rest_type: RestType, use_song_o
         hollowed_changes = []
         song = None
         async with db.transaction() as conn:
-            players = await db_queries.get_players_for_update(member_ids, conn=conn)
-            if set(players) != set(member_ids):
-                raise ValueError(f"Rest is missing player rows: {set(member_ids) - set(players)}")
-            if players[actor].get("location_id") != location_id:
+            party_ids = sorted(session.party.member_ids) if owner else member_ids
+            party = await db_queries.get_players_for_update(party_ids, conn=conn)
+            if set(party) != set(party_ids):
+                raise ValueError(f"Rest is missing player rows: {set(party_ids) - set(party)}")
+            if party[actor].get("location_id") != location_id:
                 raise ToolError("You are no longer at this rest location.")
-            players = {pid: row for pid, row in players.items() if row.get("location_id") == location_id}
+            players = {pid: party[pid] for pid in member_ids if party[pid].get("location_id") == location_id}
+            # The hour passes for the whole party; only the members resting here recover.
             concentration_updates, concentration_expired = await concentration_lifetime.settle_time(
-                session, players, 3600, long_rest=rest_type == "long", conn=conn
+                session, party, 3600, long_rest_ids=players if rest_type == "long" else (), conn=conn
             )
             if concentration_expired:
                 players = await db_queries.get_players_for_update(sorted(players), conn=conn)
