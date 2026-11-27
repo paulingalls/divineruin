@@ -41,6 +41,7 @@ for (const row of cases) {
       const npc = npcs.find(({ id }) => id === row.npc)!;
       const pool = pools.get(npc.inventory_pool!)!;
       pool.location = row.pool_location ?? pool.location;
+      pool.buys = row.pool_buys ?? pool.buys;
       const authored = locations.find(({ id }) => id === pool.location);
       const location = authored && { ...authored, ...row.location_fields };
       if (row.error) {

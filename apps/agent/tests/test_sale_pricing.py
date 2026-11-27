@@ -76,6 +76,7 @@ async def test_sale_quote(case, pool_lookup):
         npc = next(npc for npc in authored("npcs.json") if npc["id"] == case["npc"])
         pool = pools[npc["inventory_pool"]]
         pool["location"] = case.get("pool_location", pool["location"])
+        pool["buys"] = case.get("pool_buys", pool["buys"])
         location = next((row for row in authored("locations.json") if row["id"] == pool["location"]), None)
         if location is not None:
             location.update(case.get("location_fields", {}))

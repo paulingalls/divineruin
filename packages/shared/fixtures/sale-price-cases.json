@@ -316,6 +316,24 @@
     }
   },
   {
+    "id": "allocation_military_weapon_buyer",
+    "npc": "grimjaw_blacksmith",
+    "expected_allocation_sp": 800,
+    "pool_buys": ["weapon"],
+    "location_fields": {
+      "personality": "military"
+    }
+  },
+  {
+    "id": "allocation_military_armor_buyer",
+    "npc": "grimjaw_blacksmith",
+    "expected_allocation_sp": 800,
+    "pool_buys": ["armor"],
+    "location_fields": {
+      "personality": "military"
+    }
+  },
+  {
     "id": "allocation_scholarly",
     "npc": "grimjaw_blacksmith",
     "expected_allocation_sp": 400,
