@@ -3,6 +3,7 @@ import json
 import re
 import subprocess
 import tomllib
+from datetime import date
 from pathlib import Path
 
 from native_transport.evidence import reject_credentials
@@ -148,17 +149,17 @@ def _validate_mobile_baseline(root: Path, report: dict, rows: dict[tuple[str, st
     for field, package in (("expo", "expo"), ("react_native", "react-native")):
         if baseline.get(field) != mobile.get(package, {}).get("locked"):
             raise ValueError(f"mobile baseline {field} differs from lock")
-    if baseline.get("engine") != "Hermes V1 (SDK 57 default)":
-        raise ValueError("mobile baseline engine must be the SDK 57 Hermes V1 default")
+    if baseline.get("engine") != "Hermes V1 (SDK 58 default)":
+        raise ValueError("mobile baseline engine must be the SDK 58 Hermes V1 default")
     expected_minimums = {
         "android": "7+",
-        "compile_sdk": 36,
+        "compile_sdk": 37,
         "target_sdk": 36,
         "ios": "16.4+",
         "xcode": "26.4+",
     }
     if baseline.get("platform_minimums") != expected_minimums:
-        raise ValueError("mobile baseline platform minimums differ from SDK 57")
+        raise ValueError("mobile baseline platform minimums differ from SDK 58")
     if baseline.get("plugins") != _configured_plugins(root):
         raise ValueError("mobile baseline plugin inventory differs from app.json")
 
@@ -180,28 +181,13 @@ def _validate_mobile_baseline(root: Path, report: dict, rows: dict[tuple[str, st
         raise ValueError("mobile baseline patch inventory differs from repository")
 
     expected_livekit = {
-        "@livekit/react-native": "2.12.0",
-        "@livekit/react-native-webrtc": "144.1.2",
+        "@livekit/react-native": "3.2.0",
+        "@livekit/react-native-webrtc": "150.2.0",
+        "@livekit/react-native-expo-plugin": "1.2.0",
     }
     for name, expected in expected_livekit.items():
         if mobile.get(name, {}).get("locked") != expected:
             raise ValueError(f"mobile baseline incompatible LiveKit graph: {name}")
-
-    exceptions = baseline.get("release_age_exceptions")
-    if not isinstance(exceptions, list) or {row.get("name") for row in exceptions} != {
-        "expo",
-        "expo-asset",
-        "expo-notifications",
-        "expo-router",
-    }:
-        raise ValueError("mobile baseline release-age exceptions are incomplete")
-    for exception in exceptions:
-        name = exception["name"]
-        if exception.get("version") != mobile.get(name, {}).get("locked"):
-            raise ValueError(f"release-age exception differs from lock: {name}")
-        for field in ("published_at", "command", "evidence"):
-            if not exception.get(field):
-                raise ValueError(f"release-age exception {field} is empty: {name}")
 
     compatibility = baseline.get("compatibility_exceptions")
     if not isinstance(compatibility, list):
@@ -248,6 +234,24 @@ def _validate_mobile_baseline(root: Path, report: dict, rows: dict[tuple[str, st
     for field in ("build", "device"):
         if not android.get(field):
             raise ValueError(f"recorded Android validation is empty: {field}")
+
+
+def _validate_mobile_exemption(report: dict) -> None:
+    note = report.get("mobile_release_age_exemption")
+    if not isinstance(note, dict) or not all(note.get(field) for field in ("date", "reference", "evidence")):
+        raise ValueError("historical mobile release-age exemption is incomplete")
+    if date.fromisoformat(note["date"]).isoformat() != note["date"]:
+        raise ValueError("historical mobile release-age exemption date must be YYYY-MM-DD")
+    packages = note.get("packages")
+    if not isinstance(packages, list) or not packages:
+        raise ValueError("historical mobile release-age exemption has no packages")
+    names = set()
+    for row in packages:
+        if not all(row.get(field) for field in ("name", "previous", "version")):
+            raise ValueError(f"historical mobile release-age exemption package is incomplete: {row}")
+        if row["name"] in names:
+            raise ValueError(f"duplicate historical mobile release-age exemption package: {row['name']}")
+        names.add(row["name"])
 
 
 def validate_workspace_report(root: Path, report: dict, installed: dict[tuple[str, str], str]) -> None:
@@ -318,3 +322,4 @@ def validate_workspace_report(root: Path, report: dict, installed: dict[tuple[st
         ):
             raise ValueError(f"apps/web React hold requires producer: {name}")
     _validate_mobile_baseline(root, report, actual)
+    _validate_mobile_exemption(report)

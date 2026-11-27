@@ -6,7 +6,7 @@
     "accepted_commit": "795cec97832a7fe2d7567b36d0343e476e236b76",
     "accepted_at": "2026-09-19T14:14:59Z"
   },
-  "registry_snapshot_date": "2026-09-19",
+  "registry_snapshot_date": "2026-11-26",
   "python_version": "3.14.7",
   "uv_version": "0.13.9",
   "projects": [
@@ -17,87 +17,28 @@
     {
       "project": "apps/agent",
       "group": "runtime",
-      "name": "livekit-agents",
-      "requested": "~=1.8.2",
-      "resolved": "1.8.2",
-      "installed": "1.8.2",
-      "latest_stable": "1.8.2",
-      "held_back_by": null
-    },
-    {
-      "project": "apps/agent",
-      "group": "runtime",
-      "name": "livekit-plugins-anthropic",
-      "requested": "~=1.8.2",
-      "resolved": "1.8.2",
-      "installed": "1.8.2",
-      "latest_stable": "1.8.2",
-      "held_back_by": null
-    },
-    {
-      "project": "apps/agent",
-      "group": "runtime",
-      "name": "livekit-plugins-deepgram",
-      "requested": "~=1.8.2",
-      "resolved": "1.8.2",
-      "installed": "1.8.2",
-      "latest_stable": "1.8.2",
-      "held_back_by": null
-    },
-    {
-      "project": "apps/agent",
-      "group": "runtime",
-      "name": "livekit-plugins-inworld",
-      "requested": "~=1.8.2",
-      "resolved": "1.8.2",
-      "installed": "1.8.2",
-      "latest_stable": "1.8.2",
-      "held_back_by": null
-    },
-    {
-      "project": "apps/agent",
-      "group": "runtime",
-      "name": "livekit-plugins-openai",
-      "requested": "~=1.8.2",
-      "resolved": "1.8.2",
-      "installed": "1.8.2",
-      "latest_stable": "1.8.2",
-      "held_back_by": null
+      "name": "anthropic",
+      "requested": ">=1.17.0,<2",
+      "resolved": "1.17.0",
+      "installed": "1.17.0",
+      "latest_stable": "2.14.0",
+      "held_back_by": {
+        "kind": "vendor",
+        "package": "livekit-plugins-anthropic",
+        "version": "1.8.13",
+        "specifier": "<2,>=1.8",
+        "reason": "`livekit-plugins-anthropic==1.8.13` requires `anthropic<2,>=1.8`. The agent manifest also caps Anthropic below 2."
+      }
     },
     {
       "project": "apps/agent",
       "group": "runtime",
       "name": "asyncpg",
-      "requested": ">=0.31.0",
-      "resolved": "0.31.0",
-      "installed": "0.31.0",
-      "latest_stable": "0.31.0",
+      "requested": ">=0.32.0,<1",
+      "resolved": "0.32.0",
+      "installed": "0.32.0",
+      "latest_stable": "0.32.0",
       "held_back_by": null
-    },
-    {
-      "project": "apps/agent",
-      "group": "runtime",
-      "name": "redis",
-      "requested": ">=8.1.0",
-      "resolved": "8.1.0",
-      "installed": "8.1.0",
-      "latest_stable": "8.1.0",
-      "held_back_by": null
-    },
-    {
-      "project": "apps/agent",
-      "group": "runtime",
-      "name": "anthropic",
-      "requested": ">=0.125.0,<1",
-      "resolved": "0.125.0",
-      "installed": "0.125.0",
-      "latest_stable": "1.7.0",
-      "held_back_by": {
-        "package": "livekit-plugins-anthropic",
-        "version": "1.8.2",
-        "specifier": "<1,>=0.41",
-        "reason": "Anthropic 1.7.0 is outside the plugin's published constraint; the project mirrors the same <1 cap."
-      }
     },
     {
       "project": "apps/agent",
@@ -106,8 +47,98 @@
       "requested": ">=0.28.1",
       "resolved": "0.28.1",
       "installed": "0.28.1",
-      "latest_stable": "0.28.1",
-      "held_back_by": null
+      "latest_stable": "0.29.0",
+      "held_back_by": {
+        "kind": "release-age",
+        "policy": "7 days",
+        "published_at": "2026-11-26T15:58:35.703131Z",
+        "reason": "`apps/agent/pyproject.toml` sets `exclude-newer = \"7 days\"`. 0.29.0 was published 2026-11-26T15:58:35.703131Z."
+      }
+    },
+    {
+      "project": "apps/agent",
+      "group": "runtime",
+      "name": "livekit-agents",
+      "requested": "~=1.8.13",
+      "resolved": "1.8.13",
+      "installed": "1.8.13",
+      "latest_stable": "1.9.0",
+      "held_back_by": {
+        "kind": "manifest",
+        "specifier": "~=1.8.13",
+        "reason": "`apps/agent/pyproject.toml` requests `livekit-agents~=1.8.13`, which excludes 1.9.0."
+      }
+    },
+    {
+      "project": "apps/agent",
+      "group": "runtime",
+      "name": "livekit-plugins-anthropic",
+      "requested": "~=1.8.13",
+      "resolved": "1.8.13",
+      "installed": "1.8.13",
+      "latest_stable": "1.9.0",
+      "held_back_by": {
+        "kind": "manifest",
+        "specifier": "~=1.8.13",
+        "reason": "`apps/agent/pyproject.toml` requests `livekit-plugins-anthropic~=1.8.13`, which excludes 1.9.0."
+      }
+    },
+    {
+      "project": "apps/agent",
+      "group": "runtime",
+      "name": "livekit-plugins-deepgram",
+      "requested": "~=1.8.13",
+      "resolved": "1.8.13",
+      "installed": "1.8.13",
+      "latest_stable": "1.9.0",
+      "held_back_by": {
+        "kind": "manifest",
+        "specifier": "~=1.8.13",
+        "reason": "`apps/agent/pyproject.toml` requests `livekit-plugins-deepgram~=1.8.13`, which excludes 1.9.0."
+      }
+    },
+    {
+      "project": "apps/agent",
+      "group": "runtime",
+      "name": "livekit-plugins-inworld",
+      "requested": "~=1.8.13",
+      "resolved": "1.8.13",
+      "installed": "1.8.13",
+      "latest_stable": "1.9.0",
+      "held_back_by": {
+        "kind": "manifest",
+        "specifier": "~=1.8.13",
+        "reason": "`apps/agent/pyproject.toml` requests `livekit-plugins-inworld~=1.8.13`, which excludes 1.9.0."
+      }
+    },
+    {
+      "project": "apps/agent",
+      "group": "runtime",
+      "name": "livekit-plugins-openai",
+      "requested": "~=1.8.13",
+      "resolved": "1.8.13",
+      "installed": "1.8.13",
+      "latest_stable": "1.9.0",
+      "held_back_by": {
+        "kind": "manifest",
+        "specifier": "~=1.8.13",
+        "reason": "`apps/agent/pyproject.toml` requests `livekit-plugins-openai~=1.8.13`, which excludes 1.9.0."
+      }
+    },
+    {
+      "project": "apps/agent",
+      "group": "runtime",
+      "name": "redis",
+      "requested": ">=8.1.0",
+      "resolved": "8.1.0",
+      "installed": "8.1.0",
+      "latest_stable": "8.2.0",
+      "held_back_by": {
+        "kind": "release-age",
+        "policy": "7 days",
+        "published_at": "2026-11-23T08:31:55.011623Z",
+        "reason": "`apps/agent/pyproject.toml` sets `exclude-newer = \"7 days\"`. 8.2.0 was published 2026-11-23T08:31:55.011623Z."
+      }
     },
     {
       "project": "apps/agent",
@@ -117,6 +148,16 @@
       "resolved": "7.2.0",
       "installed": "7.2.0",
       "latest_stable": "7.2.0",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "dev",
+      "name": "httpx2",
+      "requested": ">=2,<3",
+      "resolved": "2.16.2",
+      "installed": "2.16.2",
+      "latest_stable": "2.16.2",
       "held_back_by": null
     },
     {
@@ -153,10 +194,10 @@
       "project": "apps/agent",
       "group": "dev",
       "name": "pytest-asyncio",
-      "requested": ">=1.4.0",
-      "resolved": "1.4.0",
-      "installed": "1.4.0",
-      "latest_stable": "1.4.0",
+      "requested": ">=1.5.0,<2",
+      "resolved": "1.5.0",
+      "installed": "1.5.0",
+      "latest_stable": "1.5.0",
       "held_back_by": null
     },
     {
@@ -203,10 +244,10 @@
       "project": "apps/agent",
       "group": "dev",
       "name": "ruff",
-      "requested": ">=0.16.8",
-      "resolved": "0.16.8",
-      "installed": "0.16.8",
-      "latest_stable": "0.16.8",
+      "requested": ">=0.17.6,<1",
+      "resolved": "0.17.6",
+      "installed": "0.17.6",
+      "latest_stable": "0.17.6",
       "held_back_by": null
     },
     {
@@ -223,10 +264,10 @@
       "project": "scripts",
       "group": "runtime",
       "name": "asyncpg",
-      "requested": ">=0.31.0",
-      "resolved": "0.31.0",
-      "installed": "0.31.0",
-      "latest_stable": "0.31.0",
+      "requested": ">=0.32.0,<1",
+      "resolved": "0.32.0",
+      "installed": "0.32.0",
+      "latest_stable": "0.32.0",
       "held_back_by": null
     }
   ],
@@ -250,8 +291,8 @@
       "installed": "10.0.1",
       "candidate": "10.0.1",
       "registry_latest": "10.0.1",
-      "held_by": null,
-      "reason": null
+      "reason": null,
+      "held_by": null
     },
     {
       "project": ".",
@@ -260,10 +301,10 @@
       "requested": "git+https://github.com/paulingalls/proof.git#v0.34.1",
       "locked": "github:paulingalls/proof#059e14b",
       "installed": "github:paulingalls/proof#059e14b",
-      "candidate": "0.34.1",
-      "registry_latest": "0.34.1",
-      "held_by": null,
-      "reason": "git tag pin"
+      "candidate": "\u2014",
+      "registry_latest": "\u2014",
+      "reason": "Git source pinned by the manifest and lock",
+      "held_by": null
     },
     {
       "project": ".",
@@ -273,21 +314,21 @@
       "locked": "1.4.4",
       "installed": "1.4.4",
       "candidate": "1.4.4",
-      "registry_latest": "1.4.4",
-      "held_by": null,
-      "reason": null
+      "registry_latest": "1.4.5",
+      "reason": "The requested range `1.4.4` excludes 1.4.5.",
+      "held_by": "package.json"
     },
     {
       "project": ".",
       "group": "devDependencies",
       "name": "eslint",
-      "requested": "^10.10.0",
-      "locked": "10.10.0",
-      "installed": "10.10.0",
-      "candidate": "10.10.0",
-      "registry_latest": "10.11.0",
-      "held_by": null,
-      "reason": "Registry latest is inside the unchanged seven-day minimum release age; the candidate is the newest eligible stable release."
+      "requested": "^10.15.0",
+      "locked": "10.15.0",
+      "installed": "10.15.0",
+      "candidate": "10.15.0",
+      "registry_latest": "10.15.0",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": ".",
@@ -298,8 +339,8 @@
       "installed": "10.1.8",
       "candidate": "10.1.8",
       "registry_latest": "10.1.8",
-      "held_by": null,
-      "reason": null
+      "reason": null,
+      "held_by": null
     },
     {
       "project": ".",
@@ -310,44 +351,32 @@
       "installed": "7.1.1",
       "candidate": "7.1.1",
       "registry_latest": "7.1.1",
-      "held_by": null,
-      "reason": null
+      "reason": null,
+      "held_by": null
     },
     {
       "project": ".",
       "group": "devDependencies",
       "name": "eslint-plugin-react-refresh",
-      "requested": "^0.5.6",
-      "locked": "0.5.6",
-      "installed": "0.5.6",
-      "candidate": "0.5.6",
-      "registry_latest": "0.5.7",
-      "held_by": null,
-      "reason": "Registry latest is inside the unchanged seven-day minimum release age; the candidate is the newest eligible stable release."
+      "requested": "^0.5.8",
+      "locked": "0.5.8",
+      "installed": "0.5.8",
+      "candidate": "0.5.8",
+      "registry_latest": "0.5.8",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": ".",
       "group": "devDependencies",
       "name": "prettier",
-      "requested": "^3.9.6",
-      "locked": "3.9.6",
-      "installed": "3.9.6",
-      "candidate": "3.9.6",
-      "registry_latest": "3.9.8",
-      "held_by": null,
-      "reason": "Registry latest is inside the unchanged seven-day minimum release age; the candidate is the newest eligible stable release."
-    },
-    {
-      "project": ".",
-      "group": "devDependencies",
-      "name": "typescript-eslint",
-      "requested": "^8.70.0",
-      "locked": "8.70.0",
-      "installed": "8.70.0",
-      "candidate": "8.70.0",
-      "registry_latest": "8.70.0",
-      "held_by": null,
-      "reason": null
+      "requested": "^3.10.1",
+      "locked": "3.10.1",
+      "installed": "3.10.1",
+      "candidate": "3.10.1",
+      "registry_latest": "3.10.1",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": ".",
@@ -358,8 +387,20 @@
       "installed": "6.0.3",
       "candidate": "6.0.3",
       "registry_latest": "7.0.2",
-      "held_by": null,
-      "reason": "TypeScript 7.0.2 exceeds typescript-eslint 8.70.0 peer range >=4.8.4 <6.1.0; 6.0.3 is the newest compatible stable release."
+      "reason": "Its TypeScript peer range is `>=4.8.4 <6.1.0`. `package.json` requests `6.0.3`.",
+      "held_by": "typescript-eslint@8.73.0"
+    },
+    {
+      "project": ".",
+      "group": "devDependencies",
+      "name": "typescript-eslint",
+      "requested": "^8.73.0",
+      "locked": "8.73.0",
+      "installed": "8.73.0",
+      "candidate": "8.73.0",
+      "registry_latest": "8.74.0",
+      "reason": "The seven-day Bun policy applies to 8.74.0, published 2026-11-23T17:06:58.945Z.",
+      "held_by": "bunfig.toml"
     },
     {
       "project": ".",
@@ -370,8 +411,8 @@
       "installed": "6.0.3",
       "candidate": "6.0.3",
       "registry_latest": "7.0.2",
-      "held_by": null,
-      "reason": "TypeScript 7.0.2 exceeds typescript-eslint 8.70.0 peer range >=4.8.4 <6.1.0; 6.0.3 is the newest compatible stable release."
+      "reason": "Its TypeScript peer range is `>=4.8.4 <6.1.0`. `package.json` requests `>=5.9 <6.1`.",
+      "held_by": "typescript-eslint@8.73.0"
     },
     {
       "project": "apps/mobile",
@@ -382,8 +423,8 @@
       "installed": "15.0.2",
       "candidate": "15.0.2",
       "registry_latest": "15.0.2",
-      "held_by": null,
-      "reason": null
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
@@ -392,10 +433,10 @@
       "requested": "workspace:*",
       "locked": "workspace:packages/design-tokens",
       "installed": "workspace:packages/design-tokens",
-      "candidate": "workspace:packages/design-tokens",
-      "registry_latest": "workspace:packages/design-tokens",
-      "held_by": null,
-      "reason": null
+      "candidate": "\u2014",
+      "registry_latest": "\u2014",
+      "reason": "Workspace source",
+      "held_by": null
     },
     {
       "project": "apps/mobile",
@@ -404,10 +445,10 @@
       "requested": "workspace:*",
       "locked": "workspace:packages/shared",
       "installed": "workspace:packages/shared",
-      "candidate": "workspace:packages/shared",
-      "registry_latest": "workspace:packages/shared",
-      "held_by": null,
-      "reason": null
+      "candidate": "\u2014",
+      "registry_latest": "\u2014",
+      "reason": "Workspace source",
+      "held_by": null
     },
     {
       "project": "apps/mobile",
@@ -418,8 +459,8 @@
       "installed": "0.4.1",
       "candidate": "0.4.1",
       "registry_latest": "0.4.1",
-      "held_by": null,
-      "reason": null
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
@@ -430,92 +471,92 @@
       "installed": "0.4.2",
       "candidate": "0.4.2",
       "registry_latest": "0.4.2",
-      "held_by": null,
-      "reason": null
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "@expo-google-fonts/ibm-plex-mono",
-      "requested": "^0.4.1",
-      "locked": "0.4.1",
-      "installed": "0.4.1",
-      "candidate": "0.4.1",
-      "registry_latest": "0.4.1",
-      "held_by": null,
-      "reason": null
+      "requested": "^0.4.2",
+      "locked": "0.4.2",
+      "installed": "0.4.2",
+      "candidate": "0.4.2",
+      "registry_latest": "0.4.2",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "@expo/vector-icons",
-      "requested": "^15.0.2",
+      "requested": "^15.1.1",
       "locked": "15.1.1",
       "installed": "15.1.1",
       "candidate": "15.1.1",
       "registry_latest": "15.1.1",
-      "held_by": null,
-      "reason": null
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "@livekit/components-core",
-      "requested": "^0.12.15",
-      "locked": "0.12.15",
-      "installed": "0.12.15",
-      "candidate": "0.12.15",
-      "registry_latest": "0.12.15",
-      "held_by": null,
-      "reason": null
+      "requested": "^0.12.16",
+      "locked": "0.12.16",
+      "installed": "0.12.16",
+      "candidate": "0.12.16",
+      "registry_latest": "0.12.17",
+      "reason": "The seven-day Bun policy applies to 0.12.17, published 2026-11-20T14:44:52.126Z.",
+      "held_by": "bunfig.toml"
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "@livekit/components-react",
-      "requested": "^2.9.24",
-      "locked": "2.9.24",
-      "installed": "2.9.24",
-      "candidate": "2.9.24",
-      "registry_latest": "2.9.24",
-      "held_by": null,
-      "reason": null
+      "requested": "^2.9.25",
+      "locked": "2.9.25",
+      "installed": "2.9.25",
+      "candidate": "2.9.25",
+      "registry_latest": "2.9.26",
+      "reason": "The seven-day Bun policy applies to 2.9.26, published 2026-11-20T14:43:54.432Z.",
+      "held_by": "bunfig.toml"
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "@livekit/react-native",
-      "requested": "2.12.0",
-      "locked": "2.12.0",
-      "installed": "2.12.0",
-      "candidate": "2.12.0",
-      "registry_latest": "3.0.0",
-      "held_by": "@livekit/react-native-expo-plugin@1.0.2",
-      "reason": "The Expo plugin declares @livekit/react-native ^2.1.0; 2.12.0 is the newest compatible release and requires WebRTC ^144.1.2."
+      "requested": "3.2.0",
+      "locked": "3.2.0",
+      "installed": "3.2.0",
+      "candidate": "3.2.0",
+      "registry_latest": "3.2.0",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "@livekit/react-native-expo-plugin",
-      "requested": "^1.0.2",
-      "locked": "1.0.2",
-      "installed": "1.0.2",
-      "candidate": "1.0.2",
-      "registry_latest": "1.0.2",
-      "held_by": null,
-      "reason": null
+      "requested": "1.2.0",
+      "locked": "1.2.0",
+      "installed": "1.2.0",
+      "candidate": "1.2.0",
+      "registry_latest": "1.2.0",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "@livekit/react-native-webrtc",
-      "requested": "144.1.2",
-      "locked": "144.1.2",
-      "installed": "144.1.2",
-      "candidate": "144.1.2",
-      "registry_latest": "144.2.0",
-      "held_by": "@livekit/react-native@2.12.0",
-      "reason": "LiveKit React Native 2.12.0 declares WebRTC ^144.1.2; 144.1.2 retains the WebRTC-SDK framework required by that release."
+      "requested": "150.2.0",
+      "locked": "150.2.0",
+      "installed": "150.2.0",
+      "candidate": "150.2.0",
+      "registry_latest": "150.2.0",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
@@ -526,104 +567,92 @@
       "installed": "2.2.0",
       "candidate": "2.2.0",
       "registry_latest": "3.1.1",
-      "held_by": "expo@57.0.24",
-      "reason": "Expo SDK 57 bundledNativeModules.json selects @react-native-async-storage/async-storage 2.2.0."
+      "reason": "Expo recommends `2.2.0` and the mobile manifest pins `2.2.0`.",
+      "held_by": "expo@58.1.0"
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "@react-native-community/slider",
-      "requested": "5.2.0",
-      "locked": "5.2.0",
-      "installed": "5.2.0",
-      "candidate": "5.2.0",
-      "registry_latest": "5.2.1",
-      "held_by": "expo@57.0.24",
-      "reason": "Expo SDK 57 bundledNativeModules.json selects @react-native-community/slider 5.2.0."
+      "requested": "5.2.1",
+      "locked": "5.2.1",
+      "installed": "5.2.1",
+      "candidate": "5.2.1",
+      "registry_latest": "5.2.2",
+      "reason": "Expo recommends `5.2.1` and the mobile manifest pins `5.2.1`.",
+      "held_by": "expo@58.1.0"
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo",
-      "requested": "57.0.24",
-      "locked": "57.0.24",
-      "installed": "57.0.24",
-      "candidate": "57.0.24",
-      "registry_latest": "57.0.24",
-      "held_by": null,
-      "reason": null
+      "requested": "58.1.0",
+      "locked": "58.1.0",
+      "installed": "58.1.0",
+      "candidate": "58.1.0",
+      "registry_latest": "58.1.0",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-asset",
-      "requested": "57.0.18",
-      "locked": "57.0.18",
-      "installed": "57.0.18",
-      "candidate": "57.0.18",
-      "registry_latest": "57.0.18",
-      "held_by": null,
-      "reason": null
+      "requested": "58.0.21",
+      "locked": "58.0.21",
+      "installed": "58.0.21",
+      "candidate": "58.0.21",
+      "registry_latest": "58.0.21",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-audio",
-      "requested": "57.0.5",
-      "locked": "57.0.5",
-      "installed": "57.0.5",
-      "candidate": "57.0.5",
-      "registry_latest": "57.0.5",
-      "held_by": null,
-      "reason": null
-    },
-    {
-      "project": "apps/mobile",
-      "group": "dependencies",
-      "name": "expo-build-properties",
-      "requested": "57.0.21",
-      "locked": "57.0.21",
-      "installed": "57.0.21",
-      "candidate": "57.0.21",
-      "registry_latest": "57.0.21",
-      "held_by": null,
-      "reason": "Added on 2026-09-23 after the Sprint 102 snapshot so Expo SDK 57 builds adopt the iOS 27 scene lifecycle."
+      "requested": "58.0.12",
+      "locked": "58.0.12",
+      "installed": "58.0.12",
+      "candidate": "58.0.12",
+      "registry_latest": "58.0.12",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-crypto",
-      "requested": "57.0.3",
-      "locked": "57.0.3",
-      "installed": "57.0.3",
-      "candidate": "57.0.3",
-      "registry_latest": "57.0.3",
-      "held_by": null,
-      "reason": null
+      "requested": "58.0.9",
+      "locked": "58.0.9",
+      "installed": "58.0.9",
+      "candidate": "58.0.9",
+      "registry_latest": "58.0.9",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-dev-client",
-      "requested": "57.0.19",
-      "locked": "57.0.19",
-      "installed": "57.0.19",
-      "candidate": "57.0.19",
-      "registry_latest": "57.0.19",
-      "held_by": null,
-      "reason": null
+      "requested": "58.0.22",
+      "locked": "58.0.22",
+      "installed": "58.0.22",
+      "candidate": "58.0.22",
+      "registry_latest": "58.0.22",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-device",
-      "requested": "57.0.2",
-      "locked": "57.0.2",
-      "installed": "57.0.2",
-      "candidate": "57.0.2",
-      "registry_latest": "57.0.2",
-      "held_by": null,
-      "reason": null
+      "requested": "58.0.5",
+      "locked": "58.0.5",
+      "installed": "58.0.5",
+      "candidate": "58.0.5",
+      "registry_latest": "58.0.5",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
@@ -632,274 +661,274 @@
       "requested": "github:paulingalls/expo-disable-pods-indexing",
       "locked": "github:paulingalls/expo-disable-pods-indexing#fdd8959",
       "installed": "github:paulingalls/expo-disable-pods-indexing#fdd8959",
-      "candidate": "github:paulingalls/expo-disable-pods-indexing#fdd8959",
-      "registry_latest": "github:paulingalls/expo-disable-pods-indexing#fdd8959",
-      "held_by": null,
-      "reason": null
+      "candidate": "\u2014",
+      "registry_latest": "\u2014",
+      "reason": "Git source pinned by the manifest and lock",
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-font",
-      "requested": "57.0.4",
-      "locked": "57.0.4",
-      "installed": "57.0.4",
-      "candidate": "57.0.4",
-      "registry_latest": "57.0.4",
-      "held_by": null,
-      "reason": null
+      "requested": "58.0.12",
+      "locked": "58.0.12",
+      "installed": "58.0.12",
+      "candidate": "58.0.12",
+      "registry_latest": "58.0.12",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-glass-effect",
-      "requested": "57.0.3",
-      "locked": "57.0.3",
-      "installed": "57.0.3",
-      "candidate": "57.0.3",
-      "registry_latest": "57.0.3",
-      "held_by": null,
-      "reason": null
+      "requested": "58.0.6",
+      "locked": "58.0.6",
+      "installed": "58.0.6",
+      "candidate": "58.0.6",
+      "registry_latest": "58.0.6",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-haptics",
-      "requested": "57.0.3",
-      "locked": "57.0.3",
-      "installed": "57.0.3",
-      "candidate": "57.0.3",
-      "registry_latest": "57.0.3",
-      "held_by": null,
-      "reason": null
+      "requested": "58.0.8",
+      "locked": "58.0.8",
+      "installed": "58.0.8",
+      "candidate": "58.0.8",
+      "registry_latest": "58.0.8",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-image",
-      "requested": "57.0.5",
-      "locked": "57.0.5",
-      "installed": "57.0.5",
-      "candidate": "57.0.5",
-      "registry_latest": "57.0.5",
-      "held_by": null,
-      "reason": null
+      "requested": "58.0.19",
+      "locked": "58.0.19",
+      "installed": "58.0.19",
+      "candidate": "58.0.19",
+      "registry_latest": "58.0.19",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-linear-gradient",
-      "requested": "57.0.2",
-      "locked": "57.0.2",
-      "installed": "57.0.2",
-      "candidate": "57.0.2",
-      "registry_latest": "57.0.2",
-      "held_by": null,
-      "reason": null
+      "requested": "58.0.4",
+      "locked": "58.0.4",
+      "installed": "58.0.4",
+      "candidate": "58.0.4",
+      "registry_latest": "58.0.4",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-linking",
-      "requested": "57.0.10",
-      "locked": "57.0.10",
-      "installed": "57.0.10",
-      "candidate": "57.0.10",
-      "registry_latest": "57.0.10",
-      "held_by": null,
-      "reason": null
+      "requested": "58.0.17",
+      "locked": "58.0.17",
+      "installed": "58.0.17",
+      "candidate": "58.0.17",
+      "registry_latest": "58.0.17",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-notifications",
-      "requested": "57.0.20",
-      "locked": "57.0.20",
-      "installed": "57.0.20",
-      "candidate": "57.0.20",
-      "registry_latest": "57.0.20",
-      "held_by": null,
-      "reason": null
+      "requested": "58.1.10",
+      "locked": "58.1.10",
+      "installed": "58.1.10",
+      "candidate": "58.1.10",
+      "registry_latest": "58.1.10",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-router",
-      "requested": "57.0.22",
-      "locked": "57.0.22",
-      "installed": "57.0.22",
-      "candidate": "57.0.22",
-      "registry_latest": "57.0.22",
-      "held_by": null,
-      "reason": null
+      "requested": "58.0.33",
+      "locked": "58.0.33",
+      "installed": "58.0.33",
+      "candidate": "58.0.33",
+      "registry_latest": "58.0.33",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-secure-store",
-      "requested": "57.0.4",
-      "locked": "57.0.4",
-      "installed": "57.0.4",
-      "candidate": "57.0.4",
-      "registry_latest": "57.0.4",
-      "held_by": null,
-      "reason": null
+      "requested": "58.0.3",
+      "locked": "58.0.3",
+      "installed": "58.0.3",
+      "candidate": "58.0.3",
+      "registry_latest": "58.0.3",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-splash-screen",
-      "requested": "57.0.9",
-      "locked": "57.0.9",
-      "installed": "57.0.9",
-      "candidate": "57.0.9",
-      "registry_latest": "57.0.9",
-      "held_by": null,
-      "reason": null
+      "requested": "58.0.15",
+      "locked": "58.0.15",
+      "installed": "58.0.15",
+      "candidate": "58.0.15",
+      "registry_latest": "58.0.15",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-status-bar",
-      "requested": "57.0.1",
-      "locked": "57.0.1",
-      "installed": "57.0.1",
-      "candidate": "57.0.1",
-      "registry_latest": "57.0.1",
-      "held_by": null,
-      "reason": null
+      "requested": "58.0.5",
+      "locked": "58.0.5",
+      "installed": "58.0.5",
+      "candidate": "58.0.5",
+      "registry_latest": "58.0.5",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-symbols",
-      "requested": "57.0.3",
-      "locked": "57.0.3",
-      "installed": "57.0.3",
-      "candidate": "57.0.3",
-      "registry_latest": "57.0.3",
-      "held_by": null,
-      "reason": null
+      "requested": "58.0.5",
+      "locked": "58.0.5",
+      "installed": "58.0.5",
+      "candidate": "58.0.5",
+      "registry_latest": "58.0.5",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-system-ui",
-      "requested": "57.0.4",
-      "locked": "57.0.4",
-      "installed": "57.0.4",
-      "candidate": "57.0.4",
-      "registry_latest": "57.0.4",
-      "held_by": null,
-      "reason": null
+      "requested": "58.0.7",
+      "locked": "58.0.7",
+      "installed": "58.0.7",
+      "candidate": "58.0.7",
+      "registry_latest": "58.0.7",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "expo-web-browser",
-      "requested": "57.0.3",
-      "locked": "57.0.3",
-      "installed": "57.0.3",
-      "candidate": "57.0.3",
-      "registry_latest": "57.0.3",
-      "held_by": null,
-      "reason": null
+      "requested": "58.1.0",
+      "locked": "58.1.0",
+      "installed": "58.1.0",
+      "candidate": "58.1.0",
+      "registry_latest": "58.1.0",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "livekit-client",
-      "requested": "^2.19.0",
-      "locked": "2.22.3",
-      "installed": "2.22.3",
-      "candidate": "2.22.3",
-      "registry_latest": "2.22.3",
-      "held_by": null,
-      "reason": null
+      "requested": "^2.24.1",
+      "locked": "2.24.1",
+      "installed": "2.24.1",
+      "candidate": "2.24.1",
+      "registry_latest": "2.25.0",
+      "reason": "The seven-day Bun policy applies to 2.25.0, published 2026-11-20T12:42:16.828Z.",
+      "held_by": "bunfig.toml"
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "react",
-      "requested": "19.2.6",
-      "locked": "19.2.6",
-      "installed": "19.2.6",
-      "candidate": "19.2.6",
-      "registry_latest": "19.3.0",
-      "held_by": "react-native@0.86.3 and the shared web runtime",
-      "reason": "React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass."
+      "requested": "19.3.0",
+      "locked": "19.3.0",
+      "installed": "19.3.0",
+      "candidate": "19.3.0",
+      "registry_latest": "19.3.1",
+      "reason": "Expo recommends `19.3.0` and the mobile manifest pins `19.3.0`.",
+      "held_by": "expo@58.1.0"
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "react-dom",
-      "requested": "19.2.6",
-      "locked": "19.2.6",
-      "installed": "19.2.6",
-      "candidate": "19.2.6",
-      "registry_latest": "19.3.0",
-      "held_by": "react-native@0.86.3 and the shared web runtime",
-      "reason": "React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass."
+      "requested": "19.3.0",
+      "locked": "19.3.0",
+      "installed": "19.3.0",
+      "candidate": "19.3.0",
+      "registry_latest": "19.3.1",
+      "reason": "Expo recommends `19.3.0` and the mobile manifest pins `19.3.0`.",
+      "held_by": "expo@58.1.0"
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "react-native",
-      "requested": "0.86.3",
-      "locked": "0.86.3",
-      "installed": "0.86.3",
-      "candidate": "0.86.3",
-      "registry_latest": "0.87.1",
-      "held_by": "expo@57.0.24",
-      "reason": "Expo SDK 57 bundledNativeModules.json selects react-native 0.86.3."
+      "requested": "0.88.1",
+      "locked": "0.88.1",
+      "installed": "0.88.1",
+      "candidate": "0.88.1",
+      "registry_latest": "0.88.1",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "react-native-gesture-handler",
-      "requested": "2.32.0",
-      "locked": "2.32.0",
-      "installed": "2.32.0",
-      "candidate": "2.32.0",
-      "registry_latest": "3.3.0",
-      "held_by": "expo@57.0.24",
-      "reason": "Expo SDK 57 bundledNativeModules.json selects react-native-gesture-handler 2.32.0."
+      "requested": "3.3.0",
+      "locked": "3.3.0",
+      "installed": "3.3.0",
+      "candidate": "3.3.0",
+      "registry_latest": "3.5.0",
+      "reason": "Expo recommends `~3.3.0` and the mobile manifest pins `3.3.0`.",
+      "held_by": "expo@58.1.0"
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "react-native-reanimated",
-      "requested": "4.5.1",
-      "locked": "4.5.1",
-      "installed": "4.5.1",
-      "candidate": "4.5.1",
-      "registry_latest": "4.7.0",
-      "held_by": "expo@57.0.24",
-      "reason": "Expo SDK 57 bundledNativeModules.json selects react-native-reanimated 4.5.1."
+      "requested": "4.7.1",
+      "locked": "4.7.1",
+      "installed": "4.7.1",
+      "candidate": "4.7.1",
+      "registry_latest": "4.8.0",
+      "reason": "Expo recommends `4.7.1` and the mobile manifest pins `4.7.1`.",
+      "held_by": "expo@58.1.0"
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "react-native-safe-area-context",
-      "requested": "5.7.0",
-      "locked": "5.7.0",
-      "installed": "5.7.0",
-      "candidate": "5.7.0",
-      "registry_latest": "5.10.0",
-      "held_by": "expo@57.0.24",
-      "reason": "Expo SDK 57 bundledNativeModules.json selects react-native-safe-area-context 5.7.0."
+      "requested": "5.11.1",
+      "locked": "5.11.1",
+      "installed": "5.11.1",
+      "candidate": "5.11.1",
+      "registry_latest": "5.11.1",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "react-native-screens",
-      "requested": "4.26.0",
-      "locked": "4.26.0",
-      "installed": "4.26.0",
-      "candidate": "4.26.0",
-      "registry_latest": "4.28.0",
-      "held_by": "expo@57.0.24",
-      "reason": "Expo SDK 57 bundledNativeModules.json selects react-native-screens 4.26.0."
+      "requested": "4.30.1",
+      "locked": "4.30.1",
+      "installed": "4.30.1",
+      "candidate": "4.30.1",
+      "registry_latest": "4.30.1",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
@@ -910,106 +939,104 @@
       "installed": "4.0.0",
       "candidate": "4.0.0",
       "registry_latest": "4.0.0",
-      "held_by": null,
-      "reason": null
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "react-native-web",
-      "requested": "~0.21.0",
-      "locked": "0.21.2",
-      "installed": "0.21.2",
-      "candidate": "0.21.2",
-      "registry_latest": "0.21.2",
-      "held_by": null,
-      "reason": null
+      "requested": "~0.21.4",
+      "locked": "0.21.4",
+      "installed": "0.21.4",
+      "candidate": "0.21.4",
+      "registry_latest": "0.21.4",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "react-native-worklets",
-      "requested": "0.10.1",
-      "locked": "0.10.1",
-      "installed": "0.10.1",
-      "candidate": "0.10.1",
-      "registry_latest": "0.12.2",
-      "held_by": "expo@57.0.24",
-      "reason": "Expo SDK 57 bundledNativeModules.json selects react-native-worklets 0.10.1."
+      "requested": "0.13.0",
+      "locked": "0.13.0",
+      "installed": "0.13.0",
+      "candidate": "0.13.0",
+      "registry_latest": "0.14.0",
+      "reason": "Expo recommends `0.13.0` and the mobile manifest pins `0.13.0`.",
+      "held_by": "expo@58.1.0"
     },
     {
       "project": "apps/mobile",
       "group": "dependencies",
       "name": "zustand",
-      "requested": "^5.0.15",
-      "locked": "5.0.15",
-      "installed": "5.0.15",
-      "candidate": "5.0.15",
-      "registry_latest": "5.0.15",
-      "held_by": null,
-      "reason": null
+      "requested": "^5.1.0",
+      "locked": "5.1.0",
+      "installed": "5.1.0",
+      "candidate": "5.1.0",
+      "registry_latest": "5.1.0",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "devDependencies",
       "name": "@types/react",
-      "requested": "~19.2.2",
-      "locked": "19.2.14",
-      "installed": "19.2.14",
-      "candidate": "19.2.14",
-      "registry_latest": "19.3.0",
-      "held_by": "react@19.2.6 shared cohort",
-      "reason": "React type packages stay on the React 19.2 line shared by mobile and web."
+      "requested": "~19.3.0",
+      "locked": "19.3.0",
+      "installed": "19.3.0",
+      "candidate": "19.3.0",
+      "registry_latest": "19.3.3",
+      "reason": "The seven-day Bun policy applies to 19.3.3, published 2026-11-25T14:37:51.670Z. The manifest tracks the SDK 58 React 19.3 types with `~19.3.0`.",
+      "held_by": "bunfig.toml"
     },
     {
       "project": "apps/mobile",
       "group": "devDependencies",
       "name": "@types/react-dom",
-      "requested": "~19.2.1",
-      "locked": "19.2.3",
-      "installed": "19.2.3",
-      "candidate": "19.2.3",
+      "requested": "~19.3.0",
+      "locked": "19.3.0",
+      "installed": "19.3.0",
+      "candidate": "19.3.0",
       "registry_latest": "19.3.0",
-      "held_by": "react@19.2.6 shared cohort",
-      "reason": "React type packages stay on the React 19.2 line shared by mobile and web."
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "devDependencies",
       "name": "@types/react-test-renderer",
-      "requested": "19.3.0",
-      "locked": "19.3.0",
-      "installed": "19.3.0",
-      "candidate": "19.3.0",
-      "registry_latest": "19.3.0",
-      "registry_snapshot_date": "2026-10-02",
-      "held_by": null,
-      "reason": "Registry latest observed 2026-10-02; direct test types already installed for the lifecycle renderer. Historical native evidence remains the accepted 2026-09-19 record."
+      "requested": "19.3.1",
+      "locked": "19.3.1",
+      "installed": "19.3.1",
+      "candidate": "19.3.1",
+      "registry_latest": "19.3.1",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "devDependencies",
       "name": "expo-mcp",
-      "requested": "~0.2.1",
+      "requested": "~0.2.4",
       "locked": "0.2.4",
       "installed": "0.2.4",
       "candidate": "0.2.4",
       "registry_latest": "0.2.4",
-      "held_by": null,
-      "reason": null
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/mobile",
       "group": "devDependencies",
       "name": "react-test-renderer",
-      "requested": "19.2.6",
-      "locked": "19.2.6",
-      "installed": "19.2.6",
-      "candidate": "19.2.6",
-      "registry_latest": "19.3.0",
-      "registry_snapshot_date": "2026-10-02",
-      "held_by": "react@19.2.6 shared cohort",
-      "reason": "Renderer stays at the installed React 19.2.6 runtime version. Registry latest observed 2026-10-02; historical native evidence remains the accepted 2026-09-19 record."
+      "requested": "19.3.0",
+      "locked": "19.3.0",
+      "installed": "19.3.0",
+      "candidate": "19.3.0",
+      "registry_latest": "19.3.1",
+      "reason": "The mobile manifest pins the renderer at `19.3.0` alongside React 19.3.0. The installed renderer declares React `^19.3.0`.",
+      "held_by": "mobile React 19.3.0"
     },
     {
       "project": "apps/mobile",
@@ -1020,8 +1047,8 @@
       "installed": "6.0.3",
       "candidate": "6.0.3",
       "registry_latest": "7.0.2",
-      "held_by": "expo@57.0.24",
-      "reason": "TypeScript 6.0.3 is the verified workspace compiler for the SDK 57 cohort."
+      "reason": "Its TypeScript peer range is `>=4.8.4 <6.1.0`. `apps/mobile/package.json` requests `6.0.3`.",
+      "held_by": "typescript-eslint@8.73.0"
     },
     {
       "project": "apps/server",
@@ -1030,70 +1057,70 @@
       "requested": "workspace:*",
       "locked": "workspace:packages/shared",
       "installed": "workspace:packages/shared",
-      "candidate": "workspace:packages/shared",
-      "registry_latest": "workspace:packages/shared",
-      "held_by": null,
-      "reason": null
+      "candidate": "\u2014",
+      "registry_latest": "\u2014",
+      "reason": "Workspace source",
+      "held_by": null
     },
     {
       "project": "apps/server",
       "group": "dependencies",
       "name": "@google/genai",
-      "requested": "^2.22.0",
-      "locked": "2.22.0",
-      "installed": "2.22.0",
-      "candidate": "2.22.0",
-      "registry_latest": "2.23.0",
-      "held_by": null,
-      "reason": "Registry latest is inside the unchanged seven-day minimum release age; the candidate is the newest eligible stable release."
+      "requested": "^2.32.0",
+      "locked": "2.32.0",
+      "installed": "2.32.0",
+      "candidate": "2.32.0",
+      "registry_latest": "3.6.1",
+      "reason": "The requested range `^2.32.0` excludes 3.6.1.",
+      "held_by": "apps/server/package.json"
     },
     {
       "project": "apps/server",
       "group": "dependencies",
       "name": "@livekit/protocol",
-      "requested": "^1.51.0",
-      "locked": "1.51.0",
-      "installed": "1.51.0",
-      "candidate": "1.51.0",
-      "registry_latest": "1.52.0",
-      "held_by": null,
-      "reason": "Registry latest is inside the unchanged seven-day minimum release age; the candidate is the newest eligible stable release."
+      "requested": "^1.54.1",
+      "locked": "1.54.1",
+      "installed": "1.54.1",
+      "candidate": "1.54.1",
+      "registry_latest": "1.55.0",
+      "reason": "The seven-day Bun policy applies to 1.55.0, published 2026-11-25T09:46:41.918Z.",
+      "held_by": "bunfig.toml"
     },
     {
       "project": "apps/server",
       "group": "dependencies",
       "name": "jose",
-      "requested": "^6.2.12",
-      "locked": "6.2.12",
-      "installed": "6.2.12",
-      "candidate": "6.2.12",
-      "registry_latest": "6.2.12",
-      "held_by": null,
-      "reason": null
+      "requested": "^6.2.18",
+      "locked": "6.2.18",
+      "installed": "6.2.18",
+      "candidate": "6.2.18",
+      "registry_latest": "6.2.18",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/server",
       "group": "dependencies",
       "name": "livekit-server-sdk",
-      "requested": "^2.19.0",
-      "locked": "2.19.0",
-      "installed": "2.19.0",
-      "candidate": "2.19.0",
-      "registry_latest": "2.19.0",
-      "held_by": null,
-      "reason": null
+      "requested": "^2.20.1",
+      "locked": "2.20.1",
+      "installed": "2.20.1",
+      "candidate": "2.20.1",
+      "registry_latest": "2.20.1",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/server",
       "group": "dependencies",
       "name": "sharp",
-      "requested": "^0.35.4",
-      "locked": "0.35.4",
-      "installed": "0.35.4",
-      "candidate": "0.35.4",
-      "registry_latest": "0.35.4",
-      "held_by": null,
-      "reason": null
+      "requested": "^0.35.5",
+      "locked": "0.35.5",
+      "installed": "0.35.5",
+      "candidate": "0.35.5",
+      "registry_latest": "0.35.5",
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "apps/server",
@@ -1103,9 +1130,9 @@
       "locked": "1.4.4",
       "installed": "1.4.4",
       "candidate": "1.4.4",
-      "registry_latest": "1.4.4",
-      "held_by": null,
-      "reason": null
+      "registry_latest": "1.4.5",
+      "reason": "The requested range `1.4.4` excludes 1.4.5.",
+      "held_by": "apps/server/package.json"
     },
     {
       "project": "apps/web",
@@ -1114,34 +1141,34 @@
       "requested": "workspace:*",
       "locked": "workspace:packages/design-tokens",
       "installed": "workspace:packages/design-tokens",
-      "candidate": "workspace:packages/design-tokens",
-      "registry_latest": "workspace:packages/design-tokens",
-      "held_by": null,
-      "reason": null
+      "candidate": "\u2014",
+      "registry_latest": "\u2014",
+      "reason": "Workspace source",
+      "held_by": null
     },
     {
       "project": "apps/web",
       "group": "dependencies",
       "name": "react",
-      "requested": "19.2.6",
-      "locked": "19.2.6",
-      "installed": "19.2.6",
-      "candidate": "19.2.6",
-      "registry_latest": "19.3.0",
-      "held_by": "react-native@0.86.3 and the shared web runtime",
-      "reason": "React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass."
+      "requested": "19.3.0",
+      "locked": "19.3.0",
+      "installed": "19.3.0",
+      "candidate": "19.3.0",
+      "registry_latest": "19.3.1",
+      "reason": "`apps/web/package.json` pins `19.3.0`, matching the Expo SDK 58.1.0 React and React DOM versions.",
+      "held_by": "Expo React 19.3.0 cohort"
     },
     {
       "project": "apps/web",
       "group": "dependencies",
       "name": "react-dom",
-      "requested": "19.2.6",
-      "locked": "19.2.6",
-      "installed": "19.2.6",
-      "candidate": "19.2.6",
-      "registry_latest": "19.3.0",
-      "held_by": "react-native@0.86.3 and the shared web runtime",
-      "reason": "React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass."
+      "requested": "19.3.0",
+      "locked": "19.3.0",
+      "installed": "19.3.0",
+      "candidate": "19.3.0",
+      "registry_latest": "19.3.1",
+      "reason": "`apps/web/package.json` pins `19.3.0`, matching the Expo SDK 58.1.0 React and React DOM versions.",
+      "held_by": "Expo React 19.3.0 cohort"
     },
     {
       "project": "apps/web",
@@ -1151,33 +1178,33 @@
       "locked": "1.4.4",
       "installed": "1.4.4",
       "candidate": "1.4.4",
-      "registry_latest": "1.4.4",
-      "held_by": null,
-      "reason": null
+      "registry_latest": "1.4.5",
+      "reason": "The requested range `1.4.4` excludes 1.4.5.",
+      "held_by": "apps/web/package.json"
     },
     {
       "project": "apps/web",
       "group": "devDependencies",
       "name": "@types/react",
-      "requested": "~19.2.2",
-      "locked": "19.2.14",
-      "installed": "19.2.14",
-      "candidate": "19.2.14",
-      "registry_latest": "19.3.0",
-      "held_by": "react@19.2.6 shared cohort",
-      "reason": "React type packages stay on the React 19.2 line shared by mobile and web."
+      "requested": "~19.3.0",
+      "locked": "19.3.0",
+      "installed": "19.3.0",
+      "candidate": "19.3.0",
+      "registry_latest": "19.3.3",
+      "reason": "The seven-day Bun policy applies to 19.3.3, published 2026-11-25T14:37:51.670Z. The manifest tracks the SDK 58 React 19.3 types with `~19.3.0`.",
+      "held_by": "bunfig.toml"
     },
     {
       "project": "apps/web",
       "group": "devDependencies",
       "name": "@types/react-dom",
-      "requested": "~19.2.1",
-      "locked": "19.2.3",
-      "installed": "19.2.3",
-      "candidate": "19.2.3",
+      "requested": "~19.3.0",
+      "locked": "19.3.0",
+      "installed": "19.3.0",
+      "candidate": "19.3.0",
       "registry_latest": "19.3.0",
-      "held_by": "react@19.2.6 shared cohort",
-      "reason": "React type packages stay on the React 19.2 line shared by mobile and web."
+      "reason": null,
+      "held_by": null
     },
     {
       "project": "packages/design-tokens",
@@ -1187,9 +1214,9 @@
       "locked": "1.4.4",
       "installed": "1.4.4",
       "candidate": "1.4.4",
-      "registry_latest": "1.4.4",
-      "held_by": null,
-      "reason": null
+      "registry_latest": "1.4.5",
+      "reason": "The requested range `1.4.4` excludes 1.4.5.",
+      "held_by": "packages/design-tokens/package.json"
     },
     {
       "project": "packages/design-tokens",
@@ -1200,8 +1227,8 @@
       "installed": "6.0.3",
       "candidate": "6.0.3",
       "registry_latest": "7.0.2",
-      "held_by": null,
-      "reason": "TypeScript 7.0.2 exceeds typescript-eslint 8.70.0 peer range >=4.8.4 <6.1.0; 6.0.3 is the newest compatible stable release."
+      "reason": "Its TypeScript peer range is `>=4.8.4 <6.1.0`. `packages/design-tokens/package.json` requests `>=5.9 <6.1`.",
+      "held_by": "typescript-eslint@8.73.0"
     },
     {
       "project": "packages/shared",
@@ -1211,9 +1238,9 @@
       "locked": "1.4.4",
       "installed": "1.4.4",
       "candidate": "1.4.4",
-      "registry_latest": "1.4.4",
-      "held_by": null,
-      "reason": null
+      "registry_latest": "1.4.5",
+      "reason": "The requested range `1.4.4` excludes 1.4.5.",
+      "held_by": "packages/shared/package.json"
     },
     {
       "project": "packages/shared",
@@ -1224,24 +1251,24 @@
       "installed": "6.0.3",
       "candidate": "6.0.3",
       "registry_latest": "7.0.2",
-      "held_by": null,
-      "reason": "TypeScript 7.0.2 exceeds typescript-eslint 8.70.0 peer range >=4.8.4 <6.1.0; 6.0.3 is the newest compatible stable release."
+      "reason": "Its TypeScript peer range is `>=4.8.4 <6.1.0`. `packages/shared/package.json` requests `>=5.9 <6.1`.",
+      "held_by": "typescript-eslint@8.73.0"
     }
   ],
   "overrides": [
     {
       "name": "dnssd-advertise",
-      "requested": "1.1.4",
-      "reason": "Permanent native-development reproducibility pin for Expo CLI Bonjour discovery; Expo CLI 57.0.26 declares dnssd-advertise ^1.1.4."
+      "requested": "1.1.6",
+      "reason": "Reproducibility pin for native development Bonjour discovery. Expo CLI 58.1.22 requests `^1.1.6`."
     }
   ],
   "mobile_baseline": {
-    "expo": "57.0.24",
-    "react_native": "0.86.3",
-    "engine": "Hermes V1 (SDK 57 default)",
+    "expo": "58.1.0",
+    "react_native": "0.88.1",
+    "engine": "Hermes V1 (SDK 58 default)",
     "platform_minimums": {
       "android": "7+",
-      "compile_sdk": 36,
+      "compile_sdk": 37,
       "target_sdk": 36,
       "ios": "16.4+",
       "xcode": "26.4+"
@@ -1252,7 +1279,9 @@
       "expo-router",
       "expo-splash-screen",
       "expo-disable-pods-indexing",
-      "expo-build-properties",
+      "expo-font",
+      "expo-status-bar",
+      "expo-web-browser",
       "expo-audio",
       "expo-secure-store",
       "expo-asset",
@@ -1267,36 +1296,6 @@
       }
     ],
     "patches": [],
-    "release_age_exceptions": [
-      {
-        "name": "expo",
-        "version": "57.0.24",
-        "published_at": "2026-09-18T08:07:12.211Z",
-        "command": "bun install --minimum-release-age=0",
-        "evidence": "Normal-policy bun expo install --fix rejected this exact SDK 57 release; a subsequent normal-policy check passed."
-      },
-      {
-        "name": "expo-asset",
-        "version": "57.0.18",
-        "published_at": "2026-09-18T08:10:13.973Z",
-        "command": "bun install --minimum-release-age=0",
-        "evidence": "Normal-policy bun expo install --fix rejected this exact SDK 57 release; a subsequent normal-policy check passed."
-      },
-      {
-        "name": "expo-notifications",
-        "version": "57.0.20",
-        "published_at": "2026-09-18T08:09:56.492Z",
-        "command": "bun install --minimum-release-age=0",
-        "evidence": "Normal-policy bun expo install --fix rejected this exact SDK 57 release; a subsequent normal-policy check passed."
-      },
-      {
-        "name": "expo-router",
-        "version": "57.0.22",
-        "published_at": "2026-09-18T08:09:25.131Z",
-        "command": "bun install --minimum-release-age=0",
-        "evidence": "Normal-policy bun expo install --fix rejected this exact SDK 57 release; a subsequent normal-policy check passed."
-      }
-    ],
     "compatibility_exceptions": [],
     "native_transport": {
       "status": "passed",
@@ -1335,12 +1334,12 @@
     {
       "group": "devDependencies",
       "name": "@axe-core/playwright",
-      "requested": "^4.13.0",
-      "locked": "4.13.0",
-      "installed": "4.13.0",
-      "candidate": "4.13.0",
-      "registry_latest": "4.13.0",
-      "reason": null
+      "requested": "^4.14.0",
+      "locked": "4.14.0",
+      "installed": "4.14.0",
+      "candidate": "4.14.0",
+      "registry_latest": "4.14.1",
+      "reason": "e2e/bunfig.toml. The seven-day Bun policy applies to 4.14.1, published 2026-11-24T15:59:38.852Z."
     },
     {
       "group": "devDependencies",
@@ -1355,11 +1354,11 @@
     {
       "group": "devDependencies",
       "name": "@playwright/test",
-      "requested": "^1.64.1",
-      "locked": "1.64.1",
-      "installed": "1.64.1",
-      "candidate": "1.64.1",
-      "registry_latest": "1.64.1",
+      "requested": "^1.65.1",
+      "locked": "1.65.1",
+      "installed": "1.65.1",
+      "candidate": "1.65.1",
+      "registry_latest": "1.65.1",
       "reason": null
     },
     {
@@ -1369,8 +1368,8 @@
       "locked": "1.4.4",
       "installed": "1.4.4",
       "candidate": "1.4.4",
-      "registry_latest": "1.4.4",
-      "reason": null
+      "registry_latest": "1.4.5",
+      "reason": "e2e/package.json. The requested range `1.4.4` excludes 1.4.5."
     },
     {
       "group": "devDependencies",
@@ -1385,11 +1384,11 @@
     {
       "group": "devDependencies",
       "name": "eslint",
-      "requested": "^10.11.0",
-      "locked": "10.11.0",
-      "installed": "10.11.0",
-      "candidate": "10.11.0",
-      "registry_latest": "10.11.0",
+      "requested": "^10.15.0",
+      "locked": "10.15.0",
+      "installed": "10.15.0",
+      "candidate": "10.15.0",
+      "registry_latest": "10.15.0",
       "reason": null
     },
     {
@@ -1405,21 +1404,21 @@
     {
       "group": "devDependencies",
       "name": "lighthouse",
-      "requested": "^13.5.0",
-      "locked": "13.5.0",
-      "installed": "13.5.0",
-      "candidate": "13.5.0",
-      "registry_latest": "13.5.0",
+      "requested": "^13.6.0",
+      "locked": "13.6.0",
+      "installed": "13.6.0",
+      "candidate": "13.6.0",
+      "registry_latest": "13.6.0",
       "reason": null
     },
     {
       "group": "devDependencies",
       "name": "pg",
-      "requested": "^8.23.0",
-      "locked": "8.23.0",
-      "installed": "8.23.0",
-      "candidate": "8.23.0",
-      "registry_latest": "8.23.0",
+      "requested": "^8.23.1",
+      "locked": "8.23.1",
+      "installed": "8.23.1",
+      "candidate": "8.23.1",
+      "registry_latest": "8.23.1",
       "reason": null
     },
     {
@@ -1440,35 +1439,20 @@
       "installed": "6.0.3",
       "candidate": "6.0.3",
       "registry_latest": "7.0.2",
-      "reason": "typescript-eslint 8.70.0 declares TypeScript >=4.8.4 <6.1.0; 7.0.2 is outside that peer range."
+      "reason": "typescript-eslint@8.73.0. Its TypeScript peer range is `>=4.8.4 <6.1.0`. `e2e/package.json` requests `^6.0.3`."
     },
     {
       "group": "devDependencies",
       "name": "typescript-eslint",
-      "requested": "^8.70.0",
-      "locked": "8.70.0",
-      "installed": "8.70.0",
-      "candidate": "8.70.0",
-      "registry_latest": "8.70.0",
-      "reason": null
+      "requested": "^8.73.0",
+      "locked": "8.73.0",
+      "installed": "8.73.0",
+      "candidate": "8.73.0",
+      "registry_latest": "8.74.0",
+      "reason": "e2e/bunfig.toml. The seven-day Bun policy applies to 8.74.0, published 2026-11-23T17:06:58.945Z."
     }
   ],
-  "e2e_release_age_exceptions": [
-    {
-      "name": "eslint",
-      "version": "10.11.0",
-      "published_at": "2026-09-18T20:15:36.485Z",
-      "command": "bun add --cwd e2e --dev --minimum-release-age=0 eslint@^10.11.0",
-      "evidence": "ESLint 10.11.0 passes the e2e TypeScript and ESLint lane with @eslint/js 10.0.1 and typescript-eslint 8.70.0."
-    },
-    {
-      "name": "lighthouse",
-      "version": "13.5.0",
-      "published_at": "2026-09-18T14:13:55.261Z",
-      "command": "bun add --cwd e2e --dev --minimum-release-age=0 lighthouse@^13.5.0",
-      "evidence": "Lighthouse 13.5.0 satisfies playwright-lighthouse 4.0.0's >=10 peer range and passes the production audit thresholds."
-    }
-  ],
+  "e2e_release_age_exceptions": [],
   "infrastructure_holds": [
     {
       "name": "PostgreSQL container",
@@ -1614,5 +1598,129 @@
       "status": "required at sprint close",
       "evidence": "Credentialed cost-bearing lane was not run by the story executor."
     }
-  ]
+  ],
+  "registry_acquired_at": "2026-11-27T02:16:27.654900+00:00",
+  "report_check": null,
+  "mobile_release_age_exemption": {
+    "date": "2026-11-26",
+    "reference": "https://github.com/paulingalls/divineruin/pull/792",
+    "evidence": "The #792 handback records the two npm age inventories and expo-58.1.0-install-second-layer.log. One install exempted these coordinates. The frozen install passed with the seven-day policy.",
+    "packages": [
+      {
+        "name": "expo",
+        "previous": "58.0.26",
+        "version": "58.1.0"
+      },
+      {
+        "name": "expo-crypto",
+        "previous": "58.0.8",
+        "version": "58.0.9"
+      },
+      {
+        "name": "expo-dev-client",
+        "previous": "58.0.21",
+        "version": "58.0.22"
+      },
+      {
+        "name": "expo-glass-effect",
+        "previous": "58.0.5",
+        "version": "58.0.6"
+      },
+      {
+        "name": "expo-image",
+        "previous": "58.0.18",
+        "version": "58.0.19"
+      },
+      {
+        "name": "expo-notifications",
+        "previous": "58.1.9",
+        "version": "58.1.10"
+      },
+      {
+        "name": "expo-router",
+        "previous": "58.0.32",
+        "version": "58.0.33"
+      },
+      {
+        "name": "expo-splash-screen",
+        "previous": "58.0.14",
+        "version": "58.0.15"
+      },
+      {
+        "name": "@expo/cli",
+        "previous": "58.1.21",
+        "version": "58.1.22"
+      },
+      {
+        "name": "@expo/config",
+        "previous": "58.0.12",
+        "version": "58.0.13"
+      },
+      {
+        "name": "expo-file-system",
+        "previous": "58.0.14",
+        "version": "58.0.15"
+      },
+      {
+        "name": "@expo/fingerprint",
+        "previous": "0.21.10",
+        "version": "0.22.0"
+      },
+      {
+        "name": "babel-preset-expo",
+        "previous": "58.0.26",
+        "version": "58.0.27"
+      },
+      {
+        "name": "expo-modules-core",
+        "previous": "58.1.0",
+        "version": "58.2.0"
+      },
+      {
+        "name": "@expo/metro-config",
+        "previous": "58.0.23",
+        "version": "58.0.24"
+      },
+      {
+        "name": "@expo/config-plugins",
+        "previous": "58.0.13",
+        "version": "58.0.14"
+      },
+      {
+        "name": "@expo/local-build-cache-provider",
+        "previous": "58.0.12",
+        "version": "58.0.13"
+      },
+      {
+        "name": "expo-dev-launcher",
+        "previous": "58.0.21",
+        "version": "58.1.0"
+      },
+      {
+        "name": "@expo/router-server",
+        "previous": "58.0.23",
+        "version": "58.0.24"
+      },
+      {
+        "name": "@expo/inline-modules",
+        "previous": "0.2.10",
+        "version": "0.2.11"
+      },
+      {
+        "name": "@expo/metro-file-map",
+        "previous": "58.0.6",
+        "version": "58.0.7"
+      },
+      {
+        "name": "@expo/prebuild-config",
+        "previous": "58.0.20",
+        "version": "58.0.21"
+      },
+      {
+        "name": "expo-modules-jsi",
+        "previous": "58.0.23",
+        "version": "58.0.24"
+      }
+    ]
+  }
 }
