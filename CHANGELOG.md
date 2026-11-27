@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.90.1
+
+Combat rewards, equipment repairs, and workspace rentals now settle fractional gold exactly. Party reward shares round down to whole copper. The character purse updates after a repair or rental commits.
+
+Release steps: none.
+
 ## 0.90.0
 
 You can sell to the shops now. Tell the DM you want to trade, and the shop door creaks open. Then tell the shopkeeper what you're selling. A sale pays half the item's value in silver. Friendly shopkeepers pay more, unfriendly ones pay less, and hostile ones won't buy at all. Each shop buys only its own trade. Grimjaw takes weapons and armour, the temple takes potions and remedies, and the general stores take common goods. If a shop doesn't deal in what you're carrying, the shopkeeper tells you who might.
