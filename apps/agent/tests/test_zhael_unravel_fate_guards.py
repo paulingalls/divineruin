@@ -20,9 +20,10 @@ from _zhael_unravel_fixtures import unravel as unravel
 from acceptance._capstone_helpers import _d20
 from combat._round_checkpoint_helpers import Fight
 from livekit.agents.llm import ToolError
-from sample_fixtures import make_context, make_mock_room
+from sample_fixtures import make_context, make_mock_room, published_payloads
 from test_aelora_gift import _live_party
 
+import event_types as E
 from combat_agent import CombatAgent
 from encounter_roles import EncounterRole
 from exploration_agent import ExplorationAgent
@@ -389,3 +390,40 @@ async def test_persisted_checkpoint_rewinds_and_new_session_recharges(unravel) -
     assert (await discovered(fight))["available"]
     await activate(fight)
     assert (await discovered(fight))["spent"]
+
+
+async def test_rewind_restores_wild_shape_and_its_resources(unravel: Fight) -> None:
+    fight = unravel
+    pid = fight.ids[0]
+    await patch_player(fight, pid, **{"class": "druid", "level": 5, "focus": {"current": 10, "max": 10}})
+    await fight.start()
+    initial = await fight.row()
+    checkpoint = initial["round_checkpoints"][0]
+    original = next(p for p in initial["participants"] if p["id"] == pid)
+    assert original["wild_shape"] is None
+    await fight.declare(
+        {
+            "kind": "ability",
+            "actor_id": pid,
+            "action": "druid_wild_shape",
+            "targets": [],
+            "argument_type": "grey_wolf",
+            "reshape": [],
+        },
+        *(defend(p["id"]) for p in initial["participants"] if p["id"] != pid),
+    )
+    await fight.finish_round(2)
+    second = await durable(fight)
+    shifted = next(p for p in second["combat"]["participants"] if p["id"] == pid)
+    assert shifted["wild_shape"]["form_id"] == "grey_wolf" and shifted["ac"] != original["ac"]
+    before = checkpoint["players"][pid]["data"]
+    after = second["players"][pid]["data"]
+    assert after["focus"]["current"] == before["focus"]["current"] - 4
+    assert after["stamina"]["current"] == before["stamina"]["current"] - 3
+
+    receipt = await activate(fight)
+    assert receipt["round"] == 1 and "wild_shape_ended" not in receipt
+    assert_restored(fight, await durable(fight), checkpoint, pid)
+    events = published_payloads(fight.session.room)
+    update = next(event for event in reversed(events) if event["type"] == E.COMBAT_UI_UPDATE)
+    assert "wildShape" not in next(p for p in update["combatants"] if p["id"] == pid)

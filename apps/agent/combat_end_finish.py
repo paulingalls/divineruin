@@ -91,6 +91,8 @@ def finish(
         "loot": loot,
         "currency_gold": currency_gold,
     }
+    if ended_forms := end_data.get("wild_shape_ended"):
+        response["wild_shape_ended"] = ended_forms
     if judgment_rewards := end_data.get("judgment_rewards"):
         response["judgment_rewards"] = judgment_rewards
     logger.info(

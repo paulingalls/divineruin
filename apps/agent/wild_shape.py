@@ -8,6 +8,7 @@ from livekit.agents.llm import ToolError
 
 import ability_persistence
 from catalog_parse import parse_str
+from condition_sources import DeliveryRefused
 from creature_catalog import query_creature_by_id
 from resource_costs import gate_pool
 from wild_shape_profile import PRIMAL_SPELL, WildShapeProfile, positive_int
@@ -17,8 +18,10 @@ if TYPE_CHECKING:
 
     from combat_participant import CombatParticipant
     from declarations import Declaration
+    from spells import Spell
 
 DRUID_ABILITY = "druid_wild_shape"
+DISMISS_ACTION = "dismiss_wild_shape"
 
 
 class WildShapeState(TypedDict):
@@ -27,6 +30,30 @@ class WildShapeState(TypedDict):
     hp_current: int
     hp_max: int
     original_ac: int
+
+
+def require_casting(actor: CombatParticipant, spell: Spell) -> None:
+    if actor.wild_shape is None:
+        return
+    if actor.level < 10:
+        raise DeliveryRefused("Wild Shape prevents casting spells until level 10.")
+    if actor.level < 20 and spell.spell_tier != "cantrip":
+        raise DeliveryRefused("Wild Shape allows only cantrips until level 20.")
+
+
+def require_dismissal(actor: CombatParticipant, decl: Declaration) -> WildShapeState:
+    if actor.type != "player" or actor.wild_shape is None:
+        raise DeliveryRefused("Only a player in Wild Shape can dismiss it.")
+    if decl.target_id is not None or decl.target_ids:
+        raise DeliveryRefused("Wild Shape dismissal affects only the caster. Leave targets empty.")
+    return actor.wild_shape
+
+
+def dismiss(actor: CombatParticipant, decl: Declaration) -> dict[str, str]:
+    form = require_dismissal(actor, decl)
+    actor.ac = form["original_ac"]
+    actor.wild_shape = None
+    return {"actor_id": actor.id, "form_id": form["form_id"], "reason": "dismissed"}
 
 
 def activation_refusal(*, in_combat: bool) -> str:

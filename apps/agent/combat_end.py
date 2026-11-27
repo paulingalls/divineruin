@@ -8,6 +8,7 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import combat_end_finish
+import combat_end_wild_shape
 import combat_regeneration
 import combat_resolution
 import combat_rewards
@@ -145,6 +146,7 @@ async def _end_combat_db(
     queries,
     conn,
     sink: EventSink,
+    dismissed_forms: list[dict[str, str]] | None = None,
     content=db_content_queries,
     pricing=pricing_queries,
     reputation_mutations=db_mutations_reputation,
@@ -252,6 +254,7 @@ async def _end_combat_db(
         await reconcile_member_conditions(player_part, conn=conn)
 
     await concealment.expire_combat(cs, conn=conn, queries=queries)
+    ended_forms = [*(dismissed_forms or ()), *combat_end_wild_shape.ended_forms(cs)]
     await mutations.delete_combat_state(cs.combat_id, conn=conn)
 
     # Deleting the combat row IS the encounter ward's expiry (scope_model.md §2), so the HUD must be
@@ -323,7 +326,12 @@ async def _end_combat_db(
         sink,
         session.room,
         E.COMBAT_ENDED,
-        {"combat_id": cs.combat_id, "outcome": outcome, "xp_total": rewards.spoils.xp_total},
+        {
+            "combat_id": cs.combat_id,
+            "outcome": outcome,
+            "xp_total": rewards.spoils.xp_total,
+            **({"wild_shape_ended": ended_forms} if ended_forms else {}),
+        },
         event_bus=session.event_bus,
     )
     for pid in sorted({pid for pid, _ in rewards.item_recipients}):
@@ -360,6 +368,7 @@ async def _end_combat_db(
         "primary_currency_gold": rewards.primary_currency_gold,
         "ward_light_synced": ward_light_synced,
         "resolved_location_ward": resolved_location_ward,
+        "wild_shape_ended": ended_forms,
     }
 
 
