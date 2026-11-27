@@ -158,6 +158,28 @@ async def test_daily_buyback(reset_db_pool: str, npc: str, location: str, item: 
         assert (await rows(sale.player_id), await merchant_row(npc), sale.packets) == before
 
 
+async def test_discount_offer_can_be_limited_by_the_purse(reset_db_pool: str) -> None:
+    async with merchant_session(disposition="friendly", held=1) as sale:
+        await fund_merchant(GRIMJAW, 600, current_gold_sp=13, buyback_history={SWORD: 3})
+        before = await rows(sale.player_id), await merchant_row(GRIMJAW)
+        response = json.loads((await sale.sell(SWORD, GRIMJAW, 1)).output)
+        assert response["status"] == "offer"
+        (option,) = response["options"]
+        assert (option["kind"], option["total_price_sp"]) == ("discount_partial", 13)
+        assert (await rows(sale.player_id), await merchant_row(GRIMJAW)) == before
+        assert not sale.packets
+
+        receipt = await sale.sell(SWORD, GRIMJAW, 1, option["offer_id"])
+        assert not receipt.is_error and json.loads(receipt.output)["total_price_sp"] == 13, receipt.output
+        assert (await purse(GRIMJAW))["buyback_history"] == {SWORD: 4}
+
+        await stock(sale.player_id, "club_wooden", 1)
+        before_refusal = await rows(sale.player_id), await merchant_row(GRIMJAW), sale.packets.copy()
+        refusal = json.loads((await sale.sell("club_wooden", GRIMJAW, 1)).output)
+        assert refusal["status"] == "refused" and "out of coin" in refusal["reason"]
+        assert (await rows(sale.player_id), await merchant_row(GRIMJAW), sale.packets) == before_refusal
+
+
 async def test_two_sellers_share_one_dawn_refresh(reset_db_pool: str, monkeypatch: pytest.MonkeyPatch) -> None:
     dawn = datetime(2026, 11, 27, 11, tzinfo=UTC)
     now = dawn - timedelta(microseconds=1)
