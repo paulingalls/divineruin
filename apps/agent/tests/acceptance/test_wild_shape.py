@@ -18,6 +18,7 @@ import db_queries
 import event_types
 import spells
 from activate_tools import activate
+from warm_prompts import format_combat_hot_line
 
 SPELL = "primal_wild_shape"
 ABILITY = "druid_wild_shape"
@@ -280,10 +281,15 @@ async def test_transform(
         assert before.ac > 12
         enemy = await crossbow_receipt(walk, monkeypatch, pid)
         assert (enemy["hit"], enemy["attack_total"], enemy["target_ac"]) == (True, 12, 12)
-        reloaded = (await walk.reload()).get_participant(pid)
+        state = await walk.reload()
+        reloaded = state.get_participant(pid)
         assert reloaded is not None
         assert reloaded.hp_current == before.hp_current
-        assert reloaded.wild_shape == {**saved["wild_shape"], "hp_current": hp - enemy["damage"]}
+        beast_hp = hp - enemy["damage"]
+        assert reloaded.wild_shape == {**saved["wild_shape"], "hp_current": beast_hp}
+        roster_entry = next(p for p in walk.last_result["participants"] if p["id"] == pid)
+        assert roster_entry.get("wild_shape") == {"form_id": form, "name": name, "hp_current": beast_hp, "hp_max": hp}
+        assert f"{reloaded.name}(healthy; {name} {beast_hp}/{hp})" in (format_combat_hot_line(state) or "")
 
 
 @pytest.mark.parametrize("archetype", ["druid", "warden"])
