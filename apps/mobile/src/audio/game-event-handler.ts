@@ -212,7 +212,8 @@ export function handleGameEvent(event: DataChannelEvent): void {
       handleHpChanged(event);
       break;
 
-    case E.CURRENCY_GAINED: {
+    case E.CURRENCY_GAINED:
+    case E.CURRENCY_SPENT: {
       const localPlayerId =
         authStore.getState().playerId ?? characterStore.getState().character?.playerId;
       const { characterDetail, setCharacterDetail } = panelStore.getState();

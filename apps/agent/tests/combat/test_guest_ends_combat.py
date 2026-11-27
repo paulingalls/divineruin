@@ -15,6 +15,7 @@ from sample_fixtures import SAMPLE_PLAYER, make_context, make_mock_room, publish
 from session_outcome_fixture import isolated_outcome_completion as isolated_outcome_completion
 from voice_condition_fixtures import place_actors
 
+import db_mutations_inventory
 from combat_end import _end_combat_db, _end_combat_impl
 from combat_events import EventSink
 from combat_init import _start_combat_impl
@@ -243,7 +244,6 @@ async def test_guest_end_combat_grants_each_members_loot_and_coin():
     ctx.userdata.combat_state = cs
     mutations = combat_end_mutations()
     mutations.add_inventory_item = AsyncMock()
-    mutations.update_player_gold = AsyncMock()
     spoils = EncounterSpoils(
         xp_total=50,
         currency_silver=20,
@@ -284,7 +284,10 @@ async def test_guest_end_combat_grants_each_members_loot_and_coin():
         "player_1": ["Sun Relic"],
         "player_2": ["Blue Gem"],
     }
-    assert {call.args[0] for call in mutations.update_player_gold.await_args_list} == {"player_1", "player_2"}
+    assert [call.args for call in db_mutations_inventory.credit_player_gold.await_args_list] == [
+        ("player_1", 1.5),
+        ("player_2", 1.5),
+    ]
     assert json.loads(raw)["loot"] == [{"item_id": "gem", "quantity": 1, "tainted": False}]
     assert json.loads(raw)["currency_gold"] > 0
 
@@ -444,7 +447,6 @@ async def test_combat_snapshot_excludes_currency_only_seats():
     queries = snapshot_queries()
     mutations = combat_end_mutations()
     mutations.add_inventory_item = AsyncMock()
-    mutations.update_player_gold = AsyncMock()
     with (
         patch("pricing_queries.get_economy_pricing", AsyncMock(return_value={"silver_per_gold": 10})),
         patch("combat_end.combat_rewards.roll_encounter_spoils", AsyncMock(return_value=spoils)),

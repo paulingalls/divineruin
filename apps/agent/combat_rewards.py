@@ -6,10 +6,12 @@ Reward events buffer in the caller's transaction and publish after commit.
 import logging
 import random
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 import archetypes
 import combat_resolution
+import db_mutations_inventory
 import encounter_loot
 import event_types as E
 import progression_tools
@@ -159,7 +161,6 @@ async def distribute_currency(
     seat_order: list[str],
     *,
     recipient_id: str,
-    mutations,
     queries,
     pricing,
     conn,
@@ -167,10 +168,8 @@ async def distribute_currency(
 ) -> float:
     """DISTRIBUTE pass — currency: the party's enemy-silver haul gets a party multiplier (rewards
     grouping without N x farming, customer decision f437f4475a40) then splits evenly; each member's
-    share converts to gold crowns at its own grant boundary (the silver_per_gold SSOT, symmetric
-    with repair/crafting). Each grant is a FOR UPDATE read-modify-write, locked in seat order. One
-    CURRENCY_GAINED per member. Minions contribute 0 (D79). Solo N=1 -> multiplier 1.0, one member:
-    byte-identical to the pre-party path.
+    share floors to whole copper before crediting gold crowns so the split cannot create money.
+    Grant in seat lock order and emit one CURRENCY_GAINED per member.
 
     Returns the PRIMARY's own share, never the summed party gold — the DM's single-session handoff
     narrates the primary's own haul.
@@ -178,21 +177,22 @@ async def distribute_currency(
     if currency_silver <= 0 or not seat_order:
         return 0
     silver_per_gold = (await pricing.get_economy_pricing())["silver_per_gold"]
-    share_silver = currency_silver * encounter_loot.party_reward_multiplier(len(seat_order)) / len(seat_order)
-    share_gold = share_silver / silver_per_gold  # loop-invariant — every participant's share is equal
+    seats = len(seat_order)
+    multiplier = Decimal(str(encounter_loot.party_reward_multiplier(seats)))
+    share_copper = currency_silver * multiplier * 100 // (seats * Decimal(str(silver_per_gold)))
+    share_gold = share_copper / 100
+    amount = float(share_gold)
     primary_currency_gold: float = 0
     for pid in seat_order:
-        player = await queries.get_player(pid, conn=conn, for_update=True)
-        prior_gold = (player or {}).get("gold", 0) or 0
-        new_balance = prior_gold + share_gold
-        await mutations.update_player_gold(pid, new_balance, conn=conn)
+        await queries.get_player(pid, conn=conn, for_update=True)
+        new_balance = await db_mutations_inventory.credit_player_gold(pid, share_gold, conn=conn)
         if pid == recipient_id:
-            primary_currency_gold = share_gold
+            primary_currency_gold = amount
         await channel.emit(
             E.CURRENCY_GAINED,
             {
                 "player_id": pid,
-                "amount": share_gold,
+                "amount": amount,
                 "currency": "gold",
                 "source": "combat",
                 "new_balance": new_balance,
@@ -247,8 +247,7 @@ async def distribute_xp(
     for pid in seat_order:
         player = await queries.get_player(pid, conn=conn, for_update=True)
         if player is None:
-            # Symmetric with the currency pass's tolerance: a seat with no players.data row gets
-            # nothing rather than aborting the whole combat-end tx over a non-critical reward.
+            # A seat without a character row has no progression to advance.
             continue
         player_class = player.get("class")
         # Missing/blank class always skips. A present-but-unloaded class only skips when the
@@ -322,7 +321,6 @@ async def grant_victory_rewards(
         spoils.currency_silver,
         seat_order,
         recipient_id=recipient_id,
-        mutations=mutations,
         queries=queries,
         pricing=pricing,
         conn=conn,

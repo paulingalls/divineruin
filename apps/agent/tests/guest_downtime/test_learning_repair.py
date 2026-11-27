@@ -127,8 +127,7 @@ async def test_guest_repairs_own_item_at_own_price():
             else []
         )
     )
-    mutations = module(update_player_gold=None)
-    inventory = module(update_item_durability=None)
+    inventory = module(update_item_durability=None, debit_player_gold=14.8)
     with actor:
         result = json.loads(
             await _repair_item_impl(
@@ -137,7 +136,6 @@ async def test_guest_repairs_own_item_at_own_price():
                 "grimjaw",
                 db_mod=make_db_mod()[0],
                 queries_mod=queries,
-                mutations_mod=mutations,
                 inv_mutations_mod=inventory,
                 pricing_mod=pricing(),
                 content_mod=module(get_npc=None),
@@ -145,7 +143,7 @@ async def test_guest_repairs_own_item_at_own_price():
         )
     assert result["item_id"] == "guest_blade"
     assert inventory.update_item_durability.await_args.args[0] == "player_2"
-    assert mutations.update_player_gold.await_args.args[0] == "player_2"
+    assert inventory.debit_player_gold.await_args.args[0] == "player_2"
 
 
 @pytest.mark.asyncio
@@ -253,8 +251,7 @@ async def test_stale_repair_gold_debit():
             else []
         )
     )
-    mutations = module(update_player_gold=None)
-    inventory = module(update_item_durability=None)
+    inventory = module(update_item_durability=None, debit_player_gold=14.8)
     revoke_after(inventory.update_item_durability, revocation)
     tx_db, tx_state = transaction_probe()
     with actor, pytest.raises(RuntimeError, match="stale generation"):
@@ -264,12 +261,11 @@ async def test_stale_repair_gold_debit():
             "grimjaw",
             db_mod=tx_db,
             queries_mod=queries,
-            mutations_mod=mutations,
             inv_mutations_mod=inventory,
             pricing_mod=pricing(),
             content_mod=module(get_npc=None),
         )
-    mutations.update_player_gold.assert_not_awaited()
+    inventory.debit_player_gold.assert_not_awaited()
     assert tx_state["rolled_back"]
     assert not tx_state["committed"]
     inventory.update_item_durability.assert_awaited_once()

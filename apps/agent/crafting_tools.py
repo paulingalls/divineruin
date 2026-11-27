@@ -33,7 +33,9 @@ import db
 import db_activity_queries
 import db_content_queries
 import db_mutations
+import db_mutations_inventory
 import db_queries
+import event_types as E
 import materials
 import preflight_pipeline
 import pricing_queries
@@ -41,7 +43,10 @@ import recipe_validation
 import recipes
 import rules_engine
 import workspace
+from combat_events import isolated_publish
+from db_mutations_inventory import InsufficientGold
 from disposition import resolve_disposition
+from game_events import publish_game_event
 from inventory_refresh import publish_inventory
 from patron_favor import get_patron_tier
 from patron_synergy import common_bond_crafting_bonus
@@ -169,6 +174,7 @@ async def _rent_workspace_impl(
     db_mod=db,
     queries_mod=db_queries,
     mutations_mod=db_mutations,
+    inv_mutations_mod=db_mutations_inventory,
     content_mod=db_content_queries,
     workspace_mod=workspace,
     pricing_mod=pricing_queries,
@@ -223,15 +229,17 @@ async def _rent_workspace_impl(
     price_gp = price_sp / pricing["silver_per_gold"]
     expires_at = (now_fn or _default_now)() + timedelta(days=days)
 
+    balance = None
     async with db_mod.transaction() as conn:
         player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
         if not player:
             raise ToolError(f"Unknown player: {player_id}")
-        gold = player.get("gold", 0)
-        if gold < price_gp:
-            raise ToolError(f"Not enough gold: the rental costs {price_gp:.1f}gp and you have {gold}gp.")
         if price_sp:
-            await mutations_mod.update_player_gold(player_id, gold - price_gp, conn=conn)
+            try:
+                balance = await inv_mutations_mod.debit_player_gold(player_id, price_gp, conn=conn)
+            except InsufficientGold as exc:
+                gold = player.get("gold", 0)
+                raise ToolError(f"Not enough gold: the rental costs {price_gp:.1f}gp and you have {gold}gp.") from exc
         # One row per granted workspace, inside the debit's transaction: the stored
         # workspace_type must stay inside the four-member vocabulary the TS gate
         # re-parses (apps/server/src/workspace.ts parseWorkspaceType), so the bundle
@@ -246,6 +254,20 @@ async def _rent_workspace_impl(
 
         context.userdata.validate_acting_player(player_id)
 
+    if balance is not None:
+        with isolated_publish("workspace rental balance"):
+            await publish_game_event(
+                context.userdata.room,
+                E.CURRENCY_SPENT,
+                {
+                    "player_id": player_id,
+                    "amount": price_gp,
+                    "currency": "gold",
+                    "source": "workspace_rental",
+                    "new_balance": balance,
+                },
+                event_bus=context.userdata.event_bus,
+            )
     logger.info("rent_workspace: player=%s npc=%s offer=%s days=%s", player_id, npc_id, offer.token, days)
     result = {
         "workspace_type": offer.token,

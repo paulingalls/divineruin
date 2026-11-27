@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 from acceptance.first_episode_harness import episode, until
 from acceptance.merchant_harness import FORGE, GRIMJAW, SWORD, merchant_session, rows, stock
+from acceptance.seeds import seed_gold
 from livekit.agents import llm
 from livekit.agents.llm.utils import prepare_function_arguments
 from livekit.agents.voice import RunContext
@@ -91,7 +92,7 @@ async def test_sale_commits_receipt_and_snapshots(
 async def test_fractional_sale_preserves_exact_gold(reset_db_pool: str) -> None:
     async with merchant_session(item="club_wooden", held=1) as sale:
         pool = await db.get_pool()
-        await db_mutations.update_player_gold(sale.player_id, 7.6, conn=pool)
+        await seed_gold(pool, sale.player_id, 7.6)
 
         receipt = await sale.sell("club_wooden", GRIMJAW, 1)
 

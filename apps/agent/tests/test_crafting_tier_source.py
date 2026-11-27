@@ -145,9 +145,7 @@ def _repair_item_case(player: dict, row_tier: str, required_tier: str):
             "silver_per_gold": 10,
         }
     )
-    mutations = MagicMock()
-    mutations.update_player_gold = AsyncMock()
-    inventory_mutations = MagicMock()
+    inventory_mutations = MagicMock(debit_player_gold=AsyncMock(return_value=14.8))
     inventory_mutations.update_item_durability = AsyncMock()
 
     async def invoke():
@@ -157,13 +155,12 @@ def _repair_item_case(player: dict, row_tier: str, required_tier: str):
             "blacksmith",
             db_mod=db_mod,
             queries_mod=queries,
-            mutations_mod=mutations,
             inv_mutations_mod=inventory_mutations,
             content_mod=content,
             pricing_mod=pricing,
         )
 
-    return invoke, (inventory_mutations.update_item_durability, mutations.update_player_gold)
+    return invoke, (inventory_mutations.update_item_durability, inventory_mutations.debit_player_gold)
 
 
 def _case(site: str, player: dict, row_tier: str, required_tier: str):

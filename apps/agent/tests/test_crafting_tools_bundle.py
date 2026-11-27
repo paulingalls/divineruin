@@ -17,14 +17,24 @@ BUNDLE = ws.COMBINED_FORGE_LAB_TOKEN
 
 def _mutations(rental_ids=("rent_forge", "rent_lab")):
     mod = MagicMock()
-    mod.update_player_gold = AsyncMock()
     mod.create_workspace_rental = AsyncMock(side_effect=list(rental_ids))
     return mod
 
 
-async def _rent(token=BUNDLE, *, days=1, disposition="neutral", gold=15.0, content=None, mutations=None, queries=None):
+async def _rent(
+    token=BUNDLE,
+    *,
+    days=1,
+    disposition="neutral",
+    gold=15.0,
+    content=None,
+    mutations=None,
+    queries=None,
+    inventory=None,
+):
     db_mod, conn = make_db_mod()
     mutations = mutations or _mutations()
+    inventory = inventory or MagicMock(debit_player_gold=AsyncMock(return_value=13.8))
     queries = queries or _queries(disposition=disposition, player={"player_id": "player_1", "gold": gold})
     result = await _rent_workspace_impl(
         make_context(),
@@ -34,15 +44,16 @@ async def _rent(token=BUNDLE, *, days=1, disposition="neutral", gold=15.0, conte
         db_mod=db_mod,
         queries_mod=queries,
         mutations_mod=mutations,
+        inv_mutations_mod=inventory,
         content_mod=content or _content(),
         pricing_mod=_pricing(),
     )
-    return json.loads(result), mutations, queries, conn
+    return json.loads(result), mutations, inventory, conn
 
 
 class TestBundleWrites:
     async def test_bundle_writes_one_row_per_workspace_in_one_transaction(self):
-        _, mutations, _, conn = await _rent()
+        _, mutations, inventory, conn = await _rent()
         assert mutations.create_workspace_rental.await_count == 2
         calls = mutations.create_workspace_rental.await_args_list
         assert {call.args[2] for call in calls} == {ws.WorkspaceType.FORGE.value, ws.WorkspaceType.LABORATORY.value}
@@ -50,7 +61,7 @@ class TestBundleWrites:
             assert call.args[:2] == ("player_1", "accord_guild_hall")
             assert call.args[3] == "rental"
             assert call.kwargs["conn"] is conn
-        assert mutations.update_player_gold.await_args.kwargs["conn"] is conn
+        inventory.debit_player_gold.assert_awaited_once_with("player_1", 1.2, conn=conn)
 
     async def test_both_rows_expire_together_after_n_days(self):
         _, mutations, _, _ = await _rent(days=4)
@@ -67,13 +78,13 @@ class TestBundleWrites:
     @pytest.mark.parametrize("disposition,expected_daily", [("neutral", 12), ("friendly", 10), ("trusted", 0)])
     async def test_bundle_debit_is_twelve_times_disposition_times_days(self, disposition, expected_daily):
         days = 3
-        result, mutations, _, _ = await _rent(days=days, disposition=disposition)
+        result, mutations, inventory, _ = await _rent(days=days, disposition=disposition)
         assert result["price_sp"] == expected_daily * days
         assert mutations.create_workspace_rental.await_count == 2
         if expected_daily == 0:
-            mutations.update_player_gold.assert_not_awaited()
+            inventory.debit_player_gold.assert_not_awaited()
         else:
-            assert mutations.update_player_gold.await_args.args[1] == pytest.approx(15.0 - expected_daily * days / 10)
+            assert inventory.debit_player_gold.await_args.args[1] == pytest.approx(expected_daily * days / 10)
 
     async def test_bundle_response_names_the_two_grants(self):
         result, _, _, _ = await _rent()
@@ -100,17 +111,19 @@ class TestBundleLocationGate:
     )
     async def test_refusal_names_exactly_the_missing_workspaces(self, tags, missing_clause):
         mutations = _mutations()
+        inventory = MagicMock(debit_player_gold=AsyncMock())
         queries = _queries()
         with pytest.raises(ToolError) as exc:
             await _rent(
                 content=_content(location={"id": "somewhere", "settlement_tier": "city", "tags": tags}),
                 mutations=mutations,
                 queries=queries,
+                inventory=inventory,
             )
         assert missing_clause in str(exc.value)
         queries.get_npc_disposition.assert_not_awaited()
         mutations.create_workspace_rental.assert_not_awaited()
-        mutations.update_player_gold.assert_not_awaited()
+        inventory.debit_player_gold.assert_not_awaited()
 
     @pytest.mark.parametrize(
         "location",
@@ -127,12 +140,13 @@ class TestBundleLocationGate:
 
     async def test_unknown_location_refuses_for_its_own_reason_before_charge_reads(self):
         mutations = _mutations()
+        inventory = MagicMock(debit_player_gold=AsyncMock())
         queries = _queries()
         with pytest.raises(ToolError, match="unknown location"):
-            await _rent(content=_content(location=None), mutations=mutations, queries=queries)
+            await _rent(content=_content(location=None), mutations=mutations, queries=queries, inventory=inventory)
         queries.get_npc_disposition.assert_not_awaited()
         mutations.create_workspace_rental.assert_not_awaited()
-        mutations.update_player_gold.assert_not_awaited()
+        inventory.debit_player_gold.assert_not_awaited()
 
     async def test_single_rental_needs_no_location_read(self):
         # Single-rental settlement gating is deferred by note 2301b33e.

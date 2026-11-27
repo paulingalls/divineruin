@@ -166,7 +166,11 @@ test("session_init populates panelStore characterDetail", () => {
   expect(detail!.gold).toBe(50);
 });
 
-test("currency gained updates only the recipient's initialized purse", () => {
+test.each([
+  ["currency_gained", "sale", 51.3],
+  ["currency_spent", "repair", 0],
+  ["currency_spent", "workspace_rental", 49.8],
+])("%s from %s updates only the recipient's initialized purse", (type, source, balance) => {
   authStore.setState({ playerId: "p1" });
   const agent = new Participant(
     "agent",
@@ -177,29 +181,29 @@ test("currency gained updates only the recipient's initialized purse", () => {
     undefined,
     ParticipantKind.AGENT,
   );
-  const award = (playerId: string, balance: number) =>
+  const sendCurrency = (playerId: string, newBalance: number) =>
     handleGameEventMessage({
       from: agent,
       payload: encode({
-        type: "currency_gained",
+        type,
         player_id: playerId,
         amount: 1.3,
         currency: "gold",
-        source: "sale",
-        new_balance: balance,
+        source,
+        new_balance: newBalance,
       }),
     });
 
-  award("p1", 50);
+  sendCurrency("p1", 50);
   expect(panelStore.getState().characterDetail).toBeNull();
   handleGameEvent({
     type: "session_init",
     character: { player_id: "p1", name: "Kael", class: "warrior", gold: 50 },
   });
-  award("p2", 18.4);
+  sendCurrency("p2", 18.4);
   expect(panelStore.getState().characterDetail?.gold).toBe(50);
-  award("p1", 51.3);
-  expect(panelStore.getState().characterDetail?.gold).toBe(51.3);
+  sendCurrency("p1", balance);
+  expect(panelStore.getState().characterDetail?.gold).toBe(balance);
 });
 
 test("session_init populates panelStore characterDetail spells (top-level sibling)", () => {

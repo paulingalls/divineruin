@@ -20,15 +20,13 @@ class TestRoundTrip:
     @pytest.mark.asyncio
     @patch("db_content_queries.get_loot_table", new_callable=AsyncMock, return_value={"drops": []})
     @patch("pricing_queries.get_economy_pricing", new_callable=AsyncMock, return_value={"silver_per_gold": 10})
-    @patch("db_mutations.update_player_gold", new_callable=AsyncMock)
-    async def test_full_round_trip(self, _gold, _pricing, _loot):
+    async def test_full_round_trip(self, _pricing, _loot):
         """Start combat -> end combat -> verify state transitions."""
         from combat_end import _end_combat_impl
         from combat_init import _start_combat_impl
 
         mock_mutations = combat_end_mutations()
         mock_mutations.save_combat_state = AsyncMock()
-        mock_mutations.update_player_gold = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_queries.get_player_inventory = AsyncMock(return_value=[])
@@ -68,8 +66,7 @@ class TestRoundTrip:
     @pytest.mark.asyncio
     @patch("db_content_queries.get_loot_table", new_callable=AsyncMock, return_value={"drops": []})
     @patch("pricing_queries.get_economy_pricing", new_callable=AsyncMock, return_value={"silver_per_gold": 10})
-    @patch("db_mutations.update_player_gold", new_callable=AsyncMock)
-    async def test_the_round_trip_does_not_end_the_session(self, _gold, _pricing, _loot):
+    async def test_the_round_trip_does_not_end_the_session(self, _pricing, _loot):
         """AC1: a fight is a handoff, not a session end — no SESSION_END, no summary row.
 
         Drives the real lifecycle methods, not just the tool impls. ``on_exit`` IS the
@@ -89,7 +86,6 @@ class TestRoundTrip:
 
         mock_mutations = combat_end_mutations()
         mock_mutations.save_combat_state = AsyncMock()
-        mock_mutations.update_player_gold = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_queries.get_player_inventory = AsyncMock(return_value=[])

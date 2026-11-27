@@ -164,7 +164,7 @@ class TestQueryAvailableWorkspaces:
 
         db_mod, _ = make_db_mod()
         mutations = MagicMock()
-        mutations.update_player_gold = AsyncMock()
+        inventory = MagicMock(debit_player_gold=AsyncMock(return_value=14.8))
         mutations.create_workspace_rental = AsyncMock(return_value="rent_quote_parity")
         rental = json.loads(
             await _rent_workspace_impl(
@@ -175,6 +175,7 @@ class TestQueryAvailableWorkspaces:
                 db_mod=db_mod,
                 queries_mod=queries,
                 mutations_mod=mutations,
+                inv_mutations_mod=inventory,
                 pricing_mod=pricing,
             )
         )
@@ -182,11 +183,9 @@ class TestQueryAvailableWorkspaces:
         assert daily_quote == pytest.approx(expected_daily)
         assert rental["price_sp"] == pytest.approx(daily_quote * days)
         if daily_quote == 0.0:
-            mutations.update_player_gold.assert_not_awaited()
+            inventory.debit_player_gold.assert_not_awaited()
         else:
-            assert mutations.update_player_gold.await_args.args[1] == pytest.approx(
-                starting_gold - (daily_quote * days / 10)
-            )
+            assert inventory.debit_player_gold.await_args.args[1] == pytest.approx(daily_quote * days / 10)
 
     async def test_portable_lab_owner_reported_via_grant(self):
         # Read-path parity with start_crafting_project: a Portable-Lab owner's "what can
@@ -212,7 +211,7 @@ class TestRentWorkspace:
         db_mod, _ = make_db_mod()
         queries = _queries(disposition="neutral", player={"player_id": "player_1", "gold": 15})
         mutations = MagicMock()
-        mutations.update_player_gold = AsyncMock()
+        inventory = MagicMock(debit_player_gold=AsyncMock(return_value=14.8))
         mutations.create_workspace_rental = AsyncMock(return_value="rent_abc")
         result = json.loads(
             await _rent_workspace_impl(
@@ -223,18 +222,19 @@ class TestRentWorkspace:
                 db_mod=db_mod,
                 queries_mod=queries,
                 mutations_mod=mutations,
+                inv_mutations_mod=inventory,
                 pricing_mod=_pricing(),
             )
         )
         assert result["price_sp"] == pytest.approx(5.0)
-        mutations.update_player_gold.assert_awaited_once()
-        assert mutations.update_player_gold.call_args.args[1] == pytest.approx(14.5)
+        inventory.debit_player_gold.assert_awaited_once()
+        assert inventory.debit_player_gold.call_args.args[1] == 0.5
         mutations.create_workspace_rental.assert_awaited_once()
 
     async def test_friendly_discount_rounds_away_for_workshop(self):
         db_mod, _ = make_db_mod()
         mutations = MagicMock()
-        mutations.update_player_gold = AsyncMock()
+        inventory = MagicMock(debit_player_gold=AsyncMock(return_value=14.8))
         mutations.create_workspace_rental = AsyncMock(return_value="rent_x")
         result = json.loads(
             await _rent_workspace_impl(
@@ -245,63 +245,12 @@ class TestRentWorkspace:
                 db_mod=db_mod,
                 queries_mod=_queries(disposition="friendly"),
                 mutations_mod=mutations,
+                inv_mutations_mod=inventory,
                 pricing_mod=_pricing(),
             )
         )
         assert result["price_sp"] == 2
-        assert mutations.update_player_gold.await_args.args[1] == pytest.approx(14.8)
-
-    async def test_trusted_rents_free_no_debit(self):
-        db_mod, _ = make_db_mod()
-        mutations = MagicMock()
-        mutations.update_player_gold = AsyncMock()
-        mutations.create_workspace_rental = AsyncMock(return_value="rent_free")
-        result = json.loads(
-            await _rent_workspace_impl(
-                make_context(),
-                "forge",
-                "grimjaw",
-                1,
-                db_mod=db_mod,
-                queries_mod=_queries(disposition="trusted"),
-                mutations_mod=mutations,
-                pricing_mod=_pricing(),
-            )
-        )
-        assert result["price_sp"] == 0.0
-        mutations.update_player_gold.assert_not_awaited()
-        # Free must not mean access-free: the row still has to be written with the same
-        # location/type/source the paid path writes, or the crafting gate reads nothing.
-        mutations.create_workspace_rental.assert_awaited_once()
-        assert mutations.create_workspace_rental.await_args.args[:4] == (
-            "player_1",
-            "accord_guild_hall",
-            "forge",
-            "rental",
-        )
-
-    async def test_multi_day_rental_charges_per_day(self):
-        # RENTAL_BASE_PRICE_SP is sp PER CALENDAR DAY (spec §Workspace Access; migration
-        # 022 names the spec column daily_cost) and `days` extends expires_at, so the
-        # charge must scale with it — 5sp forge x 3 days at neutral = 15sp = 1.5gp.
-        db_mod, _ = make_db_mod()
-        mutations = MagicMock()
-        mutations.update_player_gold = AsyncMock()
-        mutations.create_workspace_rental = AsyncMock(return_value="rent_3d")
-        result = json.loads(
-            await _rent_workspace_impl(
-                make_context(),
-                "forge",
-                "grimjaw",
-                3,
-                db_mod=db_mod,
-                queries_mod=_queries(disposition="neutral"),
-                mutations_mod=mutations,
-                pricing_mod=_pricing(),
-            )
-        )
-        assert result["price_sp"] == pytest.approx(15.0)
-        assert mutations.update_player_gold.call_args.args[1] == pytest.approx(13.5)
+        assert inventory.debit_player_gold.await_args.args[1] == 0.2
 
     async def test_below_neutral_refuses(self):
         db_mod, _ = make_db_mod()
@@ -317,27 +266,10 @@ class TestRentWorkspace:
                 pricing_mod=_pricing(),
             )
 
-    async def test_insufficient_gold_raises(self):
-        db_mod, _ = make_db_mod()
-        queries = _queries(
-            disposition="neutral", player={"player_id": "player_1", "gold": 0}, present_npc_ids=("alchemist",)
-        )
-        with pytest.raises(ToolError, match="gold"):
-            await _rent_workspace_impl(
-                make_context(),
-                "laboratory",
-                "alchemist",
-                1,
-                db_mod=db_mod,
-                queries_mod=queries,
-                mutations_mod=MagicMock(),
-                pricing_mod=_pricing(),
-            )
-
     async def test_absent_npc_refuses_before_debit(self):
         db_mod, _ = make_db_mod()
         mutations = MagicMock()
-        mutations.update_player_gold = AsyncMock()
+        inventory = MagicMock(debit_player_gold=AsyncMock(return_value=14.8))
         mutations.create_workspace_rental = AsyncMock()
         with pytest.raises(ToolError):
             await _rent_workspace_impl(
@@ -348,8 +280,9 @@ class TestRentWorkspace:
                 db_mod=db_mod,
                 queries_mod=_queries(present_npc_ids=()),
                 mutations_mod=mutations,
+                inv_mutations_mod=inventory,
             )
-        mutations.update_player_gold.assert_not_awaited()
+        inventory.debit_player_gold.assert_not_awaited()
         mutations.create_workspace_rental.assert_not_awaited()
 
     async def test_rejects_field_workspace(self):

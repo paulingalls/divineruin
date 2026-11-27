@@ -9,7 +9,7 @@ import db
 import db_mutations
 
 
-async def credit_player_gold(player_id: str, amount: float, *, conn: asyncpg.Connection) -> float:
+async def credit_player_gold(player_id: str, amount: Decimal | float, *, conn: asyncpg.Connection) -> float:
     """Add gold in the caller's transaction and return the resulting balance."""
     balance = await conn.fetchval(
         """
@@ -23,6 +23,27 @@ async def credit_player_gold(player_id: str, amount: float, *, conn: asyncpg.Con
     )
     if balance is None:
         raise ValueError(f"Player {player_id} is missing")
+    return float(balance)
+
+
+class InsufficientGold(ValueError):
+    """The locked player balance cannot cover a charge."""
+
+
+async def debit_player_gold(player_id: str, amount: float, *, conn: asyncpg.Connection) -> float:
+    """Charge a player already locked by the caller and return the resulting balance."""
+    balance = await conn.fetchval(
+        """
+        UPDATE players
+        SET data = jsonb_set(data, '{gold}', to_jsonb(COALESCE((data->>'gold')::numeric, 0) - $2::numeric))
+        WHERE player_id = $1 AND COALESCE((data->>'gold')::numeric, 0) >= $2::numeric
+        RETURNING (data->>'gold')::numeric
+        """,
+        player_id,
+        Decimal(str(amount)),
+    )
+    if balance is None:
+        raise InsufficientGold(player_id)
     return float(balance)
 
 
