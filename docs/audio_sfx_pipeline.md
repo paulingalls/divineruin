@@ -382,6 +382,9 @@ Do not rename these keys without updating both downstream stories.
 | primal_feeblemind | Psychic collapse | spell_generic |
 | primal_storm_of_vengeance | Building storm: wind, rain, thunder, hail, blizzard | spell_nature |
 
+Druid and warden Bark Skin reactions raise AC. The Primal spell reaction and
+the Thornveld Guardian Shield's free cast still need producers.
+
 All 87 spells mapped (30 arcane + 28 divine + 29 primal). Only one spell,
 `arcane_elemental_burst`, has a cast-time-variable element (fire/ice/lightning
 chosen by the caster) — story-003 should decide whether the rules engine routes

@@ -10,6 +10,7 @@ async_rules.resolve_crafting rather than reaching for a private cross-module hel
 import random
 from dataclasses import dataclass
 
+from patron_synergy import CraftingSynergyReceipt, common_bond_crafting_bonus
 from recipe_validation import check_material_requirements
 from rules_engine import skill_modifier
 
@@ -24,6 +25,7 @@ class ExperimentationOutcome:
     total: int
     dc: int
     margin: int
+    crafting_synergy: CraftingSynergyReceipt | None = None
 
 
 def resolve_experimentation(
@@ -36,10 +38,13 @@ def resolve_experimentation(
     r = rng or random.Random()
     d20 = r.randint(1, 20)
     mod = skill_modifier(player_data, skill)
-    total = d20 + mod
+    crafting_synergy = common_bond_crafting_bonus(player_data)
+    total = d20 + mod + (crafting_synergy["bonus"] if crafting_synergy is not None else 0)
     dc = base_dc + EXPERIMENTATION_DC_PENALTY
     margin = total - dc
-    return ExperimentationOutcome(success=margin >= 0, roll=d20, total=total, dc=dc, margin=margin)
+    return ExperimentationOutcome(
+        success=margin >= 0, roll=d20, total=total, dc=dc, margin=margin, crafting_synergy=crafting_synergy
+    )
 
 
 def find_matching_recipe(

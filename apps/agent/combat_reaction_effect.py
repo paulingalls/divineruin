@@ -9,6 +9,7 @@ engine can open, rather than shipping a guard that certifies nothing.
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from typing import cast
 
 import abilities
@@ -21,8 +22,10 @@ import conditions
 import reaction_spend
 import reaction_windows
 import temp_hp
+from check_resolution import D20Roll
 from combat_attack_roll import held_reaction_ac
 from combat_damage_affinity import with_landed_damage
+from combat_participant import BARK_SKIN_AC_BONUS
 from combat_support import deserialize_roll, serialize_roll
 from declarations import resolve_declaration
 from session_data import CombatParticipant
@@ -34,6 +37,7 @@ logger = logging.getLogger("divineruin.tools")
 # one is a cross-language content change this story does not own. Their honesty against the
 # catalog is pinned by test_reaction_resolution's drift guard, not by this comment.
 HALVES_DAMAGE = frozenset({"rogue_uncanny_dodge"})
+BARK_SKIN = frozenset({"druid_bark_skin", "warden_bark_skin"})
 SHIELD_BEARING = frozenset({"guardian_retaliating_shield"})
 SLIPPERY_REACTIONS = frozenset({"rogue_slippery", "spy_slippery"})
 AC_BONUS = {
@@ -66,6 +70,21 @@ def bound_spends(state, head: dict, stage: str, *, window_id: str | None = None)
         and entry["held_seq"] == head["seq"]
         and (stage != reaction_windows.MOVEMENT or entry["window_id"] == window_id)
     ]
+
+
+def intercept_target(state, head: dict) -> CombatParticipant | None:
+    spends = [
+        spend
+        for spend in bound_spends(state, head, reaction_windows.POST_ROLL)
+        if reaction_spend.intercepts_damage(spend)
+    ]
+    if not spends:
+        return None
+    (spend,) = spends
+    target = state.get_participant(spend["actor_id"])
+    if target is None:
+        raise ValueError(f"Intercept names missing guardian {spend['actor_id']!r}")
+    return target
 
 
 def ac_bonus(state, head: dict) -> int:
@@ -144,6 +163,15 @@ def record_shield_wear(packets: list[dict], state, head: dict, summary: dict) ->
         packet["mechanical_effect"] = "shield_durability"
 
 
+def record_intercept(packets: list[dict], summary: dict) -> None:
+    if not summary.get("hit"):
+        return
+    recipient = summary.get("damage_target_id")
+    for packet in packets:
+        if packet["actor_id"] == recipient and packet["ability_id"] == reaction_spend.INTERCEPT:
+            packet["mechanical_effect"] = "damage_intercepted"
+
+
 def record_save_advantage(packets: list[dict], summary: dict) -> None:
     """Label the reaction from the resolved save: ``close`` runs before the save is rolled."""
     if not summary.get("save_advantage"):
@@ -180,6 +208,42 @@ def halve(head: dict, target) -> None:
     head["roll"] = serialize_roll(halved, held_ac)
 
 
+def apply_bark_skin(head: dict, target: CombatParticipant) -> None:
+    result, held_ac = deserialize_roll(head["roll"])
+    if not D20Roll(result.attack_modifier, held_ac).evaluate(result.roll).success:
+        raise ValueError("Bark Skin expected a held hit that reached the original AC")
+
+    raised_ac = held_ac + BARK_SKIN_AC_BONUS
+    verdict = D20Roll(result.attack_modifier, raised_ac).evaluate(result.roll)
+    result = replace(result, target_ac=raised_ac, narrative_hint=verdict.narrative_hint)
+    if not verdict.success:
+        result = with_landed_damage(
+            replace(result, hit=False),
+            0,
+            target.hp_current,
+            critical_success=False,
+            bonus_damage=0,
+            bonus_damage_type=None,
+            rider_damage=0,
+            rider_damage_type=None,
+            rider_ignores_resistance=False,
+            sneak_attack_dice=None,
+            sneak_attack_raw_damage=0,
+            synergy_damage=0,
+            synergy_damage_type=None,
+            synergy_clause_id=None,
+            order_rider=None,
+            order_damage_dice=None,
+            order_raw_damage=0,
+            coordinated_rider=None,
+            pincer_dice=None,
+            pincer_raw_damage=0,
+            sacrifice_rider=None,
+        )
+    target.bark_skin_active = True
+    head["roll"] = serialize_roll(result, raised_ac)
+
+
 def _apply(
     state,
     head: dict,
@@ -213,9 +277,10 @@ def _apply(
             return "target_ac_bonus"
         return None
 
-    # on_hit means the reactor was the one HIT. A reactor guarding someone else is
-    # guardian_intercept's shape (on_ally_hit), a different and unwired mechanic — halving an
-    # ally's damage off an on_hit spend would invent one.
+    if ability_id in BARK_SKIN and target is not None and spend["actor_id"] == target.id:
+        apply_bark_skin(head, target)
+        return "round_ac_bonus"
+
     if (
         ability_id in HALVES_DAMAGE
         and head["roll"] is not None

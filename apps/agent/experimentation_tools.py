@@ -101,6 +101,14 @@ async def _experiment_with_materials_impl(
                 player_id, alloc.by_id, allow_tainted=match["tainted_materials"], conn=conn
             )
             outcome = experimentation.resolve_experimentation(player, match["crafting_dc"], rng=rng)
+            roll_details: dict[str, object] = {
+                "roll": outcome.roll,
+                "dc": outcome.dc,
+                "total": outcome.total,
+                "margin": outcome.margin,
+            }
+            if outcome.crafting_synergy is not None:
+                roll_details["crafting_synergy"] = outcome.crafting_synergy
             if outcome.success:
                 context.userdata.validate_acting_player(player_id)
                 await mutations_mod.add_player_known_recipe(player_id, match["id"], "experimentation", conn=conn)
@@ -109,8 +117,7 @@ async def _experiment_with_materials_impl(
                         "outcome": "success",
                         "learned_recipe": match["id"],
                         "produced_item": match["output_item"],
-                        "roll": outcome.roll,
-                        "dc": outcome.dc,
+                        **roll_details,
                     }
                 )
             else:
@@ -119,8 +126,7 @@ async def _experiment_with_materials_impl(
                         "outcome": "failure",
                         "learned_recipe": None,
                         "retryable": True,
-                        "roll": outcome.roll,
-                        "dc": outcome.dc,
+                        **roll_details,
                     }
                 )
         else:

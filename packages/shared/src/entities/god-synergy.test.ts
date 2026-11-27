@@ -307,6 +307,54 @@ test.each(["rogue", "spy"] as const)(
   },
 );
 
+test.each(["guardian", "warden"] as const)(
+  "Aelora %s has an engine Restoring Guard clause",
+  (archetype) => {
+    const matrix = validateGods(catalog).find(
+      (god) => god.god_id === "aelora",
+    )?.layer_4_synergy_matrix;
+    expect(matrix?.[archetype]).toEqual({
+      type: "divine",
+      name: "Restoring Guard",
+      clauses: [
+        {
+          effect: "Protective reactions restore 2 Stamina",
+          status: "active",
+          resolution: "engine",
+          implementation_id: "aelora_restoring_guard",
+        },
+      ],
+    });
+  },
+);
+
+test.each(["artificer", "bard", "diplomat"] as const)(
+  "Aelora %s has both engine Common Bond clauses",
+  (archetype) => {
+    const matrix = validateGods(catalog).find(
+      (god) => god.god_id === "aelora",
+    )?.layer_4_synergy_matrix;
+    expect(matrix?.[archetype]).toEqual({
+      type: "natural",
+      name: "Common Bond",
+      clauses: [
+        {
+          effect: "Bond bonus +2 near 2+ allies.",
+          status: "active",
+          resolution: "engine",
+          implementation_id: "aelora_common_bond",
+        },
+        {
+          effect: "Crafting checks gain +1",
+          status: "active",
+          resolution: "engine",
+          implementation_id: "aelora_common_bond_crafting",
+        },
+      ],
+    });
+  },
+);
+
 test("Valdris's guardian has the registered Witness Shield clause", () => {
   const guardian = validateGods(catalog).find((god) => god.god_id === "valdris")
     ?.layer_4_synergy_matrix.guardian;

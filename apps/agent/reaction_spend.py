@@ -6,9 +6,8 @@ and story-018's outcomes both need exactly that ("halve THIS damage", "+2 AC aga
 attack"). This module owns the record that replaces the bool, and the read/write of it.
 
 JSONB-native plain dicts, like ``held_actions`` and ``open_window``, so the field round-trips
-through ``CombatState.to_dict``/``from_dict`` with no nested rebuild. The shape is UNIFORM — an
-unspent entry carries the same keys as a spent one, all None — so a reader never branches on which
-keys exist. ``stage`` is carried rather than parsed back out of ``window_id``: an id string is a
+through ``CombatState.to_dict``/``from_dict`` with no nested rebuild. The binding keys are uniform — an
+unspent entry carries them with None values. ``stage`` is carried rather than parsed back out of ``window_id``: an id string is a
 display token, and splitting ``"r1-0-post_roll"`` would make its format a load-bearing contract.
 
 It lives outside session_data.py, which is at 453 of the 500-line cap, and imports nothing from it
@@ -20,6 +19,7 @@ from __future__ import annotations
 import logging
 
 logger = logging.getLogger("divineruin.tools")
+INTERCEPT = "guardian_intercept"
 
 
 def unspent() -> dict:
@@ -37,13 +37,21 @@ def spend(ability_id: str, window: dict, *, held_seq: int) -> dict:
     ``stage: None``, which is indistinguishable from the "spent, no binding" an upgraded legacy
     bool carries — so 018 would silently apply no modifier to a reaction that WAS bound.
     """
-    return {
+    record = {
         "spent": True,
         "ability_id": ability_id,
         "window_id": window["id"],
         "stage": window["stage"],
         "held_seq": held_seq,
     }
+    # Older spends were narration only and could bind several guardians to one blow.
+    if ability_id == INTERCEPT:
+        record["intercepts_damage"] = True
+    return record
+
+
+def intercepts_damage(entry: dict) -> bool:
+    return entry.get("intercepts_damage") is True
 
 
 def is_spent(entry: dict | None) -> bool:

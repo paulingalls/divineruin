@@ -198,7 +198,7 @@ When a Veil Ward is active in your area, your spells inside it suffer no damage/
 
 | Archetypes | Synergy Type | Enhancement |
 |---|---|---|
-| Artificer, Bard, Diplomat | Natural | Bond bonus +2 near 2+ allies. Crafting Focus costs -1 (min 1) |
+| Artificer, Bard, Diplomat | Natural | Bond bonus +2 near 2+ allies. Crafting checks gain +1 |
 | Guardian, Warden | Divine | Protective reactions restore 2 Stamina |
 | Rogue | Unexpected | Commerce Persuasion +1. Better fence prices. Aelora respects the hustle |
 

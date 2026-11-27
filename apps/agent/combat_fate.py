@@ -31,6 +31,7 @@ from combat_item_rider import resolve_rider
 from combat_support import _resolve_attack_packet, apply_rolled_attack
 from equipment_rules import resolve_weapon_profile, with_weapon_magic
 from patron_synergy_combat import attack_player, veiled_strike
+from session_data import CombatParticipant
 
 
 async def attack_sequence(
@@ -119,6 +120,7 @@ async def continue_attack(
     reaction_ac_bonus=0,
     reaction_save_advantage=False,
     shield_reaction=None,
+    damage_target: CombatParticipant | None = None,
     grapple_blocked=False,
     publish_roll=True,
     progress=None,
@@ -322,6 +324,7 @@ async def continue_attack(
                 # rides the call instead of being written into that map.
                 target_ac_bonus=state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
                 shield_reaction=shield_reaction,
+                damage_target=damage_target,
                 grapple_blocked=grapple_blocked,
                 enemies_remaining=enemies_remaining,
                 is_first_attack_of_combat=is_first_attack,
@@ -360,6 +363,7 @@ async def continue_attack(
                 result,
                 prepared.d20.dc,
                 shield_reaction=shield_reaction,
+                damage_target=damage_target,
                 grapple_blocked=grapple_blocked,
                 mutations=mutations,
                 queries=queries,

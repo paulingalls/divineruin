@@ -267,6 +267,7 @@ async def _finish_skill(
         "margin": result.margin,
         "narrative_hint": result.narrative_hint,
         "context": context_description,
+        **({"crafting_synergy": result.crafting_synergy} if result.crafting_synergy is not None else {}),
         **({"gift_name": result.gift_name} if result.gift_name else {}),
         **({"context_synergy": result.context_synergy} if result.context_synergy is not None else {}),
     }

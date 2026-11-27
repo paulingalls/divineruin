@@ -130,3 +130,11 @@ def _attack_action(state, head: dict) -> dict | None:
     if declaration.type is not DeclarationType.ATTACK or action.get("applies_condition"):
         return None
     return action
+
+
+def assert_iteration_progress(state, head: dict, summaries: list[dict], summary_start: int) -> None:
+    popped = not state.held_actions or state.held_actions[0] is not head
+    unresolved = any(summary.get("resolved") is False for summary in summaries[summary_start:])
+    opened = state.open_window is not None
+    if not (popped or unresolved or opened):
+        raise RuntimeError(f"held action for {head['actor_id']!r} made no progress")

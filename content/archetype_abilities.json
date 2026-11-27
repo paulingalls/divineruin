@@ -767,8 +767,8 @@
     "ability_type": "reaction",
     "level_requirement": 1,
     "cost": { "stamina": 0, "focus": 2, "scaling": null },
-    "effect": "Reaction: skin hardens to bark, reducing an incoming hit. Druid survivability.",
-    "narration_cue": "Your skin roughens to ridged bark as the blow lands.",
+    "effect": "Reaction when hit: gain +2 AC through the end of the round, including against the triggering attack. Recheck that attack's original roll against the raised AC. A natural 20 still hits.",
+    "narration_cue": "Your skin crackles and hardens into ridged bark.",
     "window": "on_hit"
   },
   {
@@ -938,7 +938,7 @@
     "ability_type": "reaction",
     "level_requirement": 1,
     "cost": { "stamina": 0, "focus": 2, "scaling": null },
-    "effect": "Reaction: skin hardens to bark, reducing an incoming hit.",
+    "effect": "Reaction when hit: gain +2 AC through the end of the round, including against the triggering attack. Recheck that attack's original roll against the raised AC. A natural 20 still hits.",
     "narration_cue": "Bark sheathes your skin in an instant of rough armor.",
     "window": "on_hit"
   },

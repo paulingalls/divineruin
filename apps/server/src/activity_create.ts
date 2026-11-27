@@ -1,3 +1,5 @@
+import type { God } from "../../../packages/shared/src/entities/god.ts";
+import { captureCraftingPatrons } from "./activity_crafting_patron.ts";
 import { consumeMaterials } from "./inventory_allocation.ts";
 import { inventorySnapshot } from "./inventory_snapshot.ts";
 import { sql } from "./db.ts";
@@ -69,38 +71,15 @@ function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function captureCraftBlessing(rawFavor: unknown) {
-  const favor = parseJsonb<{ patron?: unknown; level?: unknown; max?: unknown } | null | undefined>(
-    rawFavor,
-  );
-  if (favor == null) return undefined;
-  const { patron, level, max } = favor;
-  if (
-    typeof level !== "number" ||
-    typeof max !== "number" ||
-    max <= 0 ||
-    level < 0 ||
-    level > max
-  ) {
-    throw new Error("Invalid divine favor for crafting");
-  }
-  if (patron !== "aelora") return undefined;
-
-  // Match patron_favor.tier_index: favor thresholds round up against the patron's maximum.
-  const tier =
-    level >= Math.ceil((max * 75) / 100)
-      ? "Exalted"
-      : level >= Math.ceil((max * 40) / 100)
-        ? "Devoted"
-        : "Acknowledged";
-  return { id: "aelora_craft_blessing", name: "Craft Blessing", patron, tier };
-}
-
 function makeActivityId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
 }
 
-export async function handleCreateActivity(req: Request, playerId: string): Promise<Response> {
+export async function handleCreateActivity(
+  req: Request,
+  playerId: string,
+  craftingPatrons?: God[],
+): Promise<Response> {
   try {
     const body = (await req.json().catch(() => null)) as {
       type?: string;
@@ -280,12 +259,16 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
                data->'proficiencies' AS proficiencies, data->'divine_favor' AS divine_favor
         FROM players WHERE player_id = ${playerId}
       `;
-      const blessing = captureCraftBlessing(playerRows[0]?.divine_favor);
+      archetype = playerRows[0]?.class ?? undefined;
+      const { blessing, commonBond } = captureCraftingPatrons(
+        playerRows[0]?.divine_favor,
+        archetype,
+        craftingPatrons,
+      );
       const durationMultiplier = blessing ? 0.75 : 1;
       durationMin = duration.min * durationMultiplier;
       durationMax = duration.max * durationMultiplier;
       const locationId = playerRows[0]?.location_id ?? "unknown";
-      archetype = playerRows[0]?.class ?? undefined;
       const parsedProficiencies = parseJsonb<unknown>(playerRows[0]?.proficiencies);
       const proficiencies = Array.isArray(parsedProficiencies) ? parsedProficiencies : [];
 
@@ -345,6 +328,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         crafting_tier: craftingTier,
         tainted_materials: recipe.tainted_materials,
         ...(blessing && { craft_blessing: blessing }),
+        ...(commonBond && { common_bond: commonBond }),
       };
     } else {
       // companion_errand

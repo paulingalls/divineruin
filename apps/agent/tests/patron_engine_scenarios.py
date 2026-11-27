@@ -1,6 +1,8 @@
+from acceptance.test_common_bond_crafting import SCENARIOS as common_bond_crafting
 from acceptance.test_nythera_unseen_coast import SCENARIOS as saltwind_casting
 from acceptance.test_orenthel_guardian_ward import SCENARIOS as guardian_ward
 from acceptance.test_orenthel_undead_wrath import SCENARIOS as dawnward_strike
+from acceptance.test_restoring_guard import SCENARIOS as restoring_guard
 from acceptance.test_synergy_context import SCENARIOS as context_checks
 from acceptance.test_turn_undead_hollow import SCENARIOS as absolute_authority
 from acceptance.test_valdris_party_yield import SCENARIOS as measured_reprisal
@@ -67,6 +69,7 @@ ENGINE_SCENARIOS = {
     **aelora,
     **context_checks,
     **aelora_craft,
+    **common_bond_crafting,
     **hearthfire,
     **aelora_shield,
     **beacon,
@@ -102,6 +105,7 @@ ENGINE_SCENARIOS = {
     **orenthel,
     **inspire_heal,
     **restoring_song,
+    **restoring_guard,
     **syrath,
     **two_round_veil,
     **veiled_strikes,
