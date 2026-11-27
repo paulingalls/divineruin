@@ -159,7 +159,9 @@ async def settle(
             }
         elif ability == RIPOSTE:
             spend = state.reactions_available[actor.id]
-            if "weapon" in spend:
+            if target.is_fallen:
+                packet["reason"] = "target already fell"
+            elif "weapon" in spend:
                 counter.update(actor_id=actor.id, ability_id=ability, window_id=packet["window_id"])
                 receipt = await counter_strike(session, state, target, spend["weapon"], counter, deps, fate)
                 if fate is not None and fate.pending is not None:

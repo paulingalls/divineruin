@@ -26,6 +26,39 @@ from combat_spatial import position, require_spatial
 from combat_structures import add_wall
 
 
+@pytest.mark.parametrize("enemy_hp", [1, 16])
+async def test_second_riposte_checks_if_attacker_fell(reset_db_pool, enemy_hp):
+    async with counter_fight(RIPOSTE, ally_archetype="skirmisher") as fight:
+        enemy = fight.enemies[0]
+        state = await fight.reload()
+        participant(state, enemy).hp_current = enemy_hp
+        await fight.persist()
+        await declare_attacks(fight, fight.players[0], enemy)
+        packets = []
+        rolls = iter((1, 18, 18))
+        with (
+            patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(next(rolls))),
+            patch("check_resolution_attack.dice_roll", return_value=_damage_die(3)),
+        ):
+            window = await window_for(fight, RIPOSTE, packets)
+            assert {r["actor_id"] for r in window["reactions"] if r["id"] == RIPOSTE} == set(fight.players)
+            for actor in fight.players:
+                receipt = await tool_receipt(fight, actor, "activate", {"id": RIPOSTE})
+                assert not receipt.is_error, receipt.output
+            packets += await fight.drain()
+        first, second = [packet for packet in packets if packet.get("ability_id") == RIPOSTE]
+        first_damage = first["counter_attack"]["damage"]
+        assert first_damage > 0
+        attacker = participant(await fight.reload(), enemy)
+        if enemy_hp == 1:
+            assert "counter_attack" not in second and second["reason"] == "target already fell"
+            assert attacker.is_fallen and attacker.hp_current == 0
+        else:
+            second_damage = second["counter_attack"]["damage"]
+            assert second_damage > 0
+            assert attacker.hp_current == enemy_hp - first_damage - second_damage > 0
+
+
 @pytest.mark.parametrize("reach", [5, 10])
 async def test_sidestep_reach(reset_db_pool, reach):
     for spent in (False, True) if reach == 5 else (True,):
