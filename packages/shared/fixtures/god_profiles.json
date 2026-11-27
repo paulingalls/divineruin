@@ -57,6 +57,18 @@
       }
     ]
   },
+  "promised_hour": {
+    "type": "divine",
+    "name": "Promised Hour",
+    "clauses": [
+      {
+        "effect": "Gain +1 to saving throws while fulfilling an oath at its promised time.",
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "zhael_promised_hour"
+      }
+    ]
+  },
   "context_clause": {
     "kind": "context_check",
     "synergy_context": "fixture_context",

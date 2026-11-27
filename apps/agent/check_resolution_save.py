@@ -74,8 +74,19 @@ class SavingThrowResult:
     originating_participant_id: str | None = None
     oath_justice: dict | None = None
 
-    def justice_fields(self) -> dict:
-        return {"oath_justice": self.oath_justice} if self.oath_justice is not None else {}
+    combat_id: str | None = None
+    round_number: int | None = None
+    oath_timed: dict | None = None
+
+    def oath_fields(self) -> dict:
+        fields = {}
+        if self.combat_id is not None:
+            fields.update(combat_id=self.combat_id, round_number=self.round_number)
+        if self.oath_justice is not None:
+            fields["oath_justice"] = self.oath_justice
+        if self.oath_timed is not None:
+            fields["oath_timed"] = self.oath_timed
+        return fields
 
 
 def resolve_saving_throw(

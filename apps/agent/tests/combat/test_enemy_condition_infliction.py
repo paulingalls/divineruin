@@ -1,7 +1,7 @@
 """Enemy pool actions can be declared as ATTACK or ABILITY; both must reach immunity-gated condition application."""
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from combat._helpers import _make_combat_state
 from sample_fixtures import make_context
@@ -174,7 +174,7 @@ class TestEnemyAbilityDispatch:
         packet = MagicMock(actor_id="goblin_scout_1", declaration=decl)
         session = make_context().userdata
         mutations = MagicMock()
-        queries = MagicMock()
+        queries = MagicMock(get_player=AsyncMock(return_value={"class": "warrior"}))
         resolver = MagicMock()
 
         summary = await _resolve_one_packet(
@@ -205,7 +205,7 @@ class TestEnemyAbilityDispatch:
                 state,
                 packet,
                 mutations=MagicMock(),
-                queries=MagicMock(),
+                queries=MagicMock(get_player=AsyncMock(return_value={"class": "warrior"})),
                 resolver=MagicMock(),
                 concentration_break_mod=MagicMock(),
             )
@@ -230,7 +230,7 @@ class TestEnemyAbilityDispatch:
                 state,
                 packet,
                 mutations=MagicMock(),
-                queries=MagicMock(),
+                queries=MagicMock(get_player=AsyncMock(return_value={"class": "warrior"})),
                 resolver=MagicMock(),
                 concentration_break_mod=MagicMock(),
             )

@@ -74,6 +74,12 @@ test("Valdris's paladin has both registered Oath of Justice clauses", () => {
   expect<unknown>(paladin).toEqual(corpus.oath_of_justice);
 });
 
+test("Zhael's paladin has the registered Promised Hour clause", () => {
+  const paladin = validateGods(catalog).find((god) => god.god_id === "zhael")
+    ?.layer_4_synergy_matrix.paladin;
+  expect<unknown>(paladin).toEqual(corpus.promised_hour);
+});
+
 test("Valdris's marshal has the registered Lawful Command clause", () => {
   const marshal = validateGods(catalog).find((god) => god.god_id === "valdris")
     ?.layer_4_synergy_matrix.marshal;

@@ -192,15 +192,31 @@ async def _floor_target(
             save = finalize_save(state, target, save, failed_conditions=("prone",), failed_damage=adjusted.damage)
         steps.update(
             save_success=save.success,
+            save_roll=save.roll,
+            save_total=save.total,
             **override_fields(save),
-            **save.justice_fields(),
+            **save.oath_fields(),
             **encounter_facts.rally_receipt(target.id, save.rally_sources),
         )
     encounter_facts.record_party_attack(state, actor, target)
     effect = {"target_id": target_id, "save_success": steps["save_success"], "save_dc": 15}
     if "success_override" in steps:
         effect["success_override"] = steps["success_override"]
-    effect.update({key: steps[key] for key in ("rally_bonuses", "oath_justice") if key in steps})
+    effect.update(
+        {
+            key: steps[key]
+            for key in (
+                "rally_bonuses",
+                "oath_justice",
+                "oath_timed",
+                "combat_id",
+                "round_number",
+                "save_roll",
+                "save_total",
+            )
+            if key in steps
+        }
+    )
     if effect["save_success"]:
         return effect
     landed = await apply_attack_result(

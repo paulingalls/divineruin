@@ -145,7 +145,7 @@ async def turn_start(
                 "effect": "corruption_field",
                 "save_success": save.success,
                 "save_dc": spec["dc"],
-                **save.justice_fields(),
+                **save.oath_fields(),
                 **encounter_facts.rally_receipt(actor.id, save.rally_sources),
             }
             if scope is not None:

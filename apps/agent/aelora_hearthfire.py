@@ -159,7 +159,7 @@ async def settle_entry(
         cue = f"Hearthfire stops {mover.name} at its edge."
     return {
         **receipt,
-        **result.justice_fields(),
+        **result.oath_fields(),
         "roll": result.roll,
         "total": result.total,
         "success": result.success,

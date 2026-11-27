@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, replace
 import db_queries
 import encounter_facts
 import oath_justice
+import oath_timed
 import zhael_fate
 from check_resolution import D20CheckCore, D20Roll, SkillCheckResult, skill_with_roll
 from check_resolution_save import SavingThrowResult, _save_result
@@ -53,14 +54,16 @@ class PhaseRolls:
         self.pending = PendingRoll(kind, roller_id, original, d20, candidates)
         return True
 
-    async def save(self, session, checkpoint, roller_id, effect, roll, *, queries, conn, state=None):
+    async def save(self, session, checkpoint, roller_id, effect, roll, *, queries, conn, state=None, round_number=None):
         if "save" in checkpoint:
             original = saved_throw(checkpoint.pop("save"))
             d20 = original.d20
             assert d20 is not None
             kept = self.select(d20.evaluate(original.roll))
             return _save_result(original, kept, effect)
-        original = await _prepare_save(session, state, roller_id, effect, roll, queries=queries, conn=conn)
+        original = await _prepare_save(
+            session, state, roller_id, effect, roll, queries=queries, conn=conn, round_number=round_number
+        )
         if not session.fate_lock.locked():
             return original
         d20 = original.d20
@@ -120,15 +123,21 @@ class PacketRolls:
         return original
 
 
-async def _prepare_save(session, state, roller_id, effect, roll, *, queries, conn, player=None):
+async def _prepare_save(session, state, roller_id, effect, roll, *, queries, conn, player=None, round_number=None):
     result = roll()
     if state is None and player is None:
         if result.originating_participant_id is not None and session.combat_state is not None:
             raise ValueError("Sourced combat save requires its working combat state")
         return result
-    return await oath_justice.prepare_save(
+    roller = state.get_participant(roller_id) if state is not None else None
+    if player is None and roller is not None and roller.type == "player":
+        player = await queries.get_player(roller_id, conn=conn)
+        if player is None:
+            raise ValueError(f"Missing authoritative player {roller_id!r}")
+    result = await oath_justice.prepare_save(
         session, state, roller_id, result, effect, queries=queries, conn=conn, player=player
     )
+    return oath_timed.prepare_save(state, roller_id, result, effect, player=player, round_number=round_number)
 
 
 async def packet_save(

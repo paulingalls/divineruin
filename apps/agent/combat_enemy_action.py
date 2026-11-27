@@ -45,7 +45,7 @@ def is_combined_attack_action(action: dict) -> bool:
 
 def _save_fields(result, roller_id: str) -> dict:
     return {
-        **result.justice_fields(),
+        **result.oath_fields(),
         **override_fields(result),
         **encounter_facts.rally_receipt(roller_id, result.rally_sources),
         "save_type": result.save_type,
@@ -304,7 +304,7 @@ async def resolve_save_damage_action(
             session.room,
             E.DICE_ROLL,
             {
-                **result.justice_fields(),
+                **result.oath_fields(),
                 **override_fields(result),
                 **encounter_facts.rally_receipt(target.id, result.rally_sources),
                 "roll_type": "saving_throw",

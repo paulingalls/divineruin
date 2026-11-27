@@ -10,6 +10,7 @@ from acceptance.test_valdris_oath_breach import SCENARIOS as oath_breach
 from acceptance.test_valdris_party_yield import SCENARIOS as measured_reprisal
 from acceptance.test_valdris_sanctuary import SCENARIOS as lawful_command
 from acceptance.test_valdris_witness import SCENARIOS as witness_shield
+from acceptance.test_zhael_promised_hour import SCENARIOS as promised_hour
 from combat.test_nythera_tidal_step import SCENARIOS as tidal_step
 from combat.test_synergy_crit_edges import SCENARIOS as crit_edges
 from combat.test_synergy_spell_edges import SCENARIOS as spell_edges
@@ -91,6 +92,7 @@ ENGINE_SCENARIOS = {
     **measured_reprisal,
     **oath_breach,
     **justice_at_stake,
+    **promised_hour,
     **marshal_death_save,
     **rally,
     **foretold_words,

@@ -317,7 +317,7 @@ async def _roll_save_damage(
         "success": save.success,
         "half_on_success": profile["half"],
         **override_fields(save),
-        **save.justice_fields(),
+        **save.oath_fields(),
         **encounter_facts.rally_receipt(target.id, save.rally_sources),
     }
     return roll, save_info
