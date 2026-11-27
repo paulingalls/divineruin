@@ -200,7 +200,6 @@ async def test_spoken_sell_handoff_and_return(
             for message in merchant["chat_ctx"].messages()
             if (message.text_content or "").startswith("Present NPCs at ")
         )
-        assert present is not None
         npc_id = next(npc["id"] for npc in json.loads(present.split("\n", 1)[1]) if npc["name"] == "Grimjaw")
         assert npc_id == GRIMJAW
 
