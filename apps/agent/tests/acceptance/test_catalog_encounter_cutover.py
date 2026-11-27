@@ -162,9 +162,9 @@ def test_final_balance_table():
     catalog = {row["id"]: row for row in json.loads((CONTENT_ROOT / "content/creatures.json").read_text())}
     assert {row["id"] for row in TEMPLATES} == set(TARGETS) | {"hollow_choir", "hollow_still", "hollow_architect"}
     ordinary = [row for row in TEMPLATES if row["id"] in TARGETS]
-    assert len(ordinary) == 16
-    assert sum(len(row["enemies"]) for row in ordinary) == 37
-    assert len({ref["creature_id"] for row in ordinary for ref in row["enemies"]}) == 17
+    assert len(ordinary) == 18
+    assert sum(len(row["enemies"]) for row in ordinary) == 39
+    assert len({ref["creature_id"] for row in ordinary for ref in row["enemies"]}) == 18
     for row in ordinary:
         level, difficulty, groups = TARGETS[row["id"]]
         assert (row["recommended_party_level"], row["difficulty"]) == (level, difficulty)
