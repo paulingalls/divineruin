@@ -4,7 +4,7 @@ Registry snapshot: 2026-11-26 (acquisition completed 2026-11-27T02:16:27.654900+
 
 Toolchain: CPython 3.14.7, uv 0.13.9, Bun 1.4.5
 
-Execution evidence: All-scope check execution has yet to be recorded.
+Execution evidence: `--check --scope all` exited 0 at `ed26195b99cb2bdd673960b0a389fc1644b6af97` on 2026-11-27T02:22:05Z.
 
 ## Python environments
 

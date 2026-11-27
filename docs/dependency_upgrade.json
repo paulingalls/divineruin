@@ -1600,7 +1600,12 @@
     }
   ],
   "registry_acquired_at": "2026-11-27T02:16:27.654900+00:00",
-  "report_check": null,
+  "report_check": {
+    "commit": "ed26195b99cb2bdd673960b0a389fc1644b6af97",
+    "checked_at": "2026-11-27T02:22:05Z",
+    "command": "cd apps/agent && uv run --frozen python dependency_upgrade_report.py --check --scope all",
+    "exit_status": 0
+  },
   "mobile_release_age_exemption": {
     "date": "2026-11-26",
     "reference": "https://github.com/paulingalls/divineruin/pull/792",
