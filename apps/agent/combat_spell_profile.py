@@ -3,7 +3,7 @@
 import re
 from typing import Literal, NotRequired, TypedDict, cast
 
-from condition_catalog import CONDITION_CATALOG
+from condition_catalog import CONDITION_CATALOG, REACTIONS_SUPPRESSED
 from creature_schema import CATEGORIES
 
 ATTRIBUTES = frozenset({"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"})
@@ -144,6 +144,7 @@ def parse_profile(raw):
         "restriction",
         "hollow_dice",
         "optional_target",
+        "rider",
         "deferred",
     }
     if raw.keys() - allowed:
@@ -172,6 +173,18 @@ def parse_profile(raw):
         raise ValueError("combat_damage attack requires ranged policy")
     if raw["resolution"] == "save" and (raw.get("save") not in ATTRIBUTES or type(raw.get("half")) is not bool):
         raise ValueError("combat_damage save requires save and half policy")
+    if "rider" in raw:
+        rider = raw["rider"]
+        if (
+            raw["resolution"] not in {"attack", "save"}
+            or not isinstance(rider, dict)
+            or set(rider) != {"condition", "expires"}
+            or not isinstance(rider["condition"], str)
+            or rider["condition"] not in CONDITION_CATALOG
+            or rider["expires"] not in ("target_turn_end", "caster_turn_start")
+            or (rider["expires"] == "caster_turn_start") != (rider["condition"] == REACTIONS_SUPPRESSED)
+        ):
+            raise ValueError("invalid combat_damage rider")
     for key in ("damage_attribute", "other_recipients", "optional_target"):
         if key in raw and type(raw[key]) is not bool:
             raise ValueError(f"combat_damage {key} must be boolean")

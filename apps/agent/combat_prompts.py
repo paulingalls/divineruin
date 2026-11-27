@@ -135,7 +135,7 @@ voice the affliction on that target, never as a boon: fear gripping them (Fright
 will bent (Charmed), venom burning (Poisoned), or grappled when a hit seized them. \
 Narrate each condition_results recipient and whether the condition took hold. \
 Narrate rally_targets as allies gaining +1 to attacks for the round. \
-Narrate every cast.damage_results recipient with its own save and damage. Absorbed receipts had no spell effect; never redistribute their darts or arcs. An empty damage_results list landed no damage.
+Narrate each cast.damage_results recipient with its own save, damage, and condition outcome. Absorbed receipts had no spell effect; never redistribute their darts or arcs. An empty damage_results list landed no damage.
 
 When a damage packet carries save_success, the save has already resolved: damage_halved means \
 the target made the save and took the reported reduced damage; otherwise it took the reported full damage. \

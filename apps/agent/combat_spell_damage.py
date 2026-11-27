@@ -12,6 +12,7 @@ import dice
 import spells
 import thyra_seasons
 from combat_attack_roll import attack_roll_inputs
+from combat_spell_condition import land_damage_rider
 from combat_spell_profile import DICE, scaled
 from combat_spell_save import roll_save_damage
 from combat_support import _resolve_attack_packet, apply_attack_result, apply_rolled_attack
@@ -181,6 +182,8 @@ async def _land_one(
             result["save"] = save_info
     result["target_id"] = target.id
     result["target_hp_current"] = target.hp_current
+    if rider := profile.get("rider"):
+        land_damage_rider(state, caster, declaration, target, spell.id, rider, result)
     if delivery and "dart_indices" in delivery:
         result["darts"] = [{"index": i, "damage": delivery["dart_rolls"][i]} for i in delivery["dart_indices"]]
         result["dart_indices"] = delivery["dart_indices"]

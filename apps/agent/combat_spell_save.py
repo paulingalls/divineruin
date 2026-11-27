@@ -116,7 +116,14 @@ async def roll_save_damage(
     )
     if not save.success:
         _, adjusted = combat_damage_affinity.apply(target, action, roll, state=state)
-        save = finalize_save(state, target, save, failed_damage=adjusted.damage)
+        rider = profile.get("rider")
+        save = finalize_save(
+            state,
+            target,
+            save,
+            failed_damage=adjusted.damage,
+            failed_conditions=(rider["condition"],) if rider else (),
+        )
     if save.success:
         rolled = [{**component, "damage": component["damage"] // 2 if profile["half"] else 0} for component in rolled]
         action["damage_components"] = rolled

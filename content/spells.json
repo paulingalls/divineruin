@@ -2,6 +2,7 @@
   {
     "id": "arcane_frost_touch",
     "combat_damage": {
+      "rider": { "condition": "frost_slowed", "expires": "target_turn_end" },
       "resolution": "attack",
       "components": [{ "dice": "1d6", "damage_type": "cold" }],
       "attribute": "intelligence",
@@ -64,6 +65,7 @@
   {
     "id": "arcane_spark",
     "combat_damage": {
+      "rider": { "condition": "reactions_suppressed", "expires": "caster_turn_start" },
       "resolution": "attack",
       "components": [{ "dice": "1d4", "damage_type": "lightning" }],
       "attribute": "intelligence",
@@ -1280,6 +1282,7 @@
   {
     "id": "divine_divine_judgment",
     "combat_damage": {
+      "rider": { "condition": "stunned", "expires": "target_turn_end" },
       "resolution": "save",
       "components": [{ "dice": "6d8", "damage_type": "radiant" }],
       "attribute": "wisdom",

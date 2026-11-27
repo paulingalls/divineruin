@@ -12,6 +12,7 @@ import ward_resolution
 from combat_enemy_active import heal
 from combat_fate_rolls import packet_save
 from condition_produce import resolve_effective_targets
+from condition_restrictions import cannot_act
 
 
 def mark_radiant(target, action, result):
@@ -53,6 +54,9 @@ def absorb_spell(state, caster, declaration, packet):
     for target_id in targets:
         target = state.get_participant(target_id)
         if target is None or target.creature_id != "hollow_veilrender" or not living(target):
+            remaining.append(target_id)
+            continue
+        if cannot_act(target.conditions):
             remaining.append(target_id)
             continue
         absorbed.append(

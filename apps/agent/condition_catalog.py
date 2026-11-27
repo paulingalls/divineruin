@@ -77,6 +77,7 @@ MARK_OF_JUSTICE = "mark_of_justice"
 INCORPOREAL = "incorporeal"
 TAUNTED = "taunted"
 CRIPPLED = "crippled"
+REACTIONS_SUPPRESSED = "reactions_suppressed"
 STUDIED_WEAKNESS = "studied_weakness"
 IRON_STANCE = "iron_stance"
 WAR_CRY_RALLY = "war_cry_rally"
@@ -111,6 +112,8 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
         restrictions=("reduced_max_hp",),
     ),
     CRIPPLED: ConditionSpec(clearance="duration", restrictions=("speed_halved",)),
+    "frost_slowed": ConditionSpec(clearance="end_of_next_turn", restrictions=("speed_minus_10",)),
+    REACTIONS_SUPPRESSED: ConditionSpec(clearance="start_of_caster_next_turn", restrictions=("no_reactions",)),
     STUDIED_WEAKNESS: ConditionSpec(clearance="duration"),
     "stunned": ConditionSpec(
         clearance="end_of_next_turn",

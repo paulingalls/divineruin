@@ -8,7 +8,7 @@ import encounter_facts
 import spells
 from choir_effects import suppressed
 from combat_fate_rolls import packet_save
-from condition_restrictions import cannot_act
+from condition_restrictions import cannot_act, no_reactions
 from spell_voice_rules import is_silenced
 
 
@@ -32,6 +32,7 @@ async def effective_declaration(session, state, caster, declaration, *, progress
             and not target.is_fallen
             and not target.is_dead
             and not cannot_act(target.conditions)
+            and not no_reactions(target.conditions)
             and not suppressed(target)
             and not is_silenced(state, target.id)
         ):

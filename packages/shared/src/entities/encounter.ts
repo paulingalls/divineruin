@@ -62,6 +62,8 @@ export const CONDITION_NAMES = [
   "iron_stance",
   "reckless_assault",
   "crippled",
+  "frost_slowed",
+  "reactions_suppressed",
   "studied_weakness",
   "hollowed",
   "temporary_hollowed",
