@@ -214,8 +214,9 @@ async def test_pending_ledger_survives_sales_and_only_owner_can_collect(
         assert retained["consignment_id"] == other["consignment_id"]
 
 
+@pytest.mark.parametrize("first_reader", ["ledger", "collection"])
 async def test_queued_collection_and_foreign_ledger_share_seventh_dawn(
-    reset_db_pool: str, monkeypatch: pytest.MonkeyPatch
+    reset_db_pool: str, monkeypatch: pytest.MonkeyPatch, first_reader: str
 ) -> None:
     day = db_mutations_merchant.aethos_today()
     monkeypatch.setattr(db_mutations_merchant, "aethos_today", lambda: day)
@@ -229,16 +230,25 @@ async def test_queued_collection_and_foreign_ledger_share_seventh_dawn(
         async with asyncio.TaskGroup() as tasks:
             async with db.transaction() as blocker:
                 await blocker.fetchval("SELECT data FROM merchant_state WHERE npc_id=$1 FOR UPDATE", MAREN)
-                collection = tasks.create_task(owner.collect(MAREN, entry["consignment_id"]))
-                ledger = tasks.create_task(visitor.ledger(MAREN))
+                commands = {
+                    "ledger": partial(visitor.ledger, MAREN),
+                    "collection": partial(owner.collect, MAREN, entry["consignment_id"]),
+                }
+                second_reader = "collection" if first_reader == "ledger" else "ledger"
+                first = tasks.create_task(commands[first_reader]())
+                await wait_for_merchant_readers(1)
+                second = tasks.create_task(commands[second_reader]())
                 await wait_for_merchant_readers(2)
                 day += 1
+        ledger, collection = (first, second) if first_reader == "ledger" else (second, first)
         assert receipt_data(ledger.result())["entries"] == []
         result = collection.result()
-        if result.is_error:
-            assert "no consignment" in result.output
+        if first_reader == "ledger":
+            assert result.is_error and "no consignment" in result.output
+            assert not owner.publications[1:]
         else:
             assert receipt_data(result)["status"] == "returned"
+            assert not visitor.publications
         player, inventory = await rows(owner.player_id)
         assert player["gold"] == 7 and inventory[(SWORD, False)]["quantity"] == 1
         state, *_ = await merchant_row(MAREN) or ({},)
