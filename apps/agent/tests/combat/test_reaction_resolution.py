@@ -15,6 +15,7 @@ from sample_fixtures import make_mock_room, published_payloads
 
 import combat_reaction_effect
 import event_types as E
+import reaction_catalog
 import reaction_spend
 import reaction_windows
 from ability_voice_rules import DISSONANT_WHISPER, IMPLANT_DOUBT
@@ -127,8 +128,7 @@ def test_the_wired_sets_name_real_catalog_rows_at_the_right_window():
         | combat_reaction_effect.BARK_SKIN
         | {combat_reaction_effect.BRACE}
     )
-    wired_on_targeted = {
-        combat_reaction_effect.SHIELD_SPELL,
+    wired_on_targeted = combat_reaction_effect.SHIELD_SPELLS | {
         combat_reaction_effect.THOUGHT_SHIELD,
         DISSONANT_WHISPER,
         reaction_spend.SIDESTEP,
@@ -140,11 +140,13 @@ def test_the_wired_sets_name_real_catalog_rows_at_the_right_window():
         | set(combat_reaction_effect.AC_BONUS)
         | set(combat_reaction_effect.SAVE_ADVANTAGE)
     )
-    for ability_id in wired:
-        assert catalog[ability_id].ability_type == "reaction", ability_id
+    reactions = {reaction_id: reaction_catalog.get_reaction(reaction_id) for reaction_id in wired}
+    library = {reaction_id for reaction_id, reaction in reactions.items() if reaction.spell is not None}
+    assert library == {"arcane_shield_spell", "primal_bark_skin"}
+    assert all(catalog[reaction_id].ability_type == "reaction" for reaction_id in wired - library)
 
-    assert {catalog[i].window for i in wired_on_hit} == {"on_hit"}
-    assert {catalog[i].window for i in wired_on_targeted} == {"on_targeted"}
+    assert {reactions[i].window for i in wired_on_hit} == {"on_hit"}
+    assert {reactions[i].window for i in wired_on_targeted} == {"on_targeted"}
     assert catalog[IMPLANT_DOUBT].window == "on_enemy_action"
     assert {catalog[i].window for i in combat_reaction_effect.AC_BONUS} == {"on_ally_targeted"}
     assert {catalog[i].window for i in combat_reaction_effect.SAVE_ADVANTAGE} == {"on_ally_targeted"}
@@ -155,7 +157,7 @@ def test_the_wired_sets_name_real_catalog_rows_at_the_right_window():
     assert guarding == set(combat_reaction_effect.AC_BONUS) | set(combat_reaction_effect.SAVE_ADVANTAGE)
 
     on_hit = {a.id for a in catalog.values() if a.ability_type == "reaction" and a.window == "on_hit"}
-    assert on_hit == wired_on_hit
+    assert on_hit == wired_on_hit - library
     assert catalog[reaction_spend.RIPOSTE].window == "on_enemy_miss"
 
 

@@ -46,6 +46,7 @@ async def _resolve_cast(
     conn,
     caster: PartyMember | None = None,
     revalidate_actor: bool = False,
+    prepared_reaction: bool = False,
     target_id: str | None = None,
     target_ids: list[str] | None = None,
     condition: str | None = None,
@@ -98,6 +99,7 @@ async def _resolve_cast(
         condition_produce_mod=condition_produce_mod,
         queries_mod=queries_mod,
         character_spells_mod=character_spells_mod,
+        prepared_reaction=prepared_reaction,
     )
     player_id = caster.player_id
     race = player.get("race")

@@ -23,13 +23,19 @@ from session_data import CombatState, SessionData
 from tool_support import _validate_id
 
 
-def _gate_spell(player: dict, spell_id: str, known_spell_ids: frozenset[str], *, spells_mod=spells):
+def _gate_spell(
+    player: dict, spell_id: str, known_spell_ids: frozenset[str], *, spells_mod=spells, prepared_reaction: bool = False
+):
     """Require spell knowledge and affordable Focus before either cast path writes."""
     patron_echo_choice.gate(player)
     try:
         spell = spells_mod.get_spell(spell_id)
     except ValueError as e:
         raise ToolError(str(e)) from e
+    if not prepared_reaction and spell.reaction_window is not None:
+        raise ToolError(f"{spell.name} is cast as a reaction during its open combat window.")
+    if prepared_reaction and spell.reaction_window is None:
+        raise ToolError(f"{spell.name} has no reaction window.")
     if spell.id not in known_spell_ids:
         raise ToolError(f"{spell.id} isn't a spell you know")
     gate_pool(player, "focus", veythar_wellspring.effective_focus_cost(player, spell.focus_cost), label=spell.name)
@@ -59,6 +65,7 @@ async def _prepare_cast(
     condition_produce_mod,
     queries_mod,
     character_spells_mod,
+    prepared_reaction: bool = False,
 ):
     """Validate the cast and prepare targets before any resource write."""
     _validate_id(spell_id, "spell_id")
@@ -152,7 +159,7 @@ async def _prepare_cast(
 
     known_rows = await character_spells_mod.get_known(player_id, conn=conn)
     known_spell_ids = spell_knowledge.castable_spell_ids(player.get("class"), (row["spell_id"] for row in known_rows))
-    spell = _gate_spell(player, spell_id, known_spell_ids, spells_mod=spells_mod)
+    spell = _gate_spell(player, spell_id, known_spell_ids, spells_mod=spells_mod, prepared_reaction=prepared_reaction)
 
     if spell_id in REVIVAL_SPELL_IDS:
         if target_id is not None and target_id != player_id:

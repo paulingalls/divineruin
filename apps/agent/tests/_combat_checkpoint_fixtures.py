@@ -4,6 +4,7 @@ import pytest
 from sample_fixtures import make_db_mod
 
 import choir_scene
+import combat_init
 import combat_round_checkpoint
 import db
 import db_content_queries
@@ -15,6 +16,13 @@ def checkpoint_fake_connections(monkeypatch) -> None:
     read_party = combat_round_checkpoint.read_party
     start = choir_scene.start
     books = oath_timed._books
+    assemble = combat_init.assemble_participants
+
+    async def assemble_with_library(*args, queries, **kwargs):
+        inventory = queries.get_player_inventory
+        if isinstance(inventory, Mock) and inventory._mock_wraps is None:
+            kwargs["character_spells_mod"] = Mock(get_known=AsyncMock(return_value=[]))
+        return await assemble(*args, queries=queries, **kwargs)
 
     async def books_on_connection(conn, ids: set[str], *, lock: bool = False):
         if isinstance(conn, Mock):
@@ -36,6 +44,7 @@ def checkpoint_fake_connections(monkeypatch) -> None:
             session, state, retained, mutations=mutations, queries=queries, db_mod=db_mod, content=content
         )
 
+    monkeypatch.setattr(combat_init, "assemble_participants", assemble_with_library)
     monkeypatch.setattr(combat_round_checkpoint, "read_party", read_on_connection)
     monkeypatch.setattr(choir_scene, "start", start_on_connection)
     monkeypatch.setattr(oath_timed, "_books", books_on_connection)

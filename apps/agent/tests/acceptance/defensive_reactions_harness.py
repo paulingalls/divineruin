@@ -11,6 +11,7 @@ from acceptance.test_opportunity_strike import participant
 from acceptance.test_still_actions import reveal_and_wake
 from acceptance.test_still_anchors import fresh_session, strike
 
+import character_spells
 import combat_spatial
 import db_mutations_concentration
 import db_queries
@@ -36,6 +37,7 @@ async def defense_fight(
     ally_archetype: str = "guardian",
     extra_archetypes: tuple[str, ...] = (),
     gear: str | None = None,
+    library: tuple[tuple[int, str], ...] = (),
 ) -> AsyncIterator[MawlingHarness]:
     fight = MawlingHarness()
     try:
@@ -51,6 +53,8 @@ async def defense_fight(
             row["class"] = class_
             row["attributes"]["constitution"] = constitution
             await fight.pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", actor, json.dumps(row))
+        for index, spell_id in library:
+            await character_spells.record_learned(fight.players[index], spell_id, "discovery", conn=fight.pool)
         if gear:
             await fight.command("transact", {"action": "exchange", "item_id": gear, "delta": 1})
             await fight.command("transact", {"action": "equip", "item_id": gear, "delta": 0})

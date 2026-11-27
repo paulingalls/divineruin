@@ -12,14 +12,17 @@ from acceptance.test_opportunity_strike import participant
 from acceptance.test_slippery_restrain import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_slippery_restrain import strike
 
+import character_spells
 import combat_spatial
 import db_mutations_concentration
 import db_queries
+from db_mutations_resonance import read_player_resonance
 from declarations import DEFEND_AC_BONUS
 
 TREANT = "treant"
 SLAM = "Slam"
 SPELL = "arcane_fly"
+LIBRARY_BARK_SKIN = "primal_bark_skin"
 
 
 @pytest.fixture
@@ -28,14 +31,17 @@ async def fight(reset_db_pool: str, scenario: str) -> AsyncIterator[MawlingHarne
     try:
         await harness.prepare((6, 6), companion=None)
         target, ally = harness.players
-        classes = ("druid" if scenario == "druid" else "warden", "guardian" if scenario == "intercept" else "mage")
+        archetypes = {"druid": "druid", "library_reload": "beastcaller"}
+        classes = (archetypes.get(scenario, "warden"), "guardian" if scenario == "intercept" else "mage")
         for actor, archetype in zip(harness.players, classes, strict=True):
             await harness.pool.execute(
                 "UPDATE players SET data = jsonb_set(data, '{class}', $2::jsonb) WHERE player_id = $1",
                 actor,
                 json.dumps(archetype),
             )
-        if scenario == "reload":
+        if scenario == "library_reload":
+            await character_spells.record_learned(target, LIBRARY_BARK_SKIN, "discovery", conn=harness.pool)
+        if scenario in ("reload", "library_reload"):
             await harness.pool.execute(
                 "UPDATE players SET data=jsonb_set(data,'{divine_favor}',$2::jsonb) WHERE player_id=$1",
                 target,
@@ -71,6 +77,8 @@ async def fight(reset_db_pool: str, scenario: str) -> AsyncIterator[MawlingHarne
         )
         await harness.command("enter_mode", {"mode": "combat", "encounter_id": harness.encounter_id})
         state = await harness.reload()
+        if scenario == "library_reload":
+            state.terrain = "forest"
         combat_spatial.require_spatial(state)["positions"].update({target: pos(0), ally: pos(5)})
         defender = participant(state, target)
         defender.ac = (24 if scenario == "natural" else 20) - DEFEND_AC_BONUS
@@ -195,7 +203,7 @@ async def test_turn_hit(fight: MawlingHarness, scenario: str, margin: int) -> No
         assert effect(packets, INTERCEPT) is None
 
 
-@pytest.mark.parametrize("scenario", ["reload"])
+@pytest.mark.parametrize("scenario", ["reload", "library_reload"])
 async def test_applied_hit_survives_reload(fight: MawlingHarness, scenario: str) -> None:
     expected = attack_face(fight, BANDIT, 2)
     face, total, ac = expected
@@ -208,7 +216,7 @@ async def test_applied_hit_survives_reload(fight: MawlingHarness, scenario: str)
         patch("check_resolution_attack.dice_roll", return_value=_damage_die(7)) as damage,
     ):
         window, original = await opening(fight, expected)
-        ability_id = await spend(fight, window)
+        ability_id = await spend(fight, window, "primal" if scenario == "library_reload" else "warden")
         paused = await fight.command("resolve_phase", {})
         offer = paused["fate_offer"]
         assert (offer["roller_id"], offer["roll_kind"], offer["die"]) == (fight.players[0], "save", 7)
@@ -225,7 +233,20 @@ async def test_applied_hit_survives_reload(fight: MawlingHarness, scenario: str)
         assert participant(state, fight.players[0]).bark_skin_active
         assert effect(head["pending_reaction_packets"], ability_id) == "round_ac_bonus"
         assert (await pools(fight))[0][0] == before[0][0] - original["damage"]
-        resumed = await keep_original(fight, offer)
+        if scenario == "library_reload":
+            from acceptance.defensive_reactions_harness import reload_session
+
+            await reload_session(fight)
+            target = fight.players[0]
+            assert (
+                fight.sd.member_state(target).resonance.current == (await read_player_resonance(target))["current"] == 1
+            )
+            resumed = await fight.command("resolve_phase", {})
+            if reoffered := resumed.get("fate_offer"):
+                after_choice = await keep_original(fight, reoffered)
+                resumed = {**after_choice, "packets": resumed["packets"] + after_choice["packets"]}
+        else:
+            resumed = await keep_original(fight, offer)
         packets = resumed["packets"]
         if next_offer := resumed.get("fate_offer"):
             packets += (await keep_original(fight, next_offer))["packets"]
@@ -245,3 +266,6 @@ async def test_applied_hit_survives_reload(fight: MawlingHarness, scenario: str)
     assert (blow(packets, TREANT)["hit"], blow(packets, TREANT)["target_ac"]) == (False, ac + 2)
     assert (await pools(fight))[0][0] == before[0][0] - original["damage"]
     assert await focus(fight) == focus_before - 2
+    if scenario == "library_reload":
+        target = fight.players[0]
+        assert fight.sd.member_state(target).resonance.current == (await read_player_resonance(target))["current"] == 0
