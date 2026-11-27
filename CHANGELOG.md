@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.85.4
+
+Refresh the dependency inventory for the current lockfiles and Expo SDK 58. The manual all-scope report check now validates the refreshed inventory.
+
+Release steps: none.
+
 ## 0.85.3
 
 The mobile app now uses Expo SDK 58 with a refreshed LiveKit native audio stack.
