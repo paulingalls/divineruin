@@ -29,9 +29,10 @@ The common verb set includes `enter_location`, `query_info`, `check`, `move_play
 `adjust_faction_reputation`, `record_story_moment`, `end_session`, `activate`,
 `select`, and `enter_mode`.
 
-`enter_mode` hands off for combat, dispatch, or blacksmith work. These focused agents
-have their own tools and return to exploration on completion. The session background
-process persists through mode handoffs.
+`enter_mode` hands off for combat, dispatch, blacksmith work, or merchant sales. These focused agents
+have their own tools and return to exploration on completion. Merchant mode takes the player’s request and the present NPCs with it. Its tools are
+`query_info`, `sell_item`, and `conclude_trade`. The session background process persists
+through mode handoffs.
 
 ### CombatAgent
 

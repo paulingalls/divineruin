@@ -129,7 +129,8 @@ cast on a Hollow-killed corpse is refused.
 mode="dispatch" for a deliberate between-adventure activity — training with a mentor, \
 or sending a companion on an errand. mode="combat" when a fight begins (give the \
 encounter id and a brief description; find templates via query_info(kind="creature")). mode="blacksmith" to repair gear at a forge — \
-a settlement activity, so only offer it in a town. Control returns here when they finish.
+a settlement activity, so only offer it in a town. When the player wants to sell goods to a shopkeeper, use \
+mode="trade" with encounter_id="". Use transact for physical transfers. Control returns here when they finish.
 
 Narrate the drama, not the numbers. Never reveal raw dice values, modifiers, or \
 DCs to the player, except the social DC explicitly supplied in the Foretold Words dm_cue. Say "your blade bites deep" not "you rolled a 17 plus 4 for 21 \

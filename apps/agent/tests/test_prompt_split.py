@@ -21,11 +21,14 @@ def render_prompts():
     from creation_agent import CreationAgent
     from dispatch_agent import DispatchAgent
     from exploration_agent import ExplorationAgent
+    from merchant_agent import MerchantAgent
     from mode_prompts import (
         BLACKSMITH_PROMPT,
         BLACKSMITH_SYSTEM_PROMPT,
         DISPATCH_MODE_PROMPT,
         DISPATCH_SYSTEM_PROMPT,
+        MERCHANT_PROMPT,
+        MERCHANT_SYSTEM_PROMPT,
     )
     from onboarding_agent import OnboardingAgent
     from session_data import CompanionState
@@ -38,6 +41,8 @@ def render_prompts():
         "mode/BLACKSMITH_SYSTEM_PROMPT": BLACKSMITH_SYSTEM_PROMPT,
         "mode/DISPATCH_MODE_PROMPT": DISPATCH_MODE_PROMPT,
         "mode/DISPATCH_SYSTEM_PROMPT": DISPATCH_SYSTEM_PROMPT,
+        "mode/MERCHANT_PROMPT": MERCHANT_PROMPT,
+        "mode/MERCHANT_SYSTEM_PROMPT": MERCHANT_SYSTEM_PROMPT,
     }
     for companion_id, profile in sorted(profiles.items()):
         companion = CompanionState(companion_id, profile.name)
@@ -80,6 +85,7 @@ def render_prompts():
             ("combat", CombatAgent),
             ("dispatch", DispatchAgent),
             ("blacksmith", BlacksmithAgent),
+            ("merchant", MerchantAgent),
             ("creation", CreationAgent),
         ):
             captured.clear()
@@ -94,7 +100,7 @@ def render_prompts():
 def test_prompts_match_reviewed_baseline():
     expected = json.loads(BASELINE.read_text())
     actual = render_prompts()
-    assert len(expected) == 49
+    assert len(expected) == 52
     assert expected.keys() == actual.keys()
     assert all(isinstance(value, str) and value for value in actual.values())
     assert actual == expected

@@ -17,6 +17,8 @@
   {"export": "ACTION_LEARN_SPELL", "id": "action_learn_spell", "asset": "discovery_chime"},
   {"export": "ACTION_DISCOVER_REVEAL", "id": "action_discover_reveal", "asset": "discovery_chime"},
   {"export": "ACTION_REPAIR_ITEM", "id": "action_repair_item", "asset": "shield_block"},
+  {"export": "ACTION_ENTER_MODE_TRADE", "id": "action_enter_mode_trade", "asset": "door_creak"},
+  {"export": "ACTION_SELL_ITEM", "id": "action_sell_item", "asset": "item_pickup"},
   {"export": "ACTION_ENTER_MODE_BLACKSMITH", "id": "action_enter_mode_blacksmith", "asset": "shield_block"},
   {"export": "ACTION_ENTER_MODE_DISPATCH", "id": "action_enter_mode_dispatch", "asset": "notification"},
   {"export": "ACTION_ADVANCE_ONBOARDING_BEAT", "id": "action_advance_onboarding_beat", "asset": "quest_sting"},

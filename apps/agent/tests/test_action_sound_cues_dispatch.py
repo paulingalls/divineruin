@@ -43,9 +43,8 @@ def test_fixed_dispatch_rows_cover_catalog():
         set(NEW_IDS.values())
         | set(OLD_CASES.values())
         | set(MODE_CASES.values())
-        # Covered outside these tables: the reveal by its own test, the onboarding beat by the
-        # first-episode acceptance walk.
-        | {"action_discover_reveal", "action_advance_onboarding_beat"}
+        # Reveal, first episode, and merchant sale each exercise their cues at their own boundary.
+        | {"action_discover_reveal", "action_advance_onboarding_beat", "action_enter_mode_trade", "action_sell_item"}
         == ACTION_SOUND_IDS
     )
 
