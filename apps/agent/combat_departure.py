@@ -59,11 +59,7 @@ def forget_participant(state: "CombatState", player_id: str) -> bool:
     if state.spatial is not None:
         for field in ("positions", "speeds"):
             state.spatial[field].pop(player_id, None)
-        for area in state.spatial.get("movement_areas", {}).values():
-            area["excluded_actor_ids"] = [actor for actor in area["excluded_actor_ids"] if actor != player_id]
-    state.focus_marks = {
-        target: mark for target, mark in state.focus_marks.items() if player_id not in (target, mark["source_id"])
-    }
+    state.focus_marks = {target: mark for target, mark in state.focus_marks.items() if mark["source_id"] != player_id}
     _drop_orders(state, player_id)
 
     for actor in state.participants:
@@ -96,7 +92,7 @@ def _drop_orders(state: "CombatState", player_id: str) -> None:
 
 def _needs_departed_source(condition: dict, player_id: str) -> bool:
     kind = condition["type"]
-    if kind in ("charmed", "grappled", TAUNTED) or (kind == "frightened" and "turn_undead" in condition):
+    if kind in ("charmed", TAUNTED) or (kind == "frightened" and "turn_undead" in condition):
         return condition.get("source") == player_id
     return condition.get("originating_participant_id") == player_id and (
         kind == GUIDING_LIGHT_MARK or CONDITION_CATALOG[kind].clearance == "start_of_caster_next_turn"
@@ -145,16 +141,19 @@ def _drop_reactions(state: "CombatState", player_id: str) -> bool:
             continuation["packets"] = [packet for packet in packets if packet["actor_id"] != player_id]
         elif reaction_spend.intercepts_damage(spend) and spend["held_seq"] == head["seq"]:
             head["departed_damage_recipient"] = player_id
+        if entries := head.get("disruptions"):
+            pending = next((entry for entry in entries if not entry.get("complete")), None)
+            cancelled_roll |= pending is not None and pending["packet"]["actor_id"] == player_id
+            if kept := [entry for entry in entries if entry["packet"]["actor_id"] != player_id]:
+                head["disruptions"] = kept
+            else:
+                del head["disruptions"]
         packets = head.get("pending_reaction_packets")
         if packets is not None:
             head["pending_reaction_packets"] = [packet for packet in packets if packet["actor_id"] != player_id]
-        if head.get("sidestep", {}).get("packet", {}).get("actor_id") == player_id:
-            del head["sidestep"]
     state.held_actions = [head for head in state.held_actions if head["actor_id"] != player_id]
     if state.open_window is not None and state.open_window["actor_id"] == player_id:
         state.open_window = None
-    if state.legendary_continuation is not None and state.legendary_continuation["actor_id"] == player_id:
-        state.legendary_continuation = None
     return cancelled_roll
 
 
