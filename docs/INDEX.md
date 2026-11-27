@@ -847,7 +847,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## ops/testflight.md (255 lines)
+## ops/testflight.md (258 lines)
 
 | Section | Lines | What's There |
 |---|---|---|
@@ -858,7 +858,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 | Internal device build (separate path) | 164-200 |  |
 | Native plugin release review | 201-221 |  |
 | Credential-free generation evidence | 222-241 |  |
-| Expo SDK 58 update (2026-11-26) | 242-255 |  |
+| Expo SDK 58 update (2026-11-26) | 242-258 |  |
 
 ---
 

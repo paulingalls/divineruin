@@ -250,6 +250,9 @@ and the [LiveKit release notes](https://github.com/livekit/client-sdk-react-nati
 describe these requirements.
 
 Clean Expo prebuild generates the iOS scene lifecycle from SDK 58 defaults.
-The simulator commands are `bun run --cwd apps/mobile verify:native-build` and
-`bun run --cwd apps/mobile verify:native-transport`. The signed iPhone checks
+The development client built and installed with Xcode 27.2 on the owned iOS
+27.2 simulator. The local LiveKit probe received audio, microphone frames and
+the session-init HUD on the same build. Reproduce with
+`bun run --cwd apps/mobile verify:native-transport`, which runs
+`verify:native-build` before the transport scenarios. The signed iPhone checks
 above still apply before TestFlight certification.
