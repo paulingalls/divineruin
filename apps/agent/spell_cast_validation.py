@@ -87,6 +87,14 @@ async def _prepare_cast(
             raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")
         raise ToolError(f"{voice_spell.name} needs combat targets.")
 
+    if voice_spell.save_condition is not None and combat_state is None:
+        raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")
+
+    if combat_state is None and session.in_combat and voice_spell.concentration:
+        prior_spell_id = caster.concentration.spell_id
+        if prior_spell_id is not None and spells_mod.get_spell(prior_spell_id).save_condition is not None:
+            raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")
+
     is_cleanse = spell_id == spell_condition_cleanse.GREATER_RESTORATION
     if (voice_spell.heal is not None or is_cleanse) and combat_state is None and session.in_combat:
         raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")

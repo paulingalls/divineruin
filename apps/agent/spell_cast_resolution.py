@@ -7,6 +7,7 @@ import cast_modifiers
 import character_spells
 import combat_hollow_resonance
 import concealment
+import concentration_break
 import condition_produce
 import conditions
 import db_content_queries
@@ -183,6 +184,9 @@ async def _resolve_cast(
     if spell.concentration:
         if revalidate_actor:
             session.validate_acting_player(player_id)
+        prior_spell_id = caster.concentration.spell_id
+        if combat_state is not None and prior_spell_id is not None:
+            concentration_break.remove_owned_spell_conditions(combat_state, prior_spell_id, player_id)
         await concentration_mutations_mod.update_player_concentration(player_id, spell_id, conn=conn)
         concentration_spell_id = spell_id
 

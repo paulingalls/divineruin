@@ -234,6 +234,11 @@ def validate_target(state, caster, declaration, spell):
 
         combat_recipients(state, caster, declaration, spell, heal)
         return
+    if spell.save_condition is not None:
+        from combat_spell_condition import validate_target as validate_condition_target
+
+        validate_condition_target(state, caster, declaration, spell)
+        return
     profile = getattr(spell, "combat_damage", None)
     if profile is None or profile["resolution"] == "deferred":
         return

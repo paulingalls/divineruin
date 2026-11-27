@@ -5,7 +5,7 @@ The [catalog](../../content/spells.json) supplies the IDs. The [magic design](..
 
 ## Classification
 
-The 87 spells include **12 engine**, **4 narrated**, **71 unwired** and **0 uncertified**.
+The 87 spells include **14 engine**, **4 narrated**, **69 unwired** and **0 uncertified**.
 
 - **engine** — The named function resolves the effect and the linked committed test asserts the outcome.
 - **narrated** — The design assigns the result to the DM’s narration.
@@ -32,7 +32,7 @@ The dead-reactions sprint is changing the archetype `mage_shield_spell`, which h
 | `arcane_mist_step` | unwired | RUN `arcane_mist_step` (2 Focus). The ordinary cast left the caster at the original position. The destination selector separately refused Mist Step. [M14.1](14_engine_completeness.md#spell-arcane_mist_step). |
 | `arcane_arcane_lock` | unwired | RUN `arcane_arcane_lock` (2 Focus). The cast targeted a door in the scene. The packet reported no seal or changed access DC. [M14.1](14_engine_completeness.md#spell-arcane_arcane_lock). |
 | `arcane_elemental_burst` | engine | `combat_spell_recipients.select + combat_spell_damage.land`. [`test_authored_shapes_land_on_union_once`](../../apps/agent/tests/combat/test_area_spell_recipients.py). The Elemental Burst case checks cold damage and the 15 ft sphere boundary. |
-| `arcane_hold_person` | unwired | RUN `arcane_hold_person` (3 Focus). Concentration started on a humanoid target. No WIS save or paralysis appeared. [M14.1](14_engine_completeness.md#spell-arcane_hold_person). |
+| `arcane_hold_person` | engine | `combat_spell_condition.land` resolves the humanoid’s Wisdom save and paralysis, `combat_wrap._roll_tick_save` rolls the clearing save, and `concentration_break.remove_owned_spell_conditions` clears the caster’s hold when concentration ends. [Phase and reload coverage](../../apps/agent/tests/acceptance/test_spell_hostile_conditions.py) and [concentration coverage](../../apps/agent/tests/acceptance/test_spell_condition_caster_guard.py). |
 | `arcane_counterspell` | unwired | RUN `arcane_counterspell` (3 Focus). Ordinary cast succeeded with no contest or cancellation. Enemy spell casting has no reaction-window producer in this baseline. [Counterspell reaction window](14_engine_completeness.md#spell-counterspell). |
 | `arcane_dispel_magic` | unwired | RUN `arcane_dispel_magic` (3 Focus). The target kept its active spell and 4 Resonance. No dispel check appeared. [M14.1](14_engine_completeness.md#spell-arcane_dispel_magic). |
 | `arcane_fly` | unwired | RUN `arcane_fly` (3 Focus). Concentration started. The same 10 ft flying move succeeded both before and after casting. No spell-granted movement state appeared. [M14.1](14_engine_completeness.md#spell-arcane_fly). |
@@ -46,7 +46,7 @@ The dead-reactions sprint is changing the archetype `mage_shield_spell`, which h
 | `arcane_chain_lightning` | engine | `combat_spell_recipients.select + combat_spell_damage.land`. [`test_chain_primary_range_cap_and_secondary_damage`](../../apps/agent/tests/combat/test_area_spell_recipients.py). Explicit and automatic arcs persist primary and secondary damage with range and cap. |
 | `arcane_disintegrate` | unwired | RUN `arcane_disintegrate` (7 Focus). A lethal force hit landed. The ordinary zero-HP path left a fallen combat participant and emitted no disintegration result. [M14.1](14_engine_completeness.md#spell-arcane_disintegrate). |
 | `arcane_teleport` | unwired | RUN `arcane_teleport` (7 Focus). The party revisited a connected location through registered movement. Casting back to that visited location left both players at their departure point. [M14.1](14_engine_completeness.md#spell-arcane_teleport). |
-| `arcane_power_word_stun` | unwired | RUN `arcane_power_word_stun` (7 Focus). The target had 70 HP and stayed actionable with no stun or CON save. [M14.1](14_engine_completeness.md#spell-arcane_power_word_stun). |
+| `arcane_power_word_stun` | engine | `combat_spell_condition.land` stuns at 75 HP or below and reports silent failure above the ceiling. `combat_wrap._roll_tick_save` uses the instance’s Constitution save. [Threshold, Focus and reload coverage](../../apps/agent/tests/acceptance/test_spell_condition_caster_guard.py). |
 | `arcane_maze` | unwired | RUN `arcane_maze` (7 Focus). Concentration started. The target remained in its original position and no escape check appeared. [M14.1](14_engine_completeness.md#spell-arcane_maze). |
 | `arcane_meteor_swarm` | unwired | RUN `arcane_meteor_swarm` (8 Focus). Both damage types landed across two overlapping centers. Targets in both centers got one delivery and one save, as in the committed area test. [M14.1](14_engine_completeness.md#spell-arcane_meteor_swarm). |
 | `arcane_time_stop` | unwired | RUN `arcane_time_stop` (8 Focus). The caster got no extra turns and the enemy moved normally on the next round. [M14.1](14_engine_completeness.md#spell-arcane_time_stop). |

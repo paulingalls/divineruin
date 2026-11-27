@@ -14,7 +14,7 @@ import db_queries
 import encounter_facts
 import spells
 from combat_fate_rolls import packet_save
-from session_data import SessionData
+from session_data import CombatState, SessionData
 
 
 async def break_concentration_on_damage(
@@ -144,6 +144,15 @@ async def break_concentration_on_incapacitation(
     )
 
 
+def remove_owned_spell_conditions(state: CombatState, spell_id: str, caster_id: str) -> None:
+    for participant in state.participants:
+        participant.conditions = [
+            condition
+            for condition in participant.conditions
+            if (condition.get("source"), condition.get("originating_participant_id")) != (spell_id, caster_id)
+        ]
+
+
 async def end_concentration(
     session: SessionData,
     player_id: str,
@@ -164,6 +173,9 @@ async def end_concentration(
     # which would otherwise re-populate the old spell on the next session reload.
     await concentration_mutations.update_player_concentration(player_id, None, conn=conn)
     member.concentration.spell_id = None
+
+    if cstate is not None:
+        remove_owned_spell_conditions(cstate, spell_id, player_id)
 
     # Concentration→condition lifecycle (M4.8 story-006, risk 0899a89ef0da): a concentration spell
     # that granted a beneficial condition (Bless → blessed) loses it when the spell ends, so the +1d4
