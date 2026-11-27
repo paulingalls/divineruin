@@ -39,8 +39,8 @@ from combat_spell_profile import (
     parse_item_creation,
     parse_profile,
 )
-from wild_shape import WildShapeProfile
-from wild_shape import parse_profile as parse_wild_shape_profile
+from wild_shape_profile import WildShapeProfile
+from wild_shape_profile import parse_profile as parse_wild_shape_profile
 
 if TYPE_CHECKING:
     from abilities import Ability  # type-only: abilities.py imports spells, so never import at runtime
