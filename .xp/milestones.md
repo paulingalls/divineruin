@@ -39,7 +39,7 @@ Candidates: M9.6 merchant pools, restock, buyback, priced sales, crafting sell d
 
 Goal: Run the persistent world clock, ticks, simulation, routing and god heartbeat.
 Measure: python3 -c 'import re; print("distance=%d" % (len(re.findall(r"^- \[ \] (?!\[P12\] )",open("docs/milestones/11_world_loop.md").read(),re.M))))'
-Candidates: M11.1–M11.6 and blocking decisions D-A (clock anchor), D-B (restock layer), D-C (worker placement), D-D (catch-up) and D-E (heartbeat budget). Phase 9 supplies economy inputs and Phase 8 supplies patrons. Criteria beginning with [P12] count under Story machinery and Season 1.
+Candidates: M11.1–M11.6 and blocking decisions D-B (restock layer), D-C (worker placement), D-D (catch-up) and D-E (heartbeat budget). Phase 9 supplies economy inputs and Phase 8 supplies patrons. D-A is decided (Decision 133, UTC−5 Aethos Standard Time), and the pure Aethos day/dawn function ships in `aethos_clock.py` and `aethos_clock.ts`. Criteria beginning with [P12] count under Story machinery and Season 1.
 
 ## Story machinery and Season 1
 
