@@ -43,6 +43,7 @@ import patron_synergy_heal
 import reaction_gate
 import spells
 import temp_hp
+import wild_shape
 from combat_ability_gate import (
     RALLYING_SHOUT,
     SHADOW_STEP,
@@ -86,6 +87,8 @@ async def _request_ability_activation_impl(
         raise ToolError(str(e)) from e
 
     session: SessionData = context.userdata
+    if ability.id == wild_shape.DRUID_ABILITY:
+        raise ToolError(wild_shape.activation_refusal(in_combat=session.in_combat))
     reaction_actor = session.require_reaction_actor() if ability.ability_type == "reaction" else None
     player_id = reaction_actor.player_id if reaction_actor is not None else session.acting_player_id
 

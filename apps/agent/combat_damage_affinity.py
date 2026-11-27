@@ -149,20 +149,21 @@ def apply(target, action, result, *, state=None):
             changes.pop("damage"),
             target.hp_current,
             temporary=temp_hp.player_pool(target),
+            beast=temp_hp.beast_pool(target),
             hp_floor=damage_hp_floor(target.conditions),
             **changes,
         )
     return action, replace(result, **changes)
 
 
-def with_landed_damage(result, damage, hp_before, *, temporary=0, hp_floor=0, **changes):
+def with_landed_damage(result, damage, hp_before, *, temporary=0, beast=0, hp_floor=0, **changes):
     """Rewrite a hit's damage after the roll and keep its kill verdict true to the HP it lands.
 
     A post-roll rewrite (a reaction's halving, a target's resistance or vulnerability) can save a
     target the raw roll killed, or kill one it spared; the DM must never hear a killing blow on a
     creature still standing, nor miss one that falls.
     """
-    impact = temp_hp.absorb(damage, hp_before, temporary, hp_floor=hp_floor)
+    impact = temp_hp.absorb(damage, hp_before, temporary, beast=beast, hp_floor=hp_floor)
     killed = result.hit and impact.hp == 0
     fields = {
         "damage": damage,

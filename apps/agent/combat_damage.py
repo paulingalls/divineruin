@@ -20,6 +20,7 @@ import db_queries
 import encounter_facts
 import event_types as E
 import temp_hp
+import wild_shape
 from combat_attack_roll import build_attack_dice_roll_payload
 from combat_damage_events import record_damage_event
 from combat_damage_results import AutomaticDamageResult, SaveDamageResult, attack_fields
@@ -30,6 +31,7 @@ from combat_events import emit_or_publish
 from combat_fate_rolls import packet_save
 from combat_fortitude import roll_fortitude, try_fortitude
 from combat_sound_events import publish_combat_sounds as _publish_sounds
+from combat_ui_update import build_combat_ui_update
 from patron_combat_edges import reward_worthy_foe
 from patron_zero_hp import trigger_damage_gifts
 from session_data import CombatParticipant, CombatState, SessionData
@@ -246,13 +248,19 @@ async def _apply_damage(
     counted_before = encounter_facts.counted_death(target)
     death_resolved_before = target.hollow_death_resolved
     hp_before, pool_before = target.hp_current, temp_hp.player_pool(target)
+    beast_before = temp_hp.beast_pool(target)
     impact = temp_hp.absorb(
-        attack_result.damage, hp_before, pool_before, hp_floor=conditions.damage_hp_floor(target.conditions)
+        attack_result.damage,
+        hp_before,
+        pool_before,
+        beast=beast_before,
+        hp_floor=conditions.damage_hp_floor(target.conditions),
     )
     if save_damage:
         encounter_facts.record_party_attack(combat_state, attacker, target)
     target.hp_current = impact.hp
     target.temp_hp = impact.temporary
+    ended_forms = wild_shape.land_damage(target, impact)
     if (
         was_fallen
         and attack_result.damage > 0
@@ -274,7 +282,13 @@ async def _apply_damage(
         if target.type == "player":
             target.death_save_failures = min(3, target.death_save_failures)
     gift, drain_basis = await trigger_damage_gifts(
-        session, combat_state, target, hp_before, absorbed=impact.absorbed, queries=queries, conn=conn
+        session,
+        combat_state,
+        target,
+        hp_before,
+        absorbed=impact.absorbed + impact.beast_absorbed,
+        queries=queries,
+        conn=conn,
     )
     gift_owner = gift.get("gift_owner")
     if gift_owner:
@@ -378,7 +392,12 @@ async def _apply_damage(
 
     if gift_owner and isinstance(attack_result, check_resolution_attack.AttackResult):
         attack_result = combat_damage_affinity.with_landed_damage(
-            attack_result, attack_result.damage, hp_before, temporary=pool_before, hp_floor=target.hp_current
+            attack_result,
+            attack_result.damage,
+            hp_before,
+            temporary=pool_before,
+            beast=beast_before,
+            hp_floor=target.hp_current,
         )
 
     # Publish events (buffered into ``sink`` during the phase tx; released post-commit)
@@ -455,6 +474,16 @@ async def _apply_damage(
         apply_critical_save(combat_state, attacker, rider_target, action, response)
     if released_from_grapple:
         response["released_from_grapple"] = released_from_grapple
+    if ended_forms:
+        response["wild_shape_ended"] = ended_forms
+        assert combat_state is not None
+        await emit_or_publish(
+            sink,
+            session.room,
+            E.COMBAT_UI_UPDATE,
+            build_combat_ui_update(combat_state, wild_shape_ended=ended_forms),
+            event_bus=session.event_bus,
+        )
     logger.info(
         "resolve_attack_packet result: %s → %s, %s, damage=%d, hp_status=%s",
         attacker.name,

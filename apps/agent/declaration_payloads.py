@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field, model_validator
 from combat_ability_gate import QUICK_FINGERS_RIDER, REPOSITION
 from item_effects import CONSUME_PREFIX
 from reshape_payloads import Destination, ReshapeSelection
+from wild_shape import DISMISS_ACTION
 
 RESHAPE_DESCRIPTION = (
     "Architect only, before the action. Select create_wall, move_wall, destroy_wall, open_floor, or lower_ceiling. "
@@ -52,11 +53,14 @@ class DeclarationPayload(BaseModel):
 
 
 class AttackDecl(DeclarationPayload):
-    """Strike a target with an equipped weapon."""
+    """Strike a target with a weapon or a Wild Shape natural attack."""
 
     kind: Literal["attack"]
     actor_id: str = Field(description="The participant declaring this action.")
-    action: str = Field(description='The EXACT name of one of the actor\'s equipped weapons, e.g. "Longsword".')
+    action: str = Field(
+        description="Exact attack name from the latest participants[].actions or executable_actions. "
+        'In Wild Shape, choose a natural attack or use "" for the first one. Equipped weapons are unavailable in form.'
+    )
     target_id: str = Field(description="The participant being struck.")
     held_item_id: str = Field(
         description="Selected target inventory ID for a durability rider; empty when none applies."
@@ -116,7 +120,8 @@ class AbilityDecl(DeclarationPayload):
     argument_type: str = Field(
         description='Only for action "de_escalate": the kind of case made this round — reason, '
         "emotion, self_interest, threat, bluff or evidence. For arcane_elemental_burst: fire, cold, or lightning. For divine_greater_restoration: charmed or"
-        " petrified when choosing between both. Empty string otherwise."
+        " petrified when choosing between both. For druid_wild_shape or primal_wild_shape, pass a form id (e.g. grey_wolf, "
+        "steppe_bison, or dire_bear) from get_spell_info(primal_wild_shape) and leave targets empty. Empty string otherwise."
     )
 
 
@@ -134,7 +139,18 @@ class InteractDecl(DeclarationPayload):
 
     kind: Literal["interact"]
     actor_id: str = Field(description="The participant declaring this action.")
-    action: str = Field(description="What they interact with.")
+    action: str = Field(description=f"What they interact with. Use {DISMISS_ACTION} to return to their own shape.")
+
+    @model_validator(mode="before")
+    @classmethod
+    def require_untargeted_dismissal(cls, value: object) -> object:
+        if (
+            isinstance(value, dict)
+            and value.get("action") == DISMISS_ACTION
+            and {"target_id", "target_ids", "targets"} & value.keys()
+        ):
+            raise ValueError("Wild Shape dismissal takes no target selectors.")
+        return value
 
 
 class ConsumeDecl(DeclarationPayload):
