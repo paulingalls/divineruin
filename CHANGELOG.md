@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.84.2
+
+Updated the agent's LiveKit, OpenAI, Pydantic, and Ruff dependencies and the server's LiveKit SDK and jose dependencies.
+
+Release steps: none.
+
 ## 0.84.1
 
 Track the remaining game engine, selling and content work with runnable milestone measures. Reconcile previously shipped capabilities, phase totals and the design index.
