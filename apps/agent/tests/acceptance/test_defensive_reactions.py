@@ -17,6 +17,7 @@ from acceptance.defensive_reactions_harness import (
     reload_session,
     spend,
 )
+from acceptance.disruption_reactions_harness import open_stage
 from acceptance.test_bark_skin import keep_original
 from acceptance.test_guardian_intercept import INTERCEPT, SWORD, tool_receipt
 from acceptance.test_opportunity_strike import participant
@@ -67,6 +68,34 @@ async def test_shield_changes_trigger_and_followup(reset_db_pool, margin):
                     (19, False, 0) if use_reaction else (16, True, 8)
                 )
             assert await hp(fight) == ([100, 100] if use_reaction else [84, 100])
+
+
+@pytest.mark.parametrize("use_reaction", [False, True])
+async def test_shield_protects_followup_after_objection(reset_db_pool, use_reaction):
+    async with defense_fight("mage", ally_archetype="diplomat") as fight:
+        mage, diplomat = fight.players
+        enemy, followup = fight.enemies
+        await declare_attacks(fight, mage)
+        with (
+            patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(17 - self.modifier)),
+            patch("check_resolution_attack.dice_roll", return_value=_damage_die(8)),
+            patch("combat_reaction_contest.random.randint", side_effect=[20, 1]),
+        ):
+            if use_reaction:
+                packets = await spend(fight, SHIELD, stage="pre_roll")
+            else:
+                await open_stage(fight, "pre_roll")
+                packets = []
+            objection = await tool_receipt(fight, diplomat, "activate", {"id": "diplomat_objection"})
+            assert not objection.is_error, objection.output
+            packets += await fight.drain()
+        assert [packet["actor_id"] for packet in packets if packet.get("hesitated")] == [enemy]
+        attack = action_packet(packets, followup, SWORD)
+        assert (attack["target_ac"], attack["hit"], attack["damage"]) == (
+            (19, False, 0) if use_reaction else (16, True, 8)
+        )
+        if use_reaction:
+            assert reaction_packet(packets, SHIELD)["ac_bonus"] == 3
 
 
 @pytest.mark.parametrize(

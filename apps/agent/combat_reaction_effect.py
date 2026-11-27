@@ -205,15 +205,15 @@ def _apply(
             return None
         return {"mechanical_effect": combat_reaction_contest.EFFECTS[ability_id]}
 
+    if window["stage"] == reaction_windows.PRE_ROLL and ability_id == SHIELD_SPELL:
+        if attack_action is None:
+            return {"reason": "Shield Spell only protects against attack rolls."}
+        state.get_participant(spend["actor_id"]).shield_spell_active = True
+        return {"mechanical_effect": "target_ac_bonus", "ac_bonus": SHIELD_SPELL_AC_BONUS}
+
     if hesitated:
         return None
-
     if window["stage"] == reaction_windows.PRE_ROLL:
-        if ability_id == SHIELD_SPELL:
-            if attack_action is None:
-                return {"reason": "Shield Spell only protects against attack rolls."}
-            state.get_participant(spend["actor_id"]).shield_spell_active = True
-            return {"mechanical_effect": "target_ac_bonus", "ac_bonus": SHIELD_SPELL_AC_BONUS}
         if spend is ac_spend and attack_action is not None:
             return {"mechanical_effect": "target_ac_bonus"}
         return None
@@ -265,8 +265,7 @@ def settle_disruption_defenses(state, head: dict) -> None:
 def close(state, head: dict, window: dict, *, attack_action: dict | None, contest_rng=None) -> list[dict]:
     """Apply what every reaction spent at ``window`` does to ``head``: one packet per spend.
 
-    Two AC bonuses do not stack, so only the first spend carrying the largest one reports
-    ``target_ac_bonus``; a winning Objection leaves every other spend at the window null.
+    Shield Spell wards later attacks even when Objection stops the triggering attack.
 
     Called by ``combat_hold.pump`` before it applies a held attack or emits a completed condition packet.
 
