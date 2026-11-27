@@ -306,6 +306,8 @@ async def test_slow_refuses_devastating_strike_with_an_automatic_extra_attack(sp
         await combat_turn.declare_phase(ctx, [strike])
     assert (await reload(ctx)).to_dict() == state
     assert await saved_player(warrior) == before
+    _, saved = await play(ctx, defend(warrior))
+    assert participant(saved, warrior).conditions == [instance("slowed", SLOW, caster, "wis")]
 
     single = strike.model_copy(update={"argument_type": "plain"})
     packets, saved = await play(ctx, single, faces=[18, 1])

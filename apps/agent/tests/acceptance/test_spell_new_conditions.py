@@ -23,6 +23,8 @@ from weapon_fixtures import DAGGER, SHORTBOW
 
 import combat_turn
 import db
+import db_mutations
+from combat_structures import add_wall
 from conditions import apply_condition
 from declaration_payloads import AbilityDecl, AttackDecl, Destination, MoveDecl
 
@@ -80,15 +82,29 @@ async def test_faerie_fire_cube_saves(spell_fight):
         assert participant(state, foe).hp_current == 100 - swing["damage"]
 
 
-async def test_slow_four_targets_refused_before_spending(spell_fight):
+@pytest.mark.parametrize(
+    ("targets", "refusal"),
+    [
+        (("foe", "second", "third", "fourth"), "at most 3"),
+        (("fallen",), "standing creatures"),
+        (("dead",), "standing creatures"),
+        (("wall",), "standing creatures"),
+    ],
+)
+async def test_slow_refuses_invalid_recipients_before_spending(spell_fight, targets, refusal):
     ctx = spell_fight
     caster = ctx.userdata.player_id
-    for foe in ("second", "third", "fourth"):
+    for foe in ("second", "third", "fourth", "fallen", "dead"):
         await set_foe(ctx, foe_id=foe)
+    state = ctx.userdata.combat_state
+    participant(state, "fallen").is_fallen = True
+    participant(state, "dead").is_dead = True
+    add_wall(state, "wall", "Wall", {"x": 40, "y": -5, "z": 0}, {"x": 40, "y": 5, "z": 0})
+    await db_mutations.save_combat_state(state.combat_id, state.to_dict())
     before = (await reload(ctx)).to_dict()
     row = await saved_player(caster)
-    with pytest.raises(ToolError, match="at most 3"):
-        await combat_turn.declare_phase(ctx, [slow(caster, "foe", "second", "third", "fourth")])
+    with pytest.raises(ToolError, match=refusal):
+        await combat_turn.declare_phase(ctx, [slow(caster, *targets)])
     assert (await reload(ctx)).to_dict() == before
     assert await saved_player(caster) == row
 
