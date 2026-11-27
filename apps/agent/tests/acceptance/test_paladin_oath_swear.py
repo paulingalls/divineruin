@@ -177,6 +177,8 @@ async def test_authenticated_guest_can_bind_a_standing_ally_in_the_current_round
         ("deadline", "current round"),
         ("defeated", "living hostile"),
         ("downed", "standing ally"),
+        ("self_ally", "standing ally"),
+        ("downed_speaker", "above 0 HP"),
         ("dead", "living hostile"),
         ("wrong_side_hostile", "standing ally"),
         ("wrong_side_ally", "living hostile"),
@@ -215,6 +217,12 @@ async def test_locked_selection_rejects_unoffered_or_stale_facts(fight, changed,
     elif changed == "downed":
         ally.hp_current = 0
         selection = timed(offer, objective="keep_ally_standing", target=GUEST)
+    elif changed == "self_ally":
+        selection = timed(offer, objective="keep_ally_standing", target=HOST)
+    elif changed == "downed_speaker":
+        speaker = state.get_participant(HOST)
+        assert speaker is not None
+        speaker.hp_current = 0
     elif changed == "dead":
         foe.is_dead = True
     elif changed == "wrong_side_hostile":

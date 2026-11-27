@@ -43,9 +43,12 @@ def _offer(actor: str, player: dict, state: CombatState | None, count: int) -> d
     speaker = state.get_participant(actor)
     if speaker is None or speaker.type != "player":
         raise ToolError("Swear a timed oath while participating in the encounter.")
+    if speaker.is_dead or speaker.hp_current <= 0:
+        raise ToolError("Swear a timed oath while above 0 HP.")
     targets: dict[str, list[str]] = {objective: [] for objective in TIMED_TERMS}
     for participant in state.participants:
-        if participant.is_structure or participant.is_dead or participant.hp_current <= 0:
+        # The holder cannot be their own ally: keeping yourself standing would earn the save bonus for free.
+        if participant.id == actor or participant.is_structure or participant.is_dead or participant.hp_current <= 0:
             continue
         objective = "keep_ally_standing" if participant.is_ally else "defeat_target"
         targets[objective].append(participant.id)
