@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.85.1
+
+The engine-completeness milestone now records Guardian Intercept and druid/warden Bark Skin as built (v0.85.0).
+
+Release steps: none.
+
 ## 0.85.0
 
 A guardian can spend 3 Stamina to take a hit's damage for an ally within 5 ft.
