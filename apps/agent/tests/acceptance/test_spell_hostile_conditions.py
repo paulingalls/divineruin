@@ -21,6 +21,7 @@ from voice_condition_fixtures import participant
 
 import combat_turn
 import spell_casting
+from declaration_payloads import AbilityDecl
 
 
 async def test_hold_person_rejects_beast_before_spending(spell_fight):
@@ -31,6 +32,20 @@ async def test_hold_person_rejects_beast_before_spending(spell_fight):
     row = await saved_player(player)
     with pytest.raises(ToolError, match="humanoid"):
         await combat_turn.declare_phase(ctx, [cast_spell(player, HOLD)])
+    assert (await reload(ctx)).to_dict() == before
+    assert await saved_player(player) == row
+
+
+async def test_hold_person_rejects_two_enemy_targets_before_spending(spell_fight):
+    ctx = spell_fight
+    player = ctx.userdata.player_id
+    await set_foe(ctx)
+    await set_foe(ctx, foe_id="other_foe")
+    before = (await reload(ctx)).to_dict()
+    row = await saved_player(player)
+    both = AbilityDecl(kind="ability", actor_id=player, action=HOLD, targets=["foe", "other_foe"], argument_type="")
+    with pytest.raises(ToolError, match="one standing enemy"):
+        await combat_turn.declare_phase(ctx, [both])
     assert (await reload(ctx)).to_dict() == before
     assert await saved_player(player) == row
 
