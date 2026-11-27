@@ -187,11 +187,15 @@ without certifying paid speech-recognition accuracy.
   Fate-held). For each consumer on each route, name a case whose fixture gives
   the property under test to only one role (aelora-bases
   guardian-intercept review-1 F1 and sprint test-vacuity F3).
-  Likewise, a card that adds an effect or receipt to a shared settlement path
-  lists every exit of that path in its plan: hesitation or early return, miss,
-  concealment, a fallen target, and a second spend of the same reaction by
-  another reactor. It names one case for each exit where the outcome or receipt
-  changes (lesson #813; dead-reactions state-lifecycle F1 and F2).
+  Likewise, plan review traces each value a card stores: every writer, reader
+  and clearer. For each path that takes the value's owner off the clock that
+  would clear it, the plan names one case. These paths include settlement exits
+  (hesitation, miss, concealment, a fallen target, a second reactor), departure,
+  absence from the settling party, a refresh by another producer, and a
+  checkpoint restore. A lead-written exit list names only the exits the lead
+  already knows about (lesson #813; dead-reactions state-lifecycle F1 and F2;
+  spell-conditions state-lifecycle F1 and the off-site rest ruling;
+  hostile-conditions review-1 F1).
 - Combat state that mirrors a DB row, such as the Quick Fingers pocket
   mirroring inventory, must rewind together with that row under
   `zhael_unravel_fate`, or Unravel Fate must refuse the rewind. A card adding
