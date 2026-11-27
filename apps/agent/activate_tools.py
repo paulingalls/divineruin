@@ -125,6 +125,8 @@ async def activate(
     Patron tier ids come from query_info(kind='patron').abilities: spend only when available;
     narrate refusals. 'valdris_weight_of_truth' spends Weight of Truth until a short rest.
 
+    Wild Shape (druid_wild_shape or primal_wild_shape) is combat-only. Use declare_phase
+    with empty targets and a form id from get_spell_info(primal_wild_shape).
     'divine_greater_restoration' targets one party player (omit target_id for self). In combat use declare_phase.
     With Hollowed present, omit condition to lift it. Otherwise, choose 'charmed' or 'petrified' when both are present.
     For 'orenthel_restoration_surge', select one condition: 'poisoned', 'blinded', 'frightened',

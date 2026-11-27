@@ -24,6 +24,7 @@ import resonance
 import resonance_events
 import temp_hp
 import thyra_seasons
+import wild_shape
 import zhael_fate
 from combat_damage import _handle_hp_zero
 from combat_events import isolated_publish, scratch_guard
@@ -97,6 +98,7 @@ async def _inner_fire_locked(
             fire_damage,
             hp_before,
             temp_hp.player_pool(participant),
+            beast=temp_hp.beast_pool(participant),
             hp_floor=conditions.damage_hp_floor(participant.conditions),
         )
         session.validate_acting_player(player_id)
@@ -104,6 +106,7 @@ async def _inner_fire_locked(
         session.validate_acting_player(player_id)
         participant.hp_current = impact.hp
         participant.temp_hp = impact.temporary
+        ended_forms = wild_shape.land_damage(participant, impact)
         gift, _ = await trigger_damage_gifts(
             session,
             state,
@@ -147,6 +150,8 @@ async def _inner_fire_locked(
             "state": resonance.get_resonance_state(new_resonance, flickering_bonus=member.resonance.flickering_bonus),
             "concentration_broken": None,
         }
+        if ended_forms:
+            facts["wild_shape_ended"] = ended_forms
         renewals = await encounter_facts.renew_on_death(
             state, participant, counted_before, queries=queries_mod, conn=conn
         )
@@ -204,10 +209,13 @@ async def _inner_fire_locked(
     if gift_owner := gift.get("gift_owner"):
         with isolated_publish("Inner Fire patron abilities"):
             await publish_patron_abilities(session.room, gift_owner["id"], session.event_bus)
-    if gift or impact.absorbed:
+    if gift or impact.absorbed or impact.beast_absorbed:
         with isolated_publish("Inner Fire combat UI"):
             await publish_game_event(
-                session.room, E.COMBAT_UI_UPDATE, build_combat_ui_update(state), event_bus=session.event_bus
+                session.room,
+                E.COMBAT_UI_UPDATE,
+                build_combat_ui_update(state, wild_shape_ended=ended_forms),
+                event_bus=session.event_bus,
             )
     return json.dumps(facts)
 

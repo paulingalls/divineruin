@@ -2056,8 +2056,9 @@
           },
           {
             "effect": "Wild Shape +5 temp HP",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "thyra_wild_shape"
           }
         ]
       },
@@ -2073,8 +2074,9 @@
           },
           {
             "effect": "Wild Shape +5 temp HP",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "thyra_wild_shape"
           }
         ]
       },
@@ -2090,8 +2092,9 @@
           },
           {
             "effect": "Wild Shape +5 temp HP",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "thyra_wild_shape"
           }
         ]
       },

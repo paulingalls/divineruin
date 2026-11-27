@@ -25,14 +25,23 @@ def get_archetype_synergy(archetype_id: str, patron_id: str) -> dict | None:
     return synergy_for_patron(archetype_id, patron)
 
 
+def _player_synergy(player: dict) -> dict | None:
+    patron = (player.get("divine_favor") or {}).get("patron")
+    return get_archetype_synergy(player["class"], patron) if patron not in (None, "none") else None
+
+
 def has_engine_synergy(player: dict, implementation_id: str) -> bool:
     """Select an active implementation from the authoritative character's patron and class."""
-    patron = (player.get("divine_favor") or {}).get("patron")
-    if patron in (None, "none"):
-        return False
-    row = get_archetype_synergy(player["class"], patron)
-    assert row is not None
-    return has_engine_clause(row, implementation_id)
+    row = _player_synergy(player)
+    return row is not None and has_engine_clause(row, implementation_id)
+
+
+def wild_shape_bonus(player: dict) -> dict[str, str] | None:
+    row = _player_synergy(player)
+    implementation = "thyra_wild_shape"
+    if row is not None and (clause := _engine_clause(row, implementation)) is not None:
+        return {"id": implementation, "name": row["name"], "effect": clause["effect"]}
+    return None
 
 
 def has_engine_clause(synergy: dict, implementation_id: str) -> bool:

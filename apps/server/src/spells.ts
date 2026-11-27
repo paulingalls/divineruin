@@ -50,6 +50,35 @@ function requireInteger(value: unknown, ctx: string): number {
   return value;
 }
 
+function positiveInteger(raw: unknown, ctx: string): number {
+  const value = requireInteger(raw, ctx);
+  if (value < 1) throw new Error(`${ctx} must be positive`);
+  return value;
+}
+
+function parseWildShape(raw: unknown, ctx: string): NonNullable<Spell["wild_shape"]> {
+  const profile = asRecord(raw, ctx);
+  const stamina_cost = positiveInteger(profile.stamina_cost, `${ctx}.stamina_cost`);
+  if (!Array.isArray(profile.forms) || profile.forms.length === 0) {
+    throw new Error(`${ctx}.forms must be a nonempty list`);
+  }
+  const seen = new Set<string>();
+  const forms = profile.forms.map((raw: unknown) => {
+    const { creature_id, min_level } = asRecord(raw, `${ctx}.forms entry`);
+    if (typeof creature_id !== "string" || !creature_id.trim() || seen.has(creature_id)) {
+      throw new Error(
+        `${ctx} has an invalid or repeated creature id ${JSON.stringify(creature_id)}`,
+      );
+    }
+    seen.add(creature_id);
+    return {
+      creature_id,
+      min_level: positiveInteger(min_level, `${ctx}.${creature_id}.min_level`),
+    };
+  });
+  return { stamina_cost, forms };
+}
+
 export function parseSpellRow(id: string, raw: unknown): Spell {
   const data = asRecord(raw, `spells[${id}]`);
   const ctx = `spells[${id}]`;
@@ -80,19 +109,40 @@ export function parseSpellRow(id: string, raw: unknown): Spell {
     narration_cue: data.narration_cue,
     verbal: data.verbal as boolean,
     hostile: data.hostile as boolean,
+    ...(id === "primal_wild_shape" || "wild_shape" in data
+      ? { wild_shape: parseWildShape(data.wild_shape, `${ctx}.wild_shape`) }
+      : {}),
   };
 }
 
-export async function loadSpells(): Promise<void> {
-  const rows = await sql<{ id: string; data: unknown }[]>`
-    SELECT id, data FROM spells
-  `;
-  // Build the local map then swap in one synchronous step, so a malformed row fails
-  // loud WITHOUT wiping an already-loaded map (mirrors the Python loader's discipline).
+export function parseSpellCatalog(
+  rows: { id: string; data: unknown }[],
+  creatures: { id: string; category: unknown }[],
+): Map<string, Spell> {
+  const beastIds = new Set(
+    creatures.filter((row) => row.category === "beast").map((row) => row.id),
+  );
   const map = new Map<string, Spell>();
-  for (const row of rows) {
-    map.set(row.id, parseSpellRow(row.id, row.data));
+  for (const { id, data } of rows) {
+    const spell = parseSpellRow(id, data);
+    for (const { creature_id } of spell.wild_shape?.forms ?? []) {
+      if (!beastIds.has(creature_id)) {
+        throw new Error(
+          `spells[${id}].wild_shape creature '${creature_id}' must name a catalog beast`,
+        );
+      }
+    }
+    map.set(id, spell);
   }
-  spells = map;
+  return map;
+}
+
+export async function loadSpells(): Promise<void> {
+  const rows = await sql<{ id: string; data: unknown }[]>`SELECT id, data FROM spells`;
+  const creatures = await sql<{ id: string; category: string }[]>`
+    SELECT id, data->>'category' AS category FROM creatures
+  `;
+  const map = parseSpellCatalog(rows, creatures);
+  setSpells(map);
   console.log(`Loaded ${map.size} spells`);
 }

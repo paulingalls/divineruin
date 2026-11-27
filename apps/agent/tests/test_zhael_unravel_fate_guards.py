@@ -17,13 +17,13 @@ from _zhael_unravel_fixtures import (
     patch_player,
 )
 from _zhael_unravel_fixtures import unravel as unravel
-from acceptance._capstone_helpers import _d20
+from acceptance._capstone_helpers import _d20, _damage_die
 from combat._round_checkpoint_helpers import Fight
 from livekit.agents.llm import ToolError
-from sample_fixtures import make_context, make_mock_room
+from sample_fixtures import make_context, make_mock_room, published_payloads
 from test_aelora_gift import _live_party
-from weapon_fixtures import DAGGER
 
+import event_types as E
 from combat_agent import CombatAgent
 from encounter_roles import EncounterRole
 from exploration_agent import ExplorationAgent
@@ -392,47 +392,90 @@ async def test_persisted_checkpoint_rewinds_and_new_session_recharges(unravel) -
     assert (await discovered(fight))["spent"]
 
 
-@pytest.mark.parametrize("scope", ["breach_round", "departed_breacher", "later_round", "other_combat"])
-async def test_oath_breach_rewind_after_checkpoint_reload(unravel: Fight, scope: str) -> None:
+async def test_rewind_restores_wild_shape_and_its_resources(unravel: Fight) -> None:
     fight = unravel
-    _, paladin = fight.ids
-    await favor(fight, paladin, "valdris")
-    await patch_player(fight, paladin, **{"class": "paladin", "equipment": {"main_hand": DAGGER}})
+    restorer, pid = fight.ids
+    await favor(fight, pid, "thyra")
+    await patch_player(fight, pid, **{"class": "druid", "level": 5, "focus": {"current": 10, "max": 10}})
     await fight.start()
-    offer = (await fight.call("query_info", kind="abilities", actor=paladin))["oath_choice"]
-    await fight.call("select", actor=paladin, choice_id=offer["choice_id"], option="justice")
-    state = fight.session.combat_state
-    foe = next(p.id for p in state.participants if p.type == "enemy")
-    await fight.declare(attack(paladin, foe), *(defend(pid) for pid in state.initiative_order if pid != paladin))
+    initial = await fight.row()
+    checkpoint = initial["round_checkpoints"][0]
+    original = next(p for p in initial["participants"] if p["id"] == pid)
+    assert original["wild_shape"] is None and original["temp_hp"] == 2
+    await fight.declare(
+        {
+            "kind": "ability",
+            "actor_id": pid,
+            "action": "druid_wild_shape",
+            "targets": [],
+            "argument_type": "grey_wolf",
+            "reshape": [],
+        },
+        *(defend(p["id"]) for p in initial["participants"] if p["id"] != pid),
+    )
     await fight.finish_round(2)
-    row = await fight.reload()
-    assert row["encounter_facts"]["opening_actors"][foe] == paladin
-    assert (await durable(fight))["players"][paladin]["data"]["oaths"]["records"][0]["status"] == "broken"
-    if scope in ("breach_round", "departed_breacher"):
-        if scope == "departed_breacher":
-            party = fight.session.party
-            party.members = [member for member in party.members if member.player_id != paladin]
-        before, scratch = await durable(fight), cached(fight)
-        refusal = None
-        try:
-            await activate(fight)
-        except ToolError as error:
-            refusal = str(error)
-        assert await durable(fight) == before
-        assert cached(fight) == scratch
-        assert refusal == "Unravel Fate cannot rewind across a broken Oath of Justice."
-        return
+    second = await durable(fight)
+    shifted = next(p for p in second["combat"]["participants"] if p["id"] == pid)
+    assert shifted["wild_shape"]["form_id"] == "grey_wolf" and shifted["ac"] != original["ac"]
+    assert [action["name"] for action in shifted["action_pool"]] == ["Bite"]
+    assert shifted["deferred_effects"][0]["name"] == "Bite"
+    before = checkpoint["players"][pid]["data"]
+    after = second["players"][pid]["data"]
+    assert after["focus"]["current"] == before["focus"]["current"] - 4
+    assert after["stamina"]["current"] == before["stamina"]["current"] - 3
 
-    if scope == "other_combat":
-        with patch("combat_end._build_handoff_agent", return_value=ExplorationAgent()):
-            await fight.call("end_combat", outcome="fled")
-        await fight.start()
-        assert fight.session.combat_state.combat_id != state.combat_id
-    rewind_round = fight.session.combat_state.round_number
-    await fight.declare()
-    await fight.finish_round(rewind_round + 1)
-    await fight.reload()
-    await activate(fight)
-    saved = await durable(fight)
-    assert saved["combat"]["round_number"] == rewind_round
-    assert saved["players"][paladin]["data"]["oaths"]["records"][0]["status"] == "broken"
+    assert (shifted["temp_hp"], after["temp_hp"]) == (5, 5)
+
+    receipt = await activate(fight)
+    assert receipt["round"] == 1 and "wild_shape_ended" not in receipt
+    restored = await durable(fight)
+    assert restored["players"][pid]["data"]["temp_hp"] == 2
+    assert_restored(fight, restored, checkpoint, restorer)
+    events = published_payloads(fight.session.room)
+    update = next(event for event in reversed(events) if event["type"] == E.COMBAT_UI_UPDATE)
+    assert "wildShape" not in next(p for p in update["combatants"] if p["id"] == pid)
+
+
+async def test_rewind_restores_beast_and_player_pools(unravel: Fight) -> None:
+    fight = unravel
+    restorer, pid = fight.ids
+    await favor(fight, pid, "thyra")
+    await patch_player(fight, pid, **{"class": "druid", "level": 5, "hp": {"current": 30, "max": 30}})
+    await fight.start("bandit_ambush")
+    initial = await fight.row()
+    await fight.declare(
+        {
+            "kind": "ability",
+            "actor_id": pid,
+            "action": "druid_wild_shape",
+            "targets": [],
+            "argument_type": "grey_wolf",
+            "reshape": [],
+        },
+        *(defend(p["id"]) for p in initial["participants"] if p["id"] != pid),
+    )
+    await fight.finish_round(2)
+    shaped = await fight.row()
+    checkpoint = shaped["round_checkpoints"][-1]
+    assert checkpoint["round_number"] == 2
+    await fight.declare(
+        attack("bandit_1", pid, "Light Crossbow"),
+        *(defend(p["id"]) for p in shaped["participants"] if p["id"] != "bandit_1"),
+    )
+    with (
+        patch("check_resolution.dice_roll", return_value=_d20(17)),
+        patch("check_resolution_attack.dice_roll", return_value=_damage_die(28)),
+    ):
+        await fight.finish_round(3)
+    landed = await durable(fight)
+    player = landed["players"][pid]["data"]
+    actor = next(p for p in landed["combat"]["participants"] if p["id"] == pid)
+    assert actor["wild_shape"] is None
+    assert (actor["hp_current"], actor["temp_hp"]) == (player["hp"]["current"], player["temp_hp"]) == (25, 0)
+
+    receipt = await activate(fight)
+    assert receipt["round"] == 2
+    assert_restored(fight, await durable(fight), checkpoint, restorer)
+    update = next(e for e in reversed(published_payloads(fight.session.room)) if e["type"] == E.COMBAT_UI_UPDATE)
+    projected = next(p for p in update["combatants"] if p["id"] == pid)
+    assert (projected["wildShape"]["hpCurrent"], projected["hpCurrent"], projected["tempHp"]) == (11, 30, 5)

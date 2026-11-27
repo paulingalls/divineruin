@@ -208,7 +208,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 
 **Review:** The human approved the final 180-row table on 2026-11-18 (table SHA-256 `5dee713a…`, content SHA-256 `c3238a53…`, commit `903ac541`), closing AC3. The approved table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md` with every changed number. Content and design share the approved corrections, including Nythera’s live Animal Handling +1 instead of advantage. Pending clauses are unavailable.
 
-Layer 4 lookup covers 180 pairings and 200 clauses. 105 are active/engine, 85 are active/narrated, and 10 are pending/engine.
+Layer 4 lookup covers 180 pairings and 200 clauses. 108 are active/engine, 85 are active/narrated, and 7 are pending/engine.
 
 Aelora’s Common Bond gives artificers, bards and diplomats +1 on live Crafting checks, recipe experiments and queued crafting rolls. Both queued crafting entry points save eligibility at creation, so earlier jobs resolve without the bonus. Common Bond stacks with Craft Blessing and is named in narration. Registered tool, HTTP and worker evidence is in `test_common_bond_crafting.py`.
 
@@ -216,7 +216,7 @@ Aelora’s Restoring Guard returns up to 2 Stamina after a guardian’s Intercep
 
 Shared Table gives Aelora clerics +1 Religion when blessing a shared meal. Civic Promise gives Aelora paladins +1 Persuasion when negotiating a community’s shared duties. The patron query surfaces the context tags and settled checks name the applied clause.
 
-Hearth Omen gives Aelora oracles +1 Insight when interpreting a household omen and stacks with Hearthkeeper’s Bond when an ally is present. Honest Hustle gives Aelora rogues +1 Persuasion on commerce skill and social checks. Better fence prices remain pending. Wild Covenant gives Thyra paladins +1 Religion when honoring a sacred grove. Seasonal Omen gives Thyra oracles +1 Nature when interpreting a seasonal omen.
+Hearth Omen gives Aelora oracles +1 Insight when interpreting a household omen and stacks with Hearthkeeper’s Bond when an ally is present. Honest Hustle gives Aelora rogues +1 Persuasion on commerce skill and social checks. Better fence prices remain pending. Wild Covenant gives Thyra paladins +1 Religion when honoring a sacred grove. Seasonal Omen gives Thyra oracles +1 Nature when interpreting a seasonal omen. Wild Kinship grants Thyra druids, beastcallers and wardens 5 temporary HP when they take Wild Shape, keeping any larger pool. The combat receipt names the clause.
 
 Nythera’s Shoreline Keeper gives wardens +1 Survival to find shelter on unfamiliar coasts. Harbor Courtesy gives diplomats +1 Persuasion to seek peaceful passage through unfamiliar ports. Voyager’s Tools gives artificers +1 to any skill check to repair a vessel during a journey.
 
