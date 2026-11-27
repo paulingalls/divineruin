@@ -622,9 +622,9 @@ Recipe learning, crafting resolution, durability, item catalog.
 
 ---
 
-## game_mechanics/game_mechanics_decisions.md (351 lines)
+## game_mechanics/game_mechanics_decisions.md (355 lines)
 
-72 locked design decisions with reasoning. Master reference for settled choices.
+Master reference for numbered game mechanics decisions and their reasoning.
 
 Additional topics: Async Activities: Decisions 58-61: errand models, concurrency, risk
 
@@ -647,7 +647,8 @@ Additional topics: Async Activities: Decisions 58-61: errand models, concurrency
 | Gold Sinks & Economy Balance (Decisions 105-113) | 268-289 | Eight sink categories, mitigations, death costs, endgame and lifestyle sinks, tolls, bribery |
 | Inflation Targets & Controls (Decisions 114-121) | 290-309 | Phase 2+ inflation control, wealth curve, per-session targets, hidden god-agent levers |
 | Player-to-Player Trade (Decisions 122-128) | 310-325 | Deferred P2P trade under world rules, voice-first, provenance, atomic transactions |
-| Terrain (Decisions 129-132) | 326-351 | One closed terrain enum on Location; ten values and their derived properties |
+| Terrain (Decisions 129-132) | 326-352 | One closed terrain enum on Location; ten values and their derived properties |
+| World Clock (Decision 133) | 353-355 | Fixed UTC−5, shared epoch, and dawn-based merchant days |
 
 ---
 
@@ -949,7 +950,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/11_world_loop.md (250 lines)
+## milestones/11_world_loop.md (248 lines)
 
 ---
 

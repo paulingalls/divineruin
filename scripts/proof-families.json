@@ -17,7 +17,8 @@
       "content/items.json",
       "content/locations.json",
       "content/npcs.json",
-      "content/pricing.json"
+      "content/pricing.json",
+      "content/world_clock.json"
     ]
   },
   {

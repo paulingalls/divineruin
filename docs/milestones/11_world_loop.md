@@ -16,11 +16,7 @@ Builds the server-side world life-loop the design prescribes but the Phase 0-10 
 
 These are surfaced here rather than buried in milestones because each one changes schema or process shape.
 
-**D-A — World-clock timezone anchor.** The spec makes two promises that conflict in multiplayer: (1) a single canonical clock (`world-clock-realtime-ssot`, shared `region_state`/`npc_state` with no per-player dimension) and (2) "players who play in the evening experience nighttime gameplay." Both cannot hold for players across timezones. Options:
-- *(a) Global UTC-anchored clock with a fixed "Aethos Standard Time" offset* chosen so the launch audience's evening ≈ in-game night. MMO-correct, zero migration cost, circadian promise degrades gracefully for distant timezones. **Recommended.**
-- *(b) Per-player clock offset in Phase 1* (each single-player world runs on the player's local time), collapse to shared clock at Phase 2. Honors the circadian promise now, but shared world-state tables (`npc_state`, `region_state`) would carry per-player forks or per-player time math — expensive retrofit, violates the SSOT decision.
-- *(c) Regional sharding* — Phase 3 territory, premature.
-Record the choice as a numbered game-design decision (it changes what players experience), not just a named implementation decision.
+**D-A — World-clock timezone anchor (resolved).** [Decision 133](../game_mechanics/game_mechanics_decisions.md#world-clock-decision-133) adopts option (a), one global Aethos Standard Time at fixed UTC−5 year-round. Near the anchor timezone, evening play generally leads into in-game night. All players share the same world time.
 
 **D-B — Restock layer ownership reconciliation.** `merchant_inventory_restock.md` L239 + L517 assign the dawn restock to "simulation tick layer 1 (time-driven)." Layer 1 per `world_data_simulation.md` L644 is deterministic and does *no DB reads beyond the clock*; restock does DB writes and rolls randomness — it categorically cannot live in Layer 1. Resolution: restock runs in **Layer 2**, gated on a dawn-crossing check (`crossed_dawn(last_tick_game_time, now_game_time)`), preserving Decision 88's once-per-day-at-dawn player-facing behavior exactly. Spec doc needs a two-line amendment (add to Phase 0-style doc-updates backlog); Decision 88 gets a one-line amendment recording the layer correction.
 
@@ -53,7 +49,9 @@ Sequencing rationale: the first shippable slice is **M11.1 + M11.2 + the economy
 
 **Goal:** One canonical real-time world clock (1 game-minute = 1 real minute, always advancing) that every other system derives time from. No parallel in-game-day counter anywhere — day number, season, time-of-day period, and schedule state are all pure functions of wall-clock time plus one epoch constant.
 
-**Inputs:** Decision D-A (timezone anchor) resolved.
+**Inputs:** [Decision 133](../game_mechanics/game_mechanics_decisions.md#world-clock-decision-133) (D-A timezone anchor).
+
+Python and TypeScript derive the merchant day from the epoch and dawn hour in `content/world_clock.json`. The merchant day is the civil day number of the most recent dawn. This is the seed for the full world clock.
 
 **Deliverables:**
 - `world_clock.py` module of pure functions (no DB, no I/O): `game_time(wall_now) -> GameTime`, `time_of_day_period(game_time) -> dawn|morning|afternoon|dusk|night`, `game_day_number(game_time) -> int`, `season(game_time)`, `crossed_boundary(prev, now, boundary) -> bool` (generic edge detector used for dawn restock, dusk lighting, etc.)
@@ -70,7 +68,7 @@ Sequencing rationale: the first shippable slice is **M11.1 + M11.2 + the economy
 - [ ] No other module defines or persists an independent day counter (grep-verifiable)
 - [ ] Tests cover epoch math, period boundaries, overnight schedules, DST edges
 
-**Key references:** *World Data & Simulation — The World Clock (L628-634)*; decision `world-clock-realtime-ssot`; Decision 88 (dawn anchor).
+**Key references:** [World Data & Simulation — The World Clock](../world_data_simulation.md#the-world-clock), `world-clock-realtime-ssot`, and Decision 88 (dawn anchor).
 
 ---
 
@@ -233,7 +231,7 @@ Sequencing rationale: the first shippable slice is **M11.1 + M11.2 + the economy
 
 ## Decision log (this phase)
 
-- **`world-clock-timezone-anchor`** (D-A — to be numbered in `game_mechanics_decisions.md` after verifying repo max, currently ≥132): recommended option (a), global fixed-offset Aethos Standard Time. Player-facing consequence: circadian alignment is strongest near the anchor timezone.
+- **`world-clock-timezone-anchor`** (D-A, Decision 133) resolves the anchor to global Aethos Standard Time at fixed UTC−5.
 - **`restock-layer-2-dawn-gated`** (D-B, named): restock executes in Layer 2 gated on dawn-crossing; `merchant_inventory_restock.md` L239/L517 amended; Decision 88 gets a one-line layer correction. Player-facing behavior unchanged.
 - **`world-loop-worker-placement`** (D-C, named): Python single-instance worker in `apps/agent/`, own deployment unit. Rationale: rules-engine pure functions and LLM plumbing are Python.
 - **`world-loop-catchup-consolidated`** (D-D, named): one scaled catch-up tick after downtime; Layer 1 recomputes; Layer 3 resumes without backfill.
