@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 import reaction_spend
+from combat_order_riders import select_field_medic
 from condition_catalog import CONDITION_CATALOG, GUIDING_LIGHT_MARK, TAUNTED
 
 if TYPE_CHECKING:
@@ -11,10 +12,12 @@ if TYPE_CHECKING:
 
 
 def departed_target(state: "CombatState", declaration: "Declaration") -> str | None:
+    item = declaration.healing_item
+    heal_target = item["target_id"] if item is not None else None
     return next(
         (
             target
-            for target in (declaration.target_id, *(declaration.target_ids or ()))
+            for target in (declaration.target_id, *(declaration.target_ids or ()), heal_target)
             if target in state.departed_player_ids
         ),
         None,
@@ -57,8 +60,25 @@ def forget_participant(state: "CombatState", player_id: str) -> bool:
     state.focus_marks = {
         target: mark for target, mark in state.focus_marks.items() if player_id not in (target, mark["source_id"])
     }
+    _drop_orders(state, player_id)
+
+    for actor in state.participants:
+        actor.conditions = [
+            condition for condition in actor.conditions if not _needs_departed_source(condition, player_id)
+        ]
+    cancelled_turn = _drop_turn(state, player_id)
+    cancelled_reaction = _drop_reactions(state, player_id)
+    return cancelled_turn or cancelled_reaction
+
+
+def _drop_orders(state: "CombatState", player_id: str) -> None:
     state.order_riders.pop(player_id, None)
     for target, riders in list(state.order_riders.items()):
+        order = select_field_medic(state, target)
+        if order is not None and order["source_id"] == player_id:
+            item = state.pending_declarations.get(target, {}).get("healing_item")
+            if item is not None and item["target_id"] != player_id:
+                del state.pending_declarations[target]["healing_item"]
         remaining = [
             rider
             for rider in riders
@@ -68,14 +88,6 @@ def forget_participant(state: "CombatState", player_id: str) -> bool:
             state.order_riders[target] = remaining
         else:
             del state.order_riders[target]
-
-    for actor in state.participants:
-        actor.conditions = [
-            condition for condition in actor.conditions if not _needs_departed_source(condition, player_id)
-        ]
-    cancelled_turn = _drop_turn(state, player_id)
-    cancelled_reaction = _drop_reactions(state, player_id)
-    return cancelled_turn or cancelled_reaction
 
 
 def _needs_departed_source(condition: dict, player_id: str) -> bool:

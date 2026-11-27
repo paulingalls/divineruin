@@ -90,9 +90,13 @@ async def test_held_departure_cancels_only_the_guest_strike(reset_db_pool, stage
 
 
 async def test_declaration_departure_omits_guest(reset_db_pool) -> None:
+    from db_mutations_conditions import save_player_conditions
+
     async with defense_fight("guardian") as fight:
         host, guest = fight.players
         history = deepcopy((await fight.reload()).round_checkpoints)
+        await save_player_conditions(guest, [{"type": "poisoned", "source": "poison test fixture", "duration": None}])
+        before = await player_row(guest)
         lifecycle = await depart(fight, guest)
         try:
             state = await fight.reload()
@@ -112,7 +116,16 @@ async def test_declaration_departure_omits_guest(reset_db_pool) -> None:
                 packets = await fight.drain()
             assert all(packet["actor_id"] != guest and packet.get("target_id") != guest for packet in packets)
             assert any(packet.get("damage", 0) > 0 for packet in packets)
-            assert_departed(await fight.reload(), guest)
+            state = await fight.reload()
+            assert_departed(state, guest)
+            for enemy in fight.enemies:
+                foe = participant(state, enemy)
+                foe.hp_current, foe.is_fallen = 0, True
+            await fight.persist()
+            await fight.command("end_combat", {"outcome": "victory"})
+            after = await player_row(guest)
+            assert after["hp"] == before["hp"]
+            assert after["conditions"] == before["conditions"]
         finally:
             await lifecycle.aclose()
 
@@ -172,3 +185,61 @@ async def test_multiattack_keeps_the_next_child_and_its_provenance(reset_db_pool
             await lifecycle.aclose()
     finally:
         await fight.close()
+
+
+@pytest.mark.parametrize("leaver_role", ["patient", "marshal", "both"])
+async def test_field_medic_declaration_survives_departure(reset_db_pool, leaver_role: str) -> None:
+    from acceptance.test_valdris_party_yield import ability_action
+
+    import ability_persistence
+    import db_mutations
+    import db_queries
+
+    async with defense_fight("warrior", ally_archetype="marshal", extra_archetypes=("guardian",)) as fight:
+        host, marshal, patient = fight.players
+        foe = fight.enemies[0]
+        if leaver_role == "both":
+            patient = marshal
+        leaver = patient if leaver_role == "patient" else marshal
+        item_id = "healing_potion_minor"
+        await db_mutations.add_inventory_item(host, item_id, 1, tainted=False)
+        await ability_persistence.set_elective_equipped(marshal, "marshal_field_medic_order", equipped=True)
+        await fight.command(
+            "declare_phase",
+            {"declarations": [ability_action(marshal, "marshal_field_medic_order", host)]},
+        )
+        await fight.drain()
+        await fight.command(
+            "declare_phase",
+            {
+                "declarations": [
+                    {
+                        "kind": "attack_consume",
+                        "actor_id": host,
+                        "action": "Longsword",
+                        "target_id": foe,
+                        "item_id": item_id,
+                        "heal_target_id": patient,
+                    }
+                ],
+            },
+        )
+        patient_before = (await player_row(patient))["hp"]
+        enemy_before = participant(await fight.reload(), foe).hp_current
+        lifecycle = await depart(fight, leaver)
+        try:
+            with patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(16)):
+                packets = await fight.drain()
+            final_hp = participant(await fight.reload(), foe).hp_current
+            if leaver_role != "marshal":
+                (cancelled,) = [p for p in packets if p.get("outcome") == "target_left"]
+                assert (cancelled["actor_id"], cancelled["target_id"]) == (host, patient)
+                assert final_hp == enemy_before
+            else:
+                assert final_hp < enemy_before
+                assert all("field_medic" not in p for p in packets)
+            assert (await player_row(patient))["hp"] == patient_before
+            (potion,) = [p for p in await db_queries.get_player_inventory(host) if p["id"] == item_id]
+            assert potion["slot_info"]["quantity"] == 1
+        finally:
+            await lifecycle.aclose()
