@@ -1,8 +1,10 @@
 # Dependency upgrade
 
-Registry snapshot: 2026-09-19  
-Toolchain: CPython 3.14.7; uv 0.13.9; Bun 1.4.5
-Execution evidence: historical record accepted at 795cec97832a7fe2d7567b36d0343e476e236b76 on 2026-09-19T14:14:59Z.
+Registry snapshot: 2026-11-26 (acquisition completed 2026-11-27T02:16:27.654900+00:00)
+
+Toolchain: CPython 3.14.7, uv 0.13.9, Bun 1.4.5
+
+Execution evidence: `--check --scope all` exited 0 at `ed26195b99cb2bdd673960b0a389fc1644b6af97` on 2026-11-27T02:22:05Z.
 
 ## Python environments
 
@@ -10,198 +12,206 @@ Execution evidence: historical record accepted at 795cec97832a7fe2d7567b36d0343e
 
 | Group | Dependency | Requested | Resolved / installed | Latest stable | Holdback |
 |---|---|---|---|---|---|
-| runtime | livekit-agents | `~=1.8.2` | 1.8.2 / 1.8.2 | 1.8.2 | — |
-| runtime | livekit-plugins-anthropic | `~=1.8.2` | 1.8.2 / 1.8.2 | 1.8.2 | — |
-| runtime | livekit-plugins-deepgram | `~=1.8.2` | 1.8.2 / 1.8.2 | 1.8.2 | — |
-| runtime | livekit-plugins-inworld | `~=1.8.2` | 1.8.2 / 1.8.2 | 1.8.2 | — |
-| runtime | livekit-plugins-openai | `~=1.8.2` | 1.8.2 / 1.8.2 | 1.8.2 | — |
-| runtime | asyncpg | `>=0.31.0` | 0.31.0 / 0.31.0 | 0.31.0 | — |
-| runtime | redis | `>=8.1.0` | 8.1.0 / 8.1.0 | 8.1.0 | — |
-| runtime | anthropic | `>=0.125.0,<1` | 0.125.0 / 0.125.0 | 1.7.0 | livekit-plugins-anthropic==1.8.2 requires anthropic<1,>=0.41: Anthropic 1.7.0 is outside the plugin's published constraint; the project mirrors the same <1 cap. |
-| runtime | httpx | `>=0.28.1` | 0.28.1 / 0.28.1 | 0.28.1 | — |
+| runtime | anthropic | `>=1.17.0,<2` | 1.17.0 / 1.17.0 | 2.14.0 | `livekit-plugins-anthropic==1.8.13` requires `anthropic<2,>=1.8`. The agent manifest also caps Anthropic below 2. |
+| runtime | asyncpg | `>=0.32.0,<1` | 0.32.0 / 0.32.0 | 0.32.0 | — |
+| runtime | httpx | `>=0.28.1` | 0.28.1 / 0.28.1 | 0.29.0 | `apps/agent/pyproject.toml` sets `exclude-newer = "7 days"`. 0.29.0 was published 2026-11-26T15:58:35.703131Z. |
+| runtime | livekit-agents | `~=1.8.13` | 1.8.13 / 1.8.13 | 1.9.0 | `apps/agent/pyproject.toml` requests `livekit-agents~=1.8.13`, which excludes 1.9.0. |
+| runtime | livekit-plugins-anthropic | `~=1.8.13` | 1.8.13 / 1.8.13 | 1.9.0 | `apps/agent/pyproject.toml` requests `livekit-plugins-anthropic~=1.8.13`, which excludes 1.9.0. |
+| runtime | livekit-plugins-deepgram | `~=1.8.13` | 1.8.13 / 1.8.13 | 1.9.0 | `apps/agent/pyproject.toml` requests `livekit-plugins-deepgram~=1.8.13`, which excludes 1.9.0. |
+| runtime | livekit-plugins-inworld | `~=1.8.13` | 1.8.13 / 1.8.13 | 1.9.0 | `apps/agent/pyproject.toml` requests `livekit-plugins-inworld~=1.8.13`, which excludes 1.9.0. |
+| runtime | livekit-plugins-openai | `~=1.8.13` | 1.8.13 / 1.8.13 | 1.9.0 | `apps/agent/pyproject.toml` requests `livekit-plugins-openai~=1.8.13`, which excludes 1.9.0. |
+| runtime | redis | `>=8.1.0` | 8.1.0 / 8.1.0 | 8.2.0 | `apps/agent/pyproject.toml` sets `exclude-newer = "7 days"`. 8.2.0 was published 2026-11-23T08:31:55.011623Z. |
 | dev | docker | `>=7.2.0` | 7.2.0 / 7.2.0 | 7.2.0 | — |
+| dev | httpx2 | `>=2,<3` | 2.16.2 / 2.16.2 | 2.16.2 | — |
 | dev | pillow | `>=13.0.0` | 13.0.0 / 13.0.0 | 13.0.0 | — |
 | dev | pyright | `>=1.1.414` | 1.1.414 / 1.1.414 | 1.1.414 | — |
 | dev | pytest | `>=9.2.0` | 9.2.0 / 9.2.0 | 9.2.0 | — |
-| dev | pytest-asyncio | `>=1.4.0` | 1.4.0 / 1.4.0 | 1.4.0 | — |
+| dev | pytest-asyncio | `>=1.5.0,<2` | 1.5.0 / 1.5.0 | 1.5.0 | — |
 | dev | pytest-bdd | `>=9.0.1` | 9.0.1 / 9.0.1 | 9.0.1 | — |
 | dev | pytest-cov | `>=7.1.0` | 7.1.0 / 7.1.0 | 7.1.0 | — |
 | dev | pytest-timeout | `>=2.4.0` | 2.4.0 / 2.4.0 | 2.4.0 | — |
 | dev | pytest-xdist | `>=3.8.0` | 3.8.0 / 3.8.0 | 3.8.0 | — |
-| dev | ruff | `>=0.16.8` | 0.16.8 / 0.16.8 | 0.16.8 | — |
+| dev | ruff | `>=0.17.6,<1` | 0.17.6 / 0.17.6 | 0.17.6 | — |
 | dev | testcontainers | `>=4.15.0` | 4.15.0 / 4.15.0 | 4.15.0 | — |
 
 ### scripts
 
 | Group | Dependency | Requested | Resolved / installed | Latest stable | Holdback |
 |---|---|---|---|---|---|
-| runtime | asyncpg | `>=0.31.0` | 0.31.0 / 0.31.0 | 0.31.0 | — |
+| runtime | asyncpg | `>=0.32.0,<1` | 0.32.0 / 0.32.0 | 0.32.0 | — |
 
 ## Bun workspace
 
 Release age policy: 604800 seconds.
 
+Candidate is the version selected in the committed graph. Registry columns show — for Git and workspace sources.
+
 | Project | Group | Dependency | Requested | Locked / installed | Candidate | Registry latest | Decision |
 |---|---|---|---|---|---|---|---|
 | . | devDependencies | @eslint/js | `^10.0.1` | 10.0.1 / 10.0.1 | 10.0.1 | 10.0.1 | Current |
-| . | devDependencies | @pi-innovations/proof | `git+https://github.com/paulingalls/proof.git#v0.34.1` | github:paulingalls/proof#059e14b / github:paulingalls/proof#059e14b | 0.34.1 | 0.34.1 | git tag pin |
-| . | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.4 | Current |
-| . | devDependencies | eslint | `^10.10.0` | 10.10.0 / 10.10.0 | 10.10.0 | 10.11.0 | Registry latest is inside the unchanged seven-day minimum release age; the candidate is the newest eligible stable release. |
+| . | devDependencies | @pi-innovations/proof | `git+https://github.com/paulingalls/proof.git#v0.34.1` | github:paulingalls/proof#059e14b / github:paulingalls/proof#059e14b | — | — | Git source pinned by the manifest and lock |
+| . | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.5 | Held by package.json: The requested range `1.4.4` excludes 1.4.5. |
+| . | devDependencies | eslint | `^10.15.0` | 10.15.0 / 10.15.0 | 10.15.0 | 10.15.0 | Current |
 | . | devDependencies | eslint-config-prettier | `^10.1.8` | 10.1.8 / 10.1.8 | 10.1.8 | 10.1.8 | Current |
 | . | devDependencies | eslint-plugin-react-hooks | `^7.1.1` | 7.1.1 / 7.1.1 | 7.1.1 | 7.1.1 | Current |
-| . | devDependencies | eslint-plugin-react-refresh | `^0.5.6` | 0.5.6 / 0.5.6 | 0.5.6 | 0.5.7 | Registry latest is inside the unchanged seven-day minimum release age; the candidate is the newest eligible stable release. |
-| . | devDependencies | prettier | `^3.9.6` | 3.9.6 / 3.9.6 | 3.9.6 | 3.9.8 | Registry latest is inside the unchanged seven-day minimum release age; the candidate is the newest eligible stable release. |
-| . | devDependencies | typescript-eslint | `^8.70.0` | 8.70.0 / 8.70.0 | 8.70.0 | 8.70.0 | Current |
-| . | devDependencies | typescript | `6.0.3` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | TypeScript 7.0.2 exceeds typescript-eslint 8.70.0 peer range >=4.8.4 <6.1.0; 6.0.3 is the newest compatible stable release. |
-| . | peerDependencies | typescript | `>=5.9 <6.1` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | TypeScript 7.0.2 exceeds typescript-eslint 8.70.0 peer range >=4.8.4 <6.1.0; 6.0.3 is the newest compatible stable release. |
+| . | devDependencies | eslint-plugin-react-refresh | `^0.5.8` | 0.5.8 / 0.5.8 | 0.5.8 | 0.5.8 | Current |
+| . | devDependencies | prettier | `^3.10.1` | 3.10.1 / 3.10.1 | 3.10.1 | 3.10.1 | Current |
+| . | devDependencies | typescript | `6.0.3` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | Held by typescript-eslint@8.73.0: Its TypeScript peer range is `>=4.8.4 <6.1.0`. `package.json` requests `6.0.3`. |
+| . | devDependencies | typescript-eslint | `^8.73.0` | 8.73.0 / 8.73.0 | 8.73.0 | 8.74.0 | Held by bunfig.toml: The seven-day Bun policy applies to 8.74.0, published 2026-11-23T17:06:58.945Z. |
+| . | peerDependencies | typescript | `>=5.9 <6.1` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | Held by typescript-eslint@8.73.0: Its TypeScript peer range is `>=4.8.4 <6.1.0`. `package.json` requests `>=5.9 <6.1`. |
 | apps/mobile | dependencies | @config-plugins/react-native-webrtc | `15.0.2` | 15.0.2 / 15.0.2 | 15.0.2 | 15.0.2 | Current |
-| apps/mobile | dependencies | @divineruin/design-tokens | `workspace:*` | workspace:packages/design-tokens / workspace:packages/design-tokens | workspace:packages/design-tokens | workspace:packages/design-tokens | Current |
-| apps/mobile | dependencies | @divineruin/shared | `workspace:*` | workspace:packages/shared / workspace:packages/shared | workspace:packages/shared | workspace:packages/shared | Current |
+| apps/mobile | dependencies | @divineruin/design-tokens | `workspace:*` | workspace:packages/design-tokens / workspace:packages/design-tokens | — | — | Workspace source |
+| apps/mobile | dependencies | @divineruin/shared | `workspace:*` | workspace:packages/shared / workspace:packages/shared | — | — | Workspace source |
 | apps/mobile | dependencies | @expo-google-fonts/cormorant-garamond | `^0.4.1` | 0.4.1 / 0.4.1 | 0.4.1 | 0.4.1 | Current |
 | apps/mobile | dependencies | @expo-google-fonts/crimson-pro | `^0.4.2` | 0.4.2 / 0.4.2 | 0.4.2 | 0.4.2 | Current |
-| apps/mobile | dependencies | @expo-google-fonts/ibm-plex-mono | `^0.4.1` | 0.4.1 / 0.4.1 | 0.4.1 | 0.4.1 | Current |
-| apps/mobile | dependencies | @expo/vector-icons | `^15.0.2` | 15.1.1 / 15.1.1 | 15.1.1 | 15.1.1 | Current |
-| apps/mobile | dependencies | @livekit/components-core | `^0.12.15` | 0.12.15 / 0.12.15 | 0.12.15 | 0.12.15 | Current |
-| apps/mobile | dependencies | @livekit/components-react | `^2.9.24` | 2.9.24 / 2.9.24 | 2.9.24 | 2.9.24 | Current |
-| apps/mobile | dependencies | @livekit/react-native | `2.12.0` | 2.12.0 / 2.12.0 | 2.12.0 | 3.0.0 | Held by @livekit/react-native-expo-plugin@1.0.2: The Expo plugin declares @livekit/react-native ^2.1.0; 2.12.0 is the newest compatible release and requires WebRTC ^144.1.2. |
-| apps/mobile | dependencies | @livekit/react-native-expo-plugin | `^1.0.2` | 1.0.2 / 1.0.2 | 1.0.2 | 1.0.2 | Current |
-| apps/mobile | dependencies | @livekit/react-native-webrtc | `144.1.2` | 144.1.2 / 144.1.2 | 144.1.2 | 144.2.0 | Held by @livekit/react-native@2.12.0: LiveKit React Native 2.12.0 declares WebRTC ^144.1.2; 144.1.2 retains the WebRTC-SDK framework required by that release. |
-| apps/mobile | dependencies | @react-native-async-storage/async-storage | `2.2.0` | 2.2.0 / 2.2.0 | 2.2.0 | 3.1.1 | Held by expo@57.0.24: Expo SDK 57 bundledNativeModules.json selects @react-native-async-storage/async-storage 2.2.0. |
-| apps/mobile | dependencies | @react-native-community/slider | `5.2.0` | 5.2.0 / 5.2.0 | 5.2.0 | 5.2.1 | Held by expo@57.0.24: Expo SDK 57 bundledNativeModules.json selects @react-native-community/slider 5.2.0. |
-| apps/mobile | dependencies | expo | `57.0.24` | 57.0.24 / 57.0.24 | 57.0.24 | 57.0.24 | Current |
-| apps/mobile | dependencies | expo-asset | `57.0.18` | 57.0.18 / 57.0.18 | 57.0.18 | 57.0.18 | Current |
-| apps/mobile | dependencies | expo-audio | `57.0.5` | 57.0.5 / 57.0.5 | 57.0.5 | 57.0.5 | Current |
-| apps/mobile | dependencies | expo-build-properties | `57.0.21` | 57.0.21 / 57.0.21 | 57.0.21 | 57.0.21 | Added on 2026-09-23 after the Sprint 102 snapshot so Expo SDK 57 builds adopt the iOS 27 scene lifecycle. |
-| apps/mobile | dependencies | expo-crypto | `57.0.3` | 57.0.3 / 57.0.3 | 57.0.3 | 57.0.3 | Current |
-| apps/mobile | dependencies | expo-dev-client | `57.0.19` | 57.0.19 / 57.0.19 | 57.0.19 | 57.0.19 | Current |
-| apps/mobile | dependencies | expo-device | `57.0.2` | 57.0.2 / 57.0.2 | 57.0.2 | 57.0.2 | Current |
-| apps/mobile | dependencies | expo-disable-pods-indexing | `github:paulingalls/expo-disable-pods-indexing` | github:paulingalls/expo-disable-pods-indexing#fdd8959 / github:paulingalls/expo-disable-pods-indexing#fdd8959 | github:paulingalls/expo-disable-pods-indexing#fdd8959 | github:paulingalls/expo-disable-pods-indexing#fdd8959 | Current |
-| apps/mobile | dependencies | expo-font | `57.0.4` | 57.0.4 / 57.0.4 | 57.0.4 | 57.0.4 | Current |
-| apps/mobile | dependencies | expo-glass-effect | `57.0.3` | 57.0.3 / 57.0.3 | 57.0.3 | 57.0.3 | Current |
-| apps/mobile | dependencies | expo-haptics | `57.0.3` | 57.0.3 / 57.0.3 | 57.0.3 | 57.0.3 | Current |
-| apps/mobile | dependencies | expo-image | `57.0.5` | 57.0.5 / 57.0.5 | 57.0.5 | 57.0.5 | Current |
-| apps/mobile | dependencies | expo-linear-gradient | `57.0.2` | 57.0.2 / 57.0.2 | 57.0.2 | 57.0.2 | Current |
-| apps/mobile | dependencies | expo-linking | `57.0.10` | 57.0.10 / 57.0.10 | 57.0.10 | 57.0.10 | Current |
-| apps/mobile | dependencies | expo-notifications | `57.0.20` | 57.0.20 / 57.0.20 | 57.0.20 | 57.0.20 | Current |
-| apps/mobile | dependencies | expo-router | `57.0.22` | 57.0.22 / 57.0.22 | 57.0.22 | 57.0.22 | Current |
-| apps/mobile | dependencies | expo-secure-store | `57.0.4` | 57.0.4 / 57.0.4 | 57.0.4 | 57.0.4 | Current |
-| apps/mobile | dependencies | expo-splash-screen | `57.0.9` | 57.0.9 / 57.0.9 | 57.0.9 | 57.0.9 | Current |
-| apps/mobile | dependencies | expo-status-bar | `57.0.1` | 57.0.1 / 57.0.1 | 57.0.1 | 57.0.1 | Current |
-| apps/mobile | dependencies | expo-symbols | `57.0.3` | 57.0.3 / 57.0.3 | 57.0.3 | 57.0.3 | Current |
-| apps/mobile | dependencies | expo-system-ui | `57.0.4` | 57.0.4 / 57.0.4 | 57.0.4 | 57.0.4 | Current |
-| apps/mobile | dependencies | expo-web-browser | `57.0.3` | 57.0.3 / 57.0.3 | 57.0.3 | 57.0.3 | Current |
-| apps/mobile | dependencies | livekit-client | `^2.19.0` | 2.22.3 / 2.22.3 | 2.22.3 | 2.22.3 | Current |
-| apps/mobile | dependencies | react | `19.2.6` | 19.2.6 / 19.2.6 | 19.2.6 | 19.3.0 | Held by react-native@0.86.3 and the shared web runtime: React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass. |
-| apps/mobile | dependencies | react-dom | `19.2.6` | 19.2.6 / 19.2.6 | 19.2.6 | 19.3.0 | Held by react-native@0.86.3 and the shared web runtime: React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass. |
-| apps/mobile | dependencies | react-native | `0.86.3` | 0.86.3 / 0.86.3 | 0.86.3 | 0.87.1 | Held by expo@57.0.24: Expo SDK 57 bundledNativeModules.json selects react-native 0.86.3. |
-| apps/mobile | dependencies | react-native-gesture-handler | `2.32.0` | 2.32.0 / 2.32.0 | 2.32.0 | 3.3.0 | Held by expo@57.0.24: Expo SDK 57 bundledNativeModules.json selects react-native-gesture-handler 2.32.0. |
-| apps/mobile | dependencies | react-native-reanimated | `4.5.1` | 4.5.1 / 4.5.1 | 4.5.1 | 4.7.0 | Held by expo@57.0.24: Expo SDK 57 bundledNativeModules.json selects react-native-reanimated 4.5.1. |
-| apps/mobile | dependencies | react-native-safe-area-context | `5.7.0` | 5.7.0 / 5.7.0 | 5.7.0 | 5.10.0 | Held by expo@57.0.24: Expo SDK 57 bundledNativeModules.json selects react-native-safe-area-context 5.7.0. |
-| apps/mobile | dependencies | react-native-screens | `4.26.0` | 4.26.0 / 4.26.0 | 4.26.0 | 4.28.0 | Held by expo@57.0.24: Expo SDK 57 bundledNativeModules.json selects react-native-screens 4.26.0. |
+| apps/mobile | dependencies | @expo-google-fonts/ibm-plex-mono | `^0.4.2` | 0.4.2 / 0.4.2 | 0.4.2 | 0.4.2 | Current |
+| apps/mobile | dependencies | @expo/vector-icons | `^15.1.1` | 15.1.1 / 15.1.1 | 15.1.1 | 15.1.1 | Current |
+| apps/mobile | dependencies | @livekit/components-core | `^0.12.16` | 0.12.16 / 0.12.16 | 0.12.16 | 0.12.17 | Held by bunfig.toml: The seven-day Bun policy applies to 0.12.17, published 2026-11-20T14:44:52.126Z. |
+| apps/mobile | dependencies | @livekit/components-react | `^2.9.25` | 2.9.25 / 2.9.25 | 2.9.25 | 2.9.26 | Held by bunfig.toml: The seven-day Bun policy applies to 2.9.26, published 2026-11-20T14:43:54.432Z. |
+| apps/mobile | dependencies | @livekit/react-native | `3.2.0` | 3.2.0 / 3.2.0 | 3.2.0 | 3.2.0 | Current |
+| apps/mobile | dependencies | @livekit/react-native-expo-plugin | `1.2.0` | 1.2.0 / 1.2.0 | 1.2.0 | 1.2.0 | Current |
+| apps/mobile | dependencies | @livekit/react-native-webrtc | `150.2.0` | 150.2.0 / 150.2.0 | 150.2.0 | 150.2.0 | Current |
+| apps/mobile | dependencies | @react-native-async-storage/async-storage | `2.2.0` | 2.2.0 / 2.2.0 | 2.2.0 | 3.1.1 | Held by expo@58.1.0: Expo recommends `2.2.0` and the mobile manifest pins `2.2.0`. |
+| apps/mobile | dependencies | @react-native-community/slider | `5.2.1` | 5.2.1 / 5.2.1 | 5.2.1 | 5.2.2 | Held by expo@58.1.0: Expo recommends `5.2.1` and the mobile manifest pins `5.2.1`. |
+| apps/mobile | dependencies | expo | `58.1.0` | 58.1.0 / 58.1.0 | 58.1.0 | 58.1.0 | Current |
+| apps/mobile | dependencies | expo-asset | `58.0.21` | 58.0.21 / 58.0.21 | 58.0.21 | 58.0.21 | Current |
+| apps/mobile | dependencies | expo-audio | `58.0.12` | 58.0.12 / 58.0.12 | 58.0.12 | 58.0.12 | Current |
+| apps/mobile | dependencies | expo-crypto | `58.0.9` | 58.0.9 / 58.0.9 | 58.0.9 | 58.0.9 | Current |
+| apps/mobile | dependencies | expo-dev-client | `58.0.22` | 58.0.22 / 58.0.22 | 58.0.22 | 58.0.22 | Current |
+| apps/mobile | dependencies | expo-device | `58.0.5` | 58.0.5 / 58.0.5 | 58.0.5 | 58.0.5 | Current |
+| apps/mobile | dependencies | expo-disable-pods-indexing | `github:paulingalls/expo-disable-pods-indexing` | github:paulingalls/expo-disable-pods-indexing#fdd8959 / github:paulingalls/expo-disable-pods-indexing#fdd8959 | — | — | Git source pinned by the manifest and lock |
+| apps/mobile | dependencies | expo-font | `58.0.12` | 58.0.12 / 58.0.12 | 58.0.12 | 58.0.12 | Current |
+| apps/mobile | dependencies | expo-glass-effect | `58.0.6` | 58.0.6 / 58.0.6 | 58.0.6 | 58.0.6 | Current |
+| apps/mobile | dependencies | expo-haptics | `58.0.8` | 58.0.8 / 58.0.8 | 58.0.8 | 58.0.8 | Current |
+| apps/mobile | dependencies | expo-image | `58.0.19` | 58.0.19 / 58.0.19 | 58.0.19 | 58.0.19 | Current |
+| apps/mobile | dependencies | expo-linear-gradient | `58.0.4` | 58.0.4 / 58.0.4 | 58.0.4 | 58.0.4 | Current |
+| apps/mobile | dependencies | expo-linking | `58.0.17` | 58.0.17 / 58.0.17 | 58.0.17 | 58.0.17 | Current |
+| apps/mobile | dependencies | expo-notifications | `58.1.10` | 58.1.10 / 58.1.10 | 58.1.10 | 58.1.10 | Current |
+| apps/mobile | dependencies | expo-router | `58.0.33` | 58.0.33 / 58.0.33 | 58.0.33 | 58.0.33 | Current |
+| apps/mobile | dependencies | expo-secure-store | `58.0.3` | 58.0.3 / 58.0.3 | 58.0.3 | 58.0.3 | Current |
+| apps/mobile | dependencies | expo-splash-screen | `58.0.15` | 58.0.15 / 58.0.15 | 58.0.15 | 58.0.15 | Current |
+| apps/mobile | dependencies | expo-status-bar | `58.0.5` | 58.0.5 / 58.0.5 | 58.0.5 | 58.0.5 | Current |
+| apps/mobile | dependencies | expo-symbols | `58.0.5` | 58.0.5 / 58.0.5 | 58.0.5 | 58.0.5 | Current |
+| apps/mobile | dependencies | expo-system-ui | `58.0.7` | 58.0.7 / 58.0.7 | 58.0.7 | 58.0.7 | Current |
+| apps/mobile | dependencies | expo-web-browser | `58.1.0` | 58.1.0 / 58.1.0 | 58.1.0 | 58.1.0 | Current |
+| apps/mobile | dependencies | livekit-client | `^2.24.1` | 2.24.1 / 2.24.1 | 2.24.1 | 2.25.0 | Held by bunfig.toml: The seven-day Bun policy applies to 2.25.0, published 2026-11-20T12:42:16.828Z. |
+| apps/mobile | dependencies | react | `19.3.0` | 19.3.0 / 19.3.0 | 19.3.0 | 19.3.1 | Held by expo@58.1.0: Expo recommends `19.3.0` and the mobile manifest pins `19.3.0`. |
+| apps/mobile | dependencies | react-dom | `19.3.0` | 19.3.0 / 19.3.0 | 19.3.0 | 19.3.1 | Held by expo@58.1.0: Expo recommends `19.3.0` and the mobile manifest pins `19.3.0`. |
+| apps/mobile | dependencies | react-native | `0.88.1` | 0.88.1 / 0.88.1 | 0.88.1 | 0.88.1 | Current |
+| apps/mobile | dependencies | react-native-gesture-handler | `3.3.0` | 3.3.0 / 3.3.0 | 3.3.0 | 3.5.0 | Held by expo@58.1.0: Expo recommends `~3.3.0` and the mobile manifest pins `3.3.0`. |
+| apps/mobile | dependencies | react-native-reanimated | `4.7.1` | 4.7.1 / 4.7.1 | 4.7.1 | 4.8.0 | Held by expo@58.1.0: Expo recommends `4.7.1` and the mobile manifest pins `4.7.1`. |
+| apps/mobile | dependencies | react-native-safe-area-context | `5.11.1` | 5.11.1 / 5.11.1 | 5.11.1 | 5.11.1 | Current |
+| apps/mobile | dependencies | react-native-screens | `4.30.1` | 4.30.1 / 4.30.1 | 4.30.1 | 4.30.1 | Current |
 | apps/mobile | dependencies | react-native-url-polyfill | `4.0.0` | 4.0.0 / 4.0.0 | 4.0.0 | 4.0.0 | Current |
-| apps/mobile | dependencies | react-native-web | `~0.21.0` | 0.21.2 / 0.21.2 | 0.21.2 | 0.21.2 | Current |
-| apps/mobile | dependencies | react-native-worklets | `0.10.1` | 0.10.1 / 0.10.1 | 0.10.1 | 0.12.2 | Held by expo@57.0.24: Expo SDK 57 bundledNativeModules.json selects react-native-worklets 0.10.1. |
-| apps/mobile | dependencies | zustand | `^5.0.15` | 5.0.15 / 5.0.15 | 5.0.15 | 5.0.15 | Current |
-| apps/mobile | devDependencies | @types/react | `~19.2.2` | 19.2.14 / 19.2.14 | 19.2.14 | 19.3.0 | Held by react@19.2.6 shared cohort: React type packages stay on the React 19.2 line shared by mobile and web. |
-| apps/mobile | devDependencies | @types/react-dom | `~19.2.1` | 19.2.3 / 19.2.3 | 19.2.3 | 19.3.0 | Held by react@19.2.6 shared cohort: React type packages stay on the React 19.2 line shared by mobile and web. |
-| apps/mobile | devDependencies | @types/react-test-renderer | `19.3.0` | 19.3.0 / 19.3.0 | 19.3.0 | 19.3.0 | Registry latest observed 2026-10-02; direct test types already installed for the lifecycle renderer. Historical native evidence remains the accepted 2026-09-19 record. |
-| apps/mobile | devDependencies | expo-mcp | `~0.2.1` | 0.2.4 / 0.2.4 | 0.2.4 | 0.2.4 | Current |
-| apps/mobile | devDependencies | react-test-renderer | `19.2.6` | 19.2.6 / 19.2.6 | 19.2.6 | 19.3.0 | Held by react@19.2.6 shared cohort: Renderer stays at the installed React 19.2.6 runtime version. Registry latest observed 2026-10-02; historical native evidence remains the accepted 2026-09-19 record. |
-| apps/mobile | devDependencies | typescript | `6.0.3` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | Held by expo@57.0.24: TypeScript 6.0.3 is the verified workspace compiler for the SDK 57 cohort. |
-| apps/server | dependencies | @divineruin/shared | `workspace:*` | workspace:packages/shared / workspace:packages/shared | workspace:packages/shared | workspace:packages/shared | Current |
-| apps/server | dependencies | @google/genai | `^2.22.0` | 2.22.0 / 2.22.0 | 2.22.0 | 2.23.0 | Registry latest is inside the unchanged seven-day minimum release age; the candidate is the newest eligible stable release. |
-| apps/server | dependencies | @livekit/protocol | `^1.51.0` | 1.51.0 / 1.51.0 | 1.51.0 | 1.52.0 | Registry latest is inside the unchanged seven-day minimum release age; the candidate is the newest eligible stable release. |
-| apps/server | dependencies | jose | `^6.2.12` | 6.2.12 / 6.2.12 | 6.2.12 | 6.2.12 | Current |
-| apps/server | dependencies | livekit-server-sdk | `^2.19.0` | 2.19.0 / 2.19.0 | 2.19.0 | 2.19.0 | Current |
-| apps/server | dependencies | sharp | `^0.35.4` | 0.35.4 / 0.35.4 | 0.35.4 | 0.35.4 | Current |
-| apps/server | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.4 | Current |
-| apps/web | dependencies | @divineruin/design-tokens | `workspace:*` | workspace:packages/design-tokens / workspace:packages/design-tokens | workspace:packages/design-tokens | workspace:packages/design-tokens | Current |
-| apps/web | dependencies | react | `19.2.6` | 19.2.6 / 19.2.6 | 19.2.6 | 19.3.0 | Held by react-native@0.86.3 and the shared web runtime: React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass. |
-| apps/web | dependencies | react-dom | `19.2.6` | 19.2.6 / 19.2.6 | 19.2.6 | 19.3.0 | Held by react-native@0.86.3 and the shared web runtime: React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass. |
-| apps/web | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.4 | Current |
-| apps/web | devDependencies | @types/react | `~19.2.2` | 19.2.14 / 19.2.14 | 19.2.14 | 19.3.0 | Held by react@19.2.6 shared cohort: React type packages stay on the React 19.2 line shared by mobile and web. |
-| apps/web | devDependencies | @types/react-dom | `~19.2.1` | 19.2.3 / 19.2.3 | 19.2.3 | 19.3.0 | Held by react@19.2.6 shared cohort: React type packages stay on the React 19.2 line shared by mobile and web. |
-| packages/design-tokens | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.4 | Current |
-| packages/design-tokens | peerDependencies | typescript | `>=5.9 <6.1` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | TypeScript 7.0.2 exceeds typescript-eslint 8.70.0 peer range >=4.8.4 <6.1.0; 6.0.3 is the newest compatible stable release. |
-| packages/shared | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.4 | Current |
-| packages/shared | peerDependencies | typescript | `>=5.9 <6.1` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | TypeScript 7.0.2 exceeds typescript-eslint 8.70.0 peer range >=4.8.4 <6.1.0; 6.0.3 is the newest compatible stable release. |
+| apps/mobile | dependencies | react-native-web | `~0.21.4` | 0.21.4 / 0.21.4 | 0.21.4 | 0.21.4 | Current |
+| apps/mobile | dependencies | react-native-worklets | `0.13.0` | 0.13.0 / 0.13.0 | 0.13.0 | 0.14.0 | Held by expo@58.1.0: Expo recommends `0.13.0` and the mobile manifest pins `0.13.0`. |
+| apps/mobile | dependencies | zustand | `^5.1.0` | 5.1.0 / 5.1.0 | 5.1.0 | 5.1.0 | Current |
+| apps/mobile | devDependencies | @types/react | `~19.3.0` | 19.3.0 / 19.3.0 | 19.3.0 | 19.3.3 | Held by bunfig.toml: The seven-day Bun policy applies to 19.3.3, published 2026-11-25T14:37:51.670Z. The manifest tracks the SDK 58 React 19.3 types with `~19.3.0`. |
+| apps/mobile | devDependencies | @types/react-dom | `~19.3.0` | 19.3.0 / 19.3.0 | 19.3.0 | 19.3.0 | Current |
+| apps/mobile | devDependencies | @types/react-test-renderer | `19.3.1` | 19.3.1 / 19.3.1 | 19.3.1 | 19.3.1 | Current |
+| apps/mobile | devDependencies | expo-mcp | `~0.2.4` | 0.2.4 / 0.2.4 | 0.2.4 | 0.2.4 | Current |
+| apps/mobile | devDependencies | react-test-renderer | `19.3.0` | 19.3.0 / 19.3.0 | 19.3.0 | 19.3.1 | Held by mobile React 19.3.0: The mobile manifest pins the renderer at `19.3.0` alongside React 19.3.0. The installed renderer declares React `^19.3.0`. |
+| apps/mobile | devDependencies | typescript | `6.0.3` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | Held by typescript-eslint@8.73.0: Its TypeScript peer range is `>=4.8.4 <6.1.0`. `apps/mobile/package.json` requests `6.0.3`. |
+| apps/server | dependencies | @divineruin/shared | `workspace:*` | workspace:packages/shared / workspace:packages/shared | — | — | Workspace source |
+| apps/server | dependencies | @google/genai | `^2.32.0` | 2.32.0 / 2.32.0 | 2.32.0 | 3.6.1 | Held by apps/server/package.json: The requested range `^2.32.0` excludes 3.6.1. |
+| apps/server | dependencies | @livekit/protocol | `^1.54.1` | 1.54.1 / 1.54.1 | 1.54.1 | 1.55.0 | Held by bunfig.toml: The seven-day Bun policy applies to 1.55.0, published 2026-11-25T09:46:41.918Z. |
+| apps/server | dependencies | jose | `^6.2.18` | 6.2.18 / 6.2.18 | 6.2.18 | 6.2.18 | Current |
+| apps/server | dependencies | livekit-server-sdk | `^2.20.1` | 2.20.1 / 2.20.1 | 2.20.1 | 2.20.1 | Current |
+| apps/server | dependencies | sharp | `^0.35.5` | 0.35.5 / 0.35.5 | 0.35.5 | 0.35.5 | Current |
+| apps/server | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.5 | Held by apps/server/package.json: The requested range `1.4.4` excludes 1.4.5. |
+| apps/web | dependencies | @divineruin/design-tokens | `workspace:*` | workspace:packages/design-tokens / workspace:packages/design-tokens | — | — | Workspace source |
+| apps/web | dependencies | react | `19.3.0` | 19.3.0 / 19.3.0 | 19.3.0 | 19.3.1 | Held by Expo React 19.3.0 cohort: `apps/web/package.json` pins `19.3.0`, matching the Expo SDK 58.1.0 React and React DOM versions. |
+| apps/web | dependencies | react-dom | `19.3.0` | 19.3.0 / 19.3.0 | 19.3.0 | 19.3.1 | Held by Expo React 19.3.0 cohort: `apps/web/package.json` pins `19.3.0`, matching the Expo SDK 58.1.0 React and React DOM versions. |
+| apps/web | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.5 | Held by apps/web/package.json: The requested range `1.4.4` excludes 1.4.5. |
+| apps/web | devDependencies | @types/react | `~19.3.0` | 19.3.0 / 19.3.0 | 19.3.0 | 19.3.3 | Held by bunfig.toml: The seven-day Bun policy applies to 19.3.3, published 2026-11-25T14:37:51.670Z. The manifest tracks the SDK 58 React 19.3 types with `~19.3.0`. |
+| apps/web | devDependencies | @types/react-dom | `~19.3.0` | 19.3.0 / 19.3.0 | 19.3.0 | 19.3.0 | Current |
+| packages/design-tokens | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.5 | Held by packages/design-tokens/package.json: The requested range `1.4.4` excludes 1.4.5. |
+| packages/design-tokens | peerDependencies | typescript | `>=5.9 <6.1` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | Held by typescript-eslint@8.73.0: Its TypeScript peer range is `>=4.8.4 <6.1.0`. `packages/design-tokens/package.json` requests `>=5.9 <6.1`. |
+| packages/shared | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.5 | Held by packages/shared/package.json: The requested range `1.4.4` excludes 1.4.5. |
+| packages/shared | peerDependencies | typescript | `>=5.9 <6.1` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | Held by typescript-eslint@8.73.0: Its TypeScript peer range is `>=4.8.4 <6.1.0`. `packages/shared/package.json` requests `>=5.9 <6.1`. |
 
 ## Independent browser toolchain
 
 | Group | Dependency | Requested | Locked / installed | Candidate | Registry latest | Decision |
 |---|---|---|---|---|---|---|
-| devDependencies | @axe-core/playwright | `^4.13.0` | 4.13.0 / 4.13.0 | 4.13.0 | 4.13.0 | Current |
+| devDependencies | @axe-core/playwright | `^4.14.0` | 4.14.0 / 4.14.0 | 4.14.0 | 4.14.1 | e2e/bunfig.toml. The seven-day Bun policy applies to 4.14.1, published 2026-11-24T15:59:38.852Z. |
 | devDependencies | @eslint/js | `^10.0.1` | 10.0.1 / 10.0.1 | 10.0.1 | 10.0.1 | Current |
-| devDependencies | @playwright/test | `^1.64.1` | 1.64.1 / 1.64.1 | 1.64.1 | 1.64.1 | Current |
-| devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.4 | Current |
+| devDependencies | @playwright/test | `^1.65.1` | 1.65.1 / 1.65.1 | 1.65.1 | 1.65.1 | Current |
+| devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.5 | e2e/package.json. The requested range `1.4.4` excludes 1.4.5. |
 | devDependencies | @types/pg | `^8.23.1` | 8.23.1 / 8.23.1 | 8.23.1 | 8.23.1 | Current |
-| devDependencies | eslint | `^10.11.0` | 10.11.0 / 10.11.0 | 10.11.0 | 10.11.0 | Current |
+| devDependencies | eslint | `^10.15.0` | 10.15.0 / 10.15.0 | 10.15.0 | 10.15.0 | Current |
 | devDependencies | eslint-config-prettier | `^10.1.8` | 10.1.8 / 10.1.8 | 10.1.8 | 10.1.8 | Current |
-| devDependencies | lighthouse | `^13.5.0` | 13.5.0 / 13.5.0 | 13.5.0 | 13.5.0 | Current |
-| devDependencies | pg | `^8.23.0` | 8.23.0 / 8.23.0 | 8.23.0 | 8.23.0 | Current |
+| devDependencies | lighthouse | `^13.6.0` | 13.6.0 / 13.6.0 | 13.6.0 | 13.6.0 | Current |
+| devDependencies | pg | `^8.23.1` | 8.23.1 / 8.23.1 | 8.23.1 | 8.23.1 | Current |
 | devDependencies | playwright-lighthouse | `^4.0.0` | 4.0.0 / 4.0.0 | 4.0.0 | 4.0.0 | Current |
-| devDependencies | typescript | `^6.0.3` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | typescript-eslint 8.70.0 declares TypeScript >=4.8.4 <6.1.0; 7.0.2 is outside that peer range. |
-| devDependencies | typescript-eslint | `^8.70.0` | 8.70.0 / 8.70.0 | 8.70.0 | 8.70.0 | Current |
+| devDependencies | typescript | `^6.0.3` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | typescript-eslint@8.73.0. Its TypeScript peer range is `>=4.8.4 <6.1.0`. `e2e/package.json` requests `^6.0.3`. |
+| devDependencies | typescript-eslint | `^8.73.0` | 8.73.0 / 8.73.0 | 8.73.0 | 8.74.0 | e2e/bunfig.toml. The seven-day Bun policy applies to 8.74.0, published 2026-11-23T17:06:58.945Z. |
 
-| Release-age exception | Published | Command | Evidence |
-|---|---|---|---|
-| eslint@10.11.0 | 2026-09-18T20:15:36.485Z | `bun add --cwd e2e --dev --minimum-release-age=0 eslint@^10.11.0` | ESLint 10.11.0 passes the e2e TypeScript and ESLint lane with @eslint/js 10.0.1 and typescript-eslint 8.70.0. |
-| lighthouse@13.5.0 | 2026-09-18T14:13:55.261Z | `bun add --cwd e2e --dev --minimum-release-age=0 lighthouse@^13.5.0` | Lighthouse 13.5.0 satisfies playwright-lighthouse 4.0.0's >=10 peer range and passes the production audit thresholds. |
+## Mobile SDK 58 baseline
 
-### Mobile SDK 57 baseline
-
-- Expo 57.0.24; React Native 0.86.3; Hermes V1 (SDK 57 default).
-- Platform minimums: Android 7+ (compile/target SDK 36/36); iOS 16.4+; Xcode 26.4+.
-- Config plugins: @livekit/react-native-expo-plugin, @config-plugins/react-native-webrtc, expo-router, expo-splash-screen, expo-disable-pods-indexing, expo-build-properties, expo-audio, expo-secure-store, expo-asset, expo-image.
+- Expo 58.1.0, React Native 0.88.1, Hermes V1 (SDK 58 default).
+- Android 7+ (compile SDK 37, target SDK 36), iOS 16.4+, Xcode 26.4+.
+- Config plugins: @livekit/react-native-expo-plugin, @config-plugins/react-native-webrtc, expo-router, expo-splash-screen, expo-disable-pods-indexing, expo-font, expo-status-bar, expo-web-browser, expo-audio, expo-secure-store, expo-asset, expo-image.
 - Patch files: none.
 
 | Git dependency | Requested | Locked commit |
 |---|---|---|
 | expo-disable-pods-indexing | `github:paulingalls/expo-disable-pods-indexing` | `fdd8959` |
 
-| Release-age exception | Published | Command | Evidence |
-|---|---|---|---|
-| expo@57.0.24 | 2026-09-18T08:07:12.211Z | `bun install --minimum-release-age=0` | Normal-policy bun expo install --fix rejected this exact SDK 57 release; a subsequent normal-policy check passed. |
-| expo-asset@57.0.18 | 2026-09-18T08:10:13.973Z | `bun install --minimum-release-age=0` | Normal-policy bun expo install --fix rejected this exact SDK 57 release; a subsequent normal-policy check passed. |
-| expo-notifications@57.0.20 | 2026-09-18T08:09:56.492Z | `bun install --minimum-release-age=0` | Normal-policy bun expo install --fix rejected this exact SDK 57 release; a subsequent normal-policy check passed. |
-| expo-router@57.0.22 | 2026-09-18T08:09:25.131Z | `bun install --minimum-release-age=0` | Normal-policy bun expo install --fix rejected this exact SDK 57 release; a subsequent normal-policy check passed. |
-
 Compatibility exceptions:
 - none
+
+### One-off Expo release-age exemption, 2026-11-26
+
+The #792 handback records the two npm age inventories and expo-58.1.0-install-second-layer.log. One install exempted these coordinates. The frozen install passed with the seven-day policy. [Expo 58.1.0 upgrade](https://github.com/paulingalls/divineruin/pull/792)
+
+| Package | Previous | Exempted version |
+|---|---|---|
+| expo | 58.0.26 | 58.1.0 |
+| expo-crypto | 58.0.8 | 58.0.9 |
+| expo-dev-client | 58.0.21 | 58.0.22 |
+| expo-glass-effect | 58.0.5 | 58.0.6 |
+| expo-image | 58.0.18 | 58.0.19 |
+| expo-notifications | 58.1.9 | 58.1.10 |
+| expo-router | 58.0.32 | 58.0.33 |
+| expo-splash-screen | 58.0.14 | 58.0.15 |
+| @expo/cli | 58.1.21 | 58.1.22 |
+| @expo/config | 58.0.12 | 58.0.13 |
+| expo-file-system | 58.0.14 | 58.0.15 |
+| @expo/fingerprint | 0.21.10 | 0.22.0 |
+| babel-preset-expo | 58.0.26 | 58.0.27 |
+| expo-modules-core | 58.1.0 | 58.2.0 |
+| @expo/metro-config | 58.0.23 | 58.0.24 |
+| @expo/config-plugins | 58.0.13 | 58.0.14 |
+| @expo/local-build-cache-provider | 58.0.12 | 58.0.13 |
+| expo-dev-launcher | 58.0.21 | 58.1.0 |
+| @expo/router-server | 58.0.23 | 58.0.24 |
+| @expo/inline-modules | 0.2.10 | 0.2.11 |
+| @expo/metro-file-map | 58.0.6 | 58.0.7 |
+| @expo/prebuild-config | 58.0.20 | 58.0.21 |
+| expo-modules-jsi | 58.0.23 | 58.0.24 |
+
+## Root resolution overrides
+
+| Override | Requested | Reason |
+|---|---|---|
+| dnssd-advertise | `1.1.6` | Reproducibility pin for native development Bonjour discovery. Expo CLI 58.1.22 requests `^1.1.6`. |
+
+## Infrastructure holds
+
+- `postgres:16-alpine` (PostgreSQL container): held outside this card. A database major migration requires separate application and data migration work.
+- `valkey/valkey:8-alpine` (Valkey container): held outside this card. Container major upgrades are infrastructure work outside this library and browser-toolchain upgrade.
+
+## Historical validation outcomes
+
+The SDK 57 validation record was accepted at `795cec97832a7fe2d7567b36d0343e476e236b76` on 2026-09-19T14:14:59Z.
+
+### Native builds
 
 | Platform | Prebuild | Build | Device/install | Acceptance |
 |---|---|---|---|---|
 | iOS | passed | passed | passed on iOS 26.5 on story-208-sdk57 (`DC457949-200B-479A-95FD-611E33210F12`) | launch: passed; auth: passed |
 | Android | passed | missing: no Android device was attached, so no native Android build is claimed | missing: adb devices returned no attached device | export: passed |
-
-### Expo SDK 57 release-age exceptions, 2026-11-25
-
-Expo's SDK 57 dependency check required seven releases inside the seven-day
-cooldown. The lead approved those exact releases and the ten exact transitive
-releases required to install them. A temporary Bun
-`install.minimumReleaseAgeExcludes` list selected only the coordinates below
-during `expo install --fix --bun` and lock generation. Frozen installs use the
-committed lockfile and the standard seven-day policy.
-
-| Release-age exception | npm publish time (UTC) | Scope |
-|---|---|---|
-| `expo@57.0.34` | 2026-11-23T13:12:05.894Z | Expo compatibility target |
-| `expo-asset@57.0.22` | 2026-11-23T13:09:08.702Z | Expo compatibility target |
-| `expo-build-properties@57.0.24` | 2026-11-23T13:11:20.336Z | Expo compatibility target |
-| `expo-dev-client@57.0.22` | 2026-11-23T13:11:29.357Z | Expo compatibility target |
-| `expo-notifications@57.0.26` | 2026-11-23T13:13:44.109Z | Expo compatibility target |
-| `expo-router@57.0.32` | 2026-11-23T13:16:14.396Z | Expo compatibility target |
-| `expo-splash-screen@57.0.12` | 2026-11-23T13:09:37.075Z | Expo compatibility target |
-| `@expo/cli@57.0.35` | 2026-11-23T13:10:54.970Z | Required transitive dependency |
-| `@expo/config@57.0.12` | 2026-11-23T13:09:29.860Z | Required transitive dependency |
-| `expo-constants@57.0.25` | 2026-11-23T13:11:04.753Z | Required transitive dependency |
-| `@expo/fingerprint@0.20.17` | 2026-11-23T13:10:29.783Z | Required transitive dependency |
-| `expo-dev-menu@57.0.22` | 2026-11-23T13:11:54.871Z | Required transitive dependency |
-| `expo-dev-launcher@57.0.23` | 2026-11-23T13:13:29.765Z | Required transitive dependency |
-| `@expo/metro-runtime@57.0.19` | 2026-11-23T13:11:55.761Z | Required transitive dependency |
-| `agent-cli-detector@0.1.8` | 2026-11-18T23:00:27.054Z | Required transitive dependency |
-| `@expo/router-server@57.0.16` | 2026-11-23T13:10:14.110Z | Required transitive dependency |
-| `@expo/inline-modules@0.1.10` | 2026-11-23T13:09:24.921Z | Required transitive dependency |
 
 ### Native LiveKit transport
 
@@ -212,18 +222,7 @@ committed lockfile and the standard seven-day policy.
 - Fault guards: received-audio, session-init-hud.
 - Evidence: per-run machine-readable JSON and simulator PNG under ignored test-results/native-transport; driver: maestro; Expo MCP: unavailable_in_tool_catalog.
 
-### Root resolution overrides
-
-| Override | Requested | Reason |
-|---|---|---|
-| dnssd-advertise | `1.1.4` | Permanent native-development reproducibility pin for Expo CLI Bonjour discovery; Expo CLI 57.0.26 declares dnssd-advertise ^1.1.4. |
-
-### Infrastructure holds
-
-- `postgres:16-alpine` (PostgreSQL container): held outside this card. A database major migration requires separate application and data migration work.
-- `valkey/valkey:8-alpine` (Valkey container): held outside this card. Container major upgrades are infrastructure work outside this library and browser-toolchain upgrade.
-
-## Historical validation outcomes
+### Other recorded checks
 
 | Lane | Recorded outcome | Evidence |
 |---|---|---|
