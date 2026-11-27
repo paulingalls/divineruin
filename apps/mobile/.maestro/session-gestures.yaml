@@ -9,11 +9,7 @@ onFlowComplete:
         visible: "SIGN OUT"
       commands:
         - tapOn: "SIGN OUT"
-        - openLink: "divineruin://"
-        - tapOn:
-            text: "Open"
-            optional: true
-        - assertVisible: "Listen to the dark"
+        - stopApp
 ---
 # Continues the auth-form flow using a code from the owned mock-email backend.
 - tapOn:
