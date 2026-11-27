@@ -5,10 +5,7 @@ from typing import Literal, TypedDict
 
 import asyncpg
 
-import db
 from catalog_parse import parse_dict, parse_int, parse_str, parse_str_list
-from pricing_queries import SALE_DISPOSITIONS
-from workspace import whole_silver
 
 
 class InventoryPoolStock(TypedDict):
@@ -113,6 +110,8 @@ async def get_inventory_pools(
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> dict[str, InventoryPool]:
+    import db
+
     reader = conn if conn is not None else await db.get_pool()
     pools = await reader.fetch("SELECT id, data FROM inventory_pools ORDER BY id")
     items = await reader.fetch("SELECT id, data FROM items ORDER BY id")
@@ -148,6 +147,9 @@ def quote_sale(
     pools: dict[str, InventoryPool] | None = None,
 ) -> SaleQuote:
     """Quote a single item. Merchant inputs come from the validated pool catalog."""
+    from pricing_queries import SALE_DISPOSITIONS
+    from workspace import whole_silver
+
     if disposition != "hostile" and disposition not in SALE_DISPOSITIONS:
         raise ValueError(f"unknown sale disposition {disposition!r}")
     merchant = None

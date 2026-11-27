@@ -33,7 +33,7 @@ def pool_lookup(monkeypatch):
 
     connection = AsyncMock()
     connection.fetch.side_effect = fetch
-    monkeypatch.setattr("sale_pricing.db.get_pool", AsyncMock(return_value=connection))
+    monkeypatch.setattr("db.get_pool", AsyncMock(return_value=connection))
     return pools
 
 
