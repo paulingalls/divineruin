@@ -13,7 +13,7 @@ Leave now requests a recap before disconnect, with a 15-second home fallback.
 **Position: 451 / 717 acceptance criteria — 63%** (the sum of the per-phase
 counts in `README.md`). **266 criteria remain unchecked.** Phases 2, 5, 6 and 10 have all recorded
 criteria checked. Phase 3 remains Partial at 34/34. The
-[spell ledger](03_spell_ledger.md) records 25 engine, 4 narrated, 58 unwired
+[spell ledger](03_spell_ledger.md) records 27 engine, 4 narrated, 56 unwired
 and 0 uncertified spells. The 58 effect gaps have owners in
 [M14.1](14_engine_completeness.md#milestone-141--narrated-only-mechanics-and-voice-certification).
 
@@ -73,8 +73,6 @@ automatic enforcement remains absent.
 open reaction window; the reaction-window census and activation boundary check
 its triggers and legal IDs. This does not certify natural spoken Beat-3 pauses.
 
-**02 · Arcane Shield Spell.** The spell catalog’s `arcane_shield_spell` is tracked by `free-spell-ledger`.
-
 **02 · Archetypes — Guardian Intercept.** A guardian within 5 ft of a struck
 ally can take the hit's damage. The remaining designs are Shield Mastery's
 1d8 damage reduction and Warden-Commander's 10-ft range
@@ -87,9 +85,6 @@ against the original roll and through the rest of the round. A natural 20 still
 hits. When Bark Skin turns a melee hit into a miss, an eligible skirmisher
 can Riposte in a separate reaction window for that strike.
 
-- **Primal Bark Skin spell:** `primal_bark_skin` has no registered reaction
-  producer. An ordinary cast spends Focus and generates Resonance without
-  applying the combat effect.
 - **Thornveld Guardian Shield:** the item has no producer for its designed
   once-per-long-rest free Bark Skin cast.
 

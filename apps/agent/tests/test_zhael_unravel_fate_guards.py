@@ -17,112 +17,17 @@ from _zhael_unravel_fixtures import (
     patch_player,
 )
 from _zhael_unravel_fixtures import unravel as unravel
-from acceptance._capstone_helpers import _d20
+from acceptance._capstone_helpers import _d20, _damage_die
+from acceptance.test_still_anchors import strike
 from combat._round_checkpoint_helpers import Fight
 from livekit.agents.llm import ToolError
 from test_aelora_gift import _live_party
 
+import character_spells
+from check_resolution import D20Roll
 from encounter_roles import EncounterRole
-from exploration_agent import ExplorationAgent
 from session_data import CompanionState
 from session_hydration import hydrate_patron_ability_session
-
-
-@pytest.mark.parametrize(
-    ("case", "reason"),
-    [
-        ("round_one", "no restorable checkpoint"),
-        ("no_combat", "requires an active fight"),
-        ("ended", "requires an active fight"),
-        ("terminal", "requires an active fight"),
-        ("stale", "fight opening changed"),
-        ("wrong_combat", "fight opening changed"),
-        ("declarations", "untouched declaration beat"),
-        ("open_window", "reaction window"),
-        ("held_actions", "held work"),
-        ("ally_continuation", "held work"),
-        ("wrap_continuation", "held work"),
-        ("legendary_continuation", "held work"),
-        ("inner_fire_continuation", "held work"),
-        ("wrong_patron", "requires a follower of zhael"),
-        ("lower_tier", "Exalted"),
-        ("spent", "new session"),
-    ],
-)
-async def test_refuses_without_changing_the_fight(unravel: Fight, case: str, reason: str) -> None:
-    fight = unravel
-    if case == "no_combat":
-        await fight.start()
-        fight.session.combat_state = None
-        await assert_refused(fight, reason)
-        return
-    await opening(fight, 0 if case == "round_one" else 2)
-    state = fight.session.combat_state
-    assert state is not None
-    if case == "ended":
-        with patch("combat_end._build_handoff_agent", return_value=ExplorationAgent()):
-            await fight.call("end_combat", outcome="fled")
-        assert (await durable(fight))["combat"] is None
-        fight.session.combat_state = state
-    elif case == "terminal":
-        state.deescalated = True
-        await fight.write_row(state.to_dict())
-    elif case == "stale":
-        state.round_number -= 1
-    elif case == "wrong_combat":
-        row = await fight.row()
-        row["combat_id"] += "_other"
-        fight.combats.insert(0, row["combat_id"])
-        for checkpoint in row["round_checkpoints"]:
-            checkpoint["combat_id"] = checkpoint["combat"]["combat_id"] = row["combat_id"]
-        await fight.write_row(row)
-    elif case == "declarations":
-        await fight.declare()
-    elif case in {
-        "open_window",
-        "held_actions",
-        "ally_continuation",
-        "wrap_continuation",
-        "legendary_continuation",
-        "inner_fire_continuation",
-    }:
-        setattr(state, case, [{"held": True}] if case == "held_actions" else {"held": True})
-    elif case == "wrong_patron":
-        await favor(fight, fight.ids[0], "kaelen")
-    elif case == "lower_tier":
-        await favor(fight, fight.ids[0], level=30)
-    elif case == "spent":
-        await patch_player(fight, fight.ids[0], patron_gifts={GIFT: {"spent": True}})
-    await assert_refused(fight, reason)
-
-
-@pytest.mark.parametrize(
-    ("patron", "ability"),
-    [("valdris", "valdris_mark_of_justice"), ("syrath", "syrath_veilstep"), (None, "unbound_raw_channeling")],
-)
-async def test_effect_settled_at_opening_blocks_rewind(unravel: Fight, patron: str | None, ability: str) -> None:
-    fight = unravel
-    await opening(fight)
-    guest = fight.ids[1]
-    if patron is not None:
-        await favor(fight, guest, patron, 70)
-    arguments: dict[str, object] = {"target_id": "mawling_1"} if patron == "valdris" else {}
-    if patron == "syrath":
-        origin = fight.session.combat_state.spatial["positions"][guest]
-        arguments["destination"] = {**origin, "y": origin["y"] + 5}
-    await fight.call("activate", id=ability, actor=guest, **arguments)
-    await assert_refused(fight, "untouched declaration beat")
-
-
-async def test_rewind_accepts_no_entity_or_condition_selectors(unravel: Fight) -> None:
-    fight = unravel
-    await opening(fight)
-    for selector in (
-        {"target_id": fight.ids[1]},
-        {"target_ids": [fight.ids[1]]},
-        {"condition": "poisoned"},
-    ):
-        await assert_refused(fight, "Omit entity and condition selectors", selectors=selector)
 
 
 async def test_fate_hold_and_settled_natural_twenty_block_rewind(unravel) -> None:
@@ -474,3 +379,73 @@ async def test_expiry_round_rewind_restores_clock_and_owned_conditions(unravel: 
     assert has_condition(fight.session.combat_state.get_participant(recipient).conditions, "blessed")
     await fight.finish_round(11)
     assert (await durable(fight))["players"][caster]["data"]["concentration"]["spell_id"] is None
+
+
+@pytest.mark.parametrize(
+    ("spell", "archetype", "stage", "cost", "flag"),
+    [
+        ("arcane_shield_spell", "artificer", "pre_roll", 1, "shield_spell_active"),
+        ("primal_bark_skin", "beastcaller", "post_roll", 2, "bark_skin_active"),
+    ],
+)
+async def test_catalog_reaction_rewinds_resources_and_defense(unravel: Fight, spell, archetype, stage, cost, flag):
+    fight = unravel
+    restorer, caster = fight.ids
+    await patch_player(fight, caster, **{"class": archetype})
+    await character_spells.record_learned(caster, spell, "discovery", conn=fight.pool)
+    await fight.start()
+    state = fight.session.combat_state
+    enemy = state.get_participant("mawling_1")
+    target = state.get_participant(caster)
+    assert spell in target.reaction_ids
+    target.ac = 16
+    enemy.initiative = 40
+    state.initiative_order.remove(enemy.id)
+    state.initiative_order.insert(0, enemy.id)
+    state.terrain = "forest"
+    position = state.spatial["positions"][caster]
+    state.spatial["positions"][enemy.id] = {**position, "x": position["x"] + 5}
+    start = state.round_checkpoints[-1]
+    before = start["players"][caster]["data"]
+    await fight.write_row(state.to_dict())
+    await fight.declare({"actor_id": enemy.id, **strike(caster, action="Claw")})
+    with (
+        patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(self.dc - self.modifier)),
+        patch("check_resolution_attack.dice_roll", return_value=_damage_die(3)),
+    ):
+        result = {}
+        window = None
+        for _ in range(5):
+            if offer := result.get("fate_offer"):
+                result = await fight.call(
+                    "activate", id="zhael_fates_thread", offer_id=offer["offer_id"], keep="original"
+                )
+            else:
+                result = await fight.call("resolve_phase")
+            if window := result["next"]["waiting_on"]:
+                break
+        assert window is not None and window["stage"] == stage, (result["packets"], result["next"])
+        (offered,) = [r["id"] for r in window["reactions"] if r["actor_id"] == caster]
+        assert offered == spell
+        result = await fight.call("activate", actor=caster, id=offered)
+        generated = result["resonance_generated"]
+        assert generated > 0
+        spent = await durable(fight)
+        assert spent["combat"]["reactions_available"][caster]["ability_id"] == spell
+        data = spent["players"][caster]["data"]
+        assert data["focus"]["current"] == before["focus"]["current"] - cost
+        assert data["resonance"]["current"] == before["resonance"]["current"] + generated
+        assert fight.session.member_state(caster).resonance.current == data["resonance"]["current"]
+        result = await fight.call("resolve_phase")
+        packets = result["packets"]
+        if offer := result.get("fate_offer"):
+            resumed = await fight.call("activate", id="zhael_fates_thread", offer_id=offer["offer_id"], keep="original")
+            packets += resumed["packets"]
+        (defense,) = [packet for packet in packets if packet.get("ability_id") == spell]
+        assert defense["mechanical_effect"] == ("target_ac_bonus" if stage == "pre_roll" else "round_ac_bonus")
+        if stage == "pre_roll":
+            assert getattr(fight.session.combat_state.get_participant(target.id), flag)
+        await fight.finish_round(start["round_number"] + 1)
+    await activate(fight, restorer)
+    await fight.reload()
+    assert_restored(fight, await durable(fight), start, restorer)

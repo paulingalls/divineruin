@@ -15,6 +15,7 @@ from rules_engine import attribute_modifier
 
 BRACE = "warrior_brace_for_impact"
 SHIELD_SPELL = "mage_shield_spell"
+SHIELD_SPELLS = frozenset({SHIELD_SPELL, "arcane_shield_spell"})
 THOUGHT_SHIELD = "whisper_thought_shield"
 
 _DAMAGE_PARTS = ("rider_damage", "bonus_damage", "synergy_damage")

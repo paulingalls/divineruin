@@ -126,8 +126,7 @@ class CombatParticipant:
     # owner rather than tolerating it: such a row carries no reaction_ids either, so a window
     # offered to it could only ever end in the activation gate refusing the spend.
     has_reaction_ability: bool | None = None
-    # The class catalog's reaction ids: a participant carries no class, and the DM must be handed
-    # an exact id at a window.
+    # Class reactions and wired library spells supply exact ids for the DM's window.
     reaction_ids: list[str] = field(default_factory=list)
     prone_immunity: str | None = None
     # Carried-item protections (story-053), folded from the member's inventory by

@@ -8,6 +8,8 @@ import abilities
 import ability_voice_rules
 import combat_counter_reactions
 import combat_melee_approach
+import combat_voice_rules
+import reaction_catalog
 import reaction_spend
 import reaction_windows
 from ability_voice_rules import DISSONANT_WHISPER, IMPLANT_DOUBT
@@ -85,11 +87,13 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
     another in-place writer committed meanwhile (draethar_inner_fire mutates participants
     directly; it holds combat_state_lock now, but a snapshot still cannot see a write taken after
     it). The caller records the spend as one field write instead."""
-    _validate_for_window(state, actor_id, ability_id, state.open_window)
+    _validate_for_window(state, actor_id, reaction_catalog.get_reaction(ability_id), state.open_window)
 
 
-def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, window: dict | None) -> None:
-    delivery_policy = ability_voice_rules.policy(ability_id)
+def _validate_for_window(
+    state: CombatState, actor_id: str, reaction: reaction_catalog.Reaction, window: dict | None
+) -> None:
+    ability_id = reaction.id
     if window is not None:
         if not isinstance(window, dict) or window.get("stage") not in reaction_windows.STAGES:
             raise ValueError("Malformed reaction window")
@@ -138,7 +142,7 @@ def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, win
     if window is None:
         raise ReactionUnavailable("no reaction window is open; a reaction interrupts a held enemy action")
 
-    catalog_window = abilities.get_ability(ability_id).window
+    catalog_window = reaction.window
     if catalog_window not in window["triggers"]:
         raise ReactionUnavailable(
             f"reaction {ability_id!r} fires on {catalog_window!r}, but the open window "
@@ -220,13 +224,16 @@ def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, win
             except ValueError as error:
                 raise ReactionUnavailable(str(error)) from error
 
-    recipient_ids = []
-    if delivery_policy in (
-        ability_voice_rules.DeliveryPolicy.BOTH,
-        ability_voice_rules.DeliveryPolicy.HEARING,
-    ):
-        recipient_ids = [ability_voice_rules.reaction_recipient(ability_id, window)]
-    ability_voice_rules.require_ability_delivery(ability_id, state, actor_id, recipient_ids)
+    if reaction.spell is not None:
+        combat_voice_rules.guard_spell(state, actor_id, reaction.spell)
+    else:
+        recipient_ids = []
+        if ability_voice_rules.policy(ability_id) in (
+            ability_voice_rules.DeliveryPolicy.BOTH,
+            ability_voice_rules.DeliveryPolicy.HEARING,
+        ):
+            recipient_ids = [ability_voice_rules.reaction_recipient(ability_id, window)]
+        ability_voice_rules.require_ability_delivery(ability_id, state, actor_id, recipient_ids)
 
     if reaction_spend.is_spent(state.reactions_available.get(actor_id)):
         raise ReactionUnavailable(f"player {actor_id!r} already spent their reaction this round")
@@ -246,12 +253,12 @@ def offers_for_window(state: CombatState, window: dict | None) -> list[dict]:
     for participant in state.participants:
         for ability_id in participant.reaction_ids:
             # Outside the try: a stored id the catalog no longer knows is a defect, not an ineligible reaction.
-            ability = abilities.get_ability(ability_id)
+            reaction = reaction_catalog.get_reaction(ability_id)
             try:
-                _validate_for_window(state, participant.id, ability_id, window)
+                _validate_for_window(state, participant.id, reaction, window)
             except (ReactionUnavailable, DeliveryRefused):
                 continue
-            entry = {"actor_id": participant.id, "id": ability_id, "name": ability.name}
+            entry = {"actor_id": participant.id, "id": ability_id, "name": reaction.name}
             if ability_id == reaction_spend.SIDESTEP:
                 entry["destination"] = combat_counter_reactions.SIDESTEP_CUE
             offered.append(entry)

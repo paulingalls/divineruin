@@ -24,14 +24,14 @@ from dice import roll as dice_roll
 # player's action_pool from equipment entries carrying `damage`, so this becomes the "Greataxe"
 # attack the player declares in combat.
 _GREATAXE = {"name": "Greataxe", "damage": "1d12", "damage_type": "slashing", "properties": ["heavy", "two-handed"]}
-_ABILITY_SPELL = "arcane_shield_spell"  # a real catalog spell: focus_cost 1, generates Resonance
+_ABILITY_SPELL = "arcane_mage_hand"  # a real catalog spell: focus_cost 1, generates Resonance
 
 
 async def _seed_capstone_player(pool, player_id: str) -> None:
     """Seed a player wielding the 1d12 greataxe with the extra_attack enhancer flag
     (combat_init reads players.data.flags), a Focus pool for the in-combat ability, and high HP so the
     player survives the multi-phase fight that cycles through every declaration category."""
-    await seed_player_with_pools(pool, player_id=player_id, focus_current=10, known_spells=("arcane_shield_spell",))
+    await seed_player_with_pools(pool, player_id=player_id, focus_current=10, known_spells=("arcane_mage_hand",))
     await pool.execute(
         "UPDATE players SET data = jsonb_set("
         "  jsonb_set("

@@ -195,7 +195,7 @@ class TestResolvePhaseAbilityResonance:
 class TestResolvePhaseAbilityFocusGate:
     def _ability_state(self):
         state = _resolution_state()
-        state.pending_declarations["player_1"] = {"type": "ability", "action": "arcane_shield_spell"}
+        state.pending_declarations["player_1"] = {"type": "ability", "action": "arcane_detect_magic"}
         return state
 
     @pytest.mark.asyncio
@@ -206,7 +206,7 @@ class TestResolvePhaseAbilityFocusGate:
         deps["queries"].get_player = AsyncMock(return_value={"player_id": "player_1", "focus": {"current": 0}})
         res = _resonance_deps()
         cast_resolver = MagicMock()
-        cast_resolver._gate_spell = MagicMock(side_effect=ToolError("Not enough Focus for Arcane Shield"))
+        cast_resolver._gate_spell = MagicMock(side_effect=ToolError("Not enough Focus for Detect Magic"))
         cast_resolver._resolve_cast = AsyncMock()
 
         with pytest.raises(ToolError, match="Focus"):

@@ -11,30 +11,26 @@ from __future__ import annotations
 import logging
 from typing import cast
 
-import abilities
 import ability_voice_rules
 import architect_entomb
 import combat_grapple
 import combat_reaction_contest
 import combat_structures
 import conditions
+import reaction_catalog
 import reaction_spend
 import reaction_windows
 from ability_voice_rules import IMPLANT_DOUBT
 from combat_attack_roll import held_reaction_ac
 from combat_participant import SHIELD_SPELL_AC_BONUS
-from combat_reaction_defense import BRACE, SHIELD_SPELL, THOUGHT_SHIELD, apply_bark_skin, brace, halve
+from combat_reaction_defense import BRACE, SHIELD_SPELLS, THOUGHT_SHIELD, apply_bark_skin, brace, halve
 from declarations import resolve_declaration
 from session_data import CombatParticipant
 
 logger = logging.getLogger("divineruin.tools")
 
-# The wired set, transcribed from content/archetype_abilities.json. Explicit ids rather than
-# prose-matching on the catalog's ``effect`` text: the rows carry no mechanical field, and adding
-# one is a cross-language content change this story does not own. Their honesty against the
-# catalog is pinned by test_reaction_resolution's drift guard, not by this comment.
 HALVES_DAMAGE = frozenset({"rogue_uncanny_dodge"})
-BARK_SKIN = frozenset({"druid_bark_skin", "warden_bark_skin"})
+BARK_SKIN = frozenset({"druid_bark_skin", "warden_bark_skin", "primal_bark_skin"})
 SHIELD_BEARING = frozenset({"guardian_retaliating_shield"})
 SLIPPERY_REACTIONS = frozenset({"rogue_slippery", "spy_slippery"})
 AC_BONUS = {
@@ -205,7 +201,7 @@ def _apply(
             return None
         return {"mechanical_effect": combat_reaction_contest.EFFECTS[ability_id]}
 
-    if window["stage"] == reaction_windows.PRE_ROLL and ability_id == SHIELD_SPELL:
+    if window["stage"] == reaction_windows.PRE_ROLL and ability_id in SHIELD_SPELLS:
         if attack_action is None:
             return {"reason": "Shield Spell only protects against attack rolls."}
         state.get_participant(spend["actor_id"]).shield_spell_active = True
@@ -297,14 +293,14 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None, contes
         effects = _apply(
             state, head, window, spend, attack_action, contest, ac_spend, hesitated, defer_damage_reductions
         )
-        ability = abilities.get_ability(spend["ability_id"])
+        reaction = reaction_catalog.get_reaction(spend["ability_id"])
         packet = {
             "actor_id": spend["actor_id"],
             "resolved": True,
             "declaration_type": "reaction",
-            "ability_id": ability.id,
-            "ability_name": ability.name,
-            "narration_cue": ability.narration_cue,
+            "ability_id": reaction.id,
+            "ability_name": reaction.name,
+            "narration_cue": reaction.narration_cue,
             "window_id": spend["window_id"],
             "stage": window["stage"],
             "against_actor_id": head["actor_id"],
@@ -329,7 +325,7 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None, contes
                 # (still held); only the holder's name is missing, so the DM says "something still
                 # has you". HeldActionUnresolvable is not importable here - combat_hold imports this
                 # module.
-                logger.error("reaction %s: %s is grappled with no source; holder unnamed", ability.id, target.id)
+                logger.error("reaction %s: %s is grappled with no source; holder unnamed", reaction.id, target.id)
             else:
                 packet["grappler_id"] = grappler_id
         packets.append(packet)

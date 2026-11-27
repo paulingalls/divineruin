@@ -5,7 +5,7 @@ The [catalog](../../content/spells.json) supplies the IDs. The [magic design](..
 
 ## Classification
 
-The 87 spells include **25 engine**, **4 narrated**, **58 unwired** and **0 uncertified**.
+The 87 spells include **27 engine**, **4 narrated**, **56 unwired** and **0 uncertified**.
 
 - **engine** — The named function resolves the effect and the linked committed test asserts the outcome.
 - **narrated** — The design assigns the result to the DM’s narration.
@@ -25,7 +25,7 @@ The dead-reactions sprint is changing the archetype `mage_shield_spell`, which h
 | `arcane_spark` | engine | `combat_spell_damage.land` applies Spark and blocks the struck target’s reactions until the caster’s next turn starts. [Settlement and reload coverage](../../apps/agent/tests/acceptance/test_spell_damage_riders.py). |
 | `arcane_prestidigitation` | narrated | The DM voices minor sensory and household tricks. [Narrated utility spells](../game_mechanics/game_mechanics_magic.md#narrated-utility-spells). |
 | `arcane_mage_light` | narrated | The DM voices the light until Phase 11 supplies lighting state. [Narrated utility spells](../game_mechanics/game_mechanics_magic.md#narrated-utility-spells). |
-| `arcane_shield_spell` | unwired | RUN `arcane_shield_spell` (1 Focus). Ordinary cast succeeded. An attack at the AC threshold still hit and its window offered `mage_shield_spell` only. [M14.1](14_engine_completeness.md#spell-arcane_shield_spell). |
+| `arcane_shield_spell` | engine | `combat_reaction_effect._apply` applies +3 AC to the held attack until the caster’s next turn. `test_library_shield_changes_threshold_hit_and_expires` exercises the registered offer, spend and settlement. [M14.1](14_engine_completeness.md#spell-arcane_shield_spell). |
 | `arcane_detect_magic` | unwired | RUN `arcane_detect_magic` (1 Focus). A party member carried a Veil Anchor. The cast returned no detected item, school, spell, enchantment or ward. [M14.1](14_engine_completeness.md#spell-arcane_detect_magic). |
 | `arcane_mage_hand` | unwired | RUN `arcane_mage_hand` (1 Focus). A 4 lb oak staff was the target. The packet supplied no manipulation or check result and the item stayed in place. [M14.1](14_engine_completeness.md#spell-arcane_mage_hand). |
 | `arcane_magic_missile` | engine | `combat_spell_damage.land`. [`test_assigned_darts_keep_multiplicity_and_scale`](../../apps/agent/tests/combat/test_area_spell_recipients.py). Assigned darts auto-hit, split and scale at levels 1, 5, 11 and 17. |
@@ -84,7 +84,7 @@ The dead-reactions sprint is changing the archetype `mage_shield_spell`, which h
 | `primal_shillelagh` | unwired | RUN `primal_shillelagh` (cantrip). Casting with an equipped oak staff left its weapon profile unchanged. [M14.1](14_engine_completeness.md#spell-primal_shillelagh). |
 | `primal_gust` | unwired | RUN `primal_gust` (cantrip). The target stayed in place and there was no STR save. [M14.1](14_engine_completeness.md#spell-primal_gust). |
 | `primal_healing_touch` | engine | `combat_spell_heal.land_exploration`. [`test_immediate_healing_persists_and_names_the_actual_restoration`](../../apps/agent/tests/test_spell_heal_landing.py). The Healing Touch case checks the d8, Wisdom bonus, receipt and persisted HP. |
-| `primal_bark_skin` | unwired | RUN `primal_bark_skin` (2 Focus). Ordinary cast succeeded. The threshold hit stayed a hit and the post-roll window offered `druid_bark_skin` only. [M14.1](14_engine_completeness.md#spell-primal_bark_skin). |
+| `primal_bark_skin` | engine | `combat_reaction_defense.apply_bark_skin` rechecks the held roll at +2 AC through the round. `test_library_bark_skin_rechecks_roll_and_expires` exercises threshold hits, natural 20s and expiry. [M14.1](14_engine_completeness.md#spell-primal_bark_skin). |
 | `primal_entangle` | unwired | RUN `primal_entangle` (3 Focus). Concentration started. No STR saves, restraint or difficult-terrain zone appeared. [M14.1](14_engine_completeness.md#spell-primal_entangle). |
 | `primal_speak_with_animals` | narrated | The spell opens a conversation and the DM voices the animal. [Narrated utility spells](../game_mechanics/game_mechanics_magic.md#narrated-utility-spells). |
 | `primal_goodberry` | unwired | RUN `primal_goodberry` (1 Focus). Five berries appeared. Consumption decremented the stack and restored HP, with no nourishment or expiry recorded. [M14.1](14_engine_completeness.md#spell-primal_goodberry). |

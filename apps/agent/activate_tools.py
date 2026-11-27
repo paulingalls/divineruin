@@ -37,6 +37,7 @@ import patron_gateway
 import patron_gift_tools
 import reaction_gate
 import spell_casting
+import spell_reaction_activation
 import spells
 import unbound_tools
 import veil_anchor_tools
@@ -177,8 +178,8 @@ async def activate(
     open window in next.waiting_on, passing an id listed in next.waiting_on.reactions — the exact
     ids that fit that window — with no declaration first. It is refused when no window is open, when the reaction
     answers a different window, or when the round's one reaction is already spent. Outside combat
-    reactions activate freely. Cantrips are free and scale
-    their damage with level."""
+    only archetype reactions can activate. Reaction spells require an open combat window.
+    Cantrips are free and scale their damage with level."""
     if destination is not None and id not in (VEILSTEP, THORNWALL, SIDESTEP):
         raise ToolError("The destination selector is only for Veilstep, Thornwall or Sidestep.")
     if id == SIDESTEP and (not isinstance(destination, Destination) or target_id is not None or target_ids is not None):
@@ -325,6 +326,9 @@ async def _activate_impl(
     if kind == "anchor":
         return await anchor_mod._deploy_veil_anchor_impl(context, id)
     if kind == "spell":
+        spell = spells_mod.get_spell(id)
+        if spell.reaction_window is not None:
+            return await spell_reaction_activation.activate(context, spell)
         return await cast_spell_mod._cast_spell_impl(
             context,
             id,
