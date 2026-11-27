@@ -16,8 +16,8 @@ from its tactics and each conscious companion's action. Enemies cannot target co
 Untargeted areas, auras, and zones still affect them. The combat-entry Combatants roster gives \
 every combatant's id and, in Combatants[].actions, the exact names of its actions. Then call declare_phase with \
 one declaration per acting combatant — each names its actor_id and its kind. Supported declarations: \
-attack — action is the EXACT name of one of the actor's Combatants[].actions (a player's are their \
-equipped weapons, for example "Longsword"), because that is what resolve_phase matches against, and \
+attack — action is the EXACT name of one of the actor's attacks (a player's equipped weapons, \
+or in Wild Shape the natural attacks from the latest participants[].actions), and \
 target_id is who they strike. A warrior using Shield Bash sets rider="shield_bash" on a melee Attack. \
 Use an empty rider for ordinary attacks. Rogues can use rider="dash" to double approach movement \
 or rider="hide" to attempt Stealth after the attack. Use rider="disengage" on Attack or Retreat with learned \

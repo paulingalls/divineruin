@@ -422,16 +422,8 @@ async def continue_attack(
         # phase's save_combat_state.
         if sub.get("consumed_conditions"):
             attacker.conditions = conditions.remove_conditions(attacker.conditions, sub["consumed_conditions"])
-        # Preserve request_attack's old behavior: any player swing — hit OR miss — arms the
-        # per-encounter weapon-durability accrual that end_combat applies. Only the extra
-        # crit-vs-heavy-armor cost (2 hits) is gated on a critical hit landing. M18 story-003:
-        # arm the SWINGING member's own flags (attacker.id == that player's id, combat_init), so a
-        # non-primary member's swings accrue THEIR weapon's durability, not the primary's.
-        if attacker.type == "player":
-            # Non-raising member() + skip, matching combat_end's accrual loop: a player participant
-            # is a party member in prod (combat_init), but a stray one must not abort a resolved
-            # phase over a durability scratch flag. The two ends of this feature agreed on the
-            # fail-safe everywhere except here, where member_state raised inside the phase tx.
+        # Settlement charges the swinging member's weapon for hits and misses alike.
+        if attacker.type == "player" and act.get("attack_source") != "catalog":
             member = session.party.member(attacker.id)
             if member is not None:
                 member.weapon_used = True

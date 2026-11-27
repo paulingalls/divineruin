@@ -46,6 +46,7 @@ def needs_weapon_profile(attacker_type: str, action: dict, *, weapon_attack: boo
     return (
         attacker_type == "player"
         and weapon_attack
+        and action.get("attack_source") != "catalog"
         and not (action.get("name") == SHIELD_BASH_ACTION["name"] and "id" not in action)
     )
 

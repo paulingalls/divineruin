@@ -74,6 +74,8 @@ async def declare_phase(
     Leave the item empty for steal. Use empty rider, quick_fingers_mode and quick_fingers_item for ordinary attacks.
     Include the player, every
     conscious companion, and every enemy that acts this phase — one declaration each.
+    In Wild Shape, choose a natural attack from the latest participants[].actions
+    or executable_actions. Use action="" for the first one. Equipped weapons are unavailable.
     Call this once per round at the declaration beat; resolve_phase resolves and
     narrates the whole phase in initiative order."""
     try:
@@ -116,6 +118,12 @@ async def _declare_phase_locked(
     # ToolError so the DM re-prompts rather than crashing combat.
     try:
         combat_spatial_declarations.preflight_state(cs)
+        declarations = declarations.copy()
+        for actor in cs.participants:
+            if actor.wild_shape is None or (decl := declarations.get(actor.id)) is None:
+                continue
+            if decl.get("type") == "attack" and decl.get("action") == "" and "healing_item" not in decl:
+                declarations[actor.id] = {**decl, "action": actor.action_pool[0]["name"]}
         concealed = (
             await concealment.concealed_ids(cs, queries=queries)
             if any(not p.is_ally and p.id in declarations for p in cs.participants)

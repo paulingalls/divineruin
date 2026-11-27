@@ -265,6 +265,8 @@ async def test_transform(
         "hp_current": hp,
         "hp_max": hp,
         "original_ac": before.ac,
+        "original_action_pool": before.action_pool,
+        "original_deferred_effects": before.deferred_effects,
     }
     participant = state.get_participant(pid)
     assert participant is not None
