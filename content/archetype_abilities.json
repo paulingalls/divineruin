@@ -1015,7 +1015,7 @@
     "ability_type": "reaction",
     "level_requirement": 1,
     "cost": { "stamina": 0, "focus": 2, "scaling": null },
-    "effect": "Protective reaction: a discordant note disrupts an enemy. Bards disrupt, not block.",
+    "effect": "When an enemy targets you with an attack, make it roll a Wisdom save against your Charisma-based DC. On a failure, its attack rolls with disadvantage.",
     "narration_cue": "A jarring, off-key whisper makes the foe flinch.",
     "window": "on_targeted"
   },
@@ -1229,7 +1229,7 @@
     "ability_type": "reaction",
     "level_requirement": 5,
     "cost": { "stamina": 0, "focus": 2, "scaling": null },
-    "effect": "Reaction when an enemy succeeds an attack or ability: WIS save or they hesitate — reroll with disadvantage.",
+    "effect": "After an enemy attack hits and before it deals damage, make the attacker roll a Wisdom save against your Intelligence-based DC. On a failure, it rerolls the attack with disadvantage and keeps that result.",
     "narration_cue": "A seed of doubt: was that really the right move?",
     "window": "on_enemy_action"
   },

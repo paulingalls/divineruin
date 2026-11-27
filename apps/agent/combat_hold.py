@@ -23,6 +23,7 @@ import combat_hold_windows
 import combat_marks as combat_marks
 import combat_opportunity
 import combat_reaction_contest
+import combat_reaction_disruption
 import combat_reaction_effect
 import patron_synergy_combat
 import reaction_spend
@@ -43,10 +44,11 @@ from combat_hold_actions import (
 )
 from combat_multiattack import held_declarations, strike_summary
 from combat_packet import _resolve_one_packet
+from combat_reaction_closure import close_window
 from combat_reshape_packet import ReshapeRefused, resolve_reshape
 from combat_turn_flight import is_flight_turn
 from encounter_actions import action_kind
-from reaction_windows import MOVEMENT, POST_ROLL
+from reaction_windows import MOVEMENT, POST_ROLL, PRE_ROLL
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -104,7 +106,10 @@ def preflight_spend(state, actor_id: str, ability_id: str) -> dict:
             f"cannot prepare a reaction spend for {actor_id!r}: the open window answers "
             f"{state.open_window['actor_id']!r} but the queue head is {head['actor_id']!r}"
         )
-    return reaction_spend.spend(ability_id, state.open_window, held_seq=head["seq"])
+    spend = reaction_spend.spend(ability_id, state.open_window, held_seq=head["seq"])
+    if ability_id in combat_reaction_disruption.SAVE_ATTRIBUTES:
+        spend["order"] = sum(entry["window_id"] == spend["window_id"] for entry in state.reactions_available.values())
+    return spend
 
 
 def record_spend(state, actor_id: str, spend: dict) -> None:
@@ -158,8 +163,8 @@ async def pump(
     with the queue empty, the caller runs Beat 4 in that same commit (AC6 — the wrap fires once,
     in the last commit, because an enemy blow can be what ends the fight).
     """
-    closed, state.open_window = state.open_window, None
     summaries: list[dict] = []
+    closed, state.open_window = state.open_window, None
     reacted, reaction_packets = None, []
     if closed is not None and closed["stage"] != MOVEMENT and state.held_actions:
         reacted = state.held_actions[0]
@@ -169,49 +174,9 @@ async def pump(
             summaries.append(_concealed_summary(reacted, reason))
             state.held_actions.pop(0)
             reacted = None
-    if reacted is not None and closed is not None:
-        hit_before_close = closed["stage"] == POST_ROLL and (reacted["roll"] or {}).get("attack_result", {}).get("hit")
-        reaction_packets = combat_reaction_effect.close(
-            state, reacted, closed, attack_action=_attack_action(state, reacted), contest_rng=contest_rng
-        )
-        await patron_synergy_combat.grant_interceding_rallies(
-            state, reaction_packets, closed["target_id"], queries=packet_deps["queries"], conn=packet_deps["conn"]
-        )
-        await patron_synergy_combat.restore_guard_stamina(
-            reaction_packets, queries=packet_deps["queries"], conn=packet_deps["conn"]
-        )
-        reaction_packets = combat_reaction_effect.defer_thought_shield(reacted, reaction_packets)
-        hesitation_reason = combat_reaction_contest.hesitation_reason(reacted)
-        if hesitation_reason is not None:
-            summaries.extend(reaction_packets)
-            summaries.extend(combat_reaction_effect.finish_thought_shield(reacted, {}))
-            summaries.append(
-                strike_summary(
-                    reacted,
-                    {
-                        **reacted.get("melee_approach", {}),
-                        "actor_id": reacted["actor_id"],
-                        "attack_resolved": False,
-                        "resolved": False,
-                        "hesitated": True,
-                        "reason": hesitation_reason,
-                    },
-                )
-            )
-            state.held_actions.pop(0)
         else:
-            for packet in list(reaction_packets):
-                if packet["ability_id"] == reaction_spend.SIDESTEP:
-                    spend = state.reactions_available[packet["actor_id"]]
-                    if "destination" in spend:
-                        reacted["sidestep"] = {"packet": packet, "destination": spend["destination"]}
-                        reaction_packets.remove(packet)
-            turned_miss = hit_before_close and not reacted["roll"]["attack_result"]["hit"]
-            if turned_miss or any(packet["ability_id"] in reaction_spend.COUNTERS for packet in reaction_packets):
-                reacted.setdefault("pending_reaction_packets", []).extend(reaction_packets)
-                reaction_packets = []
-            summaries.extend(reaction_packets)
-            if turned_miss and combat_hold_windows.offer_reaction_miss(state, reacted):
+            reaction_packets, paused = await close_window(state, reacted, closed, summaries, packet_deps, contest_rng)
+            if paused:
                 return summaries
 
     while state.held_actions:
@@ -314,6 +279,9 @@ async def pump(
                     del head["sidestep"]
                     summaries.append(receipt)
 
+                if not await combat_reaction_disruption.settle(session, state, head, PRE_ROLL, packet_deps, fate_rolls):
+                    return summaries
+
                 if action is not None and head["roll"] is None:
                     if reason := architect_actions.slam_refusal(
                         state, head["actor_id"], action, head["declaration"]["target_id"]
@@ -329,6 +297,11 @@ async def pump(
 
                 if await combat_hold_windows.offer_post_roll(session, state, head, action, summaries, packet_deps):
                     assert_iteration_progress(state, head, summaries, summary_start)
+                    return summaries
+
+                if not await combat_reaction_disruption.settle(
+                    session, state, head, POST_ROLL, packet_deps, fate_rolls
+                ):
                     return summaries
 
             summary = await _resolve_held(

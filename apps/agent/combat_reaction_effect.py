@@ -20,6 +20,7 @@ import combat_structures
 import conditions
 import reaction_spend
 import reaction_windows
+from ability_voice_rules import IMPLANT_DOUBT
 from combat_attack_roll import held_reaction_ac
 from combat_participant import SHIELD_SPELL_AC_BONUS
 from combat_reaction_defense import BRACE, SHIELD_SPELL, THOUGHT_SHIELD, apply_bark_skin, brace, halve
@@ -194,6 +195,7 @@ def _apply(
     contest: dict | None,
     ac_spend: dict | None = None,
     hesitated: bool = False,
+    defer_damage_reductions: bool = False,
 ) -> dict | None:
     ability_id = spend["ability_id"]
     target = _held_target(state, head)
@@ -216,23 +218,15 @@ def _apply(
             return {"mechanical_effect": "target_ac_bonus"}
         return None
 
-    if ability_id == BRACE:
-        reduction, prevented = brace(head, state.get_participant(spend["actor_id"]))
-        return {"mechanical_effect": "damage_reduced", "damage_reduction": reduction, "damage_prevented": prevented}
-
     if ability_id in BARK_SKIN and target is not None and spend["actor_id"] == target.id:
         apply_bark_skin(head, target)
         return {"mechanical_effect": "round_ac_bonus"}
 
-    if (
-        ability_id in HALVES_DAMAGE
-        and head["roll"] is not None
-        and target is not None
-        and spend["actor_id"] == target.id
-    ):
-        halve(head, target)
-        logger.info("reaction %s halved %s's blow against %s", ability_id, head["actor_id"], target.id)
-        return {"mechanical_effect": "damage_halved"}
+    if ability_id in HALVES_DAMAGE or ability_id == BRACE:
+        if defer_damage_reductions:
+            return None
+        return _reduce_damage(state, head, spend)
+
     if ability_id in SLIPPERY_REACTIONS and target is not None and spend["actor_id"] == target.id:
         if "completed_condition" in head:
             chamber_id = head["completed_condition"]["chamber_id"]
@@ -245,6 +239,27 @@ def _apply(
             return {"mechanical_effect": "grapple_blocked_still_held"}
         return {"mechanical_effect": "grapple_escaped"}
     return None
+
+
+def _reduce_damage(state, head: dict, spend: dict) -> dict | None:
+    target = _held_target(state, head)
+    if spend["ability_id"] == BRACE:
+        reduction, prevented = brace(head, state.get_participant(spend["actor_id"]))
+        return {"mechanical_effect": "damage_reduced", "damage_reduction": reduction, "damage_prevented": prevented}
+    if head["roll"] is not None and target is not None and spend["actor_id"] == target.id:
+        halve(head, target)
+        logger.info("reaction %s halved %s's blow against %s", spend["ability_id"], head["actor_id"], target.id)
+        return {"mechanical_effect": "damage_halved"}
+    return None
+
+
+def settle_disruption_defenses(state, head: dict) -> None:
+    for packet in head["pending_reaction_packets"]:
+        if packet["ability_id"] in HALVES_DAMAGE or packet["ability_id"] == BRACE:
+            if head["roll"]["attack_result"]["hit"]:
+                packet.update(_reduce_damage(state, head, packet) or {})
+            else:
+                packet["reason"] = "The attack misses, so there is no damage to reduce."
 
 
 def close(state, head: dict, window: dict, *, attack_action: dict | None, contest_rng=None) -> list[dict]:
@@ -272,9 +287,17 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None, contes
     ac_spend = max(ac_candidates, key=lambda spend: AC_BONUS.get(spend["ability_id"], 0), default=None)
     if ac_spend is not None and ac_spend["ability_id"] not in AC_BONUS:
         ac_spend = None
+    # The provisional hit opens the window. Reductions apply to whichever attack survives it.
+    defer_damage_reductions = (
+        "attack_context" in head
+        and window["stage"] == reaction_windows.POST_ROLL
+        and any(spend["ability_id"] == IMPLANT_DOUBT for spend in spends)
+    )
     packets = []
     for spend, contest in zip(spends, contests, strict=True):
-        effects = _apply(state, head, window, spend, attack_action, contest, ac_spend, hesitated)
+        effects = _apply(
+            state, head, window, spend, attack_action, contest, ac_spend, hesitated, defer_damage_reductions
+        )
         ability = abilities.get_ability(spend["ability_id"])
         packet = {
             "actor_id": spend["actor_id"],
