@@ -222,7 +222,7 @@ def normalize_target_list(spell: "Spell | Ability", target_id: str | None, targe
 
 
 def set_spells(config: dict[str, Spell]) -> None:
-    """Test seam: populate _spells directly without going through the DB."""
+    """Replace _spells with an already-parsed catalog (startup load, seed handoff, tests)."""
     _spells.clear()
     _spells.update(config)
 
