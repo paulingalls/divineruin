@@ -1,4 +1,7 @@
 import { mediaDir } from "./media-dir.ts";
+import { parseItemRow } from "./items.ts";
+import { parsePricingRow } from "./pricing.ts";
+import { quoteSale } from "./sale_pricing.ts";
 import { inventorySnapshot } from "./inventory_snapshot.ts";
 import { sql } from "./db.ts";
 import { parseJsonb } from "./parse-jsonb.ts";
@@ -150,6 +153,7 @@ export async function handleActivityDecision(
       }
 
       let granted = false;
+      let proceeds: { price_sp: number; gold: number } | undefined;
       const outcome = data.outcome as Record<string, unknown> | null;
       if (outcome && data.activity_type === "crafting") {
         const craftedItemId = outcome.crafted_item_id as string | null;
@@ -165,6 +169,30 @@ export async function handleActivityDecision(
               (COALESCE((player_inventory.data->>'quantity')::int, 0) + 1)::text::jsonb
             )
           `;
+        } else if (craftedItemId && body.decision_id === "sell") {
+          const [itemRow] = await tx<{ data: unknown }[]>`
+            SELECT data FROM items WHERE id = ${craftedItemId}
+          `;
+          const [pricingRow] = await tx<{ data: unknown }[]>`
+            SELECT data FROM pricing WHERE id = 'economy'
+          `;
+          if (!itemRow) throw new Error(`Crafted item ${craftedItemId} is missing`);
+          if (!pricingRow) throw new Error("Economy pricing row is missing");
+          const item = parseItemRow(craftedItemId, parseJsonb(itemRow.data));
+          const pricing = parsePricingRow(parseJsonb(pricingRow.data));
+          const quote = quoteSale(item, pricing, { kind: "crafted" });
+          if (!quote.available) return { error: quote.reason, httpStatus: 400 } as const;
+
+          const gold = quote.price_sp / pricing.silverPerGold;
+          const credited = await tx<{ player_id: string }[]>`
+            UPDATE players
+            SET data = jsonb_set(data, '{gold}',
+              to_jsonb(COALESCE((data->>'gold')::numeric, 0) + ${gold}::numeric))
+            WHERE player_id = ${playerId}
+            RETURNING player_id
+          `;
+          if (credited.length === 0) throw new Error(`Player ${playerId} is missing`);
+          proceeds = { price_sp: quote.price_sp, gold };
         }
       }
 
@@ -172,13 +200,13 @@ export async function handleActivityDecision(
         UPDATE async_activities
         SET data = jsonb_set(
           jsonb_set(data, '{status}', '"collected"'),
-          '{decision}', ${JSON.stringify(body.decision_id)}::jsonb
+          '{decision}', to_jsonb(${body.decision_id}::text)
         )
         WHERE id = ${activityId}
       `;
 
       const snapshot = granted ? await inventorySnapshot(playerId, tx) : undefined;
-      return { activityId, decision: body.decision_id, snapshot } as const;
+      return { activityId, decision: body.decision_id, snapshot, proceeds } as const;
     });
 
     if ("error" in txnResult) {
@@ -190,6 +218,7 @@ export async function handleActivityDecision(
       status: "collected",
       decision: txnResult.decision,
       ...txnResult.snapshot,
+      proceeds: txnResult.proceeds,
     });
   } catch (err) {
     logError("[activities] decision failed:", err);

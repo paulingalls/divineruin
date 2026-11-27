@@ -245,6 +245,14 @@
     "expected": { "available": true, "price_sp": 10, "reason": "", "merchant_kind": null }
   },
   {
+    "id": "crafted_fractional_gold",
+    "item": { "type": "accessory", "rarity": "uncommon", "value_base": 101 },
+    "pool": null,
+    "disposition": "neutral",
+    "kind": "crafted",
+    "expected": { "available": true, "price_sp": 81, "reason": "", "merchant_kind": null }
+  },
+  {
     "id": "crafted_zero",
     "item": { "type": "weapon", "rarity": "common", "value_base": 0 },
     "pool": null,

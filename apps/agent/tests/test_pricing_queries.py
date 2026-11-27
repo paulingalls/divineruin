@@ -207,7 +207,8 @@ def test_authored_sale_pricing():
         )
         for value in (None, 0, -1, True, "0.5", float("inf"), 0.12345)
     ]
-    + [("sale_disposition_multipliers", None), ("sale_disposition_multipliers.neutral", 1.0001)],
+    + [("sale_disposition_multipliers", None), ("sale_disposition_multipliers.neutral", 1.0001)]
+    + [("silver_per_gold", value) for value in (-10, 0, float("inf"), "10")],
 )
 @pytest.mark.asyncio
 async def test_refuses_invalid_sale_pricing(cached, field, value):

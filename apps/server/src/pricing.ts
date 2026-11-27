@@ -93,16 +93,13 @@ export function wholeSilver(baseSp: number, multiplier: number): number {
 /** Fail-loud parse of the `economy` pricing row's JSONB (snake_case) into EconomyPricing. */
 export function parsePricingRow(raw: unknown): EconomyPricing {
   const d = asRecord(raw, "pricing[economy]");
-  if (typeof d.silver_per_gold !== "number") {
-    throw new Error("pricing[economy].silver_per_gold is not a number");
-  }
   return {
     repairCostSp: repairCostRecord(d.repair_cost_sp, "pricing[economy].repair_cost_sp"),
     dispositionMultipliers: multiplierRecord(
       d.disposition_multipliers,
       "pricing[economy].disposition_multipliers",
     ),
-    silverPerGold: d.silver_per_gold,
+    silverPerGold: parseMultiplier(d.silver_per_gold, "pricing[economy].silver_per_gold", true),
     ...parseSaleRates(d),
   };
 }
