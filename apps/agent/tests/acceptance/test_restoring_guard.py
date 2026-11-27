@@ -24,6 +24,7 @@ from combat_init_participants import class_reaction_ids
 CLAUSE = "aelora_restoring_guard"
 INTERCEPT = "guardian_intercept"
 BARK_SKIN = "warden_bark_skin"
+SHIELD = "guardian_retaliating_shield"
 FATE = "zhael_fates_thread"
 SPELL = "arcane_haste"
 
@@ -60,13 +61,21 @@ async def guard_fight(
             ally.has_reaction_ability = True
         if case == "immune":
             hero.damage_affinities = {"immune": ["slashing"]}
+        if case == "shield":
+            await world.pool.execute(
+                "INSERT INTO player_inventory (player_id,item_id,data) VALUES ($1,$2,$3::jsonb)",
+                f.hero,
+                "thornveld_guardian_shield",
+                '{"equipped":true,"current_hits":25}',
+            )
         if case == "fate":
             await configure(world, "zhael", "warrior", index=1, patron_gifts={"zhael_lucky": {"spent": True}})
             f.session.member_state(f.hero).concentration.spell_id = SPELL
             await db_mutations_concentration.update_player_concentration(f.hero, SPELL, conn=world.pool)
         await db_mutations.save_combat_state(f.combat_id, state.to_dict())
         await f.reload()
-        await f.declare(goblin_strike(GOBLIN, f.ally if archetype == "guardian" else f.hero))
+        target = f.ally if archetype == "guardian" and case != "shield" else f.hero
+        await f.declare(goblin_strike(GOBLIN, target))
         lifecycle = _live_party(f.session, *world.ids) if case == "fate" else None
         try:
             yield f
@@ -184,6 +193,20 @@ async def test_restoring_guard(world: SimpleNamespace, archetype: str) -> None:
 @pytest.mark.parametrize("case", ["range", "immune", "other_patron"])
 async def test_excluded_intercept(world: SimpleNamespace, case: str) -> None:
     await guardian(world, case)
+
+
+async def test_retaliating_shield_does_not_restore_stamina(world: SimpleNamespace) -> None:
+    async with guard_fight(world, "guardian", 5, case="shield") as f:
+        with dice(17):
+            await window(f, offered=SHIELD)
+            await spend(f, SHIELD)
+            packets = (await f.call("resolve_phase"))["packets"]
+        (hit,) = [p for p in packets if p["actor_id"] == GOBLIN and "hit" in p]
+        assert hit["damage"] == 5
+        packet = reaction(packets, SHIELD)
+        assert packet["mechanical_effect"] == "shield_durability"
+        assert (await row(world, 0))["stamina"]["current"] == 3
+        assert "restoring_guard" not in packet
 
 
 @pytest.mark.parametrize("start", [9, 10])
