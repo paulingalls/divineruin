@@ -118,7 +118,7 @@ async def test_ooc_concentration_save_reads_bless_and_exhaustion(dev_db_pool):
     await db_mutations_conditions.save_player_conditions(caster, buffs + exhausted)
 
     with patch("condition_bonus.dice_roll", return_value=_d20(3)):
-        assert await break_on_damage(ctx, caster, face=8) is None
+        assert await break_on_damage(ctx, caster, face=7) is None
         assert await break_on_damage(ctx, caster, face=6) == BLESS
     assert (await saved_player(caster))["conditions"] == exhausted
 

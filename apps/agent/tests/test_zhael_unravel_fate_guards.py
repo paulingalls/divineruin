@@ -492,6 +492,8 @@ async def test_unravel_restores_bless_casters_and_saved_conditions(unravel: Figh
             actor=recipient,
             roll={"kind": "save", "save_type": "wisdom", "dc": 24, "effect_on_fail": "resist"},
         )
-    assert receipt["total"] == 14
+    offer_id = receipt["fate_offer"]["offer_id"]
+    kept = await fight.call("activate", id="zhael_fates_thread", offer_id=offer_id, keep="original")
+    assert kept["total"] == 14
     await fight.invoke(game_tools(fight.session, end_combat), "end_combat", outcome="fled")
     assert (await durable(fight))["players"][recipient]["data"]["conditions"] == saved_conditions
