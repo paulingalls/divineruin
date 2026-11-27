@@ -74,6 +74,7 @@ CONTENT_LOADERS = {
     "settlement_templates": ("settlement_templates",),
     "spells": ("spells",),
     "training_activity_types": ("training_rules", "purification_tools"),
+    "world_clock": ("aethos_clock",),
     "events": (),
     "inventory_pools": (),
     "level_progression": (),

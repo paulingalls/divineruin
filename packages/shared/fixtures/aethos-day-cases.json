@@ -1,0 +1,20 @@
+[
+  { "id": "epoch-midnight", "instant": "2026-01-01T05:00:00Z", "expected": 0 },
+  { "id": "dawn-before", "instant": "2026-01-01T10:59:59.999Z", "expected": 0 },
+  { "id": "dawn-at", "instant": "2026-01-01T11:00:00Z", "expected": 1 },
+  { "id": "dawn-after", "instant": "2026-01-01T11:00:00.001Z", "expected": 1 },
+  { "id": "utc-midnight", "instant": "2026-01-02T00:00:00Z", "expected": 1 },
+  { "id": "aethos-midnight", "instant": "2026-01-02T05:00:00Z", "expected": 1 },
+  { "id": "year-midnight", "instant": "2027-01-01T00:00:00Z", "expected": 365 },
+  { "id": "year-dawn-before", "instant": "2027-01-01T10:59:59.999Z", "expected": 365 },
+  { "id": "year-dawn-at", "instant": "2027-01-01T11:00:00Z", "expected": 366 },
+  { "id": "leap-midnight", "instant": "2028-02-29T00:00:00Z", "expected": 789 },
+  { "id": "leap-dawn-before", "instant": "2028-02-29T10:59:59.999Z", "expected": 789 },
+  { "id": "leap-dawn-at", "instant": "2028-02-29T11:00:00Z", "expected": 790 },
+  { "id": "leap-next-dawn", "instant": "2028-03-01T11:00:00Z", "expected": 791 },
+  { "id": "us-spring-before", "instant": "2026-03-08T06:59:59.999Z", "expected": 66 },
+  { "id": "us-spring-at", "instant": "2026-03-08T07:00:00Z", "expected": 66 },
+  { "id": "us-spring-dawn-before", "instant": "2026-03-08T10:59:59.999Z", "expected": 66 },
+  { "id": "us-spring-dawn-at", "instant": "2026-03-08T11:00:00Z", "expected": 67 },
+  { "id": "us-fall-edt-dawn", "instant": "2026-10-31T10:30:00Z", "expected": 303 }
+]
