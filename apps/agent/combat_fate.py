@@ -422,7 +422,9 @@ async def continue_attack(
         # phase's save_combat_state.
         if sub.get("consumed_conditions"):
             attacker.conditions = conditions.remove_conditions(attacker.conditions, sub["consumed_conditions"])
-        # Settlement charges the swinging member's weapon for hits and misses alike.
+        # Settlement charges the swinging member's weapon for hits and misses alike. member() skips a
+        # stray player participant, as combat_end's accrual does: raising here would abort a resolved
+        # phase inside its transaction over a durability scratch flag.
         if attacker.type == "player" and act.get("attack_source") != "catalog":
             member = session.party.member(attacker.id)
             if member is not None:
