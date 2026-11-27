@@ -13,8 +13,8 @@
     "@divineruin/shared": "workspace:*",
     "@google/genai": "^2.32.0",
     "@livekit/protocol": "^1.54.1",
-    "jose": "^6.2.17",
-    "livekit-server-sdk": "^2.20.0",
+    "jose": "^6.2.18",
+    "livekit-server-sdk": "^2.20.1",
     "sharp": "^0.35.5"
   },
   "devDependencies": {
