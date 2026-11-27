@@ -18,6 +18,7 @@ from proof_coverage_map import (
     MAP,
     OUTPUT_ENV,
     CoverageMap,
+    defined_functions,
     load_map,
     ordinary_agent_source,
 )
@@ -89,7 +90,11 @@ def reduce(directory, tasks, sources):
                     functions[source][name].add(task)
     if not functions:
         raise ValueError("coverage run produced no executed ordinary agent functions")
-    return CoverageMap(datetime.now(UTC), tasks, dict(functions))
+    defined = {source: {name for name, _ in regions[source]} for source in functions}
+    for source, names in defined.items():
+        if defined_functions(source) != names:
+            raise ValueError(f"{source}: declaration function names disagree with coverage regions")
+    return CoverageMap(datetime.now(UTC), tasks, dict(functions), defined)
 
 
 def generate():
@@ -109,7 +114,7 @@ def collect(directory, tasks, sources, super_run):
     command += ["--set", "super"] if super_run else ["--tasks", *sorted(tasks)]
     try:
         old = load_map()
-        CoverageMap(old.generated_at, set(), {}).write(MAP)
+        CoverageMap(old.generated_at, set(), {}, {}).write(MAP)
         subprocess.run(
             command,
             env={
