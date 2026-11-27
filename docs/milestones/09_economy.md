@@ -268,8 +268,8 @@ Content/spec divergence: spec uses **Thornwatch + Merchant Guild** as worked exa
 - 6 personality modifiers (Prosperous +25% / Struggling -50% / Military +50% weapons /-25% civilian / Trade Hub +25% all / Isolated -50% T2 + 25% price markup / Cursed -75%)
 - `Location.size: enum(hamlet|village|town|city|capital)` + `Location.personality: enum[]` schema extension
 - `merchant_state` table: `current_inventory`, `current_gold`, `max_gold`, `last_restock_tick`, `buyback_history`, `consigned_items` (Redis + PostgreSQL backing)
-- Daily gold allocations (5 settlement × 4 merchant-type matrix per spec L286-292)
-- 4 buyback limits (Common weapons 3/day, Common consumables 5/day, Quality 2/day, Unique 1/day)
+- Daily gold allocations derive from the bound pool’s settlement tier, scalar personality, and buying rules. Merchant purses and buyback counts refresh on the first eligible sale after Aethos dawn.
+- Daily full-price buyback limits per item: three common weapons, armor or shields, five other common goods, two uncommon goods, or one rare or legendary good. One more unit can be offered at half price.
 - Consignment at Friendly+ disposition (1d4 day delivery, 10% commission)
 - Traveling merchant entity type (1-2 day visits, +10% buy / -10% sell)
 - Pure functions: `daily_restock_at_dawn()`, `attempt_purchase(player_id, merchant_id, item_id, quantity)`, `attempt_sale(player_id, merchant_id, item_id, quantity)`
@@ -288,7 +288,7 @@ Content/spec divergence: spec uses **Thornwatch + Merchant Guild** as worked exa
 - [ ] Consignment expires after 1d4 days; expired items return to consignor
 - [ ] Traveling merchant entity instantiates with 1-2 day visit + rotating feature item
 - [ ] Tests cover every cell of size×personality matrix, every buyback-limit edge case, consignment expiration paths, traveling merchant visit lifecycle
-- [x] A player sale removes the owned quantity and credits engine-computed proceeds. MerchantAgent’s `sell_item` accepts item ID, NPC ID and quantity. The registered voice and PostgreSQL acceptance tests verify settlement and rollback.
+- [x] A player sale removes the owned quantity and credits engine-computed proceeds. MerchantAgent’s `sell_item` accepts item ID, NPC ID, quantity and `offer_id`. The DM reads an offer aloud and confirms the returned ID after the player accepts. Friendly and trusted merchants can advertise consignment. The registered voice and PostgreSQL acceptance tests verify settlement and rollback.
 - [x] The async crafting `sell` decision settles engine-priced proceeds exactly once and grants no item. Exercise the HTTP/DB path and its agreement with agent pricing. See [Crafting § Async Crafting Flow](../game_mechanics/game_mechanics_crafting.md#async-crafting-flow) and [Economy § Merchant Pricing Formula](../game_mechanics/game_mechanics_economy.md#merchant-pricing-formula). The authenticated inventory spec checks proceeds, retry, concurrent combat rewards and unchanged inventory. Both pricing suites share the crafted quote, and the Common Bond worker acceptance checks zero-proceeds crafts offer keep only.
 - [ ] A fence buys stolen goods at an engine-computed price, Aelora's rogue Honest Hustle improves that price, and M9.5 applies a −3 faction reputation cost when fencing stolen faction goods is detected. See [Faction Pricing § Earning Reputation Through Economic Activity](../game_mechanics/economy/faction_reputation_pricing.md#earning-reputation-through-economic-activity) and [Patrons § Aelora / Rogue](../game_mechanics/game_mechanics_patrons.md#aelora-the-hearthkeeper). <!-- G3 · 2026-11-26: production rg -li 'fence|honest.hustle' apps finds unrelated fencing references and no sale settlement; content/gods.json leaves Honest Hustle pending. -->
 

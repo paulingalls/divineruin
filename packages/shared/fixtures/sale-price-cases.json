@@ -280,5 +280,156 @@
     "disposition": "neutral",
     "kind": "crafted",
     "expected": { "available": false, "price_sp": 0, "reason": "quest_item", "merchant_kind": null }
+  },
+  {
+    "id": "allocation_grimjaw_blacksmith",
+    "npc": "grimjaw_blacksmith",
+    "expected_allocation_sp": 600
+  },
+  {
+    "id": "allocation_temple_warden_selene",
+    "npc": "temple_warden_selene",
+    "expected_allocation_sp": 600
+  },
+  {
+    "id": "allocation_aelora_guildmaster_dara",
+    "npc": "aelora_guildmaster_dara",
+    "expected_allocation_sp": 300
+  },
+  {
+    "id": "allocation_innkeeper_maren",
+    "npc": "innkeeper_maren",
+    "expected_allocation_sp": 13
+  },
+  {
+    "id": "allocation_binding_follows_pool_location",
+    "npc": "grimjaw_blacksmith",
+    "expected_allocation_sp": 25,
+    "pool_location": "millhaven"
+  },
+  {
+    "id": "allocation_military",
+    "npc": "grimjaw_blacksmith",
+    "expected_allocation_sp": 800,
+    "location_fields": {
+      "personality": "military"
+    }
+  },
+  {
+    "id": "allocation_scholarly",
+    "npc": "grimjaw_blacksmith",
+    "expected_allocation_sp": 400,
+    "location_fields": {
+      "personality": "scholarly"
+    }
+  },
+  {
+    "id": "allocation_corrupt",
+    "npc": "grimjaw_blacksmith",
+    "expected_allocation_sp": 100,
+    "location_fields": {
+      "personality": "corrupt"
+    }
+  },
+  {
+    "id": "allocation_devout",
+    "npc": "grimjaw_blacksmith",
+    "expected_allocation_sp": 400,
+    "location_fields": {
+      "personality": "devout"
+    }
+  },
+  {
+    "id": "allocation_frontier",
+    "npc": "grimjaw_blacksmith",
+    "expected_allocation_sp": 300,
+    "location_fields": {
+      "personality": "frontier"
+    }
+  },
+  {
+    "id": "allocation_refuge",
+    "npc": "grimjaw_blacksmith",
+    "expected_allocation_sp": 400,
+    "location_fields": {
+      "personality": "refuge"
+    }
+  },
+  {
+    "id": "allocation_military_general",
+    "npc": "aelora_guildmaster_dara",
+    "expected_allocation_sp": 200,
+    "location_fields": {
+      "personality": "military"
+    }
+  },
+  {
+    "id": "allocation_military_temple",
+    "npc": "temple_warden_selene",
+    "expected_allocation_sp": 400,
+    "location_fields": {
+      "personality": "military"
+    }
+  },
+  {
+    "id": "allocation_unknown_tier",
+    "npc": "grimjaw_blacksmith",
+    "expected_allocation_sp": null,
+    "location_fields": {
+      "settlement_tier": "capital"
+    },
+    "error": "settlement_tier"
+  },
+  {
+    "id": "allocation_missing_tier",
+    "npc": "grimjaw_blacksmith",
+    "expected_allocation_sp": null,
+    "location_fields": {
+      "settlement_tier": null
+    },
+    "error": "settlement_tier"
+  },
+  {
+    "id": "allocation_unknown_trait",
+    "npc": "grimjaw_blacksmith",
+    "expected_allocation_sp": null,
+    "location_fields": {
+      "personality": "isolated"
+    },
+    "error": "personality"
+  },
+  {
+    "id": "allocation_missing_trait",
+    "npc": "grimjaw_blacksmith",
+    "expected_allocation_sp": null,
+    "location_fields": {
+      "personality": null
+    },
+    "error": "personality"
+  },
+  {
+    "id": "allocation_multiple_traits",
+    "npc": "grimjaw_blacksmith",
+    "expected_allocation_sp": null,
+    "location_fields": {
+      "personality": ["devout"]
+    },
+    "error": "personality"
+  },
+  {
+    "id": "allocation_unavailable",
+    "npc": "grimjaw_blacksmith",
+    "expected_allocation_sp": null,
+    "location_fields": {
+      "settlement_tier": "hamlet"
+    },
+    "error": "merchant_gold_sp.hamlet.specialist"
+  },
+  {
+    "id": "allocation_missing_location",
+    "npc": "grimjaw_blacksmith",
+    "expected_allocation_sp": null,
+    "pool_location": "missing_location",
+    "error": "locations[missing_location]"
   }
 ]

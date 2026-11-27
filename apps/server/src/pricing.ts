@@ -1,3 +1,4 @@
+import { SETTLEMENT_PERSONALITY_VALUES, SETTLEMENT_SIZE_VALUES } from "@divineruin/shared";
 import { sql } from "./db.ts";
 import { asRecord } from "./parse-helpers.ts";
 
@@ -8,6 +9,9 @@ export interface EconomyPricing {
   saleRate: number;
   saleDispositionMultipliers: Record<SaleDisposition, number>;
   craftedSaleRate: number;
+  merchantGoldSp: Record<string, Record<string, number | null>>;
+  merchantGoldPersonalityMultipliers: Record<string, number>;
+  militaryMerchantGoldMultipliers: { arms: number; other: number };
 }
 
 export const SALE_DISPOSITIONS = ["unfriendly", "neutral", "friendly", "trusted"] as const;
@@ -101,6 +105,7 @@ export function parsePricingRow(raw: unknown): EconomyPricing {
     ),
     silverPerGold: parseMultiplier(d.silver_per_gold, "pricing[economy].silver_per_gold", true),
     ...parseSaleRates(d),
+    ...parseMerchantGold(d),
   };
 }
 
@@ -122,6 +127,66 @@ function parseSaleRates(data: Record<string, unknown>) {
   });
   const saleDispositionMultipliers = Object.fromEntries(entries) as Record<SaleDisposition, number>;
   return { saleRate, saleDispositionMultipliers, craftedSaleRate };
+}
+
+function requireFields(raw: unknown, fields: readonly string[], ctx: string) {
+  const record = asRecord(raw, ctx);
+  if (
+    Object.keys(record).length !== fields.length ||
+    fields.some((key) => !Object.hasOwn(record, key))
+  ) {
+    throw new Error(`${ctx} requires exactly ${fields.join(", ")}`);
+  }
+  return record;
+}
+
+function parseMerchantGold(data: Record<string, unknown>) {
+  const ctx = "pricing[economy].merchant_gold_sp";
+  const matrix = requireFields(data.merchant_gold_sp, SETTLEMENT_SIZE_VALUES, ctx);
+  const merchantGoldSp: EconomyPricing["merchantGoldSp"] = {};
+  for (const [tier, cells] of Object.entries(matrix)) {
+    const row = requireFields(
+      cells,
+      ["general", "specialist", "exotic", "black_market"],
+      `${ctx}.${tier}`,
+    );
+    merchantGoldSp[tier] = {};
+    for (const [kind, value] of Object.entries(row)) {
+      if (
+        value !== null &&
+        (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0)
+      ) {
+        throw new Error(`${ctx}.${tier}.${kind} must be a non-negative safe integer or null`);
+      }
+      merchantGoldSp[tier][kind] = value;
+    }
+  }
+
+  const traitCtx = "pricing[economy].merchant_gold_personality_multipliers";
+  const traits = requireFields(
+    data.merchant_gold_personality_multipliers,
+    SETTLEMENT_PERSONALITY_VALUES,
+    traitCtx,
+  );
+  const military = requireFields(traits.military, ["arms", "other"], `${traitCtx}.military`);
+  const merchantGoldPersonalityMultipliers: Record<string, number> = {};
+  for (const [trait, value] of Object.entries(traits)) {
+    if (trait !== "military") {
+      merchantGoldPersonalityMultipliers[trait] = parseMultiplier(
+        value,
+        `${traitCtx}.${trait}`,
+        true,
+      );
+    }
+  }
+  return {
+    merchantGoldSp,
+    merchantGoldPersonalityMultipliers,
+    militaryMerchantGoldMultipliers: {
+      arms: parseMultiplier(military.arms, `${traitCtx}.military.arms`, true),
+      other: parseMultiplier(military.other, `${traitCtx}.military.other`, true),
+    },
+  };
 }
 
 export async function loadPricing(): Promise<void> {

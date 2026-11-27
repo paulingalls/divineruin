@@ -1,3 +1,5 @@
+export { SETTLEMENT_PERSONALITY_VALUES, SETTLEMENT_SIZE_VALUES } from "./location";
+
 export type {
   Location,
   LocationExit,

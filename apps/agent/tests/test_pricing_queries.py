@@ -23,6 +23,7 @@ def _economy_row() -> dict:
 
 
 SALE_FIELDS = {
+    **{key: value for key, value in _economy_row().items() if key.startswith("merchant_gold_")},
     "sale_rate": 0.5,
     "sale_disposition_multipliers": {"unfriendly": 0.9, "neutral": 1.0, "friendly": 1.1, "trusted": 1.2},
     "crafted_sale_rate": 0.8,

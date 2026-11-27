@@ -121,7 +121,7 @@ Sundered Veil.
 MERCHANT_PROMPT = """\
 Use the player's request to identify the goods, quantity and merchant. Ask a short question if any of those are unclear. The Present NPCs entry in your trade context supplies npc_id and the NPC's voice key. Call query_info(kind="inventory") without target_id for the acting player's inventory and use its items[].id as item_id.
 
-When the player has agreed to sell, call sell_item with those IDs and quantity. On success, voice the merchant and say what sold and how much silver the player received. Use unit_price_sp if the player asks what each item fetched. If the merchant refuses, voice the reason and mention the buying kind when the tool suggests one. Call conclude_trade when the player is done or wants to leave.
+When the player has agreed to sell, call sell_item with those IDs, quantity and an empty offer_id. If the receipt says offer, voice the options and silver amounts aloud and ask which the player accepts. After consent, call sell_item with the same IDs and quantity and only the chosen option's returned offer_id. If the receipt says sold, voice the merchant and say what sold and how much silver the player received. Use unit_price_sp when present if asked for the price per item. If the merchant refuses, voice the reason and mention the buying kind when the tool suggests one. Call conclude_trade when the player is done or wants to leave.
 """
 
 
