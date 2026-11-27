@@ -16,6 +16,7 @@ from livekit.agents.llm import ToolError
 from test_encounter_facts_damage import GOBLIN, OTHER, dice, goblin_strike
 from voice_condition_fixtures import participant, place_actors
 
+import db
 import db_mutations
 import db_queries
 
@@ -152,6 +153,23 @@ async def test_defeat_rolls_back_on_failed_combat_persist(world) -> None:
         with dice(19):
             result = await f.call("resolve_phase")
         await assert_change(f, result, oath, "fulfilled", "target_defeated", 2)
+
+
+async def test_defeat_leaves_an_oath_from_another_encounter_untouched(world) -> None:
+    async with promised_fight(world, goblin_hp=4) as f:
+        await select_oath(f)
+        async with db.transaction() as conn:
+            await conn.execute(
+                "UPDATE players SET data = jsonb_set(data, '{oaths,records,0,combat_id}', to_jsonb($2::text))"
+                " WHERE player_id = $1",
+                f.hero,
+                "earlier_encounter",
+            )
+        before = await oath_record(f)
+        await f.declare(attack(f.hero, GOBLIN))
+        with dice(19):
+            await f.call("resolve_phase")
+        assert await oath_record(f) == before
 
 
 async def test_ally_fall_lapses_immediately(world) -> None:

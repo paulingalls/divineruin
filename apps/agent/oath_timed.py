@@ -184,14 +184,8 @@ async def settle(
         for index, oath in enumerate(book.records):
             if not isinstance(oath, TimedOath) or oath.status != "active" or oath.combat_id != state.combat_id:
                 continue
-            if not oath.round_number <= round_number:
-                continue
             if reason == "target_defeated":
-                if (
-                    oath.objective_kind != "defeat_target"
-                    or oath.target_id != target_id
-                    or round_number > oath.last_round
-                ):
+                if oath.objective_kind != "defeat_target" or oath.target_id != target_id:
                     continue
             elif reason == "ally_fell":
                 if oath.objective_kind != "keep_ally_standing" or oath.target_id != target_id:
