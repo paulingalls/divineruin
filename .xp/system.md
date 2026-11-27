@@ -187,11 +187,6 @@ without certifying paid speech-recognition accuracy.
   Fate-held). For each consumer on each route, name a case whose fixture gives
   the property under test to only one role (aelora-bases
   guardian-intercept review-1 F1 and sprint test-vacuity F3).
-- Session start is shared by many suites: a card touching `session_hydration.py`,
-  `participant_lifecycle.py` or `agent.py`'s session setup names
-  `apps/agent/tests/session_lifecycle` in Verify. Those suites mock player rows,
-  so a new DB call on the hydration path reds them (sprint-105: story-224's
-  focused Verify was green while `test:python` had 5 reds).
 - Combat state that mirrors a DB row, such as the Quick Fingers pocket
   mirroring inventory, must rewind together with that row under
   `zhael_unravel_fate`, or Unravel Fate must refuse the rewind. A card adding
