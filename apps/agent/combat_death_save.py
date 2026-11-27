@@ -20,6 +20,7 @@ from combat_participant import CombatParticipant
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_support import _require_combat
 from condition_restrictions import saving_throw_advantage
+from conditions import get_condition_effects
 from db_errors import db_tool
 from game_events import publish_game_event
 from patron_synergy_combat import MORTAEN_HOLD_THE_CROSSING, marshal_death_save_bonus
@@ -140,9 +141,13 @@ async def _roll_death_save(
     successes, failures = faller.death_save_successes, faller.death_save_failures
     faller_id = faller.id
 
+    advantage = saving_throw_advantage(faller.conditions) or (
+        "death_save" in get_condition_effects(faller.conditions).advantage_scopes
+    )
+
     def roll(face: int | None = None) -> combat_resolution.DeathSaveResult:
         result = combat_resolution.resolve_death_save(successes, failures, bonus=bonus, face=face)
-        if face is None and saving_throw_advantage(faller.conditions):
+        if face is None and advantage:
             other = combat_resolution.resolve_death_save(successes, failures, bonus=bonus)
             return max(result, other, key=lambda candidate: candidate.roll)
         return result

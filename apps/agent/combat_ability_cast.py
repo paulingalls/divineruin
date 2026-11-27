@@ -20,6 +20,7 @@ import wild_shape
 from combat_condition_landing import land_condition_on_participants
 from combat_spell_profile import recipient_spec
 from combat_structures import blocked_reason, line_blocker
+from condition_catalog import CONDITION_CATALOG
 from condition_sources import DeliveryRefused
 from session_data import CombatParticipant, SessionData
 from spell_condition_cleanse import GREATER_RESTORATION, CleanseRefused
@@ -316,6 +317,9 @@ async def _resolve_ability_packet(
             source=landing.action,
             packet=cast_packet,
             sustaining_caster_id=attacker.id if spell.concentration else None,
+            originating_participant_id=(
+                attacker.id if CONDITION_CATALOG[cond_type].clearance == "start_of_caster_next_turn" else None
+            ),
         )
         if voiced:
             cast_packet["condition_targets"] = voiced

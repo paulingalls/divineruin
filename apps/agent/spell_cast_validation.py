@@ -13,6 +13,7 @@ import spell_knowledge
 import spells
 import veythar_wellspring
 import wild_shape
+from condition_catalog import CONDITION_CATALOG
 from declarations import Declaration, DeclarationType
 from party_state import PartyMember
 from resource_costs import gate_pool
@@ -88,7 +89,11 @@ async def _prepare_cast(
             raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")
         raise ToolError(f"{voice_spell.name} needs combat targets.")
 
-    if voice_spell.save_condition is not None and combat_state is None:
+    condition_kind = voice_spell.applies_condition
+    if combat_state is None and (
+        voice_spell.save_condition is not None
+        or (condition_kind is not None and CONDITION_CATALOG[condition_kind].clearance == "start_of_caster_next_turn")
+    ):
         raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")
 
     prior_spell_id = caster.concentration.spell_id

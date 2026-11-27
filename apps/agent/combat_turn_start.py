@@ -9,7 +9,7 @@ import combat_grapple
 import combat_phase
 import combat_regeneration
 from combat_down import is_terminally_down
-from condition_catalog import REACTIONS_SUPPRESSED
+from condition_catalog import CONDITION_CATALOG
 from condition_restrictions import cannot_act
 from dice import roll as dice_roll
 
@@ -113,7 +113,8 @@ async def turn_start(
             condition
             for condition in participant.conditions
             if not (
-                condition["type"] == REACTIONS_SUPPRESSED and condition.get("originating_participant_id") == victim.id
+                CONDITION_CATALOG[condition["type"]].clearance == "start_of_caster_next_turn"
+                and condition.get("originating_participant_id") == victim.id
             )
         ]
     victim.shield_spell_active = False
