@@ -359,8 +359,9 @@ item number, not this section.
 **Handback contract** — what a story owes before it is handed back. Sprint 54
 lost review rounds to both halves of this, five times.
 
-- For each guard operand, name the committed test node that goes red when only
-  that operand is dropped, and include the red log from running that node.
+- For each operand of a new product guard that Constraint 3 fault-injects, name
+  the committed test node that goes red when only that operand is dropped, and
+  include the red log from running that node.
   The case must reach the guard through state real setup can build. Disposable
   probes cannot supply the red. If no committed node can go red, delete the
   unreachable operand or add a committed case (aelora-bases sprint test-vacuity F2
