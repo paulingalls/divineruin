@@ -1,11 +1,29 @@
 """Stack-scoped durability and signed quantity mutations."""
 
 import json
+from decimal import Decimal
 
 import asyncpg
 
 import db
 import db_mutations
+
+
+async def credit_player_gold(player_id: str, amount: float, *, conn: asyncpg.Connection) -> float:
+    """Add gold in the caller's transaction and return the resulting balance."""
+    balance = await conn.fetchval(
+        """
+        UPDATE players
+        SET data = jsonb_set(data, '{gold}', to_jsonb(COALESCE((data->>'gold')::numeric, 0) + $2::numeric))
+        WHERE player_id = $1
+        RETURNING (data->>'gold')::numeric
+        """,
+        player_id,
+        Decimal(str(amount)),
+    )
+    if balance is None:
+        raise ValueError(f"Player {player_id} is missing")
+    return float(balance)
 
 
 async def update_item_durability(

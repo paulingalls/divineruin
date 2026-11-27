@@ -377,13 +377,16 @@ class BackgroundProcess:
 
     async def _build_warm_layer(self) -> bool:
         try:
-            quests, location, npcs_raw, training, episode, decisions = await asyncio.gather(
+            quests, location, npcs_raw, training, episode, (decisions, resolved) = await asyncio.gather(
                 db_queries.get_active_player_quests(self._sd.primary_player_id),
                 db_content_queries.get_location(self._sd.location_id),
                 db_queries.get_npcs_at_location(self._sd.location_id),
                 db_training.get_player_active_training_activities(self._sd.primary_player_id),
                 db_queries.get_player_flag_value(self._sd.primary_player_id, "first_episode"),
-                db_queries.get_player_quest_decisions(self._sd.primary_player_id),
+                asyncio.gather(
+                    db_queries.get_player_quest_decisions(self._sd.primary_player_id),
+                    db_activity_queries.get_player_activities(self._sd.primary_player_id, status="resolved"),
+                ),
             )
             self._quest_cache = quests
             self._episode = episode
@@ -432,6 +435,7 @@ class BackgroundProcess:
                 party_member_ids=present,
                 quest_decisions=decisions,
                 hallucinations=hallucinations,
+                resolved_activities=resolved,
             )
         except TRANSIENT_IO_ERRORS:
             logger.error("Warm layer build failed", exc_info=True)
@@ -468,6 +472,9 @@ class BackgroundProcess:
             refreshed[pid] = build_speaker_context(pid, player, quests, activities, training)
         self._sd.speaker_summaries = refreshed
         return players
+
+    async def apply_cached_warm(self, agent: BaseGameAgent) -> None:
+        await agent.update_instructions(build_full_prompt(agent.static_prompt(self._sd), self._last_warm_layer))
 
     async def _apply_warm(self, warm: str) -> None:
         agent = cast("BaseGameAgent", self._session.current_agent)
