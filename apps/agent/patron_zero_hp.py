@@ -176,7 +176,7 @@ async def provisional_ward_verdict(
     _, result = apply(target, action, result, state=state)
     if result.target_killed:
         player = None
-        temporary = temp_hp.player_pool(target)
+        temporary = temp_hp.combat_pool(target)
         beast = temp_hp.beast_pool(target)
         if _drops_to_zero(target, target.hp_current, result.target_hp_remaining):
             # The phase transaction sees a ward an earlier packet spent before commit.

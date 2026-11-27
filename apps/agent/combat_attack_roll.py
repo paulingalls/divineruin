@@ -41,6 +41,7 @@ def roll_attack(
     defender: dict | None = None,
     mortaen_ac_override: int | None = None,
     orenthel_ac_override: int | None = None,
+    nythera_ac_override: int | None = None,
     veiled_strike: VeiledStrike | None = None,
     season: Season | None = None,
     oath_justice: dict | None = None,
@@ -59,6 +60,7 @@ def roll_attack(
         defender=defender,
         mortaen_ac_override=mortaen_ac_override,
         orenthel_ac_override=orenthel_ac_override,
+        nythera_ac_override=nythera_ac_override,
         valdris_ac_bonus=valdris_ac_bonus,
         veiled_strike=veiled_strike,
         season=season,
@@ -94,6 +96,7 @@ def attack_roll_inputs(
     defender=None,
     mortaen_ac_override: int | None = None,
     orenthel_ac_override: int | None = None,
+    nythera_ac_override: int | None = None,
     veiled_strike: VeiledStrike | None = None,
     season: Season | None = None,
     attack_disadvantage_source: str | None = None,
@@ -134,7 +137,13 @@ def attack_roll_inputs(
     if weapon_attack and conditions.has_condition(attacker.conditions, INCORPOREAL):
         attacker_data["damage_type_override"] = "necrotic"
 
+    attack_mod = attacker.attack_mod
     if player is not None:
+        if deck_bonus := patron_synergy_combat.deck_footing_bonus(player, combat_state, action):
+            attack_mod += deck_bonus
+            attacker_data.update(
+                nythera_attack_bonus=deck_bonus, nythera_attack_clause_id=patron_synergy_combat.NYTHERA_DECK_FOOTING
+            )
         attacker_data.update(divine_favor=player.get("divine_favor"), season=season)
         attacker_data.update(patron_synergy_combat.attack_flags(player))
         attacker_data["outnumbered_oath"] = weapon_attack and patron_synergy_combat.outnumbered_oath(
@@ -160,7 +169,6 @@ def attack_roll_inputs(
     ):
         attacker_data["attack_disadvantage_source"] = "Smoke cloud"
 
-    attack_mod = attacker.attack_mod
     if conditions.has_condition(attacker.conditions, WAR_CRY_RALLY):
         attack_mod += 1
     if weapon_attack and attacker.type == "player" and attacker.archetype_id == "rogue":
@@ -210,6 +218,15 @@ def attack_roll_inputs(
     attacker_data["orenthel_ac_bonus"] = orenthel_ac
     if orenthel_ac:
         attacker_data["orenthel_ac_clause_id"] = patron_synergy_combat.ORENTHEL_GUARDIAN_WARD
+    nythera_ac = (
+        nythera_ac_override
+        if nythera_ac_override is not None
+        else patron_synergy_combat.boarding_ally_defense(defender, combat_state, target)
+    )
+    if nythera_ac:
+        attacker_data.update(
+            nythera_ac_bonus=nythera_ac, nythera_ac_clause_id=patron_synergy_combat.NYTHERA_GANGWAY_GUARD
+        )
     if valdris_ac_bonus:
         attacker_data.update(
             valdris_ac_bonus=valdris_ac_bonus, valdris_ac_clause_id=patron_synergy_combat.VALDRIS_WITNESS_SHIELD
@@ -223,6 +240,7 @@ def attack_roll_inputs(
         + synergy_ac
         + mortaen_ac
         + orenthel_ac
+        + nythera_ac
         + valdris_ac_bonus
         + cathedral_bonus(combat_state, target.id)
     )

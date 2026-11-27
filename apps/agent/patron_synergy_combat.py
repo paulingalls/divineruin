@@ -8,7 +8,9 @@ from typing import TYPE_CHECKING, Literal
 
 import ability_persistence
 import encounter_facts
+from communication_voice_rules import DeliveryRefused, require_source
 from dice import roll as dice_roll
+from patron_location import first_stay_at_location
 from patron_synergy import get_archetype_synergy, has_engine_synergy
 
 if TYPE_CHECKING:
@@ -17,10 +19,15 @@ if TYPE_CHECKING:
 
 OATH_OF_VALOR = "kaelen_oath_of_valor"
 SECOND_BEFORE = "zhael_second_before"
+ORENTHEL_MARSHAL_RALLY = "orenthel_marshal_rally"
 ORENTHEL_GUARDIAN_WARD = "orenthel_guardian_ward"
 ORENTHEL_UNDEAD_WRATH = "orenthel_undead_wrath"
 MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
 MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
+NYTHERA_DECK_FOOTING = "nythera_deck_footing"
+NYTHERA_GANGWAY_GUARD = "nythera_gangway_guard"
+NYTHERA_FIRST_ORDER = "nythera_first_order"
+LANDFALL_ORDERS_NAME = "Landfall Orders"
 NYTHERA_SALTWIND_CASTING = "nythera_saltwind_casting"
 VALDRIS_ABSOLUTE_AUTHORITY = "valdris_absolute_authority"
 VALDRIS_MEASURED_REPRISAL = "valdris_measured_reprisal"
@@ -40,6 +47,19 @@ VeiledStrike = Literal["sneak_attack", "weapon"]
 def sanctuary_initiative_bonus(player: dict, *, initiated_by: str | None) -> int:
     """Return the initiative bonus this player can earn if the location is a sanctuary."""
     return int(initiated_by == "enemies" and has_engine_synergy(player, VALDRIS_LAWFUL_COMMAND))
+
+
+async def first_order_initiative_bonus(player: dict, marshal: CombatParticipant, state: CombatState) -> int:
+    """Return the bonus this marshal can give with an opening order."""
+    if not has_engine_synergy(player, NYTHERA_FIRST_ORDER) or marshal.hp_current <= 0:
+        return 0
+    if not await first_stay_at_location(marshal.id, state.location_id):
+        return 0
+    try:
+        require_source(state, marshal.id)
+    except DeliveryRefused:
+        return 0
+    return 1
 
 
 def shadow_veil_rounds(player: dict) -> int:
@@ -72,6 +92,17 @@ def attack_flags(player: dict) -> dict[str, bool]:
         "weapon_damage_bonus": bool((player.get("flags") or {}).get("extra_attack"))
         and has_engine_synergy(player, "kaelen_extra_attack_damage"),
     }
+
+
+def deck_footing_bonus(player: dict, state: CombatState | None, action: dict) -> int:
+    from combat_melee_approach import is_melee
+
+    return int(
+        state is not None
+        and state.vessel == "aboard_moving"
+        and has_engine_synergy(player, NYTHERA_DECK_FOOTING)
+        and is_melee(action)
+    )
 
 
 def encounter_damage_clause(
@@ -160,15 +191,28 @@ def fallen_ally_defense(defender: dict | None, state: CombatState | None, target
 
 
 def wounded_ally_defense(defender: dict | None, state: CombatState | None, target: CombatParticipant) -> int:
+    return _nearby_ally_defense(
+        defender, state, target, ORENTHEL_GUARDIAN_WARD, lambda ally: 2 * ally.hp_current < ally.hp_max
+    )
+
+
+def boarding_ally_defense(defender: dict | None, state: CombatState | None, target: CombatParticipant) -> int:
+    if state is None or state.vessel != "boarding":
+        return 0
+    return _nearby_ally_defense(defender, state, target, NYTHERA_GANGWAY_GUARD)
+
+
+def _nearby_ally_defense(
+    defender: dict | None,
+    state: CombatState | None,
+    target: CombatParticipant,
+    clause_id: str,
+    qualifies: Callable[[CombatParticipant], bool] = lambda _: True,
+) -> int:
     from combat_spatial import inside, position, require_spatial
     from combat_veilrender import living
 
-    if (
-        defender is None
-        or state is None
-        or not living(target)
-        or not has_engine_synergy(defender, ORENTHEL_GUARDIAN_WARD)
-    ):
+    if defender is None or state is None or not living(target) or not has_engine_synergy(defender, clause_id):
         return 0
 
     spatial = require_spatial(state)
@@ -178,7 +222,7 @@ def wounded_ally_defense(defender: dict | None, state: CombatState | None, targe
             ally.id != target.id
             and ally.is_ally
             and living(ally)
-            and 2 * ally.hp_current < ally.hp_max
+            and qualifies(ally)
             and inside(target_position, position(spatial, ally.id), 5)
             for ally in state.participants
         )
@@ -227,6 +271,10 @@ def spend_tidal_step(state: CombatState, actor_id: str) -> dict[str, str | bool]
         "nythera_step_spent": True,
         "dm_cue": "Nythera's Unmoored Step is spent for this encounter.",
     }
+
+
+def marshal_rally_bonus(player: dict) -> int:
+    return int(has_engine_synergy(player, ORENTHEL_MARSHAL_RALLY))
 
 
 async def grant_marshal_rally(

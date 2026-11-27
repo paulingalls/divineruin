@@ -121,7 +121,7 @@ async def _apply_damage(
     # A held roll can outlive the HP and pool it originally saw.
     counted_before = encounter_facts.counted_death(target)
     death_resolved_before = target.hollow_death_resolved
-    hp_before, pool_before = target.hp_current, temp_hp.player_pool(target)
+    hp_before, pool_before = target.hp_current, temp_hp.combat_pool(target)
     beast_before = temp_hp.beast_pool(target)
     impact = temp_hp.absorb(
         attack_result.damage,

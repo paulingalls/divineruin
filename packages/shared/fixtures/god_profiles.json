@@ -23,6 +23,42 @@
       }
     ]
   },
+  "renewing_spark": {
+    "name": "Renewing Spark",
+    "type": "divine",
+    "clauses": [
+      {
+        "effect": "When you cast a spell on yourself or a willing ally, they gain 1 temporary HP.",
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "orenthel_mage_warding"
+      }
+    ]
+  },
+  "rally_at_dawn": {
+    "name": "Rally at Dawn",
+    "type": "divine",
+    "clauses": [
+      {
+        "effect": "Rally grants each recipient 1 additional temporary HP.",
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "orenthel_marshal_rally"
+      }
+    ]
+  },
+  "first_order": {
+    "name": "Landfall Orders",
+    "type": "divine",
+    "clauses": [
+      {
+        "effect": "Allies who hear your first order in an unexplored location gain +1 initiative.",
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "nythera_first_order"
+      }
+    ]
+  },
   "lawful_command": {
     "name": "Lawful Command",
     "type": "divine",
@@ -18344,5 +18380,29 @@
         }
       }
     }
-  ]
+  ],
+  "deck_footing": {
+    "type": "divine",
+    "name": "Deckborn Balance",
+    "clauses": [
+      {
+        "effect": "Gain +1 to melee attack rolls while aboard a moving vessel.",
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "nythera_deck_footing"
+      }
+    ]
+  },
+  "gangway_guard": {
+    "type": "divine",
+    "name": "Harbor Watch",
+    "clauses": [
+      {
+        "effect": "Gain +1 AC while defending an ally boarding or leaving a vessel.",
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "nythera_gangway_guard"
+      }
+    ]
+  }
 }

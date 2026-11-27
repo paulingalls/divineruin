@@ -31,7 +31,7 @@ import spell_knowledge
 import spells
 import still_encounter
 import training_tools
-from combat_ability_gate import SHADOW_STEP, attack_recipe, combat_ability
+from combat_ability_gate import MARSHAL_RALLY, SHADOW_STEP, attack_recipe, combat_ability
 from db_errors import db_tool
 from patron_synergy import has_engine_synergy
 from session_data import SessionData
@@ -213,9 +213,13 @@ async def _query_abilities_impl(
 
     results = []
     for ability in owned:
+        if ability.id == MARSHAL_RALLY and not session.in_combat:
+            continue
         row = {"id": ability.id, "name": ability.name, "ability_type": ability.ability_type}
         if ability.spell_id is not None:
             row["spell_id"] = ability.spell_id
+        elif ability.id == MARSHAL_RALLY:
+            row.update(combat=combat_ability(ability), declaration={"kind": "ability", "targets": []})
         elif ability.id == SHADOW_STEP:
             row["declaration"] = {"kind": "ability_move", "destination": "required {x,y,z} coordinates in feet"}
         elif recipe := attack_recipe(ability.id):

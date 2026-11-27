@@ -1405,7 +1405,7 @@
     "ability_type": "core",
     "level_requirement": 1,
     "cost": { "stamina": 0, "focus": 3, "scaling": null },
-    "effect": "All allies within 30 ft gain temp HP equal to your CHA mod + level. Lasts until next rest.",
+    "effect": "In combat, other allies within 30 ft who can hear you gain temporary HP equal to your CHA modifier + level. It lasts until the player’s next long rest or until combat ends for a companion.",
     "narration_cue": "'Hold the line — we've got this!' and the party steadies."
   },
   {

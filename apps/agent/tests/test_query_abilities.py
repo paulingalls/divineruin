@@ -173,7 +173,7 @@ class TestQueryAbilities:
                     if recipe and recipe["kind"] == "ability_move":
                         declaration["destination"] = step_destination
                         declaration["action"] = row.get("active_variant_id", action)
-                    elif recipe:
+                    elif recipe and recipe["kind"] == "attack":
                         declaration = {
                             "type": recipe["kind"],
                             "action": "Longsword",
@@ -182,6 +182,8 @@ class TestQueryAbilities:
                         }
                         if modes := recipe.get("quick_fingers_mode"):
                             declaration["quick_fingers_mode"] = modes[0]
+                    elif recipe:
+                        assert recipe == {"kind": "ability", "targets": []}
                     if "spell_id" in row:
                         spell = spells.get_spell(row["spell_id"])
                         if spell.combat_damage:

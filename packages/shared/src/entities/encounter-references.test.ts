@@ -9,7 +9,7 @@ const corpus = (await Bun.file(
   new URL("../../fixtures/encounter_references.json", import.meta.url),
 ).json()) as {
   invalid: { name: string; field: string; encounter: unknown }[];
-  valid: { recommended_party_level: number }[];
+  valid: { recommended_party_level: number; vessel?: string }[];
 };
 const catalog = (await Bun.file(
   new URL("../../../../content/creatures.json", import.meta.url),
@@ -25,7 +25,7 @@ for (const row of corpus.invalid) {
   });
 }
 for (const row of corpus.valid) {
-  test(`recommended party level cases ${row.recommended_party_level}`, () => {
+  test(`valid encounter references ${row.vessel ?? row.recommended_party_level}`, () => {
     expect(() => validateEncounterReferences(row, ids)).not.toThrow();
   });
 }
@@ -43,7 +43,7 @@ for (const size of [1, 2]) {
     ).not.toThrow();
   });
 }
-test("all nineteen templates", async () => {
+test("all twenty-one templates", async () => {
   const rows = (await Bun.file(
     new URL("../../../../content/encounter_templates.json", import.meta.url),
   ).json()) as {
@@ -51,7 +51,7 @@ test("all nineteen templates", async () => {
     enemies: unknown[];
     scene_placement: { zones: Record<string, unknown> };
   }[];
-  expect(rows).toHaveLength(19);
+  expect(rows).toHaveLength(21);
   expect(new Set(rows.map((row) => row.id))).toEqual(
     new Set([
       "fragment_shadeling",
@@ -73,6 +73,8 @@ test("all nineteen templates", async () => {
       "hollow_mawling_pack",
       "hollow_knight_boss",
       "hollow_veilrender_boss",
+      "sunward_ship_deck",
+      "sunward_dock_boarding",
     ]),
   );
   for (const row of rows) {
@@ -91,7 +93,7 @@ test("all nineteen templates", async () => {
 
 // Runs the TypeScript compiler in a child process: ~2s alone, past Bun's 5s default when the
 // sprint hook's lanes share a 4-core machine.
-test("EncounterEnemy compiler rejects flat entries and missing required fields", () => {
+test("Encounter compiler rejects malformed enemy references, missing levels and unknown vessels", () => {
   const directory = mkdtempSync(join(tmpdir(), "encounter-types-"));
   const path = join(directory, "contract.ts");
   try {
@@ -130,6 +132,7 @@ test("EncounterEnemy compiler rejects flat entries and missing required fields",
         "\nconst origin = {x:0, y:0, z:0};" +
         "\nconst scene_placement = {party_start:origin, companion_start:origin, actors:{one:origin}, locations:{}, zones:{}};" +
         '\nconst correct: Encounter = {id:"e", name:"e", difficulty:"easy", enemies:[entry0], recommended_party_level:1, scene_placement};' +
+        '\nconst invalidVessel: Encounter = {...correct, vessel:"sailing"};' +
         '\nconst missingLevel: Encounter = {id:"e", name:"e", difficulty:"easy", enemies:[entry0], scene_placement};',
     );
     const program = ts.createProgram([path], {
@@ -143,8 +146,9 @@ test("EncounterEnemy compiler rejects flat entries and missing required fields",
     const errors = ts
       .getPreEmitDiagnostics(program)
       .filter((error) => error.file?.fileName === path);
-    expect(errors).toHaveLength(entries.length);
-    expect(errors.every((error) => error.code === 2741 || error.code === 2353)).toBe(true);
+    expect(errors).toHaveLength(entries.length + 1);
+    expect(errors.filter((error) => error.code === 2322)).toHaveLength(1);
+    expect(errors.every((error) => [2322, 2353, 2741].includes(error.code))).toBe(true);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

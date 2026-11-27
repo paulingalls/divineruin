@@ -225,7 +225,7 @@ describe("creature tier player bands", () => {
 describe("authored creature tiers", () => {
   test("every content row has the expected tier", () => {
     const rows = encounters.flatMap((enc) => enc.enemies.map((enemy) => [enc.id, enemy] as const));
-    expect(rows).toHaveLength(40);
+    expect(rows).toHaveLength(42);
     const named: Record<string, number> = {
       Shadeling: 1,
       Mawling: 2,
@@ -352,7 +352,7 @@ describe("spatial scene placement", () => {
   });
 
   test("shipped templates have valid spatial placement", () => {
-    expect(references.length).toBe(19);
+    expect(references.length).toBe(21);
     for (const row of references) expect(() => validateScenePlacement(row)).not.toThrow();
   });
   for (const [name, areas] of Object.entries(areaCases.valid)) {

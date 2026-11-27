@@ -13,7 +13,7 @@ import combat_grapple
 import condition_voice_rules
 import spells
 import wild_shape
-from combat_ability_gate import MARSHAL_ORDERS, WAR_CRIES, declared_ability, war_cry_targets
+from combat_ability_gate import MARSHAL_ORDERS, MARSHAL_RALLY, WAR_CRIES, declared_ability, war_cry_targets
 from combat_ability_save import BENEFICIAL_CONDITIONS
 from combat_enhancers import carries_quick_action
 from condition_restrictions import action_or_quick_action
@@ -97,6 +97,8 @@ def guard_declaration(
                 base, _variant = ability
                 if base.spell_id is not None:
                     guard_spell(state, actor.id, spells.get_spell(base.spell_id), decl.target_id, decl.target_ids)
+                elif base.id == MARSHAL_RALLY:
+                    ability_voice_rules.require_ability_delivery(base.id, state, actor.id, [])
                 elif base.id in MARSHAL_ORDERS:
                     from combat_martial import order_recipients
 

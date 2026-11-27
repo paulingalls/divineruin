@@ -20,6 +20,8 @@ def validate_encounter_references(
         size = encounter["recommended_party_size"]
         if type(size) is not int or size < 1:
             raise ValueError(f"{label}: recommended_party_size must be a positive integer")
+    if "vessel" in encounter and encounter["vessel"] not in ("aboard_moving", "boarding"):
+        raise ValueError(f"{label}: vessel must be aboard_moving or boarding")
     enemies = encounter.get("enemies")
     if not isinstance(enemies, list) or not enemies:
         raise ValueError(f"{label}: enemies must be a nonempty list")
