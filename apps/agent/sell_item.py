@@ -7,7 +7,6 @@ from pydantic import Field
 
 import db
 import db_content_queries
-import db_mutations
 import db_mutations_inventory
 import db_queries
 import event_types as E
@@ -54,8 +53,7 @@ async def sell_item(
     await require_npc_present(session.location_id, npc_id, suffix=" to trade")
 
     async with db.transaction() as conn:
-        player = await db_queries.get_player(player_id, conn=conn, for_update=True)
-        if player is None:
+        if await db_queries.get_player(player_id, conn=conn, for_update=True) is None:
             raise ToolError(f"Unknown player: {player_id}")
 
         npc = await db_content_queries.get_npc(npc_id, conn=conn)
@@ -95,10 +93,9 @@ async def sell_item(
         unit_sp = quote["price_sp"]
         total_sp = unit_sp * quantity
         gold = total_sp / pricing["silver_per_gold"]
-        balance = (player.get("gold") or 0) + gold
         session.validate_acting_player(player_id)
         await db_mutations_inventory.transact_inventory(player_id, item_id, -quantity, conn=conn)
-        await db_mutations.update_player_gold(player_id, balance, conn=conn)
+        balance = await db_mutations_inventory.credit_player_gold(player_id, gold, conn=conn)
 
     await publish_game_event(
         session.room,

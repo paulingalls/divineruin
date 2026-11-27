@@ -76,6 +76,19 @@ async def test_sale_commits_receipt_and_snapshots(
         ]
 
 
+async def test_fractional_sale_preserves_exact_gold(reset_db_pool: str) -> None:
+    async with merchant_session(item="club_wooden", held=1) as sale:
+        pool = await db.get_pool()
+        await db_mutations.update_player_gold(sale.player_id, 7.6, conn=pool)
+
+        receipt = await sale.sell("club_wooden", GRIMJAW, 1)
+
+        assert not receipt.is_error, receipt.output
+        player, _ = await rows(sale.player_id)
+        assert player["gold"] == 7.9
+        assert sale.publications[0][0]["new_balance"] == 7.9
+
+
 @pytest.mark.parametrize(
     "overrides,reason,quantity",
     [
