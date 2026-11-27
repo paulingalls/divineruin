@@ -34,17 +34,19 @@ async def defense_fight(
     fate: bool = False,
     constitution: int = 14,
     ally_archetype: str = "guardian",
+    extra_archetypes: tuple[str, ...] = (),
     gear: str | None = None,
 ) -> AsyncIterator[MawlingHarness]:
     fight = MawlingHarness()
     try:
+        archetypes = (archetype, ally_archetype, *extra_archetypes)
         await fight.prepare(
-            (18, 6),
+            (18, *(6 for _ in archetypes[1:])),
             companion=None,
             tools=(transact,) if gear else (),
             location="ashmark_still" if enemy == "still" else "greyvale_wilderness_north",
         )
-        for actor, class_ in zip(fight.players, (archetype, ally_archetype), strict=True):
+        for actor, class_ in zip(fight.players, archetypes, strict=True):
             row = await player_row(actor)
             row["class"] = class_
             row["attributes"]["constitution"] = constitution
@@ -94,7 +96,7 @@ async def defense_fight(
             await fight.command("enter_mode", {"mode": "combat", "encounter_id": fight.encounter_id})
             state = await fight.reload()
             combat_spatial.require_spatial(state)["positions"].update(
-                {fight.players[0]: pos(0), fight.players[1]: pos(5)}
+                {actor: pos(index % 2 * 5, index // 2 * 5) for index, actor in enumerate(fight.players)}
             )
         state.initiative_order = [
             *fight.enemies,

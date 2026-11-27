@@ -1,5 +1,5 @@
 import pytest
-from acceptance.defensive_reactions_harness import hp, reaction_packet, reload_session
+from acceptance.defensive_reactions_harness import hp, player_row, reaction_packet, reload_session
 from acceptance.disruption_reactions_harness import (
     DOUBT,
     ambush,
@@ -207,19 +207,30 @@ async def test_fate_held_reroll_miss_opens_riposte_once_after_reload(reset_db_po
 async def test_implant_doubt_does_not_reroll_a_hit_bark_skin_turned_aside(reset_db_pool):
     from acceptance.test_guardian_intercept import tool_receipt
 
-    async with ambush(DOUBT, ally_archetype="warden") as fight:
+    from reaction_spend import RIPOSTE
+
+    async with ambush(DOUBT, ally_archetype="warden", extra_archetypes=("skirmisher",)) as fight:
+        _, warden, skirmisher = fight.players
+        stamina = (await player_row(skirmisher))["stamina"]["current"]
         with dice(12, 5, 19, 16), attack_damage(8, 6):
             await open_stage(fight, "post_roll")
             remaining = await spend(fight, DOUBT)
-            bark = await tool_receipt(fight, fight.players[1], "activate", {"id": "warden_bark_skin"})
+            bark = await tool_receipt(fight, warden, "activate", {"id": "warden_bark_skin"})
             assert not bark.is_error, bark.output
-            packets = await fight.drain()
+            opened = await fight.command("resolve_phase", {})
+            miss = opened["next"]["waiting_on"]
+            assert miss["stage"] == "post_reaction_miss"
+            assert [(r["actor_id"], r["id"]) for r in miss["reactions"]] == [(skirmisher, RIPOSTE)]
+            declined = await fight.command("resolve_phase", {})
+            assert declined["next"]["waiting_on"] is None
+            packets = opened["packets"] + declined["packets"]
         attack = blow(packets)
         assert (attack["hit"], attack["roll"], attack["damage"]) == (False, 12, 0)
         doubt = reaction_packet(packets, DOUBT)
         assert doubt["mechanical_effect"] is None and "already misses" in doubt["reason"]
         assert "save_roll" not in doubt
         assert await focus(fight) == remaining
+        assert (await player_row(skirmisher))["stamina"]["current"] == stamina
 
 
 async def test_bard_disruption_rechecks_hearing_at_delivery(reset_db_pool):

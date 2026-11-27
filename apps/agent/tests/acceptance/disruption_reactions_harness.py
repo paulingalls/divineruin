@@ -16,13 +16,21 @@ DOUBT = "whisper_implant_doubt"
 
 @asynccontextmanager
 async def ambush(
-    ability: str, *, fate: bool = False, ally_archetype: str = "guardian", followup: bool = False
+    ability: str,
+    *,
+    fate: bool = False,
+    ally_archetype: str = "guardian",
+    extra_archetypes: tuple[str, ...] = (),
+    followup: bool = False,
 ) -> AsyncIterator[MawlingHarness]:
     async with defense_fight(
-        "bard" if ability == BARD else "whisper", fate=fate, ally_archetype=ally_archetype
+        "bard" if ability == BARD else "whisper",
+        fate=fate,
+        ally_archetype=ally_archetype,
+        extra_archetypes=extra_archetypes,
     ) as fight:
         state = await fight.reload()
-        reactor, ally = (state.get_participant(actor) for actor in fight.players)
+        reactor, ally = (state.get_participant(actor) for actor in fight.players[:2])
         enemy = state.get_participant(fight.enemies[0])
         assert reactor and ally and enemy
         if fate:
