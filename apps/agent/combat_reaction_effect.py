@@ -194,17 +194,17 @@ def _apply(
     contest: dict | None,
     ac_spend: dict | None = None,
     hesitated: bool = False,
-) -> dict:
+) -> dict | None:
     ability_id = spend["ability_id"]
     target = _held_target(state, head)
 
     if contest is not None:
         if not contest["success"]:
-            return {}
+            return None
         return {"mechanical_effect": combat_reaction_contest.EFFECTS[ability_id]}
 
     if hesitated:
-        return {}
+        return None
 
     if window["stage"] == reaction_windows.PRE_ROLL:
         if ability_id == SHIELD_SPELL:
@@ -214,7 +214,7 @@ def _apply(
             return {"mechanical_effect": "target_ac_bonus", "ac_bonus": SHIELD_SPELL_AC_BONUS}
         if spend is ac_spend and attack_action is not None:
             return {"mechanical_effect": "target_ac_bonus"}
-        return {}
+        return None
 
     if ability_id == BRACE:
         reduction, prevented = brace(head, state.get_participant(spend["actor_id"]))
@@ -244,7 +244,7 @@ def _apply(
         if conditions.has_condition(target.conditions, "grappled"):
             return {"mechanical_effect": "grapple_blocked_still_held"}
         return {"mechanical_effect": "grapple_escaped"}
-    return {}
+    return None
 
 
 def close(state, head: dict, window: dict, *, attack_action: dict | None, contest_rng=None) -> list[dict]:
@@ -287,7 +287,7 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None, contes
             "stage": window["stage"],
             "against_actor_id": head["actor_id"],
             "mechanical_effect": None,
-            **effects,
+            **(effects or {}),
         }
         if contest is not None:
             packet["reactor_total"] = contest["reactor_total"]
