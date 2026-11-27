@@ -159,6 +159,18 @@ async def test_daily_buyback(reset_db_pool: str, npc: str, location: str, item: 
         assert (await rows(sale.player_id), await merchant_row(npc), sale.packets) == before
 
 
+@pytest.mark.parametrize("standing", ["neutral", "friendly"])
+async def test_empty_purse_refuses_sales_at_buyback_cap(reset_db_pool: str, standing: str) -> None:
+    async with merchant_session(disposition=standing, held=1) as sale:
+        await fund_merchant(GRIMJAW, 600, current_gold_sp=0, buyback_history={SWORD: 3})
+        before = await rows(sale.player_id), await merchant_row(GRIMJAW), sale.packets.copy()
+        receipt = await sale.sell(SWORD, GRIMJAW, 1)
+        assert not receipt.is_error, receipt.output
+        response = json.loads(receipt.output)
+        assert response["status"] == "refused" and "out of coin" in response["reason"]
+        assert (await rows(sale.player_id), await merchant_row(GRIMJAW), sale.packets) == before
+
+
 async def test_discount_offer_can_be_limited_by_the_purse(reset_db_pool: str) -> None:
     async with merchant_session(disposition="friendly", held=1) as sale:
         await fund_merchant(GRIMJAW, 600, current_gold_sp=13, buyback_history={SWORD: 3})
