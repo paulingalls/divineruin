@@ -9,6 +9,7 @@ from acceptance.defensive_reactions_harness import (
     declare_attacks,
     defense_fight,
     hp,
+    reaction_packet,
     spend,
 )
 from acceptance.test_guardian_intercept import SWORD, tool_receipt
@@ -65,6 +66,27 @@ async def test_other_reaction_does_not_halve_psychic(reset_db_pool):
         attack = action_packet(packets, enemy, action)
         assert (attack["target_ac"], attack["hit"], attack["damage"]) == (19, True, 8)
         assert await hp(fight) == [92, 100]
+
+
+@pytest.mark.parametrize("use_reaction", [False, True])
+async def test_thought_shield_reports_preventing_all_damage(reset_db_pool, use_reaction):
+    async with defense_fight("whisper", "still") as fight:
+        (enemy,) = fight.enemies
+        action = "Perfect Memory"
+        await declare(fight, actor_id=enemy, **strike(fight.players[0], action=action))
+        with (
+            patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(1 if self.dc == 20 else 15)),
+            patch("check_resolution_attack.dice_roll", return_value=_damage_die(1)),
+        ):
+            packets = await spend(fight, THOUGHT, stage="pre_roll") if use_reaction else []
+            packets += await fight.drain()
+        attack = action_packet(packets, enemy, action)
+        assert (attack["hit"], attack["damage"]) == (True, 0 if use_reaction else 1)
+        assert await hp(fight) == [100 if use_reaction else 99, 100]
+        if use_reaction:
+            receipt = reaction_packet(packets, THOUGHT)
+            assert receipt["mechanical_effect"] == "damage_halved"
+            assert receipt["damage_prevented"] == 1
 
 
 async def test_thought_shield_stops_at_answered_action(reset_db_pool):
