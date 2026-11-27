@@ -103,8 +103,7 @@ async def fight(reset_db_pool: str, scenario: str, request: pytest.FixtureReques
             {guardian: pos(6 if scenario == "range" else 5), ally: pos(0), other: pos(0, -5)}
         )
         if scenario == "resistance":
-            for actor in (guardian, ally):
-                participant(state, actor).damage_affinities = {"resistant": ["slashing"]}
+            participant(state, guardian).damage_affinities = {"resistant": ["slashing"]}
         if scenario == "temp":
             participant(state, guardian).hp_current = 4
             participant(state, guardian).temp_hp = 5
@@ -216,7 +215,9 @@ async def test_hit(fight: MawlingHarness, scenario: str, intercept: bool) -> Non
     assert await stamina(guardian) == start - (3 if intercept else 0)
     packets = await fight.drain()
     (guardian_hp, guardian_temp), (ally_hp, ally_temp), other_pool = await pools(fight)
-    damage = {"resistance": 3, "critical": 14}.get(scenario, 7)
+    damage = 14 if scenario == "critical" else 7
+    if scenario == "resistance" and intercept:
+        damage = 3
     absorbed = 5 if scenario == "temp" and intercept else 0
     assert (guardian_hp, guardian_temp) == (
         before[0][0] - (damage - absorbed if intercept else 0),
