@@ -2,10 +2,12 @@ import { expect, test } from "bun:test";
 
 import items from "../../../content/items.json";
 import inventoryPools from "../../../content/inventory_pools.json";
+import npcs from "../../../content/npcs.json";
+import locations from "../../../content/locations.json";
 import pricingRows from "../../../content/pricing.json";
 import cases from "../../../packages/shared/fixtures/sale-price-cases.json";
 import { parsePricingRow } from "./pricing.ts";
-import { parseInventoryPools, quoteSale } from "./sale_pricing.ts";
+import { merchantGoldAllocation, parseInventoryPools, quoteSale } from "./sale_pricing.ts";
 
 const itemRows = items.map((item) => ({ id: item.id, data: item }));
 const poolRows = inventoryPools.map((pool) => ({ id: pool.id, data: pool }));
@@ -34,10 +36,27 @@ if (!cases.length || new Set(cases.map((row) => row.id)).size !== cases.length) 
 for (const row of cases) {
   test(`sale quote: ${row.id}`, () => {
     const pools = parseInventoryPools(poolRows, itemRows);
-    const pool = row.pool === null ? undefined : pools.get(row.pool);
-    if (row.pool !== null && !pool) throw new Error(`unknown fixture pool ${row.pool}`);
+    const pricing = parsePricingRow(pricingRows[0]);
+    if (row.npc) {
+      const npc = npcs.find(({ id }) => id === row.npc)!;
+      const pool = pools.get(npc.inventory_pool!)!;
+      pool.location = row.pool_location ?? pool.location;
+      pool.buys = row.pool_buys ?? pool.buys;
+      const authored = locations.find(({ id }) => id === pool.location);
+      const location = authored && { ...authored, ...row.location_fields };
+      if (row.error) {
+        expect(() => merchantGoldAllocation(pool, location, pricing)).toThrow(row.error);
+      } else {
+        expect(merchantGoldAllocation(pool, location, pricing)).toBe(row.expected_allocation_sp!);
+      }
+      return;
+    }
+    if (!row.item || !row.kind || !row.disposition)
+      throw new Error(`Missing sale fields: ${row.id}`);
+    const pool = row.pool == null ? undefined : pools.get(row.pool);
+    if (row.pool != null && !pool) throw new Error(`unknown fixture pool ${row.pool}`);
     expect(
-      quoteSale(row.item, parsePricingRow(pricingRows[0]), {
+      quoteSale(row.item, pricing, {
         kind: row.kind,
         disposition: row.disposition,
         pool,

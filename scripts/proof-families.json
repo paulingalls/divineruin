@@ -9,15 +9,20 @@
   },
   {
     "name": "merchant-sales",
-    "tests": ["apps/agent/tests/acceptance/test_sell_to_merchant(?:_guards)?\\.py"],
-    "owns": ["apps/agent/(?:merchant_agent|merchant_tools|sale_pricing|sell_item)\\.py"],
+    "tests": [
+      "apps/agent/tests/acceptance/test_(?:sell_to_merchant|merchant_purse|consignment)(?:_guards)?\\.py"
+    ],
+    "owns": [
+      "apps/agent/(?:merchant_agent|merchant_tools|sale_pricing|sell_item|merchant_purse|db_mutations_merchant|consignment)\\.py"
+    ],
     "reads": [
       "content/action_sounds.json",
       "content/inventory_pools.json",
       "content/items.json",
       "content/locations.json",
       "content/npcs.json",
-      "content/pricing.json"
+      "content/pricing.json",
+      "content/world_clock.json"
     ]
   },
   {

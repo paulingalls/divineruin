@@ -268,8 +268,8 @@ Content/spec divergence: spec uses **Thornwatch + Merchant Guild** as worked exa
 - 6 personality modifiers (Prosperous +25% / Struggling -50% / Military +50% weapons /-25% civilian / Trade Hub +25% all / Isolated -50% T2 + 25% price markup / Cursed -75%)
 - `Location.size: enum(hamlet|village|town|city|capital)` + `Location.personality: enum[]` schema extension
 - `merchant_state` table: `current_inventory`, `current_gold`, `max_gold`, `last_restock_tick`, `buyback_history`, `consigned_items` (Redis + PostgreSQL backing)
-- Daily gold allocations (5 settlement × 4 merchant-type matrix per spec L286-292)
-- 4 buyback limits (Common weapons 3/day, Common consumables 5/day, Quality 2/day, Unique 1/day)
+- Daily gold allocations derive from the bound pool’s settlement tier, scalar personality, and buying rules. Merchant purses and buyback counts refresh on the first eligible sale after Aethos dawn.
+- Daily full-price buyback limits per item: three common weapons, armor or shields, five other common goods, two uncommon goods, or one rare or legendary good. One more unit can be offered at half price.
 - Consignment at Friendly+ disposition (1d4 day delivery, 10% commission)
 - Traveling merchant entity type (1-2 day visits, +10% buy / -10% sell)
 - Pure functions: `daily_restock_at_dawn()`, `attempt_purchase(player_id, merchant_id, item_id, quantity)`, `attempt_sale(player_id, merchant_id, item_id, quantity)`
@@ -284,11 +284,11 @@ Content/spec divergence: spec uses **Thornwatch + Merchant Guild** as worked exa
 - [ ] `merchant_state` table reads/writes for current_inventory + current_gold + buyback_history + consigned_items
 - [ ] `daily_restock_at_dawn` resets all merchants per spec algorithm; matches deterministic output for fixed seed
 - [ ] `attempt_purchase` enforces stock check + gold check + capacity check; emits sink_event (M9.8 dep)
-- [ ] `attempt_sale` enforces buyback limit + merchant gold pool; offers partial purchase / refusal / consignment at correct disposition gates
-- [ ] Consignment expires after 1d4 days; expired items return to consignor
+- [x] The `attempt_sale` path in `sell_item` enforces the daily buyback limit and merchant purse. Friendly or trusted merchants who cannot afford eligible goods offer consignment within the full-price buyback cap. Placement requires confirmation of that option’s offer ID.
+- [x] Consignments sell at dawn 1d4 Aethos days after placement and pay the consignor 90% of the quote. The first merchant read on or after the seventh dawn following the sale returns unclaimed goods.
 - [ ] Traveling merchant entity instantiates with 1-2 day visit + rotating feature item
 - [ ] Tests cover every cell of size×personality matrix, every buyback-limit edge case, consignment expiration paths, traveling merchant visit lifecycle
-- [x] A player sale removes the owned quantity and credits engine-computed proceeds. MerchantAgent’s `sell_item` accepts item ID, NPC ID and quantity. The registered voice and PostgreSQL acceptance tests verify settlement and rollback.
+- [x] A player sale removes the owned quantity and credits engine-computed proceeds. MerchantAgent’s `sell_item` accepts item ID, NPC ID, quantity and `offer_id`. The DM reads an offer aloud and confirms the returned ID after the player accepts. Friendly and trusted merchants can take eligible goods on consignment. The registered voice and PostgreSQL acceptance tests verify settlement and rollback.
 - [x] The async crafting `sell` decision settles engine-priced proceeds exactly once and grants no item. Exercise the HTTP/DB path and its agreement with agent pricing. See [Crafting § Async Crafting Flow](../game_mechanics/game_mechanics_crafting.md#async-crafting-flow) and [Economy § Merchant Pricing Formula](../game_mechanics/game_mechanics_economy.md#merchant-pricing-formula). The authenticated inventory spec checks proceeds, retry, concurrent combat rewards and unchanged inventory. Both pricing suites share the crafted quote, and the Common Bond worker acceptance checks zero-proceeds crafts offer keep only.
 - [ ] A fence buys stolen goods at an engine-computed price, Aelora's rogue Honest Hustle improves that price, and M9.5 applies a −3 faction reputation cost when fencing stolen faction goods is detected. See [Faction Pricing § Earning Reputation Through Economic Activity](../game_mechanics/economy/faction_reputation_pricing.md#earning-reputation-through-economic-activity) and [Patrons § Aelora / Rogue](../game_mechanics/game_mechanics_patrons.md#aelora-the-hearthkeeper). <!-- G3 · 2026-11-26: production rg -li 'fence|honest.hustle' apps finds unrelated fencing references and no sale settlement; content/gods.json leaves Honest Hustle pending. -->
 
@@ -300,7 +300,7 @@ Content/spec divergence: spec uses **Thornwatch + Merchant Guild** as worked exa
 
 <!-- see audit/phase-9-restock.md -->
 
-**Status: DESIGNED↔aspirational at substrate, NOT_SHIPPED at pipeline.**
+**Status: Partial.** Merchant sales enforce the daily purse and buyback limits. Consignment placement, collection and expiry use the registered voice tools.
 
 Substrate BUILT: `inventory_pools` table (migration 001:84-91); 4 content pools (`market_general`, `grimjaw_weapons`, `temple_supplies`, `millhaven_supplies`) with schema-divergent flat-list shape; `Npc.inventory_pool: string | null` field on schema (0 of 14 NPCs populate it); `player_inventory` table actively used by `apps/agent/db_queries.py:120,187` + `apps/agent/db_mutations.py:135,156`; retired narrative inventory tools replaced by `transact` in `apps/agent/inventory_tools.py:37`; DB writes live in `db_mutations_inventory.py`.
 
@@ -308,7 +308,7 @@ Substrate BUILT: `inventory_pools` table (migration 001:84-91); 4 content pools 
 
 **Pool prices vs Item.value_base:** `market_general` + `grimjaw_weapons` pools have prices that exactly match `Item.value_base`. `temple_supplies` carries -10% discounts. `millhaven_supplies` carries +20-67% markups (directionally consistent with spec's Isolated personality +25% but exceeds nominal magnitude). When the pricing engine lands, decide between (a) delete pool.price + compute from value_base via formula, (b) rename to `base_price_override`, (c) hybrid.
 
-What does NOT ship: 0 of 5 settlement size multipliers (Location.size field absent — `region_type` ships with values {city, wilderness, dungeon}, 0 of 6 personality traits in tags); 0 merchant_state machine; 0 daily_restock function; 0 attempt_purchase/sale enforcing function; 0 traveling merchant; 0 consignment; 0 of 9 decisions 87-95 encoded.
+Remaining stock work includes the settlement size and personality matrix, daily inventory restock, player purchases, and traveling merchants.
 
 ---
 

@@ -43,7 +43,12 @@ SERVER_TABLES = (
 
 
 async def validate_runtime_catalogs(conn) -> None:
-    from sale_pricing import parse_inventory_pools, validate_npc_pool_bindings
+    from economy_pricing import parse_economy_pricing
+    from sale_pricing import (
+        merchant_gold_allocation,
+        parse_inventory_pools,
+        validate_npc_pool_bindings,
+    )
 
     tables = set(SERVER_TABLES) | {row[0] for row in PYTHON_CATALOGS}
     snapshot = {}
@@ -55,6 +60,15 @@ async def validate_runtime_catalogs(conn) -> None:
     await _validate_typescript(snapshot)
     pools = parse_inventory_pools(snapshot["inventory_pools"], snapshot["items"])
     validate_npc_pool_bindings(snapshot["npcs"], pools)
+    economy = next((row["data"] for row in snapshot["pricing"] if row["id"] == "economy"), None)
+    if economy is None:
+        raise ValueError("pricing: no 'economy' row")
+    pricing = parse_economy_pricing(economy)
+    locations = {row["id"]: row["data"] for row in snapshot["locations"]}
+    for npc in snapshot["npcs"]:
+        if binding := npc["data"]["inventory_pool"]:
+            pool = pools[binding]
+            merchant_gold_allocation(pool, locations.get(pool["location"]), pricing)
     spells = importlib.import_module("spells")
     creatures = [{"id": row["id"], "category": row["data"]["category"]} for row in snapshot["creatures"]]
     spells.set_spells(spells.parse_spell_catalog(snapshot["spells"], creatures))

@@ -158,7 +158,8 @@ describe("handleActivityDecision inventory", () => {
   ])(
     "refuses a crafted sale with $error before any write",
     async ({ saleCase, silverPerGold, status, error }) => {
-      const { item } = cases.find((row) => row.id === saleCase)!;
+      const item = cases.find((row) => row.id === saleCase)?.item;
+      if (!item) throw new Error(`Missing sale case: ${saleCase}`);
       const economy = pricingRows.find((row) => row.id === "economy")!;
       decisionStubs({}, "owner", [
         {
@@ -193,7 +194,8 @@ describe("handleActivityDecision inventory", () => {
     },
   );
   test("crafted sale with no player row to credit fails before collecting", async () => {
-    const { item } = cases.find((row) => row.id === "crafted_fractional_gold")!;
+    const item = cases.find((row) => row.id === "crafted_fractional_gold")?.item;
+    if (!item) throw new Error("Missing crafted_fractional_gold sale case");
     decisionStubs({}, "owner", [
       {
         match: "FROM items",

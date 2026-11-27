@@ -87,7 +87,7 @@ EXPECTED_UNION_SPEND = {
     "creation": 0,
     "onboarding": 2,  # check 1, query_info 1
     "blacksmith": 1,  # query_info 1
-    "merchant": 1,  # query_info 1
+    "merchant": 2,  # query_info 1, sell_item 1
 }
 
 

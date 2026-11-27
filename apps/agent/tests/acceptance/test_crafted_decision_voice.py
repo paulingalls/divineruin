@@ -211,7 +211,7 @@ async def test_keep_from_worker_success(bench: SimpleNamespace, guest: bool) -> 
 async def test_sell_matches_http_and_shared_case(
     bench: SimpleNamespace, crafting_server: dict, case_id: str, proceeds_gold: float
 ) -> None:
-    case = next(row for row in json.loads(SALE_CASES.read_text()) if row["id"] == case_id)
+    case = next(row for row in json.loads(SALE_CASES.read_text()) if row["id"] == case_id and "item" in row)
     item = await insert_item(bench, case["item"])
     voice_id, app_id = await craft(bench, item=item), await craft(bench, item=item, owner=1)
     owner, app_owner = bench.ids

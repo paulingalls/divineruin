@@ -1,4 +1,8 @@
-import type { InventoryPool } from "@divineruin/shared";
+import {
+  type InventoryPool,
+  SETTLEMENT_PERSONALITY_VALUES,
+  SETTLEMENT_SIZE_VALUES,
+} from "@divineruin/shared";
 import { asRecord, parseString, parseStringArray } from "./parse-helpers.ts";
 import { type EconomyPricing, SALE_DISPOSITIONS, wholeSilver } from "./pricing.ts";
 
@@ -169,4 +173,30 @@ export function quoteSale(
   const price = wholeSilver(base, multiplier);
   if (price === 0) return refuse("priced_to_zero");
   return { available: true, price_sp: price, reason: "", merchant_kind: null };
+}
+
+export function merchantGoldAllocation(
+  pool: InventoryPool,
+  location: unknown,
+  pricing: EconomyPricing,
+): number {
+  const ctx = `locations[${pool.location}]`;
+  const data = asRecord(location, ctx);
+  const tier = SETTLEMENT_SIZE_VALUES.find((value) => value === data.settlement_tier);
+  if (!tier)
+    throw new Error(`${ctx}.settlement_tier is unknown: ${JSON.stringify(data.settlement_tier)}`);
+  const trait = SETTLEMENT_PERSONALITY_VALUES.find((value) => value === data.personality);
+  if (!trait) throw new Error(`${ctx}.personality is unknown: ${JSON.stringify(data.personality)}`);
+  const kind = pool.buys === "all" ? "general" : "specialist";
+  const base = pricing.merchantGoldSp[tier]![kind];
+  if (base == null) throw new Error(`merchant_gold_sp.${tier}.${kind} is unavailable`);
+  const multiplier =
+    trait === "military"
+      ? pricing.militaryMerchantGoldMultipliers[
+          pool.buys !== "all" && (pool.buys.includes("weapon") || pool.buys.includes("armor"))
+            ? "arms"
+            : "other"
+        ]
+      : pricing.merchantGoldPersonalityMultipliers[trait]!;
+  return wholeSilver(base, multiplier);
 }
