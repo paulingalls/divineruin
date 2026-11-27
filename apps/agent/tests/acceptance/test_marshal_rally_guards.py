@@ -56,6 +56,16 @@ async def test_recipient_range_and_hearing(fight: MawlingHarness, exclusion: str
         assert excluded not in outcomes and participant(saved, excluded).temp_hp == 0
 
 
+async def test_rally_refuses_explicit_targets(fight: MawlingHarness) -> None:
+    marshal, *allies = fight.players
+    await enter_fight(fight)
+    before = await fight.snapshot()
+    for targets in (allies[:1], allies):
+        refusal = await declare_round(fight, {**rally(marshal), "targets": targets}, error=True)
+        assert "Leave targets empty" in refusal
+    assert await fight.snapshot() == before
+
+
 async def test_silent_source_refuses_and_no_listeners_waste_rally_unpaid(fight: MawlingHarness) -> None:
     marshal = fight.players[0]
     await enter_fight(fight)

@@ -144,9 +144,9 @@ async def exercise_rally_at_dawn() -> None:
             assert profile["clauses"][0][key] == value
         before = {pid: await player(pid) for pid in fight.players}
         result = await cast_rally(fight)
+        assert {r["granted"] for r in result["rally_results"]} == {6}
         assert result["synergy_clause_id"] == "orenthel_marshal_rally"
         assert result["synergy_clause_name"] == corpus["name"]
-        assert {r["granted"] for r in result["rally_results"]} == {6}
         state = await fight.reload()
         for ally in allies:
             after = await player(ally)
