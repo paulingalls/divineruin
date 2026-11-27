@@ -198,6 +198,27 @@ def format_training_section(active_cycles: list[dict]) -> str | None:
     return "\n".join(lines)
 
 
+def format_crafting_decisions(player_id: str, resolved_activities: list[dict]) -> str | None:
+    crafts = []
+    for activity in resolved_activities:
+        if activity["activity_type"] == "crafting" and (options := activity["decision_options"]):
+            outcome = activity["outcome"]
+            name = outcome.get("crafted_item_name") or (activity.get("parameters") or {}).get("result_item_name")
+            labels = ", ".join(f"{option['label']} ({option['id']})" for option in options)
+            crafts.append(f"- {name or 'Crafting project'} (id: {activity['id']}) — {labels}")
+    if not crafts:
+        return None
+    return "\n".join(
+        [
+            f"FINISHED CRAFTS — Host player {player_id}",
+            *crafts,
+            "Read the offered labels aloud and wait for the player's choice. In exploration, "
+            'use enter_mode(mode="dispatch", encounter_id=""). Then call '
+            'resolve_activity(kind="crafting", id=<activity id>, decision=<chosen option id>).',
+        ]
+    )
+
+
 async def build_warm_layer(
     location_id: str,
     player_id: str,
@@ -213,6 +234,7 @@ async def build_warm_layer(
     party_member_ids: tuple[str, ...] | None = None,
     quest_decisions: dict[str, dict[str, str]] | None = None,
     hallucinations: list[PlayerHallucination] | None = None,
+    resolved_activities: list[dict] | None = None,
 ) -> str:
     import asyncio
 
@@ -353,6 +375,9 @@ async def build_warm_layer(
         training_section = format_training_section(training)
         if training_section:
             sections.append(f"Host player {player_id}\n{training_section}")
+
+    if crafting := format_crafting_decisions(player_id, resolved_activities or []):
+        sections.append(crafting)
 
     # Companion state
     if companion is not None and companion.is_present:

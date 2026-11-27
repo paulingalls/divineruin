@@ -22,6 +22,7 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import activity_payloads
+import crafted_decision
 import crafting_tools
 import errand_tools
 import experimentation_tools
@@ -133,7 +134,7 @@ async def _begin_activity_impl(
 @db_tool
 async def resolve_activity(
     context: RunContext[SessionData],
-    kind: Literal["training", "companion_errand"],
+    kind: Literal["training", "companion_errand", "crafting"],
     id: str,
     decision: str | None = None,
 ) -> str:
@@ -146,11 +147,15 @@ async def resolve_activity(
     kind='companion_errand': resolves a companion's errand and reports what happened. decision
     is NOT used here -- the errand computes and returns its own decision_options; pass id only.
 
+    kind='crafting': collects a finished crafting project. Read the offered labels aloud,
+    wait for the player to choose, then pass the chosen option id as decision. Keep grants
+    the item, sell credits gold, and the other choices record the decision.
+
     Args:
-        kind: 'training' or 'companion_errand'.
-        id: The activity_id (training) or errand_id (companion_errand) to resolve.
-        decision: The midpoint option id, required for kind='training'; ignored for
-            kind='companion_errand'.
+        kind: 'training', 'companion_errand', or 'crafting'.
+        id: The activity id for training or crafting, or the companion errand id.
+        decision: The chosen option id, required for training and crafting. Omit it for
+            companion errands.
     """
     return await _resolve_activity_impl(context, kind, id, decision=decision)
 
@@ -173,5 +178,10 @@ async def _resolve_activity_impl(
 
     if kind == "companion_errand":
         return await errand_mod._resolve_companion_errand_impl(context, errand_id=id)
+
+    if kind == "crafting":
+        if not decision:
+            raise ToolError("kind='crafting' requires decision.")
+        return await crafted_decision.resolve_crafted_decision(context, id, decision)
 
     raise ToolError(f"Unknown activity kind: {kind!r}")
