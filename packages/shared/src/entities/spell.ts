@@ -30,6 +30,7 @@ export interface Spell {
   narration_cue: string;
   verbal: boolean;
   hostile: boolean;
+  concentration_duration_seconds?: number;
   max_targets?: number;
   save_condition?: SaveConditionProfile;
   wild_shape?: WildShapeProfile;

@@ -20,7 +20,7 @@ import { asRecord } from "./parse-helpers.ts";
 // spell-catalog-full-casting-ssot), superseding the M8 elective-only seam (235ae150c5d3):
 // caster core spells now live in the catalog too (archetype_abilities `core` rows stay as
 // the access grant). This TS loader stays lenient — the M3.3 fields (resonance_by_source,
-// audio_cue, concentration) are still ignored here; mirroring Python's strict-require +
+// audio_cue) are still ignored here; mirroring Python's strict-require +
 // int-value validation is tracked as concern 26ab12def2a3.
 
 const SPELL_SOURCES = new Set<SpellSource>(["arcane", "divine", "primal"]);
@@ -180,7 +180,7 @@ export function parseSpellRow(id: string, raw: unknown): Spell {
     throw new Error(`${ctx}.narration_cue is not a string`);
   }
 
-  for (const field of ["verbal", "hostile"] as const) {
+  for (const field of ["verbal", "hostile", "concentration"] as const) {
     if (typeof data[field] !== "boolean") throw new Error(`${ctx}.${field} is not a boolean`);
   }
 
@@ -194,6 +194,14 @@ export function parseSpellRow(id: string, raw: unknown): Spell {
     narration_cue: data.narration_cue,
     verbal: data.verbal as boolean,
     hostile: data.hostile as boolean,
+    ...(data.concentration
+      ? {
+          concentration_duration_seconds: positiveInteger(
+            data.concentration_duration_seconds,
+            `${ctx}.concentration_duration_seconds`,
+          ),
+        }
+      : {}),
     ...(data.max_targets != null
       ? { max_targets: positiveInteger(data.max_targets, `${ctx}.max_targets`) }
       : {}),

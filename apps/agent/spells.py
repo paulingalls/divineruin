@@ -89,6 +89,7 @@ class Spell:
     resonance_by_source: dict[str, int] = field(default_factory=dict)
     audio_cue: str = ""
     concentration: bool = False
+    concentration_duration_seconds: int | None = None
     # M4.8 story-004: the beneficial condition this spell PRODUCES on its target (e.g. "blessed"),
     # or None for a spell that applies no condition. Optional + forward-compatible: existing rows
     # omit it. When present, parse_spell_row fail-louds an unknown type against CONDITION_CATALOG.
@@ -143,6 +144,12 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
         concentration = data["concentration"]
         if not isinstance(concentration, bool):
             raise ValueError(f"spell {spell_id!r} concentration is not a bool")
+        duration = None
+        if concentration:
+            label = f"spell {spell_id!r} concentration_duration_seconds"
+            duration = parse_int(data.get("concentration_duration_seconds"), label)
+            if duration <= 0:
+                raise ValueError(f"{label} must be positive")
         # Optional producer field (M4.8 story-004): when present it must name a real condition type,
         # so a typo fails at load (strict-loader convention) instead of silently producing nothing.
         applies_condition = data.get("applies_condition")
@@ -184,6 +191,7 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
             resonance_by_source=parse_int_dict(data["resonance_by_source"], f"spell {spell_id!r} resonance_by_source"),
             audio_cue=parse_str(data["audio_cue"], f"spell {spell_id!r} audio_cue"),
             concentration=concentration,
+            concentration_duration_seconds=duration,
             applies_condition=applies_condition,
             max_targets=max_targets,
             sound_id=sound_id,
