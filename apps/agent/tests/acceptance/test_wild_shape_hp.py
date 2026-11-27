@@ -368,3 +368,28 @@ async def test_bark_skin_survives_own_ac_restoration(fight: MawlingHarness, monk
     assert await saved_pools(fight) == (26, 0, None)
     actor = participant(await fight.reload(), pid)
     assert actor.ac == own_ac and not actor.bark_skin_active
+
+
+async def test_bark_skin_hit_that_still_lands_takes_beast_hp_first(
+    fight: MawlingHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pid = fight.players[0]
+    actor = participant(await fight.reload(), pid)
+    assert actor.wild_shape is not None
+    await patch_player(fight, pid, hp={"current": 5, "max": 30})
+    actor.hp_current = 5
+    await fight.persist()
+    await declare_hit(fight)
+    damage_roll(monkeypatch, 7, face=18)
+    for _ in range(4):
+        window = (await fight.command("resolve_phase", {}))["next"]["waiting_on"]
+        if window and any(r["id"] == "druid_bark_skin" for r in window["reactions"]):
+            break
+    else:
+        raise AssertionError("the held hit never offered Bark Skin")
+    await spend(fight, window, "druid")
+    receipt = next(p for p in await fight.drain() if p.get("hit"))
+    assert (receipt["damage"], receipt["beast_hp_absorbed"], receipt["beast_hp_remaining"]) == (7, 7, 4)
+    # 7 damage would fell a 5 HP druid if the landing skipped the beast pool.
+    assert (receipt["context"], receipt["dramatic"], receipt["target_fallen"]) == ("", False, False)
+    assert await saved_pools(fight) == (5, 0, 4)
