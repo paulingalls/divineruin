@@ -151,6 +151,28 @@ async def test_tag_requires_current_unbroken_owned_oath(world, change, reason) -
     assert result["context_synergy"]["oath_justice"]["reason"] == reason
 
 
+async def test_automatic_skill_failure_reports_zero_justice_bonus(world) -> None:
+    await setup_actor(world, "valdris", "paladin")
+    session = world.ctx.userdata
+    oath = await swear(session)
+    call = game_tools(session, check)
+    roll = payload("skill", "athletics", "justice_at_stake")
+    with dice():
+        result = await call("check", roll={**roll, "difficulty": "extreme"})
+
+    assert result["outcome"] == "automatic_failure"
+    context = result["context_synergy"]
+    assert context["bonus"] == 0
+    assert context["oath_justice"] == {
+        "oath_id": oath["oath_id"],
+        "context": "skill",
+        "skill": "athletics",
+        "tag": "justice_at_stake",
+        "modifier": 0,
+        "reason": "automatic_failure",
+    }
+
+
 @pytest.mark.parametrize("kind", ["skill", "social", "discover"])
 async def test_registered_tool_refuses_unknown_justice_tag(world, kind) -> None:
     roll = discover() if kind == "discover" else payload(kind, "persuasion")
