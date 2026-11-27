@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from livekit.agents.llm import ToolError
 
-from creation_tools import push_creation_cards, set_creation_choice
+from creation_tools import ALLOWED_IDS, push_creation_cards, set_creation_choice
 from session_data import CreationState, SessionData
 
 # _func bypasses SDK Literal validation — use Any-typed refs so Pyright accepts
@@ -28,6 +28,12 @@ def _make_context(creation_state: CreationState | None = None) -> MagicMock:
 
 
 class TestPushCreationCards:
+    async def test_paladin_offer_points_to_registered_oath(self, monkeypatch):
+        monkeypatch.setitem(ALLOWED_IDS, "class", ("paladin",))
+        result = json.loads(await _push_cards(_make_context(), category="class"))
+        description = next(row["description"] for row in result["options"] if row["id"] == "paladin")
+        assert "Valdris" in description and "Zhael" in description and "ask" in description
+
     async def test_invalid_category_returns_empty(self):
         """Call _func to reach our tool body without recreating vendor dispatch."""
         ctx = _make_context()

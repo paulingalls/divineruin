@@ -421,9 +421,10 @@ async def test_echo_primary_resurrected_on_victory_e2e(dev_db_pool):
             location_id="off_catalog_wilds",
         )
 
-        end_data = await _end_combat_db(
-            session, cs, "victory", mutations=db_mutations, queries=db_queries, conn=pool, sink=EventSink()
-        )
+        async with pool.acquire() as conn, conn.transaction():
+            end_data = await _end_combat_db(
+                session, cs, "victory", mutations=db_mutations, queries=db_queries, conn=conn, sink=EventSink()
+            )
 
         assert end_data["death_context"] is not None
         revived = await db_queries.get_player(primary_id, conn=pool)

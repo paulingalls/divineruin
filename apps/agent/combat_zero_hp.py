@@ -100,7 +100,9 @@ async def _after_hp_change(
             choir_encounter.destroyed(combat_state)
         architect_zero_hp.collapse_owned_walls(combat_state, target.id)
 
-    renewals = await encounter_facts.renew_on_death(combat_state, target, counted_before, queries=queries, conn=conn)
+    renewals = await encounter_facts.renew_on_death(
+        combat_state, target, counted_before, queries=queries, conn=conn, session=session
+    )
     renewals.extend(
         await still_encounter.after_damage(
             session, combat_state, target, conn=conn, queries=queries, was_fallen=was_fallen

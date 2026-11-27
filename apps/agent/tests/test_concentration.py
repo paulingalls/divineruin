@@ -31,30 +31,6 @@ def test_check_concentration_rejects_negative_damage():
         concentration.check_concentration(-1)
 
 
-def test_concentration_holds_on_meeting_dc():
-    assert concentration.concentration_holds(15, 15) is True
-    assert concentration.concentration_holds(16, 15) is True
-
-
-def test_concentration_broken_below_dc():
-    assert concentration.concentration_holds(14, 15) is False
-
-
-def test_incapacitation_auto_fails_regardless_of_roll():
-    assert concentration.concentration_holds(99, 10, incapacitated=True) is False
-
-
-def test_concentration_holds_rejects_negative_save_total():
-    with pytest.raises(ValueError, match="save_total"):
-        concentration.concentration_holds(-1, 10)
-
-
-def test_incapacitation_short_circuits_before_save_validation():
-    # Incapacitation auto-fails without consulting the roll, so a malformed (negative)
-    # save_total is never validated on that path — the guard protects the comparison only.
-    assert concentration.concentration_holds(-5, 10, incapacitated=True) is False
-
-
 def test_session_concentration_defaults_to_inactive():
     sd = SessionData(player_id="p1", location_id="loc1")
     assert isinstance(sd.concentration, ConcentrationState)

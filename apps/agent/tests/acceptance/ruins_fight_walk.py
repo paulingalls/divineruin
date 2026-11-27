@@ -116,6 +116,7 @@ class RuinsFightWalk(FirstBloodWalk):
             {
                 "roll": {
                     "kind": "discover",
+                    "synergy_context": "none",
                     "skill": "investigation",
                     "target": "research station",
                     "hearing_only": False,

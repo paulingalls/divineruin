@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import pytest
 from acceptance.seeds import seed_player_with_pools
+from combat._helpers import save_result
 from creature_combat_helpers import catalog, participant
 from sample_fixtures import make_context
 from voice_condition_fixtures import place_actors
@@ -31,7 +32,9 @@ async def test_shield_failed_wis16_redirects_real_spell(dev_db_pool, success, mu
     )
     await seed_player_with_pools(pool, player_id=pid, class_="cleric", known_spells=("divine_bless",))
     try:
-        caster = CombatParticipant(id=pid, name="Caster", type="player", initiative=15, hp_current=25, hp_max=25, ac=14)
+        caster = CombatParticipant(
+            id=pid, name="Caster", type="player", archetype_id="cleric", initiative=15, hp_current=25, hp_max=25, ac=14
+        )
         state = place_actors(
             CombatState(combat_id=pid, participants=[caster, participant(enemy)], initiative_order=[pid, "choir"])
         )
@@ -58,7 +61,7 @@ async def test_shield_failed_wis16_redirects_real_spell(dev_db_pool, success, mu
         assert player is not None
         with patch(
             "check_resolution_save.roll_participant_save",
-            return_value=SimpleNamespace(success=success, rally_sources=()),
+            return_value=save_result(success),
         ) as save:
             result = await _resolve_ability_packet(
                 ctx.userdata,

@@ -19,6 +19,7 @@ def revive(participant, hp: int) -> None:
     participant.is_fallen = False
     participant.death_save_successes = 0
     participant.death_save_failures = 0
+    participant.due_death_save = None
 
 
 def sync_companion_consciousness(session, state) -> None:

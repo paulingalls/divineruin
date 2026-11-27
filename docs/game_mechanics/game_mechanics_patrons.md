@@ -39,7 +39,7 @@ Favor can rise and fall. A player who reaches Exalted and then acts against thei
 
 ### Oath mechanics
 
-Rules for the next implementation sprint. In `content/gods.json`, Breach and Favor-loss lifetime define the first pending Valdris paladin clause (favor loss). Justice at stake defines the second (+2 to d20 rolls). Each gets its own implementation ID. Shared oath mechanism also defines Zhael's pending Promised Hour.
+Rules for the next implementation sprint. In `content/gods.json`, Breach and Favor-loss lifetime define the first Valdris paladin clause (favor loss). Justice at stake defines the second (+2 to d20 rolls). Each gets its own implementation ID. Shared oath mechanism also defines Zhael's pending Promised Hour.
 
 #### Breach
 
@@ -82,9 +82,9 @@ Attacks and saves derive their context from combat state and keep their existing
 
 | Boundary | Engine behavior |
 |---|---|
-| First breach | Store a marker under the proposed `players.data.oaths` JSONB key with the current `session_count` and breach event ID. No database migration is needed. |
-| Same session | Compare the marker to the persisted `session_count` for ability availability, manual activation and automatic Layer 3 triggers. Already-landed effects such as Mark of Justice expire normally. |
-| Fresh session | Clear the marker at the same boundary that increments `session_count` and runs `session_hydration._recharge_session_abilities`. An agent restart that forces a fresh session clears suppression too. |
+| First breach | Store the agent session ID, breach event ID, combat ID and round under `players.data.oaths`. |
+| Same session | Compare the marker to the persisted agent session ID for Layer 3 projection and manual activation. Already-landed effects such as Mark of Justice expire normally. |
+| Fresh session | Patron hydration records the new agent session ID for hosts and guests, ending suppression. An agent restart creates a new session. |
 
 Reconnects that reuse session state, rests, favor gains, party membership changes and host handoffs leave the holder's suppression in place. A second breach or duplicate callback leaves the original marker intact. Suppression changes eligibility while favor standing and spent uses retain their usual rules. A broken oath stays broken. The player can swear anew after suppression clears.
 
@@ -320,7 +320,7 @@ When casting a spell targeting a specific creature that has wronged you or allie
 
 | Archetypes | Synergy Type | Enhancement |
 |---|---|---|
-| Paladin | Natural | Oath of Justice: oath-breaking loses all favor abilities for a session. Oath-keeping grants +2 to all d20 rolls when justice is at stake |
+| Paladin | Natural | Breaking the Oath of Justice suppresses Valdris tier abilities for the rest of the current gameplay session. Gain +2 on attacks and saves against wrongdoers in combat, and on checks when justice is at stake. |
 | Cleric, Oracle | Divine | Turn Undead/Hollow DC +1. Absolute authority against unnatural things |
 | Rogue, Spy | Unexpected | Deception for just causes (evidence, infiltration) gains +1. Valdris blesses deception in service of truth |
 

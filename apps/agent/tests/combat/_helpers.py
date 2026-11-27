@@ -14,11 +14,24 @@ import combat_turn
 import reaction_spend
 from ability_tools import _request_ability_activation_impl
 from check_resolution_attack import AttackResult
+from check_resolution_save import SavingThrowResult
 from party_state import PartyState
 from session_data import CombatParticipant, CombatState
 
 # High enough to pass the class-level gate for every reaction the interrupt tests activate.
 _ACTIVATE_LEVEL = 6
+
+
+def save_result(
+    success: bool,
+    *,
+    roll: int = 10,
+    total: int | None = None,
+    dc: int = 10,
+    save_type: str = "constitution",
+) -> SavingThrowResult:
+    total = roll if total is None else total
+    return SavingThrowResult(save_type, roll, total - roll, total, dc, success, total - dc, None, "")
 
 
 def _own_reaction(state, *ability_ids: str) -> None:
@@ -61,6 +74,7 @@ def _make_combat_state(player_hp=25, player_fallen=False, enemy_hp=7, enemy_fall
                     id="player_1",
                     name="Kael",
                     type="player",
+                    archetype_id="warrior",
                     initiative=15,
                     hp_current=player_hp,
                     hp_max=25,

@@ -33,6 +33,7 @@ import enemy_pockets
 import event_types as E
 import item_heal
 import lost_scout_combat
+import oath_timed
 import resonance_events
 import spell_casting
 import still_encounter
@@ -117,6 +118,7 @@ async def _resolve_phase_locked(
     packet_summaries: list[dict] = []
     previous_judgments = len(cs.judgment_rewards)
     async with phase_transaction_with_recovery(session, cs, db_mod=db_mod, mutations=mutations) as conn:
+        oath_before = await oath_timed.snapshot(conn, cs, session)
         adv = None
         if resolving_allies and cs.ally_continuation is None:
             # Reopen declaration on malformed persisted actions instead of retrying them forever.
@@ -250,6 +252,9 @@ async def _resolve_phase_locked(
                 event_bus=session.event_bus,
             )
             await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
+        oath_changes = await oath_timed.changes(conn, cs, session, oath_before)
+        if end_data is not None and oath_changes:
+            end_data["oath_changes"] = oath_changes
         assert fate_rolls.kept is None, "Selected Fate roll was not consumed"
         choir_facts = await choir_encounter.facts(state, queries=queries, conn=conn) if ended_outcome is None else None
 
@@ -358,6 +363,7 @@ async def _resolve_phase_locked(
         "beat": state.beat,
         "round": state.round_number,
         "packets": packet_summaries,
+        **({"oath_changes": oath_changes} if oath_changes else {}),
         "participants": _participant_roster(state.participants),
         "next": (
             {"phase": state.beat, "verbs": ["activate"], "waiting_on": None}
@@ -366,6 +372,7 @@ async def _resolve_phase_locked(
         ),
         "death_saves_due": wrap.death_saves_due if wrap else [],
         **({"rally_saves": wrap.rally_saves} if wrap and wrap.rally_saves else {}),
+        **({"oath_saves": wrap.oath_saves} if wrap and wrap.oath_saves else {}),
         "threshold_walk_returns": wrap.threshold_walk_returns if wrap else [],
         "exhaustion_narration": exhaustion_narration,
         "legendary_available": wrap_adv.legendary_available,

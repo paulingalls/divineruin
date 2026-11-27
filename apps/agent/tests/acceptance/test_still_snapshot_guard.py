@@ -82,6 +82,7 @@ async def test_dormant_ledger_distinguishes_legacy_and_corrupt_shapes(still, his
     prior = deepcopy(dormant)
     # A snapshot from before party aggression history also predates the rally ledger.
     del prior["snapshot"]["encounter_facts"]["party_aggressors"]
+    del prior["snapshot"]["encounter_facts"]["opening_actors"]
     del prior["snapshot"]["encounter_facts"]["rally_pending"]
     del prior["snapshot"]["encounter_facts"]["yielded_ally_attackers"]
     if history == "absent":
@@ -196,7 +197,13 @@ async def test_final_anchor_write_failure_rolls_back_before_retry(still, monkeyp
 async def test_discover_check_cannot_reveal_still_anchors(still):
     await enter(still)
     events = published_payloads(still.sd.room)
-    roll = {"kind": "discover", "skill": "perception", "target": "still_anchors", "hearing_only": False}
+    roll = {
+        "kind": "discover",
+        "synergy_context": "none",
+        "skill": "perception",
+        "target": "still_anchors",
+        "hearing_only": False,
+    }
     refusal = await still.command("check", {"roll": roll}, error=True)
     assert "Still discovery requires a declared Interact search action" in refusal
     assert (await still.reload()).still_encounter["revealed_ids"] == []

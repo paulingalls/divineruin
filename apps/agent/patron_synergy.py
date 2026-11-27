@@ -1,6 +1,6 @@
 """Pure selection of validated, authored archetype enhancements."""
 
-from typing import Literal, TypedDict
+from typing import NotRequired, TypedDict
 
 from _gods_content import archetype_ids, load_gods
 
@@ -85,7 +85,9 @@ class ContextSynergyReceipt(TypedDict):
     clause_id: str | None
     clause_name: str | None
     effect: str | None
-    reason: Literal["applied", "unheld", "skill_mismatch"]
+    reason: str
+    oath_justice: NotRequired[dict]
+    automatic_discovery: NotRequired[dict]
 
 
 CONTEXT_TAGS = frozenset(
@@ -103,7 +105,32 @@ def validate_synergy_context(tag: str) -> str:
     return tag
 
 
-def context_skill_bonus(player: dict, skill: str, tag: str) -> ContextSynergyReceipt | None:
+def context_skill_bonus(
+    player: dict,
+    skill: str,
+    tag: str,
+    *,
+    player_id: str | None = None,
+    in_combat: bool = False,
+    auto_fail: bool = False,
+) -> ContextSynergyReceipt | None:
+    from oath_justice import CLAUSE, TAG, skill_receipt
+
+    validate_synergy_context(tag)
+    if tag == TAG:
+        if player_id is None:
+            raise ValueError("Justice at stake requires a player identity")
+        receipt = skill_receipt(player, player_id, skill, in_combat=in_combat, auto_fail=auto_fail)
+        return ContextSynergyReceipt(
+            tag=tag,
+            applied=bool(receipt["modifier"]),
+            bonus=receipt["modifier"],
+            clause_id=CLAUSE,
+            clause_name="Oath of Justice",
+            effect=None,
+            reason=receipt["reason"],
+            oath_justice=receipt,
+        )
     if tag == "none":
         return None
     patron = (player.get("divine_favor") or {}).get("patron")

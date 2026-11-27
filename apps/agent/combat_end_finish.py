@@ -95,6 +95,8 @@ def finish(
         "loot": loot,
         "currency_gold": currency_gold,
     }
+    if oath_changes := end_data.get("oath_changes"):
+        response["oath_changes"] = oath_changes
     if ended_forms := end_data.get("wild_shape_ended"):
         response["wild_shape_ended"] = ended_forms
     if judgment_rewards := end_data.get("judgment_rewards"):

@@ -233,6 +233,7 @@ async def _packetless_turn_start(
         state,
         actor,
         conn=packet_deps["conn"],
+        queries=packet_deps["queries"],
         concentration_break_mod=packet_deps["concentration_break_mod"],
         sink=packet_deps["sink"],
         progress=progress.scope("choir_aura") if progress is not None else None,

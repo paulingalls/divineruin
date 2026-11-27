@@ -187,6 +187,7 @@ async def test_legacy_combat_records_new_attempts(world: SimpleNamespace, versio
             del data["encounter_facts"]
         else:
             facts = data["encounter_facts"]
+            del facts["opening_actors"]
             del facts[FACT]
             if version < 7:
                 del facts["rally_pending"]

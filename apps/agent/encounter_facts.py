@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from combat_damage_results import AutomaticDamageResult, SaveDamageResult
     from combat_participant import CombatParticipant
     from combat_state import CombatState
+    from session_data import SessionData
 
 MORTAEN_RENEWAL = "mortaen_death_feeds_renewal"
 ZHAEL_THREADED_BLADE = "zhael_threaded_blade"
@@ -34,6 +35,7 @@ class EncounterFacts(TypedDict):
     death_save_success_round: dict[str, int]
     misses: dict[str, list[str]]
     once_spent: dict[str, list[str]]
+    opening_actors: dict[str, str]
     party_aggressors: dict[str, list[str]] | None
     rally_pending: dict[str, str]
     yielded_ally_attackers: list[str]
@@ -46,6 +48,7 @@ def empty() -> EncounterFacts:
         "death_save_success_round": {},
         "misses": {},
         "once_spent": {},
+        "opening_actors": {},
         "party_aggressors": {},
         "rally_pending": {},
         "yielded_ally_attackers": [],
@@ -93,10 +96,11 @@ def validate_history(value: object) -> dict[str, list[str]] | None:
 
 def validate(value: object) -> EncounterFacts:
     current = EncounterFacts.__required_keys__
-    pre_yield = current - {"yielded_ally_attackers"}
+    pre_attribution = current - {"opening_actors"}
+    pre_yield = pre_attribution - {"yielded_ally_attackers"}
     previous = pre_yield - {"rally_pending"}
     prior = previous - {"party_aggressors"}
-    if not isinstance(value, dict) or value.keys() not in (current, pre_yield, previous, prior):
+    if not isinstance(value, dict) or value.keys() not in (current, pre_attribution, pre_yield, previous, prior):
         raise ValueError(f"encounter_facts requires {', '.join(sorted(prior))} and a supported snapshot shape")
     history = value.get("party_aggressors")
     spent = _id_map(value["once_spent"], "once_spent")
@@ -105,7 +109,11 @@ def validate(value: object) -> EncounterFacts:
         raise ValueError("encounter_facts.rally_pending requires a map of nonblank string IDs")
     if not pending.keys() <= set(spent.get(ZHAEL_RALLY, [])):
         raise ValueError("encounter_facts.rally_pending requires each source to have spent its rally")
+    openings = value.get("opening_actors", {})
+    if not isinstance(openings, dict) or not all(_is_id(foe) and _is_id(actor) for foe, actor in openings.items()):
+        raise ValueError("encounter_facts.opening_actors requires a map of nonblank string IDs")
     return {
+        "opening_actors": dict(openings),
         "ally_downers": _ids(value["ally_downers"], "ally_downers"),
         "attacked": _ids(value["attacked"], "attacked"),
         "death_save_success_round": _death_save_rounds(value["death_save_success_round"]),
@@ -227,9 +235,22 @@ async def renew_on_death(
     *,
     queries,
     conn: Connection | None,
+    session: SessionData | None = None,
 ) -> list[dict]:
     if state is None or counted_before or not counted_death(target):
         return []
+
+    if not target.is_ally:
+        from oath_timed import settle
+
+        await settle(
+            state,
+            conn=conn,
+            reason="target_defeated",
+            round_number=state.round_number,
+            target_id=target.id,
+            session=session,
+        )
 
     receipts = []
     for recipient in sorted(state.participants, key=lambda p: p.id):

@@ -19,7 +19,7 @@ async def test_failed_inner_fire_restores_live_state_and_allows_one_retry(failur
     before = original.to_dict()
     session.concentration.spell_id = "divine_bless"
     database, queries, hp, resonance, events, dice = _mocks(_player(hp_current=3), roll_total=6)
-    conn = object()
+    conn = MagicMock()
     fail_now = True
 
     @asynccontextmanager

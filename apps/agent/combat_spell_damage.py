@@ -21,6 +21,7 @@ from combat_fate_rolls import packet_save
 from combat_legendary_resistance import finalize_save, override_fields
 from combat_spell_profile import DICE, scaled
 from combat_support import _resolve_attack_packet, apply_attack_result, apply_rolled_attack
+from oath_justice import attack_receipt
 from patron_synergy_combat import attack_player
 from rules_engine import attribute_modifier, proficiency_bonus
 from zhael_fate import candidates
@@ -245,6 +246,8 @@ async def _roll_save_damage(
                 combat_state=state,
             ),
             state=state,
+            queries=queries,
+            conn=conn,
         )
         if save is None:
             return None
@@ -314,6 +317,7 @@ async def _roll_save_damage(
         "success": save.success,
         "half_on_success": profile["half"],
         **override_fields(save),
+        **save.oath_fields(),
         **encounter_facts.rally_receipt(target.id, save.rally_sources),
     }
     return roll, save_info
@@ -359,6 +363,10 @@ async def _land_attack(
                 defender=defender,
                 season=await thyra_seasons.season_for(player, conn=conn),
             )
+            if (
+                justice := await attack_receipt(session, state, caster, target, player, queries=queries, conn=conn)
+            ) is not None:
+                attacker_data["oath_justice"] = justice
             prepared = check_resolution_attack.prepare_attack(
                 attacker_data, action, ac, attack_mod=modifier, target_conditions=target.conditions
             )

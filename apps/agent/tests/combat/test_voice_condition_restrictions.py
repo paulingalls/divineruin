@@ -178,7 +178,9 @@ async def test_public_hearing_and_sight_routes(kind, candidate, monkeypatch, moc
             hearing_only=True,
         )
         if kind == "skill"
-        else DiscoverCheck(kind="discover", skill="perception", target="wall", hearing_only=True)
+        else DiscoverCheck(
+            kind="discover", skill="perception", target="wall", hearing_only=True, synergy_context="none"
+        )
     )
     result = json.loads(await check_tools.check(ctx, payload))
     assert result["roll"] == 0

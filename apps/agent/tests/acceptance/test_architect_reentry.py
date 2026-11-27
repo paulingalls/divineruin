@@ -77,6 +77,7 @@ async def test_flee_retains_damaged_owner_and_wall(fight, history):
             del snapshot["encounter_facts"]
         else:
             del snapshot["encounter_facts"]["party_aggressors"]
+            del snapshot["encounter_facts"]["opening_actors"]
             del snapshot["encounter_facts"]["rally_pending"]
             del snapshot["encounter_facts"]["yielded_ally_attackers"]
         await db_mutations.set_player_flag(

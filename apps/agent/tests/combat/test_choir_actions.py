@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from combat._catalog_fixtures import deps, setup
+from combat._helpers import save_result
 from creature_combat_helpers import catalog
 from sample_fixtures import make_context
 from voice_condition_fixtures import spatial_record
@@ -10,7 +11,7 @@ from voice_condition_fixtures import spatial_record
 from combat_packet import _resolve_one_packet
 
 SAVE_ROLL = "check_resolution_save.roll_participant_save"
-FAILED_SAVE = SimpleNamespace(success=False, rally_sources=())
+FAILED_SAVE = save_result(False)
 
 SCREAM = {
     "kind": "attack",
@@ -23,18 +24,7 @@ async def test_memory_scream_save_negates(success):
     state, actor, packet = setup(SCREAM)
     actor.creature_id = "hollow_choir"
     actor.hp_current = actor.hp_max = 100
-    saves = SimpleNamespace(
-        rally_sources=(),
-        success=success,
-        save_type="wisdom",
-        roll=20 if success else 1,
-        total=20 if success else 1,
-        dc=18,
-        narrative_hint="",
-        dramatic=False,
-        context="",
-        advantage_applied=False,
-    )
+    saves = save_result(success, save_type="wisdom", roll=20 if success else 1, dc=18)
     d = deps()
     d["concentration_break_mod"].break_concentration_on_incapacitation = AsyncMock(return_value=None)
     with (
@@ -136,18 +126,7 @@ async def test_cacophony_branch_conditions(success):
     state, actor, packet = setup(action)
     actor.creature_id = "hollow_choir"
     actor.hp_current = actor.hp_max = 100
-    save = SimpleNamespace(
-        rally_sources=(),
-        success=success,
-        save_type="constitution",
-        roll=1,
-        total=1,
-        dc=18,
-        narrative_hint="",
-        dramatic=False,
-        context="",
-        advantage_applied=False,
-    )
+    save = save_result(success, save_type="constitution", roll=1, dc=18)
     d = deps()
     d["concentration_break_mod"].break_concentration_on_incapacitation = AsyncMock(return_value=None)
     with (
@@ -171,18 +150,7 @@ async def test_choir_range_target_boundaries(distance, included):
     spatial_record(state)["positions"][state.participants[0].id] = {"x": distance, "y": 0, "z": 0}
     d = deps()
     d["concentration_break_mod"].break_concentration_on_incapacitation = AsyncMock(return_value=None)
-    save = SimpleNamespace(
-        rally_sources=(),
-        success=False,
-        save_type="wisdom",
-        roll=1,
-        total=1,
-        dc=18,
-        narrative_hint="",
-        dramatic=False,
-        context="",
-        advantage_applied=False,
-    )
+    save = save_result(False, save_type="wisdom", roll=1, dc=18)
     with (
         patch(SAVE_ROLL, return_value=save),
         patch("combat_enemy_action.dice_roll", return_value=SimpleNamespace(total=12)),
@@ -202,9 +170,7 @@ async def test_dissonant_hit_then_save(hit, success):
     d = deps()
     d["resolver"].resolve_attack.side_effect = None
     d["resolver"].resolve_attack.return_value = _attack_result(hit=hit)
-    save = SimpleNamespace(
-        success=success, save_type="constitution", roll=1, total=1, dc=18, advantage_applied=False, rally_sources=()
-    )
+    save = save_result(success, roll=1, dc=18)
     with patch(SAVE_ROLL, return_value=save) as rolls:
         await _resolve_one_packet(make_context().userdata, state, packet, **d)
     assert rolls.call_count == int(hit)
@@ -348,7 +314,7 @@ async def test_melody_recharge_hold_reload(face, recharged):
     state, actor, packet = setup(action)
     actor.creature_id = "hollow_choir"
     with (
-        patch(SAVE_ROLL, return_value=SimpleNamespace(success=True, rally_sources=())) as save,
+        patch(SAVE_ROLL, return_value=save_result(True)) as save,
         patch("dice.roll") as duration,
     ):
         assert (await _resolve_one_packet(make_context().userdata, state, packet, **deps()))["resolved"]

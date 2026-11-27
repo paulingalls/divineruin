@@ -110,6 +110,7 @@ async def resolve_effect(
             bonus_dice_eligible=False,
             advantage=reaction_save_advantage,
             combat_state=state,
+            originating_participant_id=actor.id,
         ),
         state=state,
     )
@@ -126,6 +127,7 @@ async def resolve_effect(
         "resolved": True,
         "save_success": save.success,
         **override_fields(save),
+        **save.oath_fields(),
         **encounter_facts.rally_receipt(target.id, save.rally_sources),
     }
     if reaction_save_advantage and save.advantage_applied:

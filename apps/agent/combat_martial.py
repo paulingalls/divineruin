@@ -423,11 +423,18 @@ async def bash_save(
             originating_participant_id=actor.id,
             combat_state=state,
         ),
+        state=state,
     )
     if save is None:
         return
     save = finalize_save(state, target, save, failed_conditions=("stunned",))
-    receipt.update(override_fields(save), save_success=save.success)
+    receipt.update(
+        override_fields(save),
+        save_success=save.success,
+        save_roll=save.roll,
+        save_total=save.total,
+        **save.oath_fields(),
+    )
     if save.success:
         receipt["condition_resisted"] = "stunned"
     elif _land_condition_on_one(state, target.id, actor, "stunned", SHIELD_BASH, packet=receipt, duration=1):
