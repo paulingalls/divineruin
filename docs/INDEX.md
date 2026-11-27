@@ -1,7 +1,8 @@
 # Documentation Index
 
-Run `python3 scripts/doc_index.py --write` after editing docs. Validate with
-`python3 scripts/doc_index.py`. Scope: every regular `docs/**/*.md` file,
+Run `python3 scripts/doc_index.py --write` after editing docs. The commit hook
+runs `python3 scripts/doc_index.py` to validate the index and milestone counts.
+The index covers every regular `docs/**/*.md` file,
 including nested directories; `docs/INDEX.md` is explicitly excluded. Non-Markdown
 assets and source files are excluded. `decisions/`, `ideas/`, `milestones/` and
 `mockups/` are listed by path and line count only; every other doc gets a section
@@ -973,7 +974,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/REMAINING.md (215 lines)
+## milestones/REMAINING.md (209 lines)
 
 ---
 

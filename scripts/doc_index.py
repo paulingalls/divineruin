@@ -1,4 +1,4 @@
-"""Regenerate the human-readable documentation catalog from docs/**/*.md."""
+"""Check or regenerate the documentation index and milestone counts."""
 
 from __future__ import annotations
 
@@ -11,8 +11,9 @@ ROW = re.compile(r"^\| (.*?) \| (.*?) \| (.*?) \|$", re.MULTILINE)
 LIST_DIRS = {"decisions", "ideas", "milestones", "mockups"}
 HEADER = """# Documentation Index
 
-Run `python3 scripts/doc_index.py --write` after editing docs. Validate with
-`python3 scripts/doc_index.py`. Scope: every regular `docs/**/*.md` file,
+Run `python3 scripts/doc_index.py --write` after editing docs. The commit hook
+runs `python3 scripts/doc_index.py` to validate the index and milestone counts.
+The index covers every regular `docs/**/*.md` file,
 including nested directories; `docs/INDEX.md` is explicitly excluded. Non-Markdown
 assets and source files are excluded. `decisions/`, `ideas/`, `milestones/` and
 `mockups/` are listed by path and line count only; every other doc gets a section
@@ -154,6 +155,130 @@ def validate_descriptions(index: str) -> None:
                     raise ValueError(f"empty description for {path}: {title}")
 
 
+def phase_rows(source: str, heading: str, pattern: str) -> dict[int, re.Match[str]]:
+    """Find the phase rows within one section, keeping their source offsets."""
+    section = re.compile(rf"^## {re.escape(heading)}\n.*?(?=^## |\Z)", re.MULTILINE | re.DOTALL)
+    sections = list(section.finditer(source))
+    if len(sections) != 1:
+        raise ValueError(f"expected one {heading} section, found {len(sections)}")
+    row_pattern = re.compile(pattern)
+    rows = {}
+    for row in re.compile(r"^\|(?! Phase \||---\|)[^\n]+$", re.MULTILINE).finditer(source, *sections[0].span()):
+        match = row_pattern.match(source, row.start(), row.end())
+        if match is None or int(match["phase"]) in rows:
+            raise ValueError(f"{heading}: malformed or duplicate phase row: {row[0]}")
+        rows[int(match["phase"])] = match
+    if not rows:
+        raise ValueError(f"{heading}: no phase rows")
+    return rows
+
+
+def field_edit(
+    source: str,
+    pattern: str,
+    field: str,
+    expected: str,
+) -> tuple[int, int, str, str]:
+    matches = list(re.finditer(pattern, source, re.MULTILINE))
+    if len(matches) != 1:
+        raise ValueError(f"{field}: expected one field, found {len(matches)}")
+    return value_edit(matches[0], field, expected)
+
+
+def value_edit(match: re.Match[str], field: str, expected: str) -> tuple[int, int, str, str]:
+    start, end = match.span("value")
+    return start, end, expected, f"{field}: {match['value']!r} → {expected!r}"
+
+
+def milestone_updates(docs: Path) -> tuple[dict[Path, str], list[str]]:
+    readme_file = docs / "milestones/README.md"
+    remaining_file = docs / "milestones/REMAINING.md"
+    readme = readme_file.read_text()
+    remaining = remaining_file.read_text()
+    link = r"\[[^\]\n]+\]\((?P<file>\w[\w.-]*\.md)\)"
+    inventory = phase_rows(readme, "Phase Files", rf"\| (?P<phase>\d+) \| {link} \| ")
+    delivered = phase_rows(
+        readme,
+        "Phase Completion Status",
+        rf"\| (?P<phase>\d+) · [^|]+ \| {link} \| [^|]+ \| (?P<value>[^|]*) \| ",
+    )
+    if set(inventory) != set(delivered):
+        raise ValueError("README.md: phase numbers in Phase Files and Phase Completion Status differ")
+    if len({row["file"] for row in inventory.values()}) != len(inventory):
+        raise ValueError("README.md: duplicate phase file in Phase Files")
+
+    counts = {}
+    readme_edits = []
+    for phase, row in inventory.items():
+        if row["file"] != delivered[phase]["file"]:
+            raise ValueError(f"README.md: Phase {phase} file differs between the phase tables")
+        criteria = re.findall(
+            r"^[ \t]*- \[([x ])\](?=[ \t]|$)",
+            (readme_file.parent / row["file"]).read_text(),
+            re.MULTILINE,
+        )
+        checked = criteria.count("x")
+        counts[phase] = (checked, len(criteria))
+        readme_edits.append(
+            value_edit(
+                delivered[phase],
+                f"Phase {phase} Delivered",
+                f"{checked}/{len(criteria)} ACs",
+            )
+        )
+    checked = sum(done for done, _ in counts.values())
+    total = sum(count for _, count in counts.values())
+    if not total:
+        raise ValueError("README.md: no acceptance criteria in the phase files")
+
+    open_rows = phase_rows(
+        remaining,
+        "5. Incomplete implementation phases",
+        r"\| \*\*(?P<phase>\d+) · [^|]+ \| [^|]+ \| (?P<value>[^|]*) \| ",
+    )
+    remaining_edits = []
+    table_total = 0
+    for phase, row in open_rows.items():
+        if phase not in counts:
+            raise ValueError(f"REMAINING.md: Phase {phase} is missing from README.md Phase Files")
+        done, count = counts[phase]
+        open_count = count - done
+        table_total += open_count
+        remaining_edits.append(value_edit(row, f"§5 Phase {phase} Open ACs", str(open_count)))
+    fields = [
+        (
+            r"^\*\*Position: (?P<value>[^\n]+?)\*\*",
+            "Position",
+            f"{checked} / {total} acceptance criteria — {checked * 100 // total}%",
+        ),
+        (
+            r"\*\*(?P<value>[^*\n]+) criteria remain unchecked\.\*\*",
+            "unchecked count",
+            str(total - checked),
+        ),
+        (
+            r"^The table sums to (?P<value>[^\n]+?) open criteria are",
+            "§5 table sum and other open count",
+            f"{table_total}. The other {total - checked - table_total}",
+        ),
+    ]
+    for pattern, field, expected in fields:
+        remaining_edits.append(field_edit(remaining, pattern, field, expected))
+
+    updates = {}
+    differences = []
+    for path, source, edits in [
+        (readme_file, readme, readme_edits),
+        (remaining_file, remaining, remaining_edits),
+    ]:
+        for start, end, expected, description in sorted(edits, reverse=True):
+            if source[start:end] != expected:
+                source = source[:start] + expected + source[end:]
+                differences.append(f"docs/milestones/{path.name} {description}")
+        updates[path] = source
+    return updates, differences
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--inventory", action="store_true")
@@ -166,11 +291,21 @@ def main() -> None:
         return
     index_file = docs / "INDEX.md"
     current = index_file.read_text()
-    result = render(docs, current)
+    try:
+        updates, differences = milestone_updates(docs)
+        result = render(docs, current)
+    except (OSError, ValueError) as error:
+        raise SystemExit(str(error)) from None
+    # Milestone summary replacements preserve line counts, so the index can be rendered before writing.
     if args.write:
+        for path, source in updates.items():
+            path.write_text(source)
         index_file.write_text(result)
-    elif result != current:
-        raise SystemExit("docs/INDEX.md differs; run --write")
+        return
+    if result != current:
+        differences.append("docs/INDEX.md differs")
+    if differences:
+        raise SystemExit("\n".join([*differences, "Run python3 scripts/doc_index.py --write"]))
 
 
 if __name__ == "__main__":
