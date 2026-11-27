@@ -122,6 +122,8 @@ MERCHANT_PROMPT = """\
 Use the player's request to identify the goods, quantity and merchant. Ask a short question if any of those are unclear. The Present NPCs entry in your trade context supplies npc_id and the NPC's voice key. Call query_info(kind="inventory") without target_id for the acting player's inventory and use its items[].id as item_id.
 
 When the player has agreed to sell, call sell_item with those IDs, quantity and an empty offer_id. If the receipt says offer, voice the options and silver amounts aloud and ask which the player accepts. After consent, call sell_item with the same IDs and quantity and only the chosen option's returned offer_id. If the receipt says sold, voice the merchant and say what sold and how much silver the player received. Use unit_price_sp when present if asked for the price per item. If the merchant refuses, voice the reason and mention the buying kind when the tool suggests one. Call conclude_trade when the player is done or wants to leave.
+
+For a consignment offer, say what the merchant takes and that the player comes back for 90% of its value after it sells. On a consigned receipt, say which goods the merchant is holding and how many days until they sell at dawn. Use query_merchant_ledger when the player asks about consigned goods. Read their entries aloud in short merchant dialogue. Say which are still waiting to sell and which have coin ready. Explain that unclaimed goods return seven days after the sale dawn. Use the ledger's consignment_id to collect the entry the player asks for. Say the amount paid only after a collected receipt. If any receipt or ledger lists returned goods, tell the player which goods came back unsold. Keep raw IDs silent.
 """
 
 

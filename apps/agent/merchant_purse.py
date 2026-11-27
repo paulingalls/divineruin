@@ -4,6 +4,7 @@ import hashlib
 import json
 from typing import TypedDict
 
+from consignment import OFFER_PREFIX, Consignment
 from workspace import whole_silver
 
 
@@ -12,7 +13,7 @@ class MerchantState(TypedDict):
     max_gold_sp: int
     last_restock_day: int
     buyback_history: dict[str, int]
-    consigned_items: list[dict]
+    consigned_items: list[Consignment]
 
 
 class SaleOption(TypedDict):
@@ -47,25 +48,27 @@ def sale_terms(
         return [], {"reason": reason, "full_price_quantity": full_remaining, "discounted_quantity": 1}
 
     cash = merchant["current_gold_sp"]
-    if cash == 0:
-        return [], {"reason": "I'm out of coin until dawn."}
     total_sp = unit_sp * quantity
+    out_of_coin = {"reason": "I'm out of coin until dawn."}
     if bought == limit:
+        if not cash:
+            return [], out_of_coin
         discount = whole_silver(unit_sp, 0.5)
         return [("discount" if cash >= discount else "discount_partial", min(cash, discount))], {}
     if cash >= total_sp:
         return [("full", total_sp)], {}
-    options = [("partial", cash)]
+    options = [("partial", cash)] if cash else []
     if disposition in ("friendly", "trusted"):
         options.append(("consignment", total_sp))
-    return options, {}
+    return options, {} if options else out_of_coin
 
 
 def bind_sale_option(kind: str, total_sp: int, quantity: int, quote_state: tuple) -> SaleOption:
     encoded = json.dumps((kind, total_sp, quantity, quote_state), sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha256(encoded.encode()).hexdigest()
     return SaleOption(
         kind=kind,
         quantity=quantity,
         total_price_sp=total_sp,
-        offer_id=hashlib.sha256(encoded.encode()).hexdigest(),
+        offer_id=OFFER_PREFIX + digest if kind == "consignment" else digest,
     )

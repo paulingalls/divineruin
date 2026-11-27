@@ -13,6 +13,7 @@ from acceptance.merchant_harness import (
     merchant_session,
     rows,
     stock,
+    wait_for_merchant_readers,
 )
 
 import db
@@ -63,7 +64,7 @@ async def test_finite_purse_and_empty_refusal(reset_db_pool: str) -> None:
         before = await rows(sale.player_id), await merchant_row(GRIMJAW), sale.packets.copy()
         receipt = await sale.sell("club_wooden", GRIMJAW, 1)
         response = json.loads(receipt.output)
-        assert response["status"] == "refused" and "dawn" in response["reason"]
+        assert response["status"] == "refused" and "out of coin" in response["reason"]
         assert (await rows(sale.player_id), await merchant_row(GRIMJAW), sale.packets) == before
 
 
@@ -174,10 +175,12 @@ async def test_discount_offer_can_be_limited_by_the_purse(reset_db_pool: str) ->
         assert (await purse(GRIMJAW))["buyback_history"] == {SWORD: 4}
 
         await stock(sale.player_id, "club_wooden", 1)
-        before_refusal = await rows(sale.player_id), await merchant_row(GRIMJAW), sale.packets.copy()
-        refusal = json.loads((await sale.sell("club_wooden", GRIMJAW, 1)).output)
-        assert refusal["status"] == "refused" and "out of coin" in refusal["reason"]
-        assert (await rows(sale.player_id), await merchant_row(GRIMJAW), sale.packets) == before_refusal
+        before_offer = await rows(sale.player_id), await merchant_row(GRIMJAW), sale.packets.copy()
+        offer = json.loads((await sale.sell("club_wooden", GRIMJAW, 1)).output)
+        assert offer["status"] == "offer"
+        (option,) = offer["options"]
+        assert option["kind"] == "consignment"
+        assert (await rows(sale.player_id), await merchant_row(GRIMJAW), sale.packets) == before_offer
 
 
 async def test_two_sellers_share_one_dawn_refresh(reset_db_pool: str, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -185,13 +188,21 @@ async def test_two_sellers_share_one_dawn_refresh(reset_db_pool: str, monkeypatc
     now = dawn - timedelta(microseconds=1)
     monkeypatch.setattr(db_mutations_merchant, "datetime", SimpleNamespace(now=lambda _tz: now))
     day = aethos_day(now)
-    ledger = [{"item_id": "club_wooden"}]
-    pool = await db.get_pool()
     async with (
         merchant_scope(GRIMJAW),
         merchant_session(own_merchant=False, held=3) as first,
         merchant_session(own_merchant=False, held=1) as second,
     ):
+        ledger = [
+            {
+                "consignment_id": "fixture",
+                "consignor_id": first.player_id,
+                "item_id": "club_wooden",
+                "quantity": 1,
+                "sale_day": day + 3,
+                "full_price_sp": 3,
+            }
+        ]
         await fund_merchant(
             GRIMJAW, 600, current_gold_sp=0, last_restock_day=day, buyback_history={SWORD: 4}, consigned_items=ledger
         )
@@ -201,19 +212,11 @@ async def test_two_sellers_share_one_dawn_refresh(reset_db_pool: str, monkeypatc
         assert not first.packets
         now = dawn
 
-        async def waiters() -> int:
-            return await pool.fetchval("""
-                SELECT count(DISTINCT l.pid) FROM pg_locks l JOIN pg_stat_activity a USING (pid)
-                WHERE NOT l.granted AND a.datname=current_database() AND a.query LIKE '%merchant_state%'
-            """)
-
         async with asyncio.TaskGroup() as tasks:
             async with db.transaction() as blocker:
                 await blocker.fetchval("SELECT data FROM merchant_state WHERE npc_id=$1 FOR UPDATE", GRIMJAW)
                 results = [tasks.create_task(seller.sell(SWORD, GRIMJAW, 1)) for seller in (first, second)]
-                async with asyncio.timeout(10):
-                    while await waiters() < 2:
-                        await asyncio.sleep(0.02)
+                await wait_for_merchant_readers(2)
 
         for seller, task, held in zip((first, second), results, (2, 0), strict=True):
             receipt = task.result()
