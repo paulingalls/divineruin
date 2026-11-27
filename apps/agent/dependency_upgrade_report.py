@@ -6,8 +6,10 @@ import subprocess
 import sys
 import tomllib
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
+
+from packaging.specifiers import SpecifierSet
 
 from ci_toolchain_validation import validate_ci_toolchain
 from dependency_report_render import render_markdown
@@ -168,7 +170,7 @@ def _report_rows(report: dict) -> dict[tuple[str, str, str], dict]:
 
 
 def _require_metadata(report: dict) -> None:
-    for field in ("registry_snapshot_date", "python_version", "uv_version"):
+    for field in ("registry_snapshot_date", "registry_acquired_at", "python_version", "uv_version"):
         if not report.get(field):
             raise ValueError(f"report metadata is missing: {field}")
     if report.get("projects") != list(PROJECTS):
@@ -179,6 +181,14 @@ def _require_metadata(report: dict) -> None:
         raise ValueError("registry snapshot date must be ISO 8601 YYYY-MM-DD") from error
     if registry_date.isoformat() != report["registry_snapshot_date"]:
         raise ValueError("registry snapshot date must be ISO 8601 YYYY-MM-DD")
+    _timestamp(report["registry_acquired_at"], "registry acquisition")
+
+
+def _timestamp(value: str, label: str) -> datetime:
+    timestamp = datetime.fromisoformat(value)
+    if timestamp.utcoffset() is None:
+        raise ValueError(f"{label} timestamp must include a time zone")
+    return timestamp
 
 
 def current_uv_version() -> str:
@@ -192,6 +202,39 @@ def _vendor_specifier(requirements: list[str], dependency: str) -> str | None:
         if name == dependency:
             return specifier
     return None
+
+
+def _validate_hold(root: Path, acquired_at: str, row: dict, snapshot: EnvironmentSnapshot) -> None:
+    project, name = row["project"], row["name"]
+    label = f"{project}/{name}"
+    hold = row.get("held_back_by")
+    if not isinstance(hold, dict) or not hold.get("reason"):
+        raise ValueError(f"holdback and reason are required: {label}")
+
+    kind = hold.get("kind")
+    latest = row["latest_stable"]
+    if kind == "manifest":
+        if hold.get("specifier") != row["requested"] or SpecifierSet(row["requested"]).contains(latest):
+            raise ValueError(f"manifest bound does not exclude latest: {label}")
+    elif kind == "release-age":
+        manifest = tomllib.loads((root / project / "pyproject.toml").read_text())
+        policy = manifest.get("tool", {}).get("uv", {}).get("exclude-newer")
+        duration = re.fullmatch(r"(\d+) days?", policy or "")
+        if duration is None or hold.get("policy") != policy or not hold.get("published_at"):
+            raise ValueError(f"release-age hold differs from uv policy or lacks publication time: {label}")
+        acquired = _timestamp(acquired_at, "registry acquisition")
+        published = _timestamp(hold["published_at"], f"{label} publication")
+        if not timedelta(0) <= acquired - published < timedelta(days=int(duration[1])):
+            raise ValueError(f"latest falls outside the release-age hold window: {label}")
+    elif kind == "vendor":
+        vendor = normalize_name(hold.get("package", ""))
+        if not hold.get("version") or snapshot.versions.get(vendor) != hold["version"]:
+            raise ValueError(f"held-back vendor version differs from installed metadata: {label}")
+        specifier = _vendor_specifier(snapshot.requirements.get(vendor, []), name)
+        if not specifier or specifier != hold.get("specifier") or SpecifierSet(specifier).contains(latest):
+            raise ValueError(f"vendor metadata does not support the recorded hold: {label}")
+    else:
+        raise ValueError(f"unknown holdback kind {kind!r}: {label}")
 
 
 def validate_report(*, root: Path, report: dict, snapshots: dict[str, EnvironmentSnapshot]) -> None:
@@ -243,23 +286,11 @@ def validate_report(*, root: Path, report: dict, snapshots: dict[str, Environmen
             raise ValueError(f"recorded installed version differs from environment: {project}/{name}")
         if not row.get("latest_stable"):
             raise ValueError(f"latest stable version is empty: {project}/{name}")
-        held_back = row.get("held_back_by")
         if row["latest_stable"] == locked:
-            if held_back:
+            if row.get("held_back_by"):
                 raise ValueError(f"holdback recorded for current dependency: {project}/{name}")
             continue
-        if not isinstance(held_back, dict):
-            raise ValueError(f"held_back_by is required: {project}/{name}")
-        for field in ("package", "version", "specifier", "reason"):
-            if not held_back.get(field):
-                raise ValueError(f"held_back_by.{field} is empty: {project}/{name}")
-        vendor = normalize_name(held_back["package"])
-        vendor_snapshot = snapshots[project]
-        if vendor_snapshot.versions.get(vendor) != held_back["version"]:
-            raise ValueError(f"held-back vendor version differs from installed metadata: {project}/{name}")
-        vendor_specifier = _vendor_specifier(vendor_snapshot.requirements.get(vendor, []), name)
-        if vendor_specifier != held_back["specifier"]:
-            raise ValueError(f"vendor metadata requires {name}{vendor_specifier}, not {name}{held_back['specifier']}")
+        _validate_hold(root, report["registry_acquired_at"], row, snapshots[project])
 
 
 def validate_markdown(root: Path, report: dict) -> None:

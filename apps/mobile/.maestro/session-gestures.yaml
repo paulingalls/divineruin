@@ -1,0 +1,52 @@
+appId: com.divineruin.app
+onFlowComplete:
+  - openLink: "divineruin://settings"
+  - tapOn:
+      text: "Open"
+      optional: true
+  - runFlow:
+      when:
+        visible: "SIGN OUT"
+      commands:
+        - tapOn: "SIGN OUT"
+        - stopApp
+---
+# Continues the auth-form flow using a code from the owned mock-email backend.
+- tapOn:
+    id: "code-input"
+- inputText: ${AUTH_CODE}
+- pressKey: Enter
+- tapOn: "VERIFY"
+- extendedWaitUntil:
+    visible: "AWAKEN"
+    timeout: 15000
+- openLink: "divineruin://session-test?fixture=gestures"
+- tapOn:
+    text: "Open"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "session-hud-swipe-zone"
+    timeout: 15000
+- assertNotVisible: "CHARACTER"
+- swipe:
+    from:
+      id: "session-hud-swipe-zone"
+    direction: UP
+    duration: 400
+- assertVisible: "CHARACTER"
+- tapOn: "MAP"
+- assertVisible: "Market Square"
+- swipe:
+    from:
+      id: "hud-map-canvas"
+      point: "5%,50%"
+    direction: RIGHT
+    duration: 400
+- assertNotVisible: "Market Square"
+- swipe:
+    from:
+      id: "hud-panel-handle"
+    direction: DOWN
+    duration: 400
+- assertNotVisible: "CHARACTER"

@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.85.6
+
+Proof now reruns every reaching acceptance task when a shared agent source defines a function added since the last coverage refresh.
+
+Release steps: none.
+
+## 0.85.5
+
+Proof invalidates every affected acceptance check when coverage for a shared agent source or a reaching acceptance task has yet to be measured.
+
+Release steps: none.
+
+## 0.85.4
+
+Refresh the dependency inventory for the current lockfiles and Expo SDK 58. The manual all-scope report check now validates the refreshed inventory.
+
+Release steps: none.
+
+## 0.85.3
+
+The mobile app now uses Expo SDK 58 with a refreshed LiveKit native audio stack.
+
+Release steps: none.
+
+## 0.85.2
+
+Documented the behavior of all 87 catalog spells. The spell ledger identifies 11 engine-resolved spells, 4 narration-owned spells and 72 spells with unfinished mechanics, each linked to its Phase 14 follow-up.
+
+Release steps: none.
+
 ## 0.85.1
 
 The engine-completeness milestone now records Guardian Intercept and druid/warden Bark Skin as built (v0.85.0).

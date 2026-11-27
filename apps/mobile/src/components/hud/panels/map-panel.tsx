@@ -217,7 +217,7 @@ export function MapPanel() {
   return (
     <View style={styles.container}>
       <GestureDetector gesture={composedGesture}>
-        <Animated.View style={[styles.mapCanvas, animatedContainerStyle]}>
+        <Animated.View testID="hud-map-canvas" style={[styles.mapCanvas, animatedContainerStyle]}>
           {/* Connection lines */}
           {connections.map(({ from, to }) => {
             const fromLayout = MAP_LAYOUT_BY_ID.get(from);
