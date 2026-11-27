@@ -24,24 +24,36 @@ from session_data import SessionData
 
 
 @pytest.mark.parametrize(
-    "disposition,unit,total,held,tainted,guest",
-    [("neutral", 50, 100, 2, 0, False), ("friendly", 55, 110, 3, 0, False), ("unfriendly", 45, 90, 2, 1, True)],
+    "setup,unit,total",
+    [
+        pytest.param({}, 50, 100, id="neutral"),
+        pytest.param({"disposition": "friendly", "held": 3}, 55, 110, id="friendly"),
+        pytest.param({"disposition": "unfriendly", "tainted": 1, "guest": True}, 45, 90, id="unfriendly-guest"),
+        pytest.param(
+            {"disposition": None, "npc": "innkeeper_maren", "location": "millhaven_inn"},
+            45,
+            90,
+            id="maren-default",
+        ),
+    ],
 )
 async def test_sale_commits_receipt_and_snapshots(
-    reset_db_pool: str, disposition: str, unit: int, total: int, held: int, tainted: int, guest: bool
+    reset_db_pool: str, setup: dict[str, Any], unit: int, total: int
 ) -> None:
-    async with merchant_session(disposition=disposition, held=held, tainted=tainted, guest=guest) as sale:
+    npc = setup.get("npc", GRIMJAW)
+    guest = setup.get("guest", False)
+    async with merchant_session(**setup) as sale:
         await stock(sale.player_id, "healing_potion", 1)
         if guest:
             await stock(sale.primary_id, SWORD, 2)
             primary_before = await rows(sale.primary_id)
         before_player, before_inventory = await rows(sale.player_id)
 
-        receipt = await sale.sell(SWORD, GRIMJAW, 2)
+        receipt = await sale.sell(SWORD, npc, 2)
 
         after_player, after_inventory = await rows(sale.player_id)
         assert after_player["gold"] == before_player["gold"] + total / 10
-        if held == 2:
+        if before_inventory[(SWORD, False)]["quantity"] == 2:
             del before_inventory[(SWORD, False)]
         else:
             before_inventory[(SWORD, False)]["quantity"] -= 2
@@ -51,7 +63,7 @@ async def test_sale_commits_receipt_and_snapshots(
         assert not receipt.is_error, receipt.output
         assert json.loads(receipt.output) == {
             "item_id": SWORD,
-            "npc_id": GRIMJAW,
+            "npc_id": npc,
             "quantity": 2,
             "unit_price_sp": unit,
             "total_price_sp": total,

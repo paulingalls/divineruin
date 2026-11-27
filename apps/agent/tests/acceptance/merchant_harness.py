@@ -76,7 +76,7 @@ async def merchant_session(
     npc: str = GRIMJAW,
     item: str = SWORD,
     held: int = 2,
-    disposition: str = "neutral",
+    disposition: str | None = "neutral",
     equipped: bool = False,
     tainted: int = 0,
     guest: bool = False,
@@ -90,7 +90,8 @@ async def merchant_session(
         for player_id in dict.fromkeys((pid, primary)):
             await seed_player(pool, player_id=player_id, location_id=location)
             await db_mutations.update_player_gold(player_id, 7, conn=pool)
-        await db_mutations.set_npc_disposition(npc, pid, disposition, "fixture", conn=pool)
+        if disposition is not None:
+            await db_mutations.set_npc_disposition(npc, pid, disposition, "fixture", conn=pool)
         if held:
             await stock(pid, item, held, equipped=equipped)
         if tainted:
