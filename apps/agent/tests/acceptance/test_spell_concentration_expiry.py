@@ -118,6 +118,8 @@ async def test_carried_bless_ends_with_combat(unravel, natural_end) -> None:
     await fight.invoke(cast, "activate", actor=other, id=PROTECTION, target_id=other)
     assert await save_total(caster) == baseline + 3
     await fight.start()
+    carried = (await saved_player(caster))["concentration"]
+    assert (carried["combat_id"], carried["started_round"]) == (fight.session.combat_state.combat_id, 1)
     for round_number in range(2, 5):
         await fight.declare()
         await fight.finish_round(round_number)
