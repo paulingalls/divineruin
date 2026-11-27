@@ -9,6 +9,8 @@ from encounter_roles import EncounterRole
 if TYPE_CHECKING:
     from wild_shape import WildShapeState
 
+BARK_SKIN_AC_BONUS = 2
+
 
 @dataclass
 class CombatParticipant:
@@ -24,6 +26,7 @@ class CombatParticipant:
     archetype_id: str | None = None
     sneak_attack_round: int | None = None
     iron_resolve_spent: bool = False
+    bark_skin_active: bool = False
     is_fallen: bool = False
     # Instant death (M4.4 story-002): a single hit whose overkill (excess damage past 0) >= hp_max
     # kills outright — skips the Fallen state and death saves entirely. Distinct from is_fallen

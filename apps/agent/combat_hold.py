@@ -37,6 +37,7 @@ from combat_hold_actions import (
     _attack_action,
     _held_declaration,
     _opens_windows,
+    assert_iteration_progress,
     concealed_target_reason,
 )
 from combat_hold_actions import (
@@ -150,14 +151,6 @@ def _assert_single_swing(state, head: dict, action: dict) -> None:
         )
 
 
-def _assert_iteration_progress(state, head: dict, summaries: list[dict], summary_start: int) -> None:
-    popped = not state.held_actions or state.held_actions[0] is not head
-    unresolved = any(summary.get("resolved") is False for summary in summaries[summary_start:])
-    opened = state.open_window is not None
-    if not (popped or unresolved or opened):
-        raise RuntimeError(f"held action for {head['actor_id']!r} made no progress")
-
-
 async def pump(
     session, state, *, packet_deps: dict, contest_rng=None, fate_rolls=None, execution_id: str | None = None
 ) -> list[dict]:
@@ -184,6 +177,9 @@ async def pump(
         )
         await patron_synergy_combat.grant_interceding_rallies(
             state, reaction_packets, closed["target_id"], queries=packet_deps["queries"], conn=packet_deps["conn"]
+        )
+        await patron_synergy_combat.restore_guard_stamina(
+            reaction_packets, queries=packet_deps["queries"], conn=packet_deps["conn"]
         )
         summaries.extend(reaction_packets)
         hesitation_reason = combat_reaction_contest.hesitation_reason(reacted)
@@ -296,7 +292,7 @@ async def pump(
                                 {**head["melee_approach"], "attack_resolved": False, "attack_pending": True}
                             )
                         _open(state, candidate)
-                        _assert_iteration_progress(state, head, summaries, summary_start)
+                        assert_iteration_progress(state, head, summaries, summary_start)
                         return summaries
 
                 if action is not None and head["roll"] is None:
@@ -342,7 +338,7 @@ async def pump(
                                 {**head["melee_approach"], "attack_resolved": False, "attack_pending": True}
                             )
                         _open(state, candidate)
-                        _assert_iteration_progress(state, head, summaries, summary_start)
+                        assert_iteration_progress(state, head, summaries, summary_start)
                         return summaries
 
             summary = await _resolve_held(
@@ -357,7 +353,7 @@ async def pump(
             summary = {"actor_id": head["actor_id"], "resolved": False, "reason": str(exc)}
             logger.error("beat 3: held action for %s unresolved: %s", head["actor_id"], exc)
             summaries.append(strike_summary(head, _with_reshape(head, summary)))
-            _assert_iteration_progress(state, head, summaries, summary_start)
+            assert_iteration_progress(state, head, summaries, summary_start)
             state.held_actions.pop(0)
             continue
 
@@ -370,8 +366,13 @@ async def pump(
         deferred_reactions = head.pop("pending_reaction_packets", [])
         recorded_reactions = reaction_packets if head is reacted else deferred_reactions
         if recorded_reactions:
+            combat_reaction_effect.record_intercept(recorded_reactions, summary)
             combat_reaction_effect.record_shield_wear(recorded_reactions, state, head, summary)
             combat_reaction_effect.record_save_advantage(recorded_reactions, summary)
+            damage = summary.get("damage", 0)
+            await patron_synergy_combat.restore_guard_stamina(
+                recorded_reactions, queries=packet_deps["queries"], conn=packet_deps["conn"], damage=damage
+            )
         summaries.extend(deferred_reactions)
         if window_action is not None and (
             candidate := combat_hold_conditions.window_for(state, head, window_action, summary)
@@ -379,11 +380,11 @@ async def pump(
             head["completed_condition"] = summary
             head["opened"].append(POST_ROLL)
             _open(state, candidate)
-            _assert_iteration_progress(state, head, summaries, summary_start)
+            assert_iteration_progress(state, head, summaries, summary_start)
             return summaries
         summaries.append(strike_summary(head, _with_reshape(head, summary)))
         state.held_actions.pop(0)
-        _assert_iteration_progress(state, head, summaries, summary_start)
+        assert_iteration_progress(state, head, summaries, summary_start)
 
     return summaries
 
@@ -452,6 +453,7 @@ async def _resolve_held(
         deps["resolver"] = _replay_resolver(head)
     if fate_rolls is not None and (session.fate_lock.locked() or head.get("roll_steps")):
         deps["progress"] = PacketRolls(fate_rolls, head.setdefault("roll_steps", {}), deps["queries"], deps["conn"])
+    damage_target = combat_reaction_effect.intercept_target(state, head)
     summary = await _resolve_one_packet(
         session,
         state,
@@ -465,6 +467,7 @@ async def _resolve_held(
             else None,
         ),
         shield_reaction=combat_reaction_effect.shield_reaction(state, head),
+        damage_target=damage_target,
         grapple_blocked=combat_reaction_effect.grapple_blocked(state, head),
         mark_cancelled=mark_cancelled,
         publish_roll=not head.get("roll_published", False),
@@ -478,6 +481,12 @@ async def _resolve_held(
         _reshape_prepared=True,
         **deps,
     )
+    if (
+        damage_target is not None
+        and (fate_rolls is None or fate_rolls.pending is None)
+        and summary.get("damage_target_id") != damage_target.id
+    ):
+        raise ValueError(f"Intercepted hit did not settle damage on {damage_target.id!r}")
     # A paused (Zhael-held) resolution's summary is discarded by the pump; on resume the movement
     # facts join the finished summary.
     if movement := head.get("melee_approach"):

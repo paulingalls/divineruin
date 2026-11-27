@@ -76,7 +76,7 @@ async def test_two_shields_apply_one_maximum_bonus_and_emit_two_packets():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("reverse", [False, True])
-async def test_unwired_ally_spend_cannot_hide_targets_uncanny_dodge(reverse):
+async def test_intercept_carries_the_targets_uncanny_dodge(reverse):
     state = _guarded_ally_state(target_id="player_1")
     spends = [("player_2", "guardian_intercept"), ("player_1", "rogue_uncanny_dodge")]
     _own(state, spends)
@@ -89,9 +89,10 @@ async def test_unwired_ally_spend_cannot_hide_targets_uncanny_dodge(reverse):
     await _drain(ctx, deps, packets)
 
     effects = {packet["actor_id"]: packet["mechanical_effect"] for packet in _reaction_packets(packets)}
-    assert ctx.userdata.combat_state.get_participant("player_1").hp_current == 22
+    assert ctx.userdata.combat_state.get_participant("player_1").hp_current == 25
+    assert ctx.userdata.combat_state.get_participant("player_2").hp_current == 17
     assert _enemy_blow(packets)["damage"] == 3
-    assert effects == {"player_1": "damage_halved", "player_2": None}
+    assert effects == {"player_1": "damage_halved", "player_2": "damage_intercepted"}
 
 
 def _seeded_dice(seed):

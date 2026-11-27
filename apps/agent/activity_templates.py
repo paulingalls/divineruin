@@ -74,7 +74,7 @@ Speech style: {npc_speech_style}
 The player attempted to craft: {recipe_name}
 Outcome: {tier} (roll: {roll}, DC: {dc})
 {recipe_cue}
-{quality_note}
+{quality_note}{crafting_synergy}
 
 Write a short narration (60-120 words) of this crafting outcome.
 Include sensory details — the sound of the hammer, the smell of hot metal, the feel of the work.
@@ -243,6 +243,12 @@ def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list
         return template.format(**ctx), []
     if activity_type == "crafting":
         npc = get_crafting_npc(ctx.get("npc_id", "grimjaw_blacksmith"))
+        common_bond = ctx.get("common_bond")
+        crafting_synergy = (
+            f"\nName {common_bond['name']} as the source of the +{common_bond['bonus']} on the crafting check."
+            if common_bond is not None
+            else ""
+        )
         prompt = template.format(
             npc_name=npc["name"],
             npc_role=npc["role"],
@@ -255,6 +261,7 @@ def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list
             dc=ctx.get("dc", "?"),
             recipe_cue=_format_recipe_cue(ctx),
             quality_note=_format_quality_note(ctx),
+            crafting_synergy=crafting_synergy,
             decision_options=decision_text,
         )
         return prompt, [npc["voice_id"]]

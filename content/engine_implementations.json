@@ -8,6 +8,8 @@
   "aelora_civic_promise": "patron_synergy:context_skill_bonus",
   "aelora_hearth_omen": "patron_synergy:context_skill_bonus",
   "aelora_commerce_persuasion": "patron_synergy:context_skill_bonus",
+  "aelora_common_bond_crafting": "patron_synergy:common_bond_crafting_bonus",
+  "aelora_restoring_guard": "patron_synergy_combat:restore_guard_stamina",
   "thyra_wild_covenant": "patron_synergy:context_skill_bonus",
   "thyra_seasonal_omen": "patron_synergy:context_skill_bonus",
   "nythera_shoreline_keeper": "patron_synergy:context_skill_bonus",

@@ -3,11 +3,11 @@ name = "divineruin-agent"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "livekit-agents~=1.8.12",
-    "livekit-plugins-anthropic~=1.8.12",
-    "livekit-plugins-deepgram~=1.8.12",
-    "livekit-plugins-inworld~=1.8.12",
-    "livekit-plugins-openai~=1.8.12",
+    "livekit-agents~=1.8.13",
+    "livekit-plugins-anthropic~=1.8.13",
+    "livekit-plugins-deepgram~=1.8.13",
+    "livekit-plugins-inworld~=1.8.13",
+    "livekit-plugins-openai~=1.8.13",
     "asyncpg>=0.32.0,<1",
     "redis>=8.1.0",
     "anthropic>=1.17.0,<2",
@@ -26,7 +26,7 @@ dev = [
     "pytest-cov>=7.1.0",
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
-    "ruff>=0.17.5,<1",
+    "ruff>=0.17.6,<1",
     "testcontainers>=4.15.0",
 ]
 

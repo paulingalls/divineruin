@@ -208,7 +208,11 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 
 **Review:** The human approved the final 180-row table on 2026-11-18 (table SHA-256 `5dee713a…`, content SHA-256 `c3238a53…`, commit `903ac541`), closing AC3. The approved table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md` with every changed number. Content and design share the approved corrections, including Nythera’s live Animal Handling +1 instead of advantage. Pending clauses are unavailable.
 
-Layer 4 lookup covers 180 pairings and 200 clauses. 98 are active/engine, 85 are active/narrated, and 17 are pending/engine.
+Layer 4 lookup covers 180 pairings and 200 clauses. 103 are active/engine, 85 are active/narrated, and 12 are pending/engine.
+
+Aelora’s Common Bond gives artificers, bards and diplomats +1 on live Crafting checks, recipe experiments and queued crafting rolls. Both queued crafting entry points save eligibility at creation, so earlier jobs resolve without the bonus. Common Bond stacks with Craft Blessing and is named in narration. Registered tool, HTTP and worker evidence is in `test_common_bond_crafting.py`.
+
+Aelora’s Restoring Guard returns up to 2 Stamina after a guardian’s Intercept moves damage or a warden’s Bark Skin applies. The registered reaction tests verify persisted Stamina, capped receipts and checkpoint reload.
 
 Shared Table gives Aelora clerics +1 Religion when blessing a shared meal. Civic Promise gives Aelora paladins +1 Persuasion when negotiating a community’s shared duties. The patron query surfaces the context tags and settled checks name the applied clause.
 

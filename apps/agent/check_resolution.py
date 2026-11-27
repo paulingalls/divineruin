@@ -15,7 +15,13 @@ from conditions import ConditionEffects, get_condition_effects
 from dice import roll as dice_roll
 from dramatic import DramaticContext, evaluate_dramatic_context
 from patron_gifts import skill_gift
-from patron_synergy import ContextSynergyReceipt, context_skill_bonus, discovery_skill_bonus
+from patron_synergy import (
+    ContextSynergyReceipt,
+    CraftingSynergyReceipt,
+    common_bond_crafting_bonus,
+    context_skill_bonus,
+    discovery_skill_bonus,
+)
 from rules_engine import (
     SKILL_TIER_BONUS,
     SKILL_TIER_ORDER,
@@ -77,6 +83,7 @@ class SkillCheckResult:
     auto_fail: bool = False
     d20: D20Roll | None = None
     context_synergy: ContextSynergyReceipt | None = None
+    crafting_synergy: CraftingSynergyReceipt | None = None
 
 
 @dataclass(frozen=True)
@@ -362,6 +369,7 @@ def _resolve_skill_check_impl(
 
     gift_name = None
     context_synergy = None
+    crafting_synergy = None
     if not _check_auto_fail(dc, tier):
         gift_bonus, gift_advantage, gift_name = skill_gift(
             player_data, skill_lower, ally_present=ally_present, natural_terrain=natural_terrain, first_stay=first_stay
@@ -375,6 +383,10 @@ def _resolve_skill_check_impl(
         )
         if context_synergy is not None:
             bonus += context_synergy["bonus"]
+        if skill_lower == "crafting":
+            crafting_synergy = common_bond_crafting_bonus(player_data)
+            if crafting_synergy is not None:
+                bonus += crafting_synergy["bonus"]
 
     check = resolve_check(
         score,
@@ -402,6 +414,7 @@ def _resolve_skill_check_impl(
         auto_fail=check.auto_fail,
         gift_name=gift_name,
         context_synergy=context_synergy,
+        crafting_synergy=crafting_synergy,
         d20=check.d20,
     )
 
