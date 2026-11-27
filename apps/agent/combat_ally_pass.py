@@ -81,14 +81,11 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls: PhaseRol
     while cursor["turns"]:
         actor_id, packet_id = cursor["turns"][0]
         actor = state.get_participant(actor_id) if actor_id is not None else None
-        if packet_id is not None and (target := departed_target(state, packets[packet_id].declaration)):
-            summaries.append(target_left_receipt(packet_id, target))
-            cursor["turns"].pop(0)
-            continue
+        departed = departed_target(state, packets[packet_id].declaration) if packet_id is not None else None
         attack = cursor["attack"]
         steps = cursor.setdefault("steps", {})
         movement = PlayerMovement(session, state, steps, packet_deps, fate_rolls, summaries)
-        if movement.route is not None and not await movement.advance():
+        if departed is None and movement.route is not None and not await movement.advance():
             return summaries
         player_movement = movement if actor is not None and actor.type == "player" else None
         progress = (
@@ -98,7 +95,7 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls: PhaseRol
             if session.fate_lock.locked() or steps or attack
             else None
         )
-        if held_argument(cursor) is not None:
+        if departed is None and held_argument(cursor) is not None:
             assert progress is not None and packet_id is not None
             packet = packets.get(packet_id)
             summary = await resume_deescalation(
@@ -110,7 +107,7 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls: PhaseRol
                 progress=progress.scope("deescalation"),
                 sink=packet_deps["sink"],
             )
-        elif attack:
+        elif attack and departed is None:
             assert packet_id is not None
             packet = packets[packet_id]
             attacker = state.get_participant(packet_id)
@@ -174,7 +171,9 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls: PhaseRol
                 expire_guiding_light(state, actor_id)
                 cursor["turns"].pop(0)
                 continue
-            if actor is not None and not actor.is_ally:
+            if departed is not None:
+                summary = target_left_receipt(packet_id, departed)
+            elif actor is not None and not actor.is_ally:
                 summary = {"actor_id": actor.id, "resolved": False, "reason": "actor became hostile"}
             else:
                 summary = await resolve_packet(
@@ -193,7 +192,7 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls: PhaseRol
             state.beat = PhaseBeat.RESOLUTION
             state.ally_continuation = cursor
             return summaries
-        if summary.get("outcome") != "cancelled":
+        if summary.get("outcome") not in ("cancelled", "target_left"):
             assert packet_id is not None
             await combat_field_medic.settle(
                 session,

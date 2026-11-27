@@ -171,6 +171,7 @@ def test_blockable_conditions_partition_the_condition_catalog():
         "slowed",
         "reactions_suppressed",
         "divine_ward",
+        "shield_of_faith",
         "beacon_of_hope",
         "protection_from_hollow",
     }

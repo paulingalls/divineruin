@@ -13,7 +13,15 @@ import thyra_seasons
 from archetypes import get_archetype_chassis
 from architect_encounter import cathedral_bonus
 from combat_participant import BARK_SKIN_AC_BONUS, SHIELD_SPELL_AC_BONUS
-from condition_catalog import GUIDING_LIGHT_MARK, INCORPOREAL, PROTECTION_FROM_HOLLOW, STUDIED_WEAKNESS, WAR_CRY_RALLY
+from condition_catalog import (
+    CONDITION_CATALOG,
+    GUIDING_LIGHT_MARK,
+    INCORPOREAL,
+    PROTECTION_FROM_HOLLOW,
+    SHIELD_OF_FAITH,
+    STUDIED_WEAKNESS,
+    WAR_CRY_RALLY,
+)
 from dramatic import DramaticContext, evaluate_dramatic_context
 from equipment_rules import needs_weapon_profile, resolve_weapon_profile, with_weapon_magic
 from oath_justice import attack_receipt
@@ -291,6 +299,12 @@ def promote_attack(attack_result, enemies_remaining, is_first_attack_of_combat):
             attack_result = replace(attack_result, dramatic=True, context=verdict.context)
 
     return attack_result
+
+
+def shield_of_faith_ac(active_conditions: list[dict] | tuple[dict, ...]) -> int:
+    return CONDITION_CATALOG[SHIELD_OF_FAITH].ac_modifier * any(
+        condition["type"] == SHIELD_OF_FAITH for condition in active_conditions
+    )
 
 
 def serialize_roll(attack_result, effective_ac: int) -> dict:

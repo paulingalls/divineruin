@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING
 
+import reaction_catalog
 import reaction_spend
 from combat_order_riders import select_field_medic
 from condition_catalog import CONDITION_CATALOG, GUIDING_LIGHT_MARK, TAUNTED
@@ -121,7 +122,7 @@ def _drop_reactions(state: "CombatState", player_id: str) -> bool:
     spend = state.reactions_available.pop(player_id, {})
     for head in state.held_actions:
         if continuation := head.get("counter_settlement"):
-            continuation["packets"] = _without(continuation["packets"], player_id, "actor_id")
+            continuation["packets"] = _remaining_reaction_packets(continuation["packets"], player_id)
         elif reaction_spend.intercepts_damage(spend) and spend["held_seq"] == head["seq"]:
             head["departed_damage_recipient"] = player_id
         if entries := head.get("disruptions"):
@@ -132,9 +133,18 @@ def _drop_reactions(state: "CombatState", player_id: str) -> bool:
             else:
                 del head["disruptions"]
         if (packets := head.get("pending_reaction_packets")) is not None:
-            head["pending_reaction_packets"] = _without(packets, player_id, "actor_id")
+            head["pending_reaction_packets"] = _remaining_reaction_packets(packets, player_id)
     state.held_actions = _without(state.held_actions, player_id, "actor_id")
     return cancelled_roll
+
+
+def _remaining_reaction_packets(packets: list[dict], player_id: str) -> list[dict]:
+    # A settled Shield of Faith has already changed the triggering roll.
+    return [
+        packet
+        for packet in packets
+        if packet["actor_id"] != player_id or packet["ability_id"] == reaction_catalog.SHIELD_OF_FAITH
+    ]
 
 
 def _without(items: list, player_id: str, key: str | None = None) -> list:

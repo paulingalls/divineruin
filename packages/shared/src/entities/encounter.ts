@@ -65,6 +65,7 @@ export const CONDITION_NAMES = [
   "precise_strike",
   "iron_stance",
   "divine_ward",
+  "shield_of_faith",
   "beacon_of_hope",
   "protection_from_hollow",
   "reckless_assault",

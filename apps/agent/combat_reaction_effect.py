@@ -23,7 +23,8 @@ import reaction_windows
 from ability_voice_rules import IMPLANT_DOUBT
 from combat_attack_roll import held_reaction_ac
 from combat_participant import SHIELD_SPELL_AC_BONUS
-from combat_reaction_defense import BRACE, SHIELD_SPELLS, THOUGHT_SHIELD, apply_bark_skin, brace, halve
+from combat_reaction_defense import BRACE, SHIELD_SPELLS, THOUGHT_SHIELD, apply_bark_skin, brace, halve, recheck_ac
+from condition_catalog import CONDITION_CATALOG, SHIELD_OF_FAITH
 from declarations import resolve_declaration
 from session_data import CombatParticipant
 
@@ -221,6 +222,16 @@ def _apply(
     if ability_id in BARK_SKIN and target is not None and spend["actor_id"] == target.id:
         apply_bark_skin(head, target)
         return {"mechanical_effect": "round_ac_bonus"}
+
+    if ability_id == reaction_catalog.SHIELD_OF_FAITH:
+        assert target is not None
+        target.conditions = conditions.apply_condition(
+            target.conditions, SHIELD_OF_FAITH, originating_participant_id=spend["actor_id"]
+        )
+        bonus = CONDITION_CATALOG[SHIELD_OF_FAITH].ac_modifier
+        recheck_ac(head, target, bonus)
+        head["shield_of_faith_ac"] = bonus
+        return {"mechanical_effect": "target_ac_bonus", "target_id": target.id, "ac_bonus": bonus}
 
     if ability_id in HALVES_DAMAGE or ability_id == BRACE:
         if defer_damage_reductions:

@@ -9,6 +9,7 @@ import ability_voice_rules
 import combat_counter_reactions
 import combat_melee_approach
 import combat_voice_rules
+import conditions
 import reaction_catalog
 import reaction_spend
 import reaction_windows
@@ -17,6 +18,7 @@ from combat_ability import _find_action
 from combat_spatial import distance, inside, position, require_spatial
 from combat_structures import blocked_reason, line_blocker
 from communication_voice_rules import DeliveryRefused
+from condition_catalog import SHIELD_OF_FAITH
 from condition_restrictions import cannot_act, no_reactions
 from encounter_actions import ACTION_KINDS
 from session_data import CombatState
@@ -164,6 +166,22 @@ def _validate_for_window(
             for entry in state.reactions_available.values()
         ):
             raise ReactionUnavailable("This hit was already intercepted")
+
+    if ability_id == reaction_catalog.SHIELD_OF_FAITH:
+        target = state.get_participant(window["target_id"])
+        assert target is not None
+        if not target.is_ally:
+            raise ReactionUnavailable("Shield of Faith protects allies")
+        if target.id == actor_id:
+            raise ReactionUnavailable("Shield of Faith protects another ally")
+        spatial = require_spatial(state)
+        if not inside(position(spatial, actor_id), position(spatial, target.id), 30):
+            raise ReactionUnavailable("Shield of Faith requires being within 30 ft of the struck ally")
+        pending_wards = {
+            entry["window_id"] for entry in state.reactions_available.values() if entry["ability_id"] == ability_id
+        }
+        if conditions.has_condition(target.conditions, SHIELD_OF_FAITH) or window["id"] in pending_wards:
+            raise ReactionUnavailable(f"{target.name} is already warded by Shield of Faith.")
 
     if catalog_window == reaction_windows.ENEMY_MOVE:
         if window["stage"] != reaction_windows.MOVEMENT:
