@@ -43,7 +43,7 @@ for (const size of [1, 2]) {
     ).not.toThrow();
   });
 }
-test("all nineteen templates", async () => {
+test("all twenty-one templates", async () => {
   const rows = (await Bun.file(
     new URL("../../../../content/encounter_templates.json", import.meta.url),
   ).json()) as {
@@ -51,7 +51,7 @@ test("all nineteen templates", async () => {
     enemies: unknown[];
     scene_placement: { zones: Record<string, unknown> };
   }[];
-  expect(rows).toHaveLength(19);
+  expect(rows).toHaveLength(21);
   expect(new Set(rows.map((row) => row.id))).toEqual(
     new Set([
       "fragment_shadeling",
@@ -73,6 +73,8 @@ test("all nineteen templates", async () => {
       "hollow_mawling_pack",
       "hollow_knight_boss",
       "hollow_veilrender_boss",
+      "sunward_ship_deck",
+      "sunward_dock_boarding",
     ]),
   );
   for (const row of rows) {

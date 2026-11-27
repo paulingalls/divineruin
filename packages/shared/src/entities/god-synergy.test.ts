@@ -86,6 +86,14 @@ test("Nythera's marshal has the registered Landfall Orders clause", () => {
   expect<unknown>(marshal).toEqual(corpus.first_order);
 });
 
+test("Nythera's warrior and guardian have the registered vessel clauses", () => {
+  const matrix = validateGods(catalog).find(
+    (god) => god.god_id === "nythera",
+  )?.layer_4_synergy_matrix;
+  expect<unknown>(matrix?.warrior).toEqual(corpus.deck_footing);
+  expect<unknown>(matrix?.guardian).toEqual(corpus.gangway_guard);
+});
+
 test("Valdris's marshal has the registered Lawful Command clause", () => {
   const marshal = validateGods(catalog).find((god) => god.god_id === "valdris")
     ?.layer_4_synergy_matrix.marshal;

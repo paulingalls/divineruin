@@ -24,6 +24,8 @@ ORENTHEL_GUARDIAN_WARD = "orenthel_guardian_ward"
 ORENTHEL_UNDEAD_WRATH = "orenthel_undead_wrath"
 MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
 MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
+NYTHERA_DECK_FOOTING = "nythera_deck_footing"
+NYTHERA_GANGWAY_GUARD = "nythera_gangway_guard"
 NYTHERA_FIRST_ORDER = "nythera_first_order"
 LANDFALL_ORDERS_NAME = "Landfall Orders"
 NYTHERA_SALTWIND_CASTING = "nythera_saltwind_casting"
@@ -90,6 +92,17 @@ def attack_flags(player: dict) -> dict[str, bool]:
         "weapon_damage_bonus": bool((player.get("flags") or {}).get("extra_attack"))
         and has_engine_synergy(player, "kaelen_extra_attack_damage"),
     }
+
+
+def deck_footing_bonus(player: dict, state: CombatState | None, action: dict) -> int:
+    from combat_melee_approach import is_melee
+
+    return int(
+        state is not None
+        and state.vessel == "aboard_moving"
+        and has_engine_synergy(player, NYTHERA_DECK_FOOTING)
+        and is_melee(action)
+    )
 
 
 def encounter_damage_clause(
@@ -178,15 +191,28 @@ def fallen_ally_defense(defender: dict | None, state: CombatState | None, target
 
 
 def wounded_ally_defense(defender: dict | None, state: CombatState | None, target: CombatParticipant) -> int:
+    return _nearby_ally_defense(
+        defender, state, target, ORENTHEL_GUARDIAN_WARD, lambda ally: 2 * ally.hp_current < ally.hp_max
+    )
+
+
+def boarding_ally_defense(defender: dict | None, state: CombatState | None, target: CombatParticipant) -> int:
+    if state is None or state.vessel != "boarding":
+        return 0
+    return _nearby_ally_defense(defender, state, target, NYTHERA_GANGWAY_GUARD)
+
+
+def _nearby_ally_defense(
+    defender: dict | None,
+    state: CombatState | None,
+    target: CombatParticipant,
+    clause_id: str,
+    qualifies: Callable[[CombatParticipant], bool] = lambda _: True,
+) -> int:
     from combat_spatial import inside, position, require_spatial
     from combat_veilrender import living
 
-    if (
-        defender is None
-        or state is None
-        or not living(target)
-        or not has_engine_synergy(defender, ORENTHEL_GUARDIAN_WARD)
-    ):
+    if defender is None or state is None or not living(target) or not has_engine_synergy(defender, clause_id):
         return 0
 
     spatial = require_spatial(state)
@@ -196,7 +222,7 @@ def wounded_ally_defense(defender: dict | None, state: CombatState | None, targe
             ally.id != target.id
             and ally.is_ally
             and living(ally)
-            and 2 * ally.hp_current < ally.hp_max
+            and qualifies(ally)
             and inside(target_position, position(spatial, ally.id), 5)
             for ally in state.participants
         )

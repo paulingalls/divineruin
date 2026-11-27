@@ -218,6 +218,7 @@ async def _resolve_attack_packet(
             season=await thyra_seasons.season_for(player, conn=conn),
             mortaen_ac_override=getattr_static(resolver, "mortaen_ac_bonus", None),
             orenthel_ac_override=getattr_static(resolver, "orenthel_ac_bonus", None),
+            nythera_ac_override=getattr_static(resolver, "nythera_ac_bonus", None),
         )
     return await apply_rolled_attack(
         session,

@@ -44,7 +44,7 @@ async def test_every_encounter_starts_from_catalog(started, template, cold_catal
     import db_content_queries
 
     pool = await db.get_pool()
-    assert await pool.fetchval("SELECT count(*) FROM encounter_templates") == 19
+    assert await pool.fetchval("SELECT count(*) FROM encounter_templates") == 21
     assert template == await db_content_queries.get_encounter_template(template["id"])
     ctx, response = await started(template["id"])
     state = ctx.userdata.combat_state
