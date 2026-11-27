@@ -24,7 +24,7 @@ from session_data import SessionData
 PREFIX = "oath_"
 
 
-def _offer(actor: str, player: dict, state: CombatState | None, count: int) -> dict:
+def _offer(actor: str, player: dict, state: CombatState | None, book: OathBook) -> dict:
     if player.get("class") != "paladin":
         raise ToolError("Only a paladin can swear a registered oath.")
     patron = (player.get("divine_favor") or {}).get("patron")
@@ -32,7 +32,7 @@ def _offer(actor: str, player: dict, state: CombatState | None, count: int) -> d
         if suppressed(player):
             raise ToolError(BROKEN_REASON)
         return {
-            "choice_id": f"{PREFIX}{actor}_justice_{count}",
+            "choice_id": f"{PREFIX}{actor}_justice_{len(book.records)}",
             "resolve_with": "select",
             "options": ["justice"],
             "name": JUSTICE_NAME,
@@ -43,6 +43,8 @@ def _offer(actor: str, player: dict, state: CombatState | None, count: int) -> d
         raise ToolError("Your patron offers no registered oath.")
     if state is None:
         raise ToolError("Swear a timed oath during combat.")
+    if any(isinstance(record, TimedOath) and record.combat_id == state.combat_id for record in book.records):
+        raise ToolError("Only one Promised Hour oath may be sworn per encounter.")
     speaker = state.get_participant(actor)
     if speaker is None or speaker.type != "player":
         raise ToolError("Swear a timed oath while participating in the encounter.")
@@ -56,7 +58,7 @@ def _offer(actor: str, player: dict, state: CombatState | None, count: int) -> d
         objective = "keep_ally_standing" if participant.is_ally else "defeat_target"
         targets[objective].append(participant.id)
     return {
-        "choice_id": f"{PREFIX}{actor}_timed_{state.combat_id}_{count}",
+        "choice_id": f"{PREFIX}{actor}_timed_{state.combat_id}_{len(book.records)}",
         "resolve_with": "select",
         "options": ["timed"],
         "name": TIMED_NAME,
@@ -78,7 +80,7 @@ def offer(session: SessionData, actor: str, player: dict | None) -> dict | None:
     if any(record.status == "active" for record in book.records):
         return None
     try:
-        return _offer(actor, player, session.combat_state, len(book.records))
+        return _offer(actor, player, session.combat_state, book)
     except ToolError:
         return None
 
@@ -114,7 +116,7 @@ async def select(
                 return json.dumps(receipt(record))
         if any(record.status == "active" for record in book.records):
             raise ToolError("An active oath already binds you.")
-        current = _offer(actor, player, session.combat_state, len(book.records))
+        current = _offer(actor, player, session.combat_state, book)
         if choice_id != current["choice_id"]:
             raise ToolError("This oath choice ID was not offered to you for this scope.")
         if option not in current["options"]:
