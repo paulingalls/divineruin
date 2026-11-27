@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from _zhael_fate_fixtures import game_tools
 from acceptance._capstone_helpers import _d20, _damage_die, _resolve_round
-from acceptance._spell_hostile_condition_helpers import add_player, attack, cast_spell, play, reload
+from acceptance._spell_hostile_condition_helpers import add_player, attack, cast_spell, play, receipt, reload, set_foe
 from acceptance.test_martial_core_kit import warriors as warriors
 from acceptance.test_opportunity_strike import MOVER, STRIKE, activate_as
 from acceptance.test_opportunity_strike import fight as fight
@@ -25,6 +25,7 @@ from acceptance.test_spell_marks import (
 )
 from acceptance.test_spell_marks import dev_db_pool as dev_db_pool
 from acceptance.test_spell_marks import spell_fight as spell_fight
+from acceptance.test_spell_new_conditions import slow
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_vanish import walk as walk
 from combat.test_spell_damage_lands import saved_player
@@ -227,3 +228,18 @@ async def test_guiding_light_refuses_non_foes_before_declaring(spell_fight):
         with pytest.raises(ToolError, match="standing enemy"):
             await combat_turn.declare_phase(ctx, [cast_spell(caster, GUIDING, target)])
         assert (await reload(ctx)).to_dict() == before
+
+
+async def test_a_failed_slow_save_keeps_an_ally_invisible(spell_fight):
+    ctx = spell_fight
+    caster = ctx.userdata.player_id
+    mage = await add_player(ctx, "mage", (INVISIBILITY,))
+    ally = await add_player(ctx, "mage")
+    await set_foe(ctx)
+    await play(ctx, cast_spell(mage, INVISIBILITY, ally))
+    packets, _ = await play(ctx, slow(caster, ally), face=1)
+    result = receipt(packets, caster)["condition_results"][0]
+    assert (result["target_id"], result["save"]["success"]) == (ally, False)
+    assert "condition_removed" not in result
+    state = await reload(ctx)
+    assert has(state, ally, "slowed") and has(state, ally, INVISIBLE)
