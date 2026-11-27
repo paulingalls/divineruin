@@ -134,6 +134,9 @@
         "imports-of": "apps/server/src/activity_create.test.ts"
       },
       {
+        "imports-of": "apps/server/src/activity_crafting_patron.test.ts"
+      },
+      {
         "imports-of": "apps/server/src/activity_create_errand.test.ts"
       },
       {

@@ -52,6 +52,23 @@ def _engine_clause(synergy: dict, implementation_id: str) -> dict | None:
     )
 
 
+class CraftingSynergyReceipt(TypedDict):
+    id: str
+    name: str
+    bonus: int
+
+
+def common_bond_crafting_bonus(player: dict) -> CraftingSynergyReceipt | None:
+    patron = (player.get("divine_favor") or {}).get("patron")
+    if patron in (None, "none"):
+        return None
+    row = get_archetype_synergy(player["class"], patron)
+    implementation = "aelora_common_bond_crafting"
+    if row is not None and has_engine_clause(row, implementation):
+        return CraftingSynergyReceipt(id=implementation, name=row["name"], bonus=1)
+    return None
+
+
 class ContextSynergyReceipt(TypedDict):
     tag: str
     applied: bool

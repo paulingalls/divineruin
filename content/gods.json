@@ -931,9 +931,10 @@
             "implementation_id": "aelora_common_bond"
           },
           {
-            "effect": "Crafting Focus costs -1 (min 1)",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Crafting checks gain +1",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "aelora_common_bond_crafting"
           }
         ]
       },
@@ -1084,9 +1085,10 @@
             "implementation_id": "aelora_common_bond"
           },
           {
-            "effect": "Crafting Focus costs -1 (min 1)",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Crafting checks gain +1",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "aelora_common_bond_crafting"
           }
         ]
       },
@@ -1101,9 +1103,10 @@
             "implementation_id": "aelora_common_bond"
           },
           {
-            "effect": "Crafting Focus costs -1 (min 1)",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Crafting checks gain +1",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "aelora_common_bond_crafting"
           }
         ]
       },
