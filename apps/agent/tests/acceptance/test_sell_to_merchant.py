@@ -11,6 +11,7 @@ from acceptance.merchant_harness import (
     GRIMJAW,
     SWORD,
     fund_merchant,
+    merchant_row,
     merchant_scope,
     merchant_session,
     rows,
@@ -137,11 +138,14 @@ async def test_refusal_preserves_rows(
     reset_db_pool: str, overrides: dict[str, Any], reason: str, quantity: int
 ) -> None:
     async with merchant_session(**overrides) as sale:
+        npc = overrides.get("npc", GRIMJAW)
         before = await rows(sale.player_id)
-        receipt = await sale.sell(overrides.get("item", SWORD), overrides.get("npc", GRIMJAW), quantity)
+        assert await merchant_row(npc) is None
+        receipt = await sale.sell(overrides.get("item", SWORD), npc, quantity)
         assert await rows(sale.player_id) == before
         assert not sale.publications
         assert receipt.is_error and reason in receipt.output, receipt.output
+        assert await merchant_row(npc) is None
 
 
 def registered_sale() -> llm.FunctionTool:
