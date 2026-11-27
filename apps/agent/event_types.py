@@ -65,6 +65,7 @@ QUEST_UPDATE = "quest_update"  # client-only alias for QUEST_UPDATED
 # The HUD renders a glanceable "+N gp" chip from {amount, currency}; the DM voices the haul.
 # Mirror const in apps/mobile/src/audio/event-types.ts.
 CURRENCY_GAINED = "currency_gained"
+CURRENCY_SPENT = "currency_spent"
 
 # Magic (M3.1)
 # Resonance state push. Packet: {state, caster_id} — the qualitative state only on the game_events

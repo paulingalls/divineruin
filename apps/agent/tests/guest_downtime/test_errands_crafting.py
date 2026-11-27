@@ -94,7 +94,8 @@ async def test_guest_resolves_own_errand_and_cached_result():
 async def test_guest_rents_workspace_with_own_gold_and_disposition():
     context, actor = guest_context()
     queries = smith_queries("friendly")
-    mutations = module(update_player_gold=None, create_workspace_rental="guest_rental")
+    mutations = module(create_workspace_rental="guest_rental")
+    inventory = module(debit_player_gold=13.0)
     with actor:
         result = json.loads(
             await _rent_workspace_impl(
@@ -105,6 +106,7 @@ async def test_guest_rents_workspace_with_own_gold_and_disposition():
                 db_mod=make_db_mod()[0],
                 queries_mod=queries,
                 mutations_mod=mutations,
+                inv_mutations_mod=inventory,
                 pricing_mod=pricing(),
                 content_mod=module(
                     get_npc=None,
@@ -117,7 +119,7 @@ async def test_guest_rents_workspace_with_own_gold_and_disposition():
             )
         )
     assert result["workspace_type"] == "forge_laboratory"
-    assert mutations.update_player_gold.await_args.args[0] == "player_2"
+    assert inventory.debit_player_gold.await_args.args[0] == "player_2"
     assert [call.args[0] for call in mutations.create_workspace_rental.await_args_list] == ["player_2", "player_2"]
 
 
@@ -265,8 +267,9 @@ async def test_stale_errand_update_activity():
 async def test_stale_workspace_last_rental():
     context, actor, revocation = revocable_context()
     queries = smith_queries("friendly")
-    mutations = module(update_player_gold=None, create_workspace_rental="guest_rental")
-    revoke_after(mutations.update_player_gold, revocation)
+    mutations = module(create_workspace_rental="guest_rental")
+    inventory = module(debit_player_gold=13.0)
+    revoke_after(inventory.debit_player_gold, revocation)
     tx_db, tx_state = transaction_probe()
     with actor, pytest.raises(RuntimeError, match="stale generation"):
         await _rent_workspace_impl(
@@ -277,6 +280,7 @@ async def test_stale_workspace_last_rental():
             db_mod=tx_db,
             queries_mod=queries,
             mutations_mod=mutations,
+            inv_mutations_mod=inventory,
             pricing_mod=pricing(),
             content_mod=module(
                 get_npc=None,

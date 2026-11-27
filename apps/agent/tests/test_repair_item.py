@@ -37,10 +37,9 @@ def _repair_kwargs(*, item, disposition="neutral", crafting_tier="master", gold=
     queries.get_player_inventory = AsyncMock(return_value=[item] if item else [])
     queries.get_npcs_at_location = AsyncMock(return_value=[{"id": "grimjaw"}] if npc_present else [])
     queries.get_npc_disposition = AsyncMock(return_value=disposition)
-    mutations = MagicMock()
-    mutations.update_player_gold = AsyncMock()
     inv_mutations = MagicMock()
     inv_mutations.update_item_durability = AsyncMock()
+    inv_mutations.debit_player_gold = AsyncMock(return_value=14.8)
     content = MagicMock()
     content.get_npc = AsyncMock(return_value=None)
     # Pricing comes from the DB-loaded SSOT (story-011); inject the economy values
@@ -57,72 +56,60 @@ def _repair_kwargs(*, item, disposition="neutral", crafting_tier="master", gold=
         {
             "db_mod": db_mod,
             "queries_mod": queries,
-            "mutations_mod": mutations,
             "inv_mutations_mod": inv_mutations,
             "content_mod": content,
             "pricing_mod": pricing,
         },
-        mutations,
         inv_mutations,
     )
 
 
 async def test_below_skill_tier_raises_no_writes():
-    kwargs, mutations, inv_mutations = _repair_kwargs(
-        item=_item(tier="reinforced", current_hits=5), crafting_tier="untrained"
-    )
+    kwargs, inv_mutations = _repair_kwargs(item=_item(tier="reinforced", current_hits=5), crafting_tier="untrained")
     with pytest.raises(ToolError, match="Crafting"):
         await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs)
     inv_mutations.update_item_durability.assert_not_awaited()
-    mutations.update_player_gold.assert_not_awaited()
+    inv_mutations.debit_player_gold.assert_not_awaited()
 
 
 async def test_absent_npc_refuses_no_writes():
-    kwargs, mutations, inv_mutations = _repair_kwargs(item=_item(current_hits=3), npc_present=False)
+    kwargs, inv_mutations = _repair_kwargs(item=_item(current_hits=3), npc_present=False)
     with pytest.raises(ToolError, match="isn't here"):
         await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs)
     inv_mutations.update_item_durability.assert_not_awaited()
-    mutations.update_player_gold.assert_not_awaited()
+    inv_mutations.debit_player_gold.assert_not_awaited()
 
 
 async def test_below_neutral_disposition_refuses_no_writes():
-    kwargs, mutations, inv_mutations = _repair_kwargs(item=_item(current_hits=3), disposition="unfriendly")
+    kwargs, inv_mutations = _repair_kwargs(item=_item(current_hits=3), disposition="unfriendly")
     with pytest.raises(ToolError):
         await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs)
     inv_mutations.update_item_durability.assert_not_awaited()
-    mutations.update_player_gold.assert_not_awaited()
-
-
-async def test_insufficient_gold_raises_no_restore():
-    kwargs, mutations, inv_mutations = _repair_kwargs(item=_item(rarity="legendary", current_hits=3), gold=5.0)
-    with pytest.raises(ToolError, match="Not enough gold"):
-        await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs)
-    inv_mutations.update_item_durability.assert_not_awaited()
-    mutations.update_player_gold.assert_not_awaited()
+    inv_mutations.debit_player_gold.assert_not_awaited()
 
 
 async def test_item_not_damaged_refuses():
-    kwargs, _, inv_mutations = _repair_kwargs(item=_item(tier="standard", current_hits=10))
+    kwargs, inv_mutations = _repair_kwargs(item=_item(tier="standard", current_hits=10))
     with pytest.raises(ToolError, match="not damaged"):
         await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs)
     inv_mutations.update_item_durability.assert_not_awaited()
 
 
 async def test_missing_current_hits_reads_as_full_and_refuses():
-    kwargs, _, inv_mutations = _repair_kwargs(item=_item(tier="standard", current_hits=None))
+    kwargs, inv_mutations = _repair_kwargs(item=_item(tier="standard", current_hits=None))
     with pytest.raises(ToolError, match="not damaged"):
         await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs)
     inv_mutations.update_item_durability.assert_not_awaited()
 
 
 async def test_item_not_found_raises():
-    kwargs, _, _ = _repair_kwargs(item=None)
+    kwargs, _ = _repair_kwargs(item=None)
     with pytest.raises(ToolError, match="aren't carrying"):
         await repair_item._repair_item_impl(make_context(), "missing_item", "grimjaw", **kwargs)
 
 
 async def test_non_durable_item_not_repairable():
-    kwargs, _, inv_mutations = _repair_kwargs(item=_item(tier=None, current_hits=None))
+    kwargs, inv_mutations = _repair_kwargs(item=_item(tier=None, current_hits=None))
     with pytest.raises(ToolError, match="cannot be repaired"):
         await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs)
     inv_mutations.update_item_durability.assert_not_awaited()
@@ -130,22 +117,22 @@ async def test_non_durable_item_not_repairable():
 
 async def test_material_refused_by_name_without_writes():
     item = {"id": "wolf_pelt", "name": "Wolf Pelt", "type": "material", "slot_info": {"quantity": 3}}
-    kwargs, mutations, inv_mutations = _repair_kwargs(item=item)
+    kwargs, inv_mutations = _repair_kwargs(item=item)
     with pytest.raises(ToolError, match=r"Wolf Pelt.*material"):
         await repair_item._repair_item_impl(make_context(), "wolf_pelt", "grimjaw", **kwargs)
-    mutations.update_player_gold.assert_not_awaited()
+    inv_mutations.debit_player_gold.assert_not_awaited()
     inv_mutations.update_item_durability.assert_not_awaited()
 
 
 async def test_malformed_durability_tier_raises_toolerror_not_valueerror():
-    kwargs, _, inv_mutations = _repair_kwargs(item=_item(tier="indestructible", current_hits=2))
+    kwargs, inv_mutations = _repair_kwargs(item=_item(tier="indestructible", current_hits=2))
     with pytest.raises(ToolError, match="unrepairable durability tier"):
         await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs)
     inv_mutations.update_item_durability.assert_not_awaited()
 
 
 async def test_trusted_common_repair_rounds_to_one_silver():
-    kwargs, mutations, inv_mutations = _repair_kwargs(
+    kwargs, inv_mutations = _repair_kwargs(
         item=_item(rarity="common", tier="standard", current_hits=3), disposition="trusted", gold=15.0
     )
     raw = await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs)
@@ -153,18 +140,18 @@ async def test_trusted_common_repair_rounds_to_one_silver():
     assert result == {"item_id": "longsword_guild", "restored_to": 10, "price_sp": 1}
     inv_mutations.update_item_durability.assert_awaited_once()
     assert inv_mutations.update_item_durability.await_args.args[:3] == ("player_1", "longsword_guild", 10)
-    mutations.update_player_gold.assert_awaited_once()
-    assert mutations.update_player_gold.await_args.args[0] == "player_1"
-    assert mutations.update_player_gold.await_args.args[1] == pytest.approx(15.0 - 0.1)
+    inv_mutations.debit_player_gold.assert_awaited_once()
+    assert inv_mutations.debit_player_gold.await_args.args[0] == "player_1"
+    assert inv_mutations.debit_player_gold.await_args.args[1] == 0.1
 
 
 async def test_friendly_discount_rounds_away_for_common_repair():
-    kwargs, mutations, _ = _repair_kwargs(
+    kwargs, inv_mutations = _repair_kwargs(
         item=_item(rarity="common", tier="standard", current_hits=3), disposition="friendly", gold=15.0
     )
     result = json.loads(await repair_item._repair_item_impl(make_context(), "longsword_guild", "grimjaw", **kwargs))
     assert result["price_sp"] == 2
-    assert mutations.update_player_gold.await_args.args[1] == pytest.approx(14.8)
+    assert inv_mutations.debit_player_gold.await_args.args[1] == 0.2
 
 
 def test_repair_item_registered_on_blacksmith_not_dispatch():

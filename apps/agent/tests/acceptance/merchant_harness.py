@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from acceptance.first_episode_harness import EpisodeModel
-from acceptance.seeds import seed_player
+from acceptance.seeds import seed_gold, seed_player
 from livekit.agents import AgentSession, llm
 from sample_fixtures import make_mock_room
 
@@ -89,7 +89,7 @@ async def merchant_session(
     try:
         for player_id in dict.fromkeys((pid, primary)):
             await seed_player(pool, player_id=player_id, location_id=location)
-            await db_mutations.update_player_gold(player_id, 7, conn=pool)
+            await seed_gold(pool, player_id, 7)
         if disposition is not None:
             await db_mutations.set_npc_disposition(npc, pid, disposition, "fixture", conn=pool)
         if held:

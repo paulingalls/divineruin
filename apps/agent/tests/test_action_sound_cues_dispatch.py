@@ -16,6 +16,7 @@ import recipe_tools
 import spell_tools
 from action_sound_content import ACTION_SOUND_IDS
 from activity_tools import _begin_activity_impl, _resolve_activity_impl
+from db_mutations_inventory import InsufficientGold
 from errand_tools import _resolve_companion_errand_impl
 from recipe_tools import _learn_impl
 from repair_item import _repair_item_impl
@@ -234,7 +235,7 @@ async def test_repair_cues_after_gold_commit():
     from test_repair_item import _item, _repair_kwargs
 
     ctx, log = recorded_context()
-    kwargs, mutations, inventory = _repair_kwargs(item=_item())
+    kwargs, inventory = _repair_kwargs(item=_item())
     db, conn = db_with_commit(log)
     kwargs["db_mod"] = db
 
@@ -247,7 +248,7 @@ async def test_repair_cues_after_gold_commit():
     log.append("return")
     assert json.loads(raw)["restored_to"] == 10
     inventory.update_item_durability.assert_awaited_once()
-    mutations.update_player_gold.assert_awaited_once()
+    inventory.debit_player_gold.assert_awaited_once()
     assert_cue(ctx, log, NEW_IDS["repair"])
 
 
@@ -255,12 +256,12 @@ async def test_failed_repair_reaches_gold_gate_without_cue():
     from test_repair_item import _item, _repair_kwargs
 
     ctx, _ = recorded_context()
-    kwargs, mutations, inventory = _repair_kwargs(item=_item(rarity="legendary"), gold=0)
+    kwargs, inventory = _repair_kwargs(item=_item(rarity="legendary"), gold=0)
+    inventory.debit_player_gold.side_effect = InsufficientGold("player_1")
     with pytest.raises(ToolError, match="Not enough gold"):
         await _repair_item_impl(ctx, "longsword_guild", "grimjaw", **kwargs)
     kwargs["pricing_mod"].get_economy_pricing.assert_awaited_once()
-    inventory.update_item_durability.assert_not_awaited()
-    mutations.update_player_gold.assert_not_awaited()
+    inventory.debit_player_gold.assert_awaited_once()
     assert cues(ctx) == []
 
 
@@ -268,7 +269,7 @@ async def test_repair_rollback_after_restore_has_no_cue():
     from test_repair_item import _item, _repair_kwargs
 
     ctx, log = recorded_context()
-    kwargs, mutations, inventory = _repair_kwargs(item=_item())
+    kwargs, inventory = _repair_kwargs(item=_item())
     db = MagicMock()
 
     @asynccontextmanager
@@ -282,7 +283,7 @@ async def test_repair_rollback_after_restore_has_no_cue():
     db.transaction = transaction
     kwargs["db_mod"] = db
     inventory.update_item_durability = AsyncMock(side_effect=lambda *_a, **_k: log.append("write"))
-    mutations.update_player_gold = AsyncMock(side_effect=RuntimeError("gold write failed"))
+    inventory.debit_player_gold = AsyncMock(side_effect=RuntimeError("gold write failed"))
     with pytest.raises(RuntimeError, match="gold write failed"):
         await _repair_item_impl(ctx, "longsword_guild", "grimjaw", **kwargs)
     assert log == ["write", "rollback"]
@@ -427,7 +428,8 @@ async def test_real_begin_writes_before_router_cue(kind):
     else:
         from test_crafting_tools_workspaces import _pricing, _queries
 
-        mutations = MagicMock(update_player_gold=AsyncMock())
+        mutations = MagicMock()
+        inventory = MagicMock(debit_player_gold=AsyncMock(return_value=14.5))
 
         async def create_workspace(*_args, **call_kwargs):
             assert call_kwargs["conn"] is conn
@@ -441,6 +443,7 @@ async def test_real_begin_writes_before_router_cue(kind):
                 db_mod=db,
                 queries_mod=_queries(),
                 mutations_mod=mutations,
+                inv_mutations_mod=inventory,
                 pricing_mod=_pricing(),
             )
         )
