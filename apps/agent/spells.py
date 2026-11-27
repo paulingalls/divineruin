@@ -40,6 +40,7 @@ from combat_spell_profile import (
     parse_item_creation,
     parse_profile,
     parse_save_condition,
+    recipient_spec,
 )
 from wild_shape_profile import WildShapeProfile
 from wild_shape_profile import parse_profile as parse_wild_shape_profile
@@ -215,8 +216,7 @@ def normalize_target_list(spell: "Spell | Ability", target_id: str | None, targe
     """
     if target_id is not None:
         raise ValueError("pass target_id OR target_ids, not both")
-    profile = getattr(spell, "combat_damage", None) or {}
-    spec = profile.get("recipients", {})
+    spec = recipient_spec(spell) or {}
     deduped = list(target_ids) if spec.get("shape") == "projectiles" else list(dict.fromkeys(target_ids))
     if not deduped:
         raise ValueError("name at least one ally")

@@ -16,6 +16,7 @@ SHIELD_BASH = "shield_bash"
 HIT_AND_RUN = "hit_and_run"
 COMMAND_LESSER = "command_lesser"
 QUICK_CHANGE = "quick_change"
+PLAIN_ATTACK = "plain"
 
 # A shield bash is a small bludgeoning strike synthesized from the enhancer — no shield
 # item is read, since the spec ties bash to the enhancer, not to a shield's stats
@@ -33,6 +34,28 @@ def enhancers_from_flags(flags: dict | None) -> list[str]:
     return [e for e in ALL_ENHANCERS if flags.get(e)]
 
 
+def attack_enhancers(enhancers: list[str], decl: Declaration) -> list[str]:
+    return [] if PLAIN_ATTACK in (decl.rider, decl.argument_type) else enhancers
+
+
+def _extra_swing(enhancers: list[str]) -> bool:
+    return SHIELD_BASH in enhancers or EXTRA_ATTACK in enhancers
+
+
+def carries_quick_action(enhancers: list[str], decl: Declaration) -> bool:
+    from combat_ability_gate import CUNNING_ACTION, DEVASTATING_STRIKE, QUICK_FINGERS
+    from combat_ability_gate import SHIELD_BASH as BASH_ABILITY
+    from combat_martial import attack_ability
+
+    martial = attack_ability(decl)
+    if martial in (CUNNING_ACTION, QUICK_FINGERS, BASH_ABILITY):
+        return True
+    effective = attack_enhancers(enhancers, decl)
+    if decl.type is DeclarationType.ATTACK:
+        return _extra_swing(effective) or HIT_AND_RUN in effective
+    return martial == DEVASTATING_STRIKE and _extra_swing(effective)
+
+
 def attack_sequence(enhancers: list[str], base_action: dict) -> list[dict]:
     """The ordered attack actions one ATTACK declaration resolves into.
 
@@ -42,11 +65,9 @@ def attack_sequence(enhancers: list[str], base_action: dict) -> list[dict]:
     - both                 -> [base_action, SHIELD_BASH_ACTION]     (the bash REPLACES the
       extra swing — "replaces one attack if multiattack", gm_combat L120; total stays 2)
     """
-    if SHIELD_BASH in enhancers:
-        return [base_action, SHIELD_BASH_ACTION]
-    if EXTRA_ATTACK in enhancers:
-        return [base_action, base_action]
-    return [base_action]
+    if not _extra_swing(enhancers):
+        return [base_action]
+    return [base_action, SHIELD_BASH_ACTION if SHIELD_BASH in enhancers else base_action]
 
 
 def declaration_riders(enhancers: list[str], decl: Declaration) -> list[str]:
@@ -58,6 +79,7 @@ def declaration_riders(enhancers: list[str], decl: Declaration) -> list[str]:
     descriptive strings for the DM to voice (forward-wired until the underlying
     movement/minion/social systems exist; concern 655580cea834).
     """
+    enhancers = attack_enhancers(enhancers, decl)
     riders: list[str] = []
     if decl.type is DeclarationType.ATTACK:
         if HIT_AND_RUN in enhancers:

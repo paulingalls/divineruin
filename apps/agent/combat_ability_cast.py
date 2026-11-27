@@ -18,6 +18,7 @@ import db_queries
 import spell_casting
 import wild_shape
 from combat_condition_landing import land_condition_on_participants
+from combat_spell_profile import recipient_spec
 from combat_structures import blocked_reason, line_blocker
 from condition_sources import DeliveryRefused
 from session_data import CombatParticipant, SessionData
@@ -90,16 +91,16 @@ async def _resolve_ability_packet(
     shield = progress.scope("shield") if progress is not None else None
     deliveries = None
     selected = None
-    recipient_profile = spell.combat_damage and spell.combat_damage.get("recipients")
+    multi_condition = combat_spell_condition.multiple_recipients(spell)
+    has_deliveries = bool(recipient_spec(spell) or turns_undead or multi_condition)
     if (
         not cleanses
-        and not recipient_profile
-        and not turns_undead
+        and not has_deliveries
         and "cast_packet" not in steps
         and (wall := line_blocker(state, attacker.id, decl.target_id))
     ):
         return {"actor_id": attacker.id, "resolved": False, "reason": blocked_reason(wall)}
-    if recipient_profile or turns_undead:
+    if has_deliveries:
         # Area recipients are frozen once, then each distinct recipient may redirect the spell (the
         # Choir's shield). A Zhael-held redirect save resumes here without re-selecting or re-rolling.
         selected = steps.get("selected")
@@ -107,6 +108,8 @@ async def _resolve_ability_packet(
             try:
                 if turns_undead:
                     selected, steps["turn_refusals"] = combat_turn_undead.select(state, attacker)
+                elif multi_condition:
+                    selected = combat_spell_condition.select_deliveries(state, attacker, decl, spell)
                 else:
                     selected = select(state, attacker, decl, spell)
             except DeliveryRefused as e:
@@ -258,7 +261,13 @@ async def _resolve_ability_packet(
         if progress is not None and progress.paused:
             return {}
     elif spell.save_condition is not None:
-        if landing is not None:
+        condition_progress = progress.scope("spell_condition") if progress is not None else None
+        if multi_condition:
+            assert deliveries is not None
+            await combat_spell_condition.land_deliveries(
+                session, state, attacker, decl, spell, cast_packet, deliveries, progress=condition_progress, conn=conn
+            )
+        elif landing is not None:
             await combat_spell_condition.land(
                 session,
                 state,
@@ -266,9 +275,11 @@ async def _resolve_ability_packet(
                 landing,
                 spell,
                 cast_packet,
-                progress=progress.scope("spell_condition") if progress is not None else None,
+                progress=condition_progress,
                 conn=conn,
             )
+        if progress is not None and progress.paused:
+            return {}
     elif deliveries is not None or landing is not None:
         await combat_spell_damage.land(
             session,

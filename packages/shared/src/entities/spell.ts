@@ -6,7 +6,8 @@ import type { Attributes } from "./role_archetype";
 
 export type SaveConditionProfile = {
   condition: (typeof CONDITION_NAMES)[number];
-  resave: keyof Attributes;
+  resave: keyof Attributes | null;
+  recipients?: { shape: "cube"; side_ft: number };
   target_category?: CreatureStatBlock["category"];
   hp_ceiling?: number;
 } & ({ save: null; attribute?: never } | { save: keyof Attributes; attribute: keyof Attributes });
@@ -29,6 +30,7 @@ export interface Spell {
   narration_cue: string;
   verbal: boolean;
   hostile: boolean;
+  max_targets?: number;
   save_condition?: SaveConditionProfile;
   wild_shape?: WildShapeProfile;
 }

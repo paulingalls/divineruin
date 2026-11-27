@@ -21,7 +21,7 @@ INDIRECT = {
     "divine_banishment",
     "divine_miracle",
 }
-CONDITION_SPELLS = {"arcane_hold_person", "arcane_power_word_stun"}
+CONDITION_SPELLS = {"arcane_hold_person", "arcane_power_word_stun", "arcane_slow", "primal_faerie_fire"}
 
 UTILITY = {
     "arcane_teleport",
@@ -33,7 +33,6 @@ UTILITY = {
     "arcane_time_stop",
     "divine_shield_of_faith",
     "primal_feeblemind",
-    "primal_faerie_fire",
     "arcane_arcane_eye",
     "primal_druidcraft",
     "arcane_haste",
@@ -50,7 +49,6 @@ UTILITY = {
     "primal_commune_with_nature",
     "primal_protection_from_hollow",
     "arcane_mist_step",
-    "arcane_slow",
     "divine_resurrection",
     "divine_holy_aura",
     "arcane_shield_spell",

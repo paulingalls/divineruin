@@ -18,6 +18,8 @@ import { BrandColors } from "@/constants/theme";
 // the union below derives from it and the test can iterate the full set.
 export const CONDITION_TYPES = [
   "wounded",
+  "outlined",
+  "slowed",
   "stunned",
   "prone",
   "grappled",
@@ -72,6 +74,8 @@ export const CONDITION_DISPLAY: Record<ConditionType, ConditionDisplay> = {
   incorporeal: { label: "Incorporeal", icon: "ghost", color: BrandColors.hollow },
   mark_of_justice: { label: "Mark of Justice", icon: "target", color: BrandColors.ember },
   iron_resolve: { label: "Iron Resolve", icon: "shield-plus", color: BrandColors.hollow },
+  outlined: { label: "Outlined", icon: "target", color: BrandColors.ember },
+  slowed: { label: "Slowed", icon: "walk", color: BrandColors.ember },
   wounded: { label: "Wounded", icon: "heart-broken", color: BrandColors.ember },
   stunned: { label: "Stunned", icon: "star-circle", color: BrandColors.ember },
   prone: { label: "Prone", icon: "arrow-down-bold-circle", color: BrandColors.ash },

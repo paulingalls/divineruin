@@ -115,6 +115,10 @@ def speed_penalty(active_conditions: list[dict]) -> int:
     return 10 if _carriers(active_conditions, "speed_minus_10") else 0
 
 
+def action_or_quick_action(active_conditions: list[dict]) -> bool:
+    return bool(_carriers(active_conditions, "action_or_quick_action"))
+
+
 def no_reactions(active_conditions: list[dict]) -> bool:
     return bool(_carriers(active_conditions, "no_reactions"))
 
@@ -156,6 +160,7 @@ RESTRICTION_ENFORCERS = {
     "speed_halved": speed_halved,
     "speed_minus_10": speed_penalty,
     "no_reactions": no_reactions,
+    "action_or_quick_action": action_or_quick_action,
     "ignores_structures": ignores_structures,
     "consumed_on_use": attack_consumed_conditions,
     "one_time": attack_consumed_conditions,

@@ -287,3 +287,41 @@ test.each([
     parseSpellRow(id, { ...row, save_condition: { ...profile, [String(field)]: value } }),
   ).toThrow(new RegExp(`${id}.*save_condition.*${field}`));
 });
+
+test("condition spells preserve Slow's cap and Faerie Fire's cube and null re-save", async () => {
+  const rows = await loadSpellsJson();
+  const slow = parseSpellRow(
+    "arcane_slow",
+    rows.find((row) => row.id === "arcane_slow"),
+  );
+  expect(slow.max_targets).toBe(3);
+  expect(slow.save_condition).toEqual({
+    save: "wisdom",
+    attribute: "intelligence",
+    condition: "slowed",
+    resave: "wisdom",
+  });
+  const fire = rows.find((row) => row.id === "primal_faerie_fire");
+  expect(parseSpellRow("primal_faerie_fire", fire).save_condition).toEqual({
+    save: "dexterity",
+    attribute: "wisdom",
+    condition: "outlined",
+    resave: null,
+    recipients: { shape: "cube", side_ft: 20 },
+  });
+  const profile = { save: "dexterity", attribute: "wisdom", condition: "outlined" };
+  for (const malformed of [
+    profile,
+    { ...profile, resave: null, condition: "unknown" },
+    { ...profile, resave: null, recipients: { shape: "radius", side_ft: 20 } },
+    { ...profile, resave: null, recipients: { shape: "cube", side_ft: 0 } },
+    { ...profile, resave: null, recipients: { shape: "cube", side_ft: Infinity } },
+    { ...profile, resave: null, recipients: { shape: "cube", side_ft: 20, placements: 2 } },
+  ]) {
+    const field =
+      "recipients" in malformed ? "recipients" : "resave" in malformed ? "condition" : "resave";
+    expect(() =>
+      parseSpellRow("primal_faerie_fire", { ...fire, save_condition: malformed }),
+    ).toThrow(`save_condition.${field}`);
+  }
+});

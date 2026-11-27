@@ -38153,6 +38153,8 @@
   ],
   "condition_names": [
     "wounded",
+    "outlined",
+    "slowed",
     "stunned",
     "prone",
     "grappled",
