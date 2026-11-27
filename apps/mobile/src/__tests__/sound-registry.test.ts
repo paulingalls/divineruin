@@ -41,6 +41,8 @@ const expectedActionRows = [
   ["ACTION_LEARN_SPELL", "action_learn_spell", "discovery_chime"],
   ["ACTION_DISCOVER_REVEAL", "action_discover_reveal", "discovery_chime"],
   ["ACTION_REPAIR_ITEM", "action_repair_item", "shield_block"],
+  ["ACTION_ENTER_MODE_TRADE", "action_enter_mode_trade", "door_creak"],
+  ["ACTION_SELL_ITEM", "action_sell_item", "item_pickup"],
   ["ACTION_ENTER_MODE_BLACKSMITH", "action_enter_mode_blacksmith", "shield_block"],
   ["ACTION_ENTER_MODE_DISPATCH", "action_enter_mode_dispatch", "notification"],
   ["ACTION_ADVANCE_ONBOARDING_BEAT", "action_advance_onboarding_beat", "quest_sting"],
@@ -48,7 +50,7 @@ const expectedActionRows = [
 ];
 
 test("action catalog exactly matches the fixed rows and resolves", () => {
-  expect(actionSounds).toHaveLength(22);
+  expect(actionSounds).toHaveLength(24);
   expect(actionSounds.map((row) => [row.export, row.id, row.asset])).toEqual(expectedActionRows);
   for (const row of actionSounds) {
     expect(lookupSound(row.id)).not.toBeNull();

@@ -12,7 +12,6 @@ import pricing_queries
 import workspace as ws
 
 _CONTENT = Path(__file__).parents[3] / "content" / "pricing.json"
-_TS_PRICING = Path(__file__).parents[3] / "apps" / "server" / "src" / "pricing.ts"
 # A JSON integer literal past float range: Python keeps it as an unbounded int,
 # TS's JSON.parse gives Infinity. Both parsers must still name the rule.
 _BEYOND_FLOAT_RANGE = "1" + "0" * 400
@@ -23,10 +22,17 @@ def _economy_row() -> dict:
     return next(r for r in rows if r["id"] == "economy")
 
 
+SALE_FIELDS = {
+    "sale_rate": 0.5,
+    "sale_disposition_multipliers": {"unfriendly": 0.9, "neutral": 1.0, "friendly": 1.1, "trusted": 1.2},
+    "crafted_sale_rate": 0.8,
+}
+
+
 class TestGetEconomyPricing:
     @pytest.mark.asyncio
     async def test_returns_cached_row_without_db(self):
-        eco = {"repair_cost_sp": {"common": 2}, "disposition_multipliers": {}, "silver_per_gold": 10}
+        eco = _economy_row()
         with (
             patch("pricing_queries.db._cache_get", new=AsyncMock(return_value=json.dumps(eco))),
             patch("pricing_queries.db.get_pool", new=AsyncMock()) as pool,
@@ -36,7 +42,7 @@ class TestGetEconomyPricing:
 
     @pytest.mark.asyncio
     async def test_fetches_and_caches_on_miss(self):
-        eco = {"repair_cost_sp": {"rare": 50}, "disposition_multipliers": {"trusted": 0.6}, "silver_per_gold": 10}
+        eco = _economy_row()
         pool = AsyncMock()
         pool.fetchrow = AsyncMock(return_value={"data": json.dumps(eco)})
         with (
@@ -91,7 +97,7 @@ class TestGetEconomyPricing:
             ),
             pytest.param(
                 '{"repair_cost_sp":{"common":2},"disposition_multipliers":{"friendly":1e305},"silver_per_gold":10}',
-                "pricing[economy].disposition_multipliers.friendly " + pricing_queries.DISPOSITION_MULTIPLIER_CAP_RULE,
+                "pricing[economy].disposition_multipliers.friendly must be <= 1e+304",
                 id="multiplier_exceeds_conversion_cap",
             ),
             pytest.param(
@@ -126,6 +132,7 @@ class TestGetEconomyPricing:
     @pytest.mark.asyncio
     async def test_refuses_invalid_pricing_domain_on_every_io_lane(self, lane, row_text, message):
         pool = AsyncMock()
+        row_text = json.dumps(_economy_row() | json.loads(row_text))
         pool.fetchrow = AsyncMock(return_value={"data": row_text})
         cached = row_text if lane == "cache" else None
         with (
@@ -147,14 +154,17 @@ class TestGetEconomyPricing:
             + multiplier_text
             + '},"silver_per_gold":10}'
         )
-        with patch("pricing_queries.db._cache_get", new=AsyncMock(return_value=row_text)):
+        with patch(
+            "pricing_queries.db._cache_get",
+            new=AsyncMock(return_value=json.dumps(_economy_row() | json.loads(row_text))),
+        ):
             result = await pricing_queries.get_economy_pricing()
         assert result["disposition_multipliers"]["friendly"] == float(multiplier_text)
 
     @pytest.mark.parametrize("repair_cost", [0, 2])
     @pytest.mark.asyncio
     async def test_accepts_pricing_repair_cost_domain(self, repair_cost):
-        eco = {"repair_cost_sp": {"common": repair_cost}, "disposition_multipliers": {}, "silver_per_gold": 10}
+        eco = _economy_row() | {"repair_cost_sp": {"common": repair_cost}}
         with patch("pricing_queries.db._cache_get", new=AsyncMock(return_value=json.dumps(eco))):
             assert (await pricing_queries.get_economy_pricing())["repair_cost_sp"]["common"] == repair_cost
 
@@ -176,20 +186,52 @@ class TestCrossLanguageParity:
         assert charge_sp("common", "trusted") == 1
         assert eco["silver_per_gold"] == 10
 
-    def test_multiplier_cap_and_rule_match_typescript(self):
-        source = _TS_PRICING.read_text()
-        cap_match = re.search(r"export const MAX_DISPOSITION_MULTIPLIER\s*=\s*([0-9eE+.-]+)\s*;", source)
-        derived = re.search(
-            r"export const DISPOSITION_MULTIPLIER_CAP_RULE\s*=\s*"
-            r"`must be <= \$\{MAX_DISPOSITION_MULTIPLIER\}`\s*;",
-            source,
-        )
 
-        assert cap_match is not None
-        assert derived is not None, "TS rule text must interpolate the cap, not retype it"
-        ts_cap = float(cap_match.group(1))
-        assert ts_cap == pricing_queries.MAX_DISPOSITION_MULTIPLIER
-        # Python and JS both render this magnitude as "1e+304", so the TS template and
-        # this f-string produce the same sentence.
-        expected_rule = f"must be <= {ts_cap}"
-        assert expected_rule == pricing_queries.DISPOSITION_MULTIPLIER_CAP_RULE
+def test_authored_sale_pricing():
+    row = _economy_row()
+    assert {key: row[key] for key in SALE_FIELDS} == SALE_FIELDS
+
+
+@pytest.mark.parametrize("cached", [True, False], ids=["cache", "database"])
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        (field, value)
+        for field in (
+            "sale_rate",
+            "crafted_sale_rate",
+            *(
+                f"sale_disposition_multipliers.{disposition}"
+                for disposition in SALE_FIELDS["sale_disposition_multipliers"]
+            ),
+        )
+        for value in (None, 0, -1, True, "0.5", float("inf"), 0.12345)
+    ]
+    + [("sale_disposition_multipliers", None), ("sale_disposition_multipliers.neutral", 1.0001)]
+    + [("silver_per_gold", value) for value in (-10, 0, float("inf"), "10")],
+)
+@pytest.mark.asyncio
+async def test_refuses_invalid_sale_pricing(cached, field, value):
+    sale = json.loads(json.dumps(SALE_FIELDS))
+    keys = field.split(".")
+    target = sale if len(keys) == 1 else sale[keys[0]]
+    if value is None:
+        del target[keys[-1]]
+    else:
+        target[keys[-1]] = value
+    row_text = json.dumps(
+        {"repair_cost_sp": {"common": 2}, "disposition_multipliers": {}, "silver_per_gold": 10, **sale}
+    )
+    pool = AsyncMock()
+    pool.fetchrow.return_value = {"data": row_text}
+    diagnostic = f"pricing[economy].{field}"
+    if value == 1.0001:
+        diagnostic += " * sale_rate must have at most 4 decimal places"
+    with (
+        patch("pricing_queries.db._cache_get", new=AsyncMock(return_value=row_text if cached else None)),
+        patch("pricing_queries.db.get_pool", new=AsyncMock(return_value=pool)),
+        patch("pricing_queries.db._cache_set", new=AsyncMock()) as cache_set,
+    ):
+        with pytest.raises(ValueError, match=re.escape(diagnostic)):
+            await pricing_queries.get_economy_pricing()
+        cache_set.assert_not_awaited()

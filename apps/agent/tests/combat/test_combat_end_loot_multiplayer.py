@@ -4,6 +4,7 @@ import random
 
 import pytest
 
+import db_mutations_inventory
 import event_types as E
 from session_data import CombatParticipant, CombatState
 
@@ -65,11 +66,11 @@ class _FixedCurrencyRng(random.Random):
 async def test_two_pc_victory_currency_party_multiplier_split_and_lock_order():
     session = _two_pc_session()
     cs = _victory_cs([_loot_enemy("g1", category="humanoid", role="standard", level=5)], ["p1", "p2"])
-    end_data, mutations, queries, sink = await _run_victory(
+    end_data, _, queries, sink = await _run_victory(
         session, cs, rng=_FixedCurrencyRng(silver=20), gold_by_id={"p1": 0, "p2": 0}
     )
 
-    gold_calls = {c.args[0]: c.args[1] for c in mutations.update_player_gold.await_args_list}
+    gold_calls = {c.args[0]: c.args[1] for c in db_mutations_inventory.credit_player_gold.await_args_list}
     assert gold_calls == {"p1": pytest.approx(1.5), "p2": pytest.approx(1.5)}
     assert end_data["primary_currency_gold"] == pytest.approx(1.5)
     currency_ids = [e.payload["player_id"] for e in sink.captured if e.event_type == E.CURRENCY_GAINED]

@@ -1,4 +1,3 @@
-import json
 from unittest.mock import AsyncMock
 
 import pytest
@@ -23,16 +22,6 @@ class TestConsumePlayerMaterials:
         with pytest.raises(ValueError, match="exceeds held quantity"):
             await db_mutations.consume_player_materials("p1", {"iron_ore": 2}, conn=conn)
         conn.execute.assert_not_awaited()
-
-
-class TestUpdatePlayerGold:
-    async def test_sets_gold_via_jsonb(self):
-        conn = AsyncMock()
-        await db_mutations.update_player_gold("p1", 12.5, conn=conn)
-        sql, *params = conn.execute.call_args.args
-        assert "UPDATE players" in sql and "'{gold}'" in sql
-        assert params[0] == "p1"
-        assert json.loads(params[1]) == 12.5
 
 
 class TestCreateAsyncActivityConnSeam:

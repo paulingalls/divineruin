@@ -38,10 +38,13 @@ SERVER_TABLES = (
     "role_archetypes",
     "archetype_milestones",
     "pricing",
+    "inventory_pools",
 )
 
 
 async def validate_runtime_catalogs(conn) -> None:
+    from sale_pricing import parse_inventory_pools, validate_npc_pool_bindings
+
     tables = set(SERVER_TABLES) | {row[0] for row in PYTHON_CATALOGS}
     snapshot = {}
     for table in sorted(tables):
@@ -50,6 +53,8 @@ async def validate_runtime_catalogs(conn) -> None:
             raise ValueError(f"{table} produced no rows")
         snapshot[table] = [{"id": row["id"], "data": json.loads(row["data"])} for row in rows]
     await _validate_typescript(snapshot)
+    pools = parse_inventory_pools(snapshot["inventory_pools"], snapshot["items"])
+    validate_npc_pool_bindings(snapshot["npcs"], pools)
     spells = importlib.import_module("spells")
     creatures = [{"id": row["id"], "category": row["data"]["category"]} for row in snapshot["creatures"]]
     spells.set_spells(spells.parse_spell_catalog(snapshot["spells"], creatures))

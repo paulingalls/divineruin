@@ -1,10 +1,11 @@
 import { authStore } from "@/stores/auth-store";
 import { test, expect, beforeEach } from "bun:test";
-import { handleGameEvent } from "@/audio/game-event-handler";
+import { Participant, ParticipantKind } from "livekit-client";
+import { handleGameEvent, handleGameEventMessage } from "@/audio/game-event-handler";
 import { panelStore } from "@/stores/panel-store";
 import { hudStore } from "@/stores/hud-store";
 import { characterStore } from "@/stores/character-store";
-import { SAMPLE_CHARACTER, resetStores } from "./use-game-events.helpers";
+import { SAMPLE_CHARACTER, encode, resetStores } from "./use-game-events.helpers";
 
 beforeEach(() => {
   resetStores();
@@ -163,6 +164,46 @@ test("session_init populates panelStore characterDetail", () => {
   expect(detail!.ac).toBe(18);
   expect(detail!.proficiencies).toEqual(["athletics"]);
   expect(detail!.gold).toBe(50);
+});
+
+test.each([
+  ["currency_gained", "sale", 51.3],
+  ["currency_spent", "repair", 0],
+  ["currency_spent", "workspace_rental", 49.8],
+])("%s from %s updates only the recipient's initialized purse", (type, source, balance) => {
+  authStore.setState({ playerId: "p1" });
+  const agent = new Participant(
+    "agent",
+    "dm",
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    ParticipantKind.AGENT,
+  );
+  const sendCurrency = (playerId: string, newBalance: number) =>
+    handleGameEventMessage({
+      from: agent,
+      payload: encode({
+        type,
+        player_id: playerId,
+        amount: 1.3,
+        currency: "gold",
+        source,
+        new_balance: newBalance,
+      }),
+    });
+
+  sendCurrency("p1", 50);
+  expect(panelStore.getState().characterDetail).toBeNull();
+  handleGameEvent({
+    type: "session_init",
+    character: { player_id: "p1", name: "Kael", class: "warrior", gold: 50 },
+  });
+  sendCurrency("p2", 18.4);
+  expect(panelStore.getState().characterDetail?.gold).toBe(50);
+  sendCurrency("p1", balance);
+  expect(panelStore.getState().characterDetail?.gold).toBe(balance);
 });
 
 test("session_init populates panelStore characterDetail spells (top-level sibling)", () => {

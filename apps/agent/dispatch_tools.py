@@ -40,7 +40,10 @@ async def _enter_dispatch_impl(context: RunContext[SessionData]) -> str | tuple:
     dispatch_ctx = ChatContext()
     dispatch_ctx.add_message(role="system", content=" ".join(parts))
 
-    return create_dispatch_agent(chat_ctx=dispatch_ctx), json.dumps({"status": "entered_dispatch"})
+    agent = create_dispatch_agent(chat_ctx=dispatch_ctx)
+    if session.background is not None:
+        await session.background.apply_cached_warm(agent)
+    return agent, json.dumps({"status": "entered_dispatch"})
 
 
 @function_tool()

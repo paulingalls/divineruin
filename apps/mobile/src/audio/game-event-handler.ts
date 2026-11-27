@@ -212,6 +212,21 @@ export function handleGameEvent(event: DataChannelEvent): void {
       handleHpChanged(event);
       break;
 
+    case E.CURRENCY_GAINED:
+    case E.CURRENCY_SPENT: {
+      const localPlayerId =
+        authStore.getState().playerId ?? characterStore.getState().character?.playerId;
+      const { characterDetail, setCharacterDetail } = panelStore.getState();
+      if (
+        localPlayerId &&
+        event.player_id === localPlayerId &&
+        typeof event.new_balance === "number"
+      ) {
+        if (characterDetail) setCharacterDetail({ ...characterDetail, gold: event.new_balance });
+      }
+      break;
+    }
+
     case E.RESONANCE_CHANGED: {
       // HUD shows the qualitative state only; current/max are ignored. Unknown
       // states are dropped (fail-safe) rather than corrupting the tracker.

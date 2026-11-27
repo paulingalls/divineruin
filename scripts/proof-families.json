@@ -8,8 +8,23 @@
     "reads": ["content/creatures.json"]
   },
   {
+    "name": "merchant-sales",
+    "tests": ["apps/agent/tests/acceptance/test_sell_to_merchant(?:_guards)?\\.py"],
+    "owns": ["apps/agent/(?:merchant_agent|merchant_tools|sale_pricing|sell_item)\\.py"],
+    "reads": [
+      "content/action_sounds.json",
+      "content/inventory_pools.json",
+      "content/items.json",
+      "content/locations.json",
+      "content/npcs.json",
+      "content/pricing.json"
+    ]
+  },
+  {
     "name": "npc-repair",
-    "tests": ["apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:durability_e2e)\\.py"],
+    "tests": [
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:durability_e2e|exact_gold)\\.py"
+    ],
     "owns": [
       "apps/agent/(?:combat[^/]*|choir[^/]*|still[^/]*|encounter[^/]*|durability[^/]*|damage[^/]*|death[^/]*|enemy[^/]*|initiative[^/]*|reaction[^/]*|monster[^/]*)\\.py"
     ],
@@ -146,7 +161,7 @@
   {
     "name": "inventory-crafting",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:artificer_slot_e2e|common_bond_crafting|crafting_.*|inventory_taint_migration|live_material_inventory|material_inventory|loot_.*|recipe_.*|m46c_gathering_capstone|m53_quality_outcomes_capstone)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:artificer_slot_e2e|common_bond_crafting|crafted_decision_voice|crafting_.*|inventory_taint_migration|live_material_inventory|material_inventory|loot_.*|recipe_.*|m46c_gathering_capstone|m53_quality_outcomes_capstone)\\.py"
     ],
     "owns": [
       "apps/agent/(?:inventory[^/]*|craft[^/]*|recipe[^/]*|loot[^/]*|material[^/]*|gather[^/]*|workspace[^/]*|quality[^/]*|equipment[^/]*|item[^/]*|artificer[^/]*)\\.py"

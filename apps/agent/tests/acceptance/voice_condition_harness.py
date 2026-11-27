@@ -45,7 +45,7 @@ class CommandSpeechStream(stt.RecognizeStream):
                 stt.SpeechEvent(
                     type=stt.SpeechEventType.FINAL_TRANSCRIPT,
                     request_id=uuid.uuid4().hex,
-                    alternatives=[stt.SpeechData(language=LanguageCode("en"), text="continue second")],
+                    alternatives=[stt.SpeechData(language=LanguageCode("en"), text=engine.transcript)],
                 )
             )
             self._event_ch.send_nowait(stt.SpeechEvent(type=stt.SpeechEventType.END_OF_SPEECH))
@@ -53,6 +53,7 @@ class CommandSpeechStream(stt.RecognizeStream):
 
 class CommandSTT(LocalSTT):
     epoch = 0
+    transcript = "continue second"
 
     def stream(self, *, language="en", conn_options=DEFAULT_API_CONNECT_OPTIONS):
         return CommandSpeechStream(stt=self, conn_options=conn_options)

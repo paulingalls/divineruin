@@ -22,6 +22,7 @@ from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import GUILD_PLAYER
 
 import db_mutations_conditions
+import db_mutations_inventory
 import db_queries
 
 
@@ -67,6 +68,9 @@ def default_player_row(request, monkeypatch):
     """A plausible level-1 row for any player_id, so the combat-end XP grant has something to read."""
     if {"dev_db_pool", "reset_db_pool"}.intersection(request.fixturenames):
         return
+    monkeypatch.setattr(
+        db_mutations_inventory, "credit_player_gold", AsyncMock(side_effect=lambda _pid, amount, **_kw: float(amount))
+    )
     monkeypatch.setattr(
         db_queries,
         "get_players_for_update",

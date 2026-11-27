@@ -17,17 +17,19 @@ async def resolve_disposition(
     *,
     conn=None,
     for_update: bool = False,
+    default_disposition: str | None = None,
     queries_mod=db_queries,
     content_mod=db_content_queries,
 ) -> str:
     """The player's standing toward an NPC: the stored per-player disposition if
     one is recorded, else the NPC's content `default_disposition`, else `neutral`.
 
-    Re-fetches the content NPC for the fallback; callers that already hold the NPC
-    row (and want to avoid the read) keep their local inline form.
+    A caller that has already read the NPC can supply its content default.
     """
     disposition = await queries_mod.get_npc_disposition(npc_id, player_id, conn=conn, for_update=for_update)
-    if disposition is None:
-        npc = await content_mod.get_npc(npc_id)
-        disposition = npc.get("default_disposition", "neutral") if npc else "neutral"
-    return disposition
+    if disposition is not None:
+        return disposition
+    if default_disposition is not None:
+        return default_disposition
+    npc = await content_mod.get_npc(npc_id)
+    return npc.get("default_disposition", "neutral") if npc else "neutral"

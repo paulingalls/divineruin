@@ -11,7 +11,7 @@ args so they stay exhaustively unit-testable. Consumed by the three-check pipeli
 from dataclasses import dataclass
 from enum import IntEnum, StrEnum
 
-from tool_support import DISPOSITION_TIERS
+from role_archetypes import DISPOSITION_INDEX
 
 
 class WorkspaceType(StrEnum):
@@ -36,14 +36,6 @@ RENTAL_BASE_PRICE_SP: dict[WorkspaceType, int] = {
 # bundle (12sp < 5+10). It is a rental OPTION, not a WorkspaceType member — no
 # recipe ever *requires* "combined" — so it lives as its own price constant.
 COMBINED_FORGE_LAB_RENTAL_SP = 12
-
-# Disposition price multipliers and the silver/gold conversion moved to the
-# DB-loaded pricing SSOT (content/pricing.json -> pricing_queries.get_economy_pricing:
-# disposition_multipliers, silver_per_gold), shared with repair pricing (story-011).
-# compute_rental_price takes the multipliers as a param so it stays a pure, sync
-# rules-engine fn; the silver/gold debit conversion lives in the calling tools.
-# Disposition *order/refuse-below-neutral* stays here via tool_support.DISPOSITION_TIERS
-# (canonical vocabulary, not pricing).
 
 
 @dataclass(frozen=True)
@@ -86,20 +78,16 @@ def compute_rental_price(base_price_sp: int, disposition: str, *, multipliers: d
     unknown-disposition-contract).
     """
     key = disposition.lower()
-    rank = DISPOSITION_TIERS.get(key)
+    rank = DISPOSITION_INDEX.get(key)
     if rank is None:
         raise ValueError(f"unknown disposition {disposition!r}")
-    if rank < DISPOSITION_TIERS["neutral"]:
+    if rank < DISPOSITION_INDEX["neutral"]:
         return RentalQuote(False, 0, f"NPC refuses to rent at {key} disposition (below neutral)")
     return RentalQuote(True, whole_silver(base_price_sp, multipliers.get(key, 1.0)), "")
 
 
-# The tiers an untargeted quote prices, derived from the canonical ladder
-# (role_archetypes.DISPOSITIONS via DISPOSITION_TIERS) rather than hand-copied: a tier
-# added above neutral must appear in the quote, or the DM prices a player it never
-# priced before at a rate they never pay (the story-011 defect, in a new shape).
 RENTABLE_DISPOSITIONS: tuple[str, ...] = tuple(
-    tier for tier, rank in DISPOSITION_TIERS.items() if rank >= DISPOSITION_TIERS["neutral"]
+    tier for tier, rank in DISPOSITION_INDEX.items() if rank >= DISPOSITION_INDEX["neutral"]
 )
 
 

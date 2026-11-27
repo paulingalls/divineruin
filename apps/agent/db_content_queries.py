@@ -97,14 +97,14 @@ async def get_location_region_type(location_id: str) -> str:
     return location.get("region_type", REGION_CITY)
 
 
-async def get_npc(npc_id: str) -> dict | None:
+async def get_npc(npc_id: str, *, conn: asyncpg.Connection | None = None) -> dict | None:
     cache_key = f"npc:{npc_id}"
     cached = await db._cache_get(cache_key)
     if cached is not None:
         return json.loads(cached)
 
-    pool = await db.get_pool()
-    row = await pool.fetchrow("SELECT data FROM npcs WHERE id = $1", npc_id)
+    connection = conn or await db.get_pool()
+    row = await connection.fetchrow("SELECT data FROM npcs WHERE id = $1", npc_id)
     if row is None:
         return None
 
