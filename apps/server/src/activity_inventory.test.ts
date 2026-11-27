@@ -192,6 +192,35 @@ describe("handleActivityDecision inventory", () => {
       ).toEqual([]);
     },
   );
+  test("crafted sale with no player row to credit fails before collecting", async () => {
+    const { item } = cases.find((row) => row.id === "crafted_fractional_gold")!;
+    decisionStubs({}, "owner", [
+      {
+        match: "FROM items",
+        result: [
+          {
+            data: {
+              ...item,
+              id: "sword",
+              type: "accessory",
+              name: "Test item",
+              tier: 1,
+              tags: [],
+              weight: 1,
+              effects: [],
+            },
+          },
+        ],
+      },
+      {
+        match: "FROM pricing",
+        result: [{ data: pricingRows.find((row) => row.id === "economy")! }],
+      },
+    ]);
+    const res = await decide("sell");
+    expect(res.status).toBe(500);
+    expect(getCapturedQueries().some((q) => q.sql.includes("UPDATE async_activities"))).toBe(false);
+  });
   test.each([{ outcome: null }, { activity_type: "training" }])(
     "non-grant decision does not claim an inventory refresh: %j",
     async (overrides) => {

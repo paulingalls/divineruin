@@ -184,12 +184,14 @@ export async function handleActivityDecision(
           if (!quote.available) return { error: quote.reason, httpStatus: 400 } as const;
 
           const gold = quote.price_sp / pricing.silverPerGold;
-          await tx`
+          const credited = await tx<{ player_id: string }[]>`
             UPDATE players
             SET data = jsonb_set(data, '{gold}',
               to_jsonb(COALESCE((data->>'gold')::numeric, 0) + ${gold}::numeric))
             WHERE player_id = ${playerId}
+            RETURNING player_id
           `;
+          if (credited.length === 0) throw new Error(`Player ${playerId} is missing`);
           proceeds = { price_sp: quote.price_sp, gold };
         }
       }
