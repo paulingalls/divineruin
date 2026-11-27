@@ -164,7 +164,6 @@ async def assemble_participants(
         class_reactions = set(reaction_ids)
         for spell_id, twins in reaction_catalog.SPELL_TWINS.items():
             if spell_id in castable and class_reactions.isdisjoint(twins):
-                reaction_catalog.get_reaction(spell_id)
                 reaction_ids.append(spell_id)
         participants.append(
             CombatParticipant(
