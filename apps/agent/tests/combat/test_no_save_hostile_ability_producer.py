@@ -60,6 +60,7 @@ def test_exempt_conditions_are_catalog_buffs():
 def test_spell_exemptions_are_exactly_the_runtime_beneficial_conditions():
     assert {
         "blessed",
+        "invisible",
         "shielded",
         "enraged",
         "inspired",

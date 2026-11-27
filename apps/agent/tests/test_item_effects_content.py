@@ -166,6 +166,8 @@ def test_blockable_conditions_partition_the_condition_catalog():
         "studied_weakness",
         "frost_slowed",
         "outlined",
+        "guiding_light_mark",
+        "invisible",
         "slowed",
         "reactions_suppressed",
         "divine_ward",
