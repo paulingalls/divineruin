@@ -2508,9 +2508,10 @@
         "name": "Oath of Justice",
         "clauses": [
           {
-            "effect": "Oath of Justice: oath-breaking loses all favor abilities for a session.",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Breaking the Oath of Justice suppresses Valdris tier abilities for the rest of the current gameplay session.",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_oath_breach"
           },
           {
             "effect": "Oath-keeping grants +2 to all d20 rolls when justice is at stake",

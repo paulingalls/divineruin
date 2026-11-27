@@ -14,6 +14,7 @@ import concentration_break
 import conditions
 import db_mutations
 import db_queries
+import oath_breach
 import reaction_windows
 import thyra_seasons
 from combat_action_availability import action_summary
@@ -158,6 +159,12 @@ async def apply_rolled_attack(
 ):
     steps = progress.steps if progress is not None else {}
     if attack_result is not None:
+        if combat_state is not None and conn is not None:
+            breach = await oath_breach.settle(session, combat_state, attacker, target, conn=conn, queries=queries)
+            if breach is not None:
+                steps["oath_breach"] = breach
+                assert sink is not None
+                sink.patron_refreshes[attacker.id] = (session.room, session.event_bus)
         combat_wrongdoing.record_attack(combat_state, attacker, target)
         if not target.is_ally and (receipt := combat_yield.end(attacker)):
             steps["yield_receipt"] = receipt
@@ -180,6 +187,8 @@ async def apply_rolled_attack(
         progress=progress,
     )
     summary.update(steps.get("yield_receipt", {}))
+    if "oath_breach" in steps:
+        summary["oath_breach"] = steps["oath_breach"]
     if (
         summary.get("hit")
         and reaction_windows.GRAPPLE_PROPERTY in action.get("properties", [])
