@@ -18,7 +18,7 @@ from acceptance._spell_hostile_condition_helpers import (
 from acceptance._spell_hostile_condition_helpers import dev_db_pool as dev_db_pool
 from acceptance.test_spell_bless_lifecycle import context
 from acceptance.test_spell_new_conditions import CROSSBOW, FIRE, equip
-from combat.test_spell_damage_lands import saved_player
+from combat.test_spell_damage_lands import minimum_roll, saved_player
 from combat.test_spell_damage_lands import spell_fight as spell_fight
 from livekit.agents import ToolError
 from voice_condition_fixtures import participant, spatial_record
@@ -68,34 +68,45 @@ async def mark(ctx, caster, foe="foe"):
     return state
 
 
+def assert_attack(packets, actor, face, spell):
+    roll = receipt(packets, actor)["damage_result"] if spell else swing(packets, actor)
+    if spell:
+        assert roll["attack_total"] == face + 6
+    else:
+        assert roll["roll"] == face
+    assert roll["hit"] is (face == 17)
+
+
 @pytest.mark.parametrize("spell", [False, True])
 async def test_mark_changes_only_the_first_attack_after_reload(spell_fight, spell):
     ctx = spell_fight
     caster, ally = await mark_fight(ctx)
-    for foe, face in [("control", 3), ("foe", 17), ("foe", 3)]:
-        if face == 17:
-            await mark(ctx, caster)
-        declaration = cast_spell(ally, BOLT, foe) if spell else attack(ally, DAGGER["name"], foe)
-        packets, state = await play(ctx, declaration, faces=[3, 17])
-        if spell:
-            roll = receipt(packets, ally)["damage_result"]
-            assert roll["attack_total"] == face + 6
-        else:
-            roll = swing(packets, ally)
-            assert roll["roll"] == face
-        assert roll["hit"] is (face == 17)
-        assert not has(state, foe, MARK)
+    second = await add_player(ctx, "mage", (BOLT,))
+    participant(ctx.userdata.combat_state, second).initiative = 23
+    await equip(ctx, second, DAGGER)
+
+    def swing_at(actor, foe):
+        return cast_spell(actor, BOLT, foe) if spell else attack(actor, DAGGER["name"], foe)
+
+    packets, _ = await play(ctx, swing_at(ally, "control"), faces=[3, 17])
+    assert_attack(packets, ally, 3, spell)
+    await mark(ctx, caster)
+    packets, state = await play(ctx, swing_at(ally, "foe"), swing_at(second, "foe"), faces=[3, 17, 3, 17])
+    assert_attack(packets, ally, 17, spell)
+    assert_attack(packets, second, 3, spell)
+    assert not has(state, "foe", MARK)
 
 
 async def test_missed_attack_spends_the_mark(spell_fight):
     ctx = spell_fight
     caster, ally = await mark_fight(ctx, ac=24)
-    await mark(ctx, caster)
-    packets, state = await play(ctx, attack(ally, DAGGER["name"], "foe"), faces=[3, 7])
+    participant(ctx.userdata.combat_state, caster).initiative = 30
+    strike = attack(ally, DAGGER["name"], "foe")
+    packets, state = await play(ctx, cast_spell(caster, GUIDING), strike, faces=[3, 7])
     rolled = swing(packets, ally)
     assert (rolled["roll"], rolled["hit"], rolled["damage"]) == (7, False, 0)
     assert not has(state, "foe", MARK)
-    packets, _ = await play(ctx, attack(ally, DAGGER["name"], "foe"), faces=[3, 17])
+    packets, _ = await play(ctx, strike, faces=[3, 17])
     assert swing(packets, ally)["roll"] == 3
 
 
@@ -113,7 +124,8 @@ async def test_invisible_ally_can_be_attacked_until_they_strike(spell_fight, act
     packets, _ = await play(ctx, strike, faces=[17, 3])
     assert swing(packets, foe.id)["roll"] == 17
     packets, state = await play(ctx, cast_spell(caster, INVISIBILITY, ally), strike, faces=[17, 3])
-    assert swing(packets, foe.id)["roll"] == 3
+    incoming = next(p for p in packets if p["actor_id"] == foe.id)
+    assert incoming.get("roll") == 3, incoming
     assert has(state, ally, INVISIBLE)
     assert (await saved_player(ally)).get("flags") == before.get("flags")
     packets, state = await play(ctx, attack(ally, DAGGER["name"], foe.id), defend(foe.id), face=1)
@@ -134,6 +146,10 @@ async def test_outline_refuses_invisibility_before_payment(spell_fight, queued):
     participant(state, druid).initiative = 30
     spatial_record(state)["positions"][caster]["x"] = 40
     await db_mutations.save_combat_state(state.combat_id, state.to_dict())
+    extra_target = cast_spell(caster, INVISIBILITY, caster)
+    extra_target.targets.append(ally)
+    with pytest.raises(ToolError, match="at most 1"):
+        await combat_turn.declare_phase(ctx, [extra_target])
     await play(ctx, cast_spell(caster, INVISIBILITY, caster))
     await (await db.get_pool()).execute(
         "UPDATE players SET data=jsonb_set(data,'{resonance,current}','0') WHERE player_id=$1", caster
@@ -199,14 +215,17 @@ async def skill_face(ctx, skill):
 async def test_invisibility_changes_stealth_and_only_hostile_casts_break_it(spell_fight):
     ctx = spell_fight
     caster = ctx.userdata.player_id
-    ally = await add_player(ctx, "cleric", (GUIDING, "divine_divine_ward"))
+    ally = await add_player(ctx, "cleric", (GUIDING, "divine_divine_ward", "divine_sacred_word", "divine_mend"))
     await set_foe(ctx)
     check_ctx = context(ally)
     check_ctx.userdata.combat_state = await reload(ctx)
+    await activate(check_ctx, "divine_sacred_word")
     assert await skill_face(check_ctx, "stealth") == 3
     _, check_ctx.userdata.combat_state = await play(ctx, cast_spell(caster, INVISIBILITY, ally))
     assert await skill_face(check_ctx, "stealth") == 17
     assert await skill_face(check_ctx, "acrobatics") == 3
+    await activate(check_ctx, "divine_mend")
+    assert await skill_face(check_ctx, "stealth") == 17
     before = await saved_player(ally)
     with pytest.raises(ToolError, match="declare_phase"):
         await activate(check_ctx, "divine_sacred_word")
@@ -247,7 +266,7 @@ async def test_unused_mark_expires_at_its_casters_next_turn_end(spell_fight, tur
             attack(caster, CROSSBOW["name"], "control"),
             followup,
             cast_spell(other_ally, BOLT, "spare"),
-            faces=[3, 3, 3, 17],
+            faces=[3, 3, 5, 17, 1],
         )
         assert receipt(packets, other_ally)["damage_result"]["attack_total"] == 23
     else:
@@ -266,18 +285,13 @@ async def test_area_cast_leaves_mark_and_breaks_its_invisible_caster(spell_fight
     for foe in ("foe", "control"):
         spatial_record(state)["positions"][foe]["x"] = 30
     await db_mutations.save_combat_state(state.combat_id, state.to_dict())
-    plain, _ = await play(ctx, cast_spell(ally, "arcane_fireball"), face=1)
     await play(ctx, cast_spell(mage, INVISIBILITY, ally))
-    packets, state = await play(ctx, cast_spell(caster, GUIDING), cast_spell(ally, "arcane_fireball"), face=1)
+    with patch("dice.roll", side_effect=minimum_roll):
+        packets, state = await play(ctx, cast_spell(caster, GUIDING), cast_spell(ally, "arcane_fireball"), face=1)
     assert receipt(packets, ally)["condition_removed"] == INVISIBLE
-    for marked, unmarked in zip(
-        receipt(packets, ally)["damage_results"], receipt(plain, ally)["damage_results"], strict=True
-    ):
-        assert (marked["target_id"], marked["save"], marked["damage"]) == (
-            unmarked["target_id"],
-            unmarked["save"],
-            unmarked["damage"],
-        )
+    results = {result["target_id"]: result for result in receipt(packets, ally)["damage_results"]}
+    marked, control = results["foe"], results["control"]
+    assert marked["save"] == control["save"] and marked["damage"] == control["damage"]
     assert not has(state, ally, INVISIBLE)
     assert has(state, "foe", MARK)
     packets, state = await play(ctx, attack(caster, CROSSBOW["name"], "foe"), faces=[3, 17])

@@ -273,6 +273,7 @@ def validate_target(state, caster, declaration, spell):
     from condition_produce import resolve_effective_targets
     from spell_condition_cleanse import GREATER_RESTORATION, combat_target
     from spell_invisibility import require_clear_outline
+    from spells import validate_target_count
 
     if spell.id == GREATER_RESTORATION:
         combat_target(state, caster.id, declaration.target_id, declaration.target_ids)
@@ -288,7 +289,11 @@ def validate_target(state, caster, declaration, spell):
         validate_condition_targets(state, caster, declaration, spell)
         return
     if spell.applies_condition in BENEFICIAL_CONDITIONS:
-        for target_id in resolve_effective_targets(declaration.target_ids, declaration.target_id, self_value=caster.id):
+        targets = resolve_effective_targets(
+            declaration.target_ids, declaration.target_id, self_value=caster.id, dedup=True
+        )
+        validate_target_count(spell, targets)
+        for target_id in targets:
             target = state.get_participant(target_id)
             if target is None or not target.is_ally or is_terminally_down(target):
                 raise ValueError(f"{spell.name} requires an ally in the fight who is alive: {target_id}")
