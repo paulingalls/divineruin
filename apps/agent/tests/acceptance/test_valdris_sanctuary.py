@@ -117,7 +117,7 @@ async def start_at_sanctuary(
             ally: (ally_roll, totals[ally]),
         }
         assert {row["id"]: row["initiative_bonus"] for row in summary if "initiative_bonus" in row} == (
-            {candidate: AWARD} if bonus else {}
+            {candidate: [AWARD]} if bonus else {}
         )
         [started] = [event for event in published_payloads(room) if event["type"] == "combat_started"]
         assert started["initiative_order"] == summary

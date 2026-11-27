@@ -1,5 +1,7 @@
 """Translate catalog references and party rows into initialized combat participants."""
 
+from typing import TypedDict
+
 from livekit.agents.llm import ToolError
 
 import abilities
@@ -22,7 +24,7 @@ from encounter_references import validate_encounter_references
 from patron_location import is_sanctuary_location
 from patron_passives import effective_hp, orenthel_beacon, scholars_ward, tidewalker
 from patron_synergy_combat import LAWFUL_COMMAND_NAME, VALDRIS_LAWFUL_COMMAND, sanctuary_initiative_bonus
-from session_data import CombatParticipant
+from session_data import CombatParticipant, CombatState
 
 
 def class_reaction_ids(player_class: str, player_level: int) -> list[str]:
@@ -36,20 +38,57 @@ def class_reaction_ids(player_class: str, player_level: int) -> list[str]:
     ]
 
 
-async def assemble_participants(session, encounter, encounter_id, member_players, *, content, queries, initiated_by):
-    initiative_bonuses = {
-        mid: bonus
+class InitiativeAward(TypedDict):
+    id: str
+    name: str
+    bonus: int
+
+
+async def collect_initiative_awards(
+    state: CombatState, member_players: list[tuple[str, dict]], *, initiated_by: str | None
+) -> dict[str, list[InitiativeAward]]:
+    awards: dict[str, list[InitiativeAward]] = {
+        mid: [{"id": VALDRIS_LAWFUL_COMMAND, "name": LAWFUL_COMMAND_NAME, "bonus": bonus}]
         for mid, row in member_players
         if (bonus := sanctuary_initiative_bonus(row, initiated_by=initiated_by))
     }
-    if initiative_bonuses and not await is_sanctuary_location(session.location_id):
-        initiative_bonuses.clear()
+    if awards and not await is_sanctuary_location(state.location_id):
+        awards.clear()
+    return awards
+
+
+def finalize_initiative(
+    state: CombatState,
+    entries: list[combat_resolution.InitiativeEntry],
+    awards: dict[str, list[InitiativeAward]],
+) -> list[dict[str, object]]:
+    entries_by_id = {entry.participant_id: entry for entry in entries}
+    for participant in state.participants:
+        participant.initiative += sum(award["bonus"] for award in awards.get(participant.id, ()))
+
+    ordered = sorted(state.participants, key=lambda participant: participant.initiative, reverse=True)
+    state.initiative_order = [participant.id for participant in ordered]
+    summary = []
+    for participant in ordered:
+        entry = entries_by_id[participant.id]
+        receipt: dict[str, object] = {
+            "id": participant.id,
+            "name": entry.name,
+            "roll": entry.roll,
+            "total": participant.initiative,
+        }
+        if participant.id in awards:
+            receipt["initiative_bonus"] = awards[participant.id]
+        summary.append(receipt)
+    return summary
+
+
+async def assemble_participants(session, encounter, encounter_id, member_players, *, content, queries):
     initiative_inputs: list[dict] = [
         {
             "id": mid,
             "name": row.get("name", mid),
             "attributes": row.get("attributes", {}),
-            "initiative_bonus": initiative_bonuses.get(mid, 0),
         }
         for mid, row in member_players
     ]
@@ -120,7 +159,6 @@ async def assemble_participants(session, encounter, encounter_id, member_players
     retained_still = await still_scene.preflight(session, encounter, queries=queries)
 
     initiative_entries = combat_resolution.roll_initiative(initiative_inputs)
-    initiative_order = [e.participant_id for e in initiative_entries]
     initiative_by_id = {e.participant_id: e.total for e in initiative_entries}
 
     participants: list[CombatParticipant] = []
@@ -238,29 +276,4 @@ async def assemble_participants(session, encounter, encounter_id, member_players
             )
         )
 
-    initiative_awards = {
-        mid: {"id": VALDRIS_LAWFUL_COMMAND, "name": LAWFUL_COMMAND_NAME, "bonus": bonus}
-        for mid, bonus in initiative_bonuses.items()
-    }
-    initiative_summary = []
-    for entry in initiative_entries:
-        receipt: dict[str, object] = {
-            "id": entry.participant_id,
-            "name": entry.name,
-            "roll": entry.roll,
-            "total": entry.total,
-        }
-        if entry.participant_id in initiative_awards:
-            receipt["initiative_bonus"] = initiative_awards[entry.participant_id]
-        initiative_summary.append(receipt)
-
-    return (
-        participants,
-        spatial,
-        initiative_summary,
-        initiative_awards,
-        initiative_order,
-        retained_choir,
-        retained_still,
-        retained_architect,
-    )
+    return participants, spatial, initiative_entries, retained_choir, retained_still, retained_architect
