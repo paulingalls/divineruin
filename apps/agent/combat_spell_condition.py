@@ -11,7 +11,7 @@ from combat_condition_landing import land_condition_on_participant
 from combat_fate_rolls import PacketRolls, packet_save
 from combat_legendary_resistance import finalize_save, override_fields
 from combat_participant import CombatParticipant
-from combat_spell_damage import spell_save_dc
+from combat_spell_save import spell_save_dc
 from combat_state import CombatState
 from condition_produce import resolve_effective_targets
 from declarations import Declaration
