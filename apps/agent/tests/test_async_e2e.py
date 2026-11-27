@@ -43,11 +43,22 @@ SAMPLE_PLAYER = {
 
 
 @pytest.fixture(autouse=True)
-def _stub_crafting_skill_counter():
-    """Stub the story-006 failure-band counter write so a random-roll crafting Failure
-    in these pipeline tests doesn't reach the real pool (db.get_pool needs DATABASE_URL).
-    The counter behavior is covered by test_crafting_skill_counter.py."""
-    with patch("async_worker.db_mutations.increment_crafting_skill_counter", new_callable=AsyncMock):
+def _stub_crafting_pool_reads():
+    """Keep these pipeline tests off the real pool (db.get_pool needs DATABASE_URL).
+    A random-roll Failure writes the story-006 counter, covered by
+    test_crafting_skill_counter.py. A Success reads the catalog to decide whether
+    to offer `sell`, covered by test_common_bond_crafting.py."""
+    with (
+        patch("async_worker.db_mutations.increment_crafting_skill_counter", new_callable=AsyncMock),
+        patch(
+            "crafting_resolution.get_item",
+            new_callable=AsyncMock,
+            return_value={"type": "weapon", "rarity": "common", "value_base": 13},
+        ),
+        patch(
+            "crafting_resolution.get_economy_pricing", new_callable=AsyncMock, return_value={"crafted_sale_rate": 0.8}
+        ),
+    ):
         yield
 
 
