@@ -174,8 +174,7 @@ async def release_persisted_spell_conditions(
         # The checkpoint restores the roster and concentration. Participant rows reconcile at combat end.
         participants = {p.id for p in state.participants} if state is not None else set()
         lock_ids = sorted((set(recipients) | {caster_id}) - participants)
-        rows = await db_queries.get_players_for_update(lock_ids, conn=conn)
-        locked_rows = {pid: row for pid, row in rows.items() if pid not in participants}
+        locked_rows = await db_queries.get_players_for_update(lock_ids, conn=conn)
     writes = {}
     for pid, row in locked_rows.items():
         before = row.get("conditions") or []

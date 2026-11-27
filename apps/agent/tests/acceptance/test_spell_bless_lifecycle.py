@@ -94,11 +94,22 @@ async def test_bless_applies_to_each_attack_hit_and_miss(spell_fight):
             assert blessed["attack_total"] == plain["attack_total"] + 3
             assert "blessed" not in blessed.get("consumed_conditions", ())
         assert participant(state, ally).conditions[0]["sustaining_caster_ids"] == [caster]
-    for _ in range(2):
-        ally_ctx, control_ctx = context(ally), context(control)
+    ally_ctx, control_ctx = context(ally), context(control)
+    for bonus in (3, 3, 0):
+        if bonus == 0:
+            packets, _ = await play(
+                ctx,
+                defend(caster),
+                defend(ally),
+                defend(control),
+                attack(foe.id, foe.action_pool[0]["name"], caster),
+                faces=[19, 1],
+            )
+            broken = next(packet for packet in packets if packet["actor_id"] == foe.id)
+            assert broken["concentration_broken"] == BLESS
         ally_ctx.userdata.combat_state = await reload(ctx)
         control_ctx.userdata.combat_state = ally_ctx.userdata.combat_state
-        assert await save_total(ally, ctx=ally_ctx) == await save_total(control, ctx=control_ctx) + 3
+        assert await save_total(ally, ctx=ally_ctx) == await save_total(control, ctx=control_ctx) + bonus
 
 
 async def test_held_bless_attack_keeps_the_original_die(spell_fight):

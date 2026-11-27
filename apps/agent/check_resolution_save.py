@@ -103,7 +103,6 @@ def resolve_saving_throw(
     rally_sources: tuple[str, ...] = (),
     originating_participant_id: str | None = None,
 ) -> SavingThrowResult:
-    # ``bonus_dice_eligible`` gates the beneficial +1d4 fold/consume (M4.8 story-003). Player-initiated
     # Engine-automatic saves pass False to leave single-use dice for chosen rolls.
     save_lower = save_type.lower()
     if save_lower not in VALID_SAVE_NAMES:

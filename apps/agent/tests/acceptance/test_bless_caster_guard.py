@@ -130,11 +130,15 @@ async def test_combat_break_releases_prior_recipient_outside_roster(spell_fight)
     state = ctx.userdata.combat_state
     ctx.userdata.combat_state = None
     ctx.userdata.party.members.append(PartyState.solo(outsider).primary)
-    await activate(ctx, BLESS, target_id=outsider)
+    await activate(ctx, BLESS, target_ids=[caster, outsider])
     assert bless_owners((await saved_player(outsider))["conditions"]) == [[caster]]
+    caster_buffs = (await saved_player(caster))["conditions"]
+    participant(state, caster).conditions = caster_buffs
     ctx.userdata.party.members.pop()
     ctx.userdata.combat_state = state
     foe = await set_foe(ctx, "cult_leader")
     await play(ctx, defend(caster), attack(foe.id, foe.action_pool[0]["name"], caster), faces=[19, 1])
     assert (await saved_player(caster))["concentration"] == {"spell_id": None}
     assert (await saved_player(outsider))["conditions"] == []
+    assert (await saved_player(caster))["conditions"] == caster_buffs
+    assert bless_owners(participant(await reload(ctx), caster).conditions) == []
