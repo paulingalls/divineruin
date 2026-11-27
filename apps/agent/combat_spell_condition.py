@@ -4,6 +4,7 @@ from dataclasses import replace
 from functools import partial
 
 import check_resolution_save
+import concentration_break
 import conditions
 import encounter_facts
 from combat_condition_landing import land_condition_on_participant
@@ -49,6 +50,7 @@ async def land(
     packet: dict,
     *,
     progress: PacketRolls | None,
+    conn,
 ) -> None:
     profile = spell.save_condition
     assert profile is not None
@@ -58,6 +60,17 @@ async def land(
         _refuse(packet, "ineligible_target", str(exc))
         return
     packet["target_id"] = target.id
+    if spell.concentration and any(held.get("source") == spell.id for held in target.conditions):
+        # The cast already ended this caster's prior concentration and its holds, so a remaining
+        # hold from this spell belongs to another caster. A refresh would move it to this caster,
+        # so this cast settles with no effect and does not leave this caster concentrating on it.
+        await concentration_break.end_concentration(session, caster.id, combat_state=state, conn=conn)
+        _refuse(
+            packet,
+            "already_held",
+            f"{target.name} is already held by another caster. This casting takes no hold, and its concentration ends.",
+        )
+        return
     if target.hp_current > profile.get("hp_ceiling", target.hp_current):
         _refuse(
             packet,

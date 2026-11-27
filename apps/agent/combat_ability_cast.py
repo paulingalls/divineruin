@@ -263,6 +263,7 @@ async def _resolve_ability_packet(
                 spell,
                 cast_packet,
                 progress=progress.scope("spell_condition") if progress is not None else None,
+                conn=conn,
             )
     elif deliveries is not None or landing is not None:
         await combat_spell_damage.land(
