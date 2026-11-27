@@ -437,7 +437,7 @@ async def _apply_damage(
         "context": attack_result.context,
         "target_rose_hollowed": rose_hollowed,
     }
-    if psychic_prevented:
+    if target.id == psychic_shield_id and (psychic_prevented or response["damage"]):
         response["thought_shield_prevented"] = psychic_prevented
     if rider_target is not target:
         response.update(target_id=rider_target.id, damage_target_id=target.id, damage_target=target.name)

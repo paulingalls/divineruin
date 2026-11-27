@@ -337,11 +337,19 @@ def finish_thought_shield(head: dict, summary: dict) -> list[dict]:
     packet = head.pop("thought_shield_packet", None)
     if packet is None:
         return []
-    prevented = sum(row.get("thought_shield_prevented", 0) for row in summary.get("targets", [summary]))
-    if prevented:
-        packet.update(mechanical_effect="damage_halved", damage_prevented=prevented)
-    else:
+    # The key marks damage that reached the spender; halving prevents at least 1 of any psychic
+    # damage, so a 0 means the damage that landed had none, and no key means none reached them.
+    prevented = [
+        row["thought_shield_prevented"]
+        for row in summary.get("targets", [summary])
+        if "thought_shield_prevented" in row
+    ]
+    if sum(prevented):
+        packet.update(mechanical_effect="damage_halved", damage_prevented=sum(prevented))
+    elif prevented:
         packet["reason"] = "Thought Shield only reduces psychic damage dealt to the character who spends it."
+    else:
+        packet["reason"] = "The action dealt no damage to the character who spent it, so there was nothing to reduce."
     return [packet]
 
 

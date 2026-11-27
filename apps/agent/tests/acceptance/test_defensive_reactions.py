@@ -134,22 +134,33 @@ async def test_memory_scream_protects_only_the_spender(reset_db_pool, archetype,
                 assert receipt["mechanical_effect"] is None and "attack rolls" in receipt["reason"]
 
 
-async def test_thought_shield_leaves_slashing_unchanged(reset_db_pool):
+@pytest.mark.parametrize(
+    ("enemy_type", "action", "d20", "incoming", "damage", "reason"),
+    [
+        ("bandit", SWORD, 15, 8, 8, "Thought Shield only reduces psychic damage"),
+        ("still", "Perfect Memory", 1, 8, 0, "dealt no damage to the character who spent it"),
+    ],
+)
+async def test_thought_shield_receipt_says_why_nothing_was_prevented(
+    reset_db_pool, enemy_type, action, d20, incoming, damage, reason
+):
     for use_reaction in (False, True):
-        async with defense_fight("whisper") as fight:
+        async with defense_fight("whisper", enemy_type) as fight:
             enemy = fight.enemies[0]
-            await declare_attacks(fight, fight.players[0], enemy)
+            await declare(fight, actor_id=enemy, **strike(fight.players[0], action=action))
             with (
-                patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(15)),
-                patch("check_resolution_attack.dice_roll", return_value=_damage_die(8)),
+                patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(1 if self.dc == 20 else d20)),
+                patch("check_resolution_attack.dice_roll", return_value=_damage_die(incoming)),
+                patch("dice.roll", return_value=_damage_die(incoming)),
             ):
                 packets = await spend(fight, THOUGHT, stage="pre_roll") if use_reaction else []
                 packets += await fight.drain()
-            assert action_packet(packets, enemy, SWORD)["damage"] == 8
-            assert await hp(fight) == [92, 100]
+            assert action_packet(packets, enemy, action)["damage"] == damage
+            assert await hp(fight) == [100 - damage, 100]
             if use_reaction:
                 receipt = reaction_packet(packets, THOUGHT)
-                assert receipt["mechanical_effect"] is None and "psychic" in receipt["reason"]
+                assert receipt["mechanical_effect"] is None and reason in receipt["reason"]
+                assert ("only reduces" in receipt["reason"]) != ("no damage" in receipt["reason"])
 
 
 async def test_brace_preserves_typed_bonus_damage(reset_db_pool):
