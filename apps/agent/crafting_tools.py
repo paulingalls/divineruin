@@ -44,6 +44,7 @@ import workspace
 from disposition import resolve_disposition
 from inventory_refresh import publish_inventory
 from patron_favor import get_patron_tier
+from patron_synergy import common_bond_crafting_bonus
 from session_data import SessionData
 from tool_preconditions import require_npc_present
 from tool_support import _validate_id
@@ -383,6 +384,7 @@ async def _start_crafting_project_impl(
             }
             min_seconds = min_seconds * 3 // 4
             max_seconds = max_seconds * 3 // 4
+        common_bond = common_bond_crafting_bonus(player)
         now = (now_fn or _default_now)()
         resolve_at = now + timedelta(seconds=(rng or random.Random()).randint(min_seconds, max_seconds))
 
@@ -408,6 +410,7 @@ async def _start_crafting_project_impl(
                 "crafting_tier": crafting_tier,
                 "tainted_materials": recipe["tainted_materials"],
                 **blessing,
+                **({"common_bond": common_bond} if common_bond is not None else {}),
             },
             "outcome": None,
             "narration_text": None,

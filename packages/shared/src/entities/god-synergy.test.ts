@@ -287,3 +287,30 @@ test.each(["guardian", "warden"] as const)(
     });
   },
 );
+
+test.each(["artificer", "bard", "diplomat"] as const)(
+  "Aelora %s has both engine Common Bond clauses",
+  (archetype) => {
+    const matrix = validateGods(catalog).find(
+      (god) => god.god_id === "aelora",
+    )?.layer_4_synergy_matrix;
+    expect(matrix?.[archetype]).toEqual({
+      type: "natural",
+      name: "Common Bond",
+      clauses: [
+        {
+          effect: "Bond bonus +2 near 2+ allies.",
+          status: "active",
+          resolution: "engine",
+          implementation_id: "aelora_common_bond",
+        },
+        {
+          effect: "Crafting checks gain +1",
+          status: "active",
+          resolution: "engine",
+          implementation_id: "aelora_common_bond_crafting",
+        },
+      ],
+    });
+  },
+);

@@ -129,7 +129,8 @@ def resolve_crafting(
     dc = parameters.get("dc", dc_for_tier("moderate"))
     mod = skill_modifier(player_data, craft_skill)
     d20 = r.randint(1, 20)
-    total = d20 + mod
+    common_bond = parameters.get("common_bond")
+    total = d20 + mod + (common_bond["bonus"] if common_bond is not None else 0)
     margin = total - dc
 
     bonus_property = None
@@ -191,6 +192,8 @@ def resolve_crafting(
         "npc_id": parameters.get("npc_id", "grimjaw_blacksmith"),
     }
 
+    if common_bond is not None:
+        narrative_context["common_bond"] = common_bond
     if blessing_receipt is not None:
         narrative_context["craft_blessing"] = blessing_receipt
 
