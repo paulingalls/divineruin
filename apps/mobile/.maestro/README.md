@@ -1,6 +1,6 @@
 # Maestro acceptance flows
 
-The scheduled Proof `super` set runs all nine iOS journeys in one task after
+The scheduled Proof `super` set runs all ten iOS journeys in one task after
 the other tasks and their providers finish. To run just the native task from
 the repository root:
 
@@ -34,6 +34,7 @@ failing flow fails the task.
 | --- | --- |
 | `launch.yaml` | Development client loads the app and shows the auth entry. |
 | `auth-form.yaml` | The mock-email backend accepts the enrolled address and the form advances to code entry. |
+| `session-gestures.yaml` | The authenticated session fixture swipes open the HUD, pans the map and swipes the panel away. |
 | `native-transport.yaml` | Native LiveKit delivers the loopback microphone marker, received audio and the session-init HUD. |
 | `choir-encounter.yaml` | Authenticated probe turns drive public commands and native encounter checkpoints. |
 | `patron-abilities.yaml` | The patron HUD renders server state across ability use, rests and disposition changes. |

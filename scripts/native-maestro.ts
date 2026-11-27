@@ -1,3 +1,4 @@
+import { SQL } from "bun";
 import { access, cp, mkdir, mkdtemp, readdir } from "node:fs/promises";
 import { constants } from "node:fs";
 import { homedir } from "node:os";
@@ -24,6 +25,7 @@ const flows = [
   "native-transport.yaml",
   "launch.yaml",
   "auth-form.yaml",
+  "session-gestures.yaml",
   "choir-encounter.yaml",
   "patron-abilities.yaml",
   "iron-resolve-hud.yaml",
@@ -183,6 +185,20 @@ async function runJourneys(
   );
   await journey("launch.yaml");
   await journey("auth-form.yaml");
+  await journey("session-gestures.yaml", async () => {
+    const sql = new SQL(databaseUrl);
+    try {
+      const [row] = await sql<{ code: string }[]>`
+        SELECT code FROM auth_codes
+        WHERE account_id = (SELECT id FROM accounts WHERE email = 'acceptance@divineruin.test')
+          AND used = FALSE AND expires_at > NOW()
+        ORDER BY id DESC LIMIT 1`;
+      if (!row) throw new Error("Native auth flow did not issue a current code");
+      await maestro("session-gestures.yaml", { AUTH_CODE: row.code });
+    } finally {
+      await sql.close();
+    }
+  });
   await journey("choir-encounter.yaml", () =>
     runScenario(scope, root, environment, udid, "none", choirProbeScenario, prepared),
   );

@@ -129,7 +129,7 @@ export function PanelShell() {
 
       <GestureDetector gesture={panGesture}>
         <Animated.View style={[styles.sheet, { height: sheetMaxHeight }, sheetStyle]}>
-          <View style={styles.handleRow}>
+          <View testID="hud-panel-handle" style={styles.handleRow}>
             <View style={styles.handle} />
             <Pressable style={styles.closeButton} onPress={close} hitSlop={12}>
               <ThemedText style={styles.closeText}>{"\u2715"}</ThemedText>

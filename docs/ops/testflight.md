@@ -1,6 +1,9 @@
 # iOS TestFlight and internal device builds
 
-Reviewed 2026-11-16. These profiles build a release app for a physical iPhone:
+The [Expo SDK 58 update](#expo-sdk-58-update-2026-11-26) applies to the
+current build. The rest of this runbook records the 2026-11-16 profile review.
+
+These profiles build a release app for a physical iPhone:
 `production` uses store distribution and the EAS `production` environment;
 `internal` uses ad hoc distribution and `preview`. Both require HTTPS and increment
 the remote iOS build number. The bundle id stays `com.divineruin.app`, marketing
@@ -234,3 +237,19 @@ reviewer retained the generated files externally, removed generated `ios/`, and
 confirmed a clean Git status. Keep native directories absent for EAS to regenerate
 them from configuration; do not commit inspection output. CocoaPods and a signed
 release remain untested here.
+
+
+## Expo SDK 58 update (2026-11-26)
+
+The app locks Expo 58.0.26, React Native 0.88.1 and React 19.3.0. Expo's
+SDK-selected native dependencies include Gesture Handler 3.3.0 and AsyncStorage
+2.2.0. The LiveKit packages move together to React Native SDK 3.2.0, WebRTC
+150.2.0 and Expo plugin 1.2.0. The minimum Xcode version is 26.4.
+[Expo SDK 58 platform support](https://docs.expo.dev/versions/v58.0.0/#support-for-android-and-ios-versions)
+and the [LiveKit release notes](https://github.com/livekit/client-sdk-react-native/releases)
+describe these requirements.
+
+Clean Expo prebuild generates the iOS scene lifecycle from SDK 58 defaults.
+The simulator commands are `bun run --cwd apps/mobile verify:native-build` and
+`bun run --cwd apps/mobile verify:native-transport`. The signed iPhone checks
+above still apply before TestFlight certification.

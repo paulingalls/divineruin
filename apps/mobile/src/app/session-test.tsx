@@ -1,5 +1,6 @@
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { ConnectionState } from "livekit-client";
+import { SwipeUpTrigger } from "@/session/swipe-up-trigger";
 import { SessionControls } from "@/session/session-controls";
 import { useSessionExit, useSessionLifecycle } from "@/session/session-lifecycle";
 import { useActivityActions } from "@/hooks/use-activity-actions";
@@ -11,7 +12,7 @@ import { useInventoryRefresh } from "@/hooks/use-inventory-refresh";
  * directly, bypassing voice/data channels. Guarded by __DEV__ — never ships.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { TopBar } from "@/components/hud/top-bar";
@@ -31,6 +32,8 @@ import { BrandColors, Spacing } from "@/constants/theme";
 
 export default function SessionTestScreen() {
   const router = useRouter();
+  const { fixture } = useLocalSearchParams<{ fixture?: string }>();
+  const gestureFixture = __DEV__ && Platform.OS === "ios" && fixture === "gestures";
   useInventoryRefresh();
   const { startActivity, submitDecision } = useActivityActions();
   const transport = useRef({
@@ -47,7 +50,7 @@ export default function SessionTestScreen() {
 
   // Expose handleGameEvent and helpers for Playwright injection; cleanup on unmount
   useEffect(() => {
-    if (!__DEV__) return;
+    if (!__DEV__ || Platform.OS !== "web") return;
     window.__DR = {
       navigate: (path) => (path === "/" ? router.replace(path) : router.push(path)),
       transport: transport.current,
@@ -80,6 +83,15 @@ export default function SessionTestScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    if (gestureFixture) {
+      handleGameEvent({
+        type: "session_init",
+        map_progress: [{ location_id: "accord_market_square", connections: [] }],
+      });
+    }
+  }, [gestureFixture]);
+
   if (!__DEV__) return null;
 
   return (
@@ -108,6 +120,7 @@ export default function SessionTestScreen() {
             }}
             onLeave={exit}
           />
+          <SwipeUpTrigger />
         </View>
       </SafeAreaView>
     </View>
