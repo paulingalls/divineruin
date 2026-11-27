@@ -85,11 +85,10 @@ async def merchant_visit(context: RunContext[SessionData], npc_id: str) -> Async
 
 
 def receipt(visit: "MerchantVisit", payload: dict) -> str:
-    """Serialize a merchant receipt, naming any of the actor's goods this read returned unsold."""
+    """Serialize a merchant receipt with any unreported returns for the actor."""
     returned = [
         {"consignment_id": entry["consignment_id"], "item_id": entry["item_id"], "quantity": entry["quantity"]}
         for entry in visit.merchant.returned
-        if entry["consignor_id"] == visit.player_id
     ]
     if returned:
         payload["returned"] = returned
@@ -146,14 +145,14 @@ async def collect_consignment(context: RunContext[SessionData], npc_id: str, con
             raise ToolError("You have no consignment with that ID here.")
         result = {"consignment_id": consignment_id, "item_id": entry["item_id"], "quantity": entry["quantity"]}
         if entry in merchant.returned:
-            return json.dumps({"status": "returned", **result})
+            return receipt(visit, {"status": "returned", **result})
         if merchant.today < entry["sale_day"]:
             raise ToolError("That consignment has not sold yet.")
         amount_sp = proceeds_sp(entry)
         entries.remove(entry)
         await db_mutations_merchant.write_merchant(npc_id, merchant.state, conn=visit.conn)
         await visit.credit(amount_sp / Decimal(visit.pricing["silver_per_gold"]), "consignment")
-        return json.dumps({"status": "collected", "amount_sp": float(amount_sp), **result})
+        return receipt(visit, {"status": "collected", "amount_sp": float(amount_sp), **result})
 
 
 async def _enter_trade_impl(context: RunContext[SessionData]) -> tuple[Agent, str]:

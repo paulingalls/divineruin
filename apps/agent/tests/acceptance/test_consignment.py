@@ -155,7 +155,7 @@ async def test_expiry_restores_inventory_once(reset_db_pool: str, monkeypatch: p
             assert receipt_data(await owner.ledger(MAREN)) == {"npc_id": MAREN, "entries": [], "returned": came_back}
         elif read == "collect":
             returned = receipt_data(await owner.collect(MAREN, entry["consignment_id"]))
-            assert returned["status"] == "returned"
+            assert returned["status"] == "returned" and returned["returned"] == came_back
         else:
             offer = receipt_data(await owner.sell(SWORD, MAREN, 1))
             assert offer["status"] == "offer" and offer["returned"] == came_back
@@ -181,10 +181,29 @@ async def test_expiry_restores_inventory_once(reset_db_pool: str, monkeypatch: p
         assert packet["inventory_revision"] == str(after_player["inventory_revision"])
         assert {(item["id"], item["tainted"]): item["slot_info"] for item in packet["inventory"]} == after_inventory
         assert snapshot == (after_player, after_inventory)
-        assert receipt_data(await visitor.ledger(MAREN))["entries"] == []
+        assert receipt_data(await visitor.ledger(MAREN)) == {"npc_id": MAREN, "entries": []}
+        if read == "ledger":
+            assert receipt_data(await owner.ledger(MAREN)) == {"npc_id": MAREN, "entries": [], "returned": came_back}
+        assert "returned" not in receipt_data(await owner.ledger(MAREN))
         assert (await owner.collect(MAREN, entry["consignment_id"])).is_error
         assert await rows(owner.player_id) == (after_player, after_inventory)
         assert reader.publications[previous_packets:] == publications
+
+
+async def test_collection_reports_other_goods_returned_unsold(
+    reset_db_pool: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    day = db_mutations_merchant.aethos_today()
+    monkeypatch.setattr(db_mutations_merchant, "aethos_today", lambda: day)
+    async with merchant_session(npc=MAREN, location=INN, disposition="friendly", held=2) as sale:
+        expired = await consign(sale)
+        day = expired["sale_day"]
+        ready = await consign(sale)
+        day = expired["expiry_day"]
+        result = receipt_data(await sale.collect(MAREN, ready["consignment_id"]))
+        assert result["status"] == "collected"
+        assert result["returned"] == [{"consignment_id": expired["consignment_id"], "item_id": SWORD, "quantity": 1}]
+        assert receipt_data(await sale.ledger(MAREN)) == {"npc_id": MAREN, "entries": []}
 
 
 async def test_pending_ledger_survives_sales_and_only_owner_can_collect(
@@ -250,11 +269,12 @@ async def test_queued_collection_and_foreign_ledger_share_seventh_dawn(
         ledger, collection = (first, second) if first_reader == "ledger" else (second, first)
         assert receipt_data(ledger.result())["entries"] == []
         result = collection.result()
+        response = receipt_data(result)
+        assert response["status"] == "returned"
+        assert response["returned"] == [{"consignment_id": entry["consignment_id"], "item_id": SWORD, "quantity": 1}]
         if first_reader == "ledger":
-            assert result.is_error and "no consignment" in result.output
             assert not owner.publications[1:]
         else:
-            assert receipt_data(result)["status"] == "returned"
             assert not visitor.publications
         player, inventory = await rows(owner.player_id)
         assert player["gold"] == 7 and inventory[(SWORD, False)]["quantity"] == 1

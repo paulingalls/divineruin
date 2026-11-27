@@ -135,16 +135,17 @@ async def sell_item(
         await db_mutations_inventory.transact_inventory(player_id, item_id, -quantity, conn=conn)
         merchant.inventory_owners.add(player_id)
         await visit.credit(total_sp / visit.pricing["silver_per_gold"], "sale")
+        response = receipt(
+            visit,
+            {
+                "status": "sold",
+                "item_id": item_id,
+                "npc_id": npc_id,
+                "quantity": quantity,
+                "unit_price_sp": total_sp // quantity if total_sp % quantity == 0 else None,
+                "total_price_sp": total_sp,
+            },
+        )
 
     await publish_action_sound(context.userdata, ACTION_SOUND_EXPORTS["ACTION_SELL_ITEM"])
-    return receipt(
-        visit,
-        {
-            "status": "sold",
-            "item_id": item_id,
-            "npc_id": npc_id,
-            "quantity": quantity,
-            "unit_price_sp": total_sp // quantity if total_sp % quantity == 0 else None,
-            "total_price_sp": total_sp,
-        },
-    )
+    return response

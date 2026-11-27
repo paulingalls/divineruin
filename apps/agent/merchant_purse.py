@@ -2,7 +2,7 @@
 
 import hashlib
 import json
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 from consignment import OFFER_PREFIX, Consignment
 from workspace import whole_silver
@@ -14,6 +14,7 @@ class MerchantState(TypedDict):
     last_restock_day: int
     buyback_history: dict[str, int]
     consigned_items: list[Consignment]
+    unreported_returns: NotRequired[list[Consignment]]
 
 
 class SaleOption(TypedDict):

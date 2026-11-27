@@ -43,10 +43,10 @@ async def lock_merchant(npc_id: str, allocation: int, player_id: str, *, conn: a
     state = cast(MerchantState, json.loads(raw))
     entries = [] if inserted else read_ledger(state["consigned_items"])
     remaining: list[Consignment] = []
-    returned: list[Consignment] = []
+    expired: list[Consignment] = []
     for entry in entries:
-        (returned if today >= expires_on(entry) else remaining).append(entry)
-    owners = {entry["consignor_id"] for entry in returned}
+        (expired if today >= expires_on(entry) else remaining).append(entry)
+    owners = {entry["consignor_id"] for entry in expired}
     locked = await conn.fetch(
         "SELECT player_id FROM players WHERE player_id = ANY($1) ORDER BY player_id FOR UPDATE",
         sorted(owners | {player_id}),
@@ -60,12 +60,20 @@ async def lock_merchant(npc_id: str, allocation: int, player_id: str, *, conn: a
     restock = inserted or state["last_restock_day"] < today
     if restock:
         state.update(current_gold_sp=allocation, max_gold_sp=allocation, last_restock_day=today, buyback_history={})
-    for entry in returned:
+    for entry in expired:
         await db_mutations.add_inventory_item(
             entry["consignor_id"], entry["item_id"], entry["quantity"], tainted=False, conn=conn
         )
+    # Only the owner's successful visit consumes the notice. Inventory is restored at expiry.
+    unreported = read_ledger(state.pop("unreported_returns", []))
+    returned = []
+    other_returns = []
+    for entry in [*unreported, *expired]:
+        (returned if entry["consignor_id"] == player_id else other_returns).append(entry)
+    if other_returns:
+        state["unreported_returns"] = other_returns
     state["consigned_items"] = remaining
-    if restock or returned:
+    if restock or expired or returned:
         await write_merchant(npc_id, state, conn=conn)
 
     revision = await conn.fetchval("SELECT inventory_revision FROM players WHERE player_id = $1", player_id)
