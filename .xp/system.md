@@ -182,6 +182,11 @@ without certifying paid speech-recognition accuracy.
   and `content/action_sounds.json` map an id to a bundled stem, loaded by Python
   and `sound-registry.ts`. A card adding an id or a new publish site names
   `tests/acceptance/test_m22_audio_completeness_capstone.py` in Verify.
+- When a card splits one participant binding into two roles, its plan lists
+  every consumer of the old binding on each settlement route (immediate and
+  Fate-held). For each consumer on each route, name a case whose fixture gives
+  the property under test to only one role (aelora-bases
+  guardian-intercept review-1 F1 and sprint test-vacuity F3).
 - Session start is shared by many suites: a card touching `session_hydration.py`,
   `participant_lifecycle.py` or `agent.py`'s session setup names
   `apps/agent/tests/session_lifecycle` in Verify. Those suites mock player rows,
@@ -354,6 +359,13 @@ item number, not this section.
 **Handback contract** — what a story owes before it is handed back. Sprint 54
 lost review rounds to both halves of this, five times.
 
+- For each operand of a new product guard that Constraint 3 fault-injects, name
+  the committed test node that goes red when only that operand is dropped, and
+  include the red log from running that node.
+  The case must reach the guard through state real setup can build. Disposable
+  probes cannot supply the red. If no committed node can go red, delete the
+  unreachable operand or add a committed case (aelora-bases sprint test-vacuity F2
+  and restoring-guard review-1 F1).
 - A negative control's red must come from applying the
   real effect at the excluded site and seeing the asserted outcome change.
   Injecting a field or marker, or forcing a roll that saturates the outcome,
