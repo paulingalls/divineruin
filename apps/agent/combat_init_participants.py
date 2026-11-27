@@ -16,6 +16,7 @@ import still_scene
 import temp_hp
 from combat_init_validation import _validate_enemy_tiers, validate_enemy_action_shapes, validate_enemy_resistance_tags
 from combat_spatial_entry import build_spatial
+from communication_voice_rules import can_hear
 from companion_profiles import get_companion_profile
 from companion_scaling import companion_attacks_to_action_pool, scale_companion_stats_to_player_level
 from db_errors import validated_player_conditions
@@ -23,7 +24,14 @@ from encounter_actions import validate_encounter_actions
 from encounter_references import validate_encounter_references
 from patron_location import is_sanctuary_location
 from patron_passives import effective_hp, orenthel_beacon, scholars_ward, tidewalker
-from patron_synergy_combat import LAWFUL_COMMAND_NAME, VALDRIS_LAWFUL_COMMAND, sanctuary_initiative_bonus
+from patron_synergy_combat import (
+    LANDFALL_ORDERS_NAME,
+    LAWFUL_COMMAND_NAME,
+    NYTHERA_FIRST_ORDER,
+    VALDRIS_LAWFUL_COMMAND,
+    first_order_initiative_bonus,
+    sanctuary_initiative_bonus,
+)
 from session_data import CombatParticipant, CombatState
 
 
@@ -54,6 +62,22 @@ async def collect_initiative_awards(
     }
     if awards and not await is_sanctuary_location(state.location_id):
         awards.clear()
+
+    participants = {participant.id: participant for participant in state.participants}
+    speakers = {
+        mid: bonus
+        for mid, row in member_players
+        if (bonus := await first_order_initiative_bonus(row, participants[mid], state))
+    }
+    if speakers:
+        order: InitiativeAward = {
+            "id": NYTHERA_FIRST_ORDER,
+            "name": LANDFALL_ORDERS_NAME,
+            "bonus": max(speakers.values()),
+        }
+        for participant in state.participants:
+            if participant.is_ally and (participant.id in speakers or can_hear(state, participant.id)):
+                awards.setdefault(participant.id, []).append(order)
     return awards
 
 

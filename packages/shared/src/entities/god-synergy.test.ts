@@ -80,6 +80,12 @@ test("Zhael's paladin has the registered Promised Hour clause", () => {
   expect<unknown>(paladin).toEqual(corpus.promised_hour);
 });
 
+test("Nythera's marshal has the registered Landfall Orders clause", () => {
+  const marshal = validateGods(catalog).find((god) => god.god_id === "nythera")
+    ?.layer_4_synergy_matrix.marshal;
+  expect<unknown>(marshal).toEqual(corpus.first_order);
+});
+
 test("Valdris's marshal has the registered Lawful Command clause", () => {
   const marshal = validateGods(catalog).find((god) => god.god_id === "valdris")
     ?.layer_4_synergy_matrix.marshal;
