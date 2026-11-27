@@ -145,7 +145,7 @@ not schedules or measured implementation costs.
 | **14 · Engine Completeness** | [14.1–14.5](14_engine_completeness.md) | 99 | Earlier game systems, Phase 9 denominations, Phase 11 state and Phase 15 content | Unsized | Existing activation, audio, room and HUD paths are inputs. M14.1 tracks the 66 spell effect gaps, native Choir, spoken reaction timing, Thought Shield's mind-read block and Implant Doubt's design for enemy abilities without an attack roll. |
 | **15 · Content Coverage** | [15.1](15_content_coverage.md) | 11 | Phase 9 prices, Phase 11 events, Phase 12 story and Phase 14 gameplay | Unsized | The per-target census in M15.1 records existing authored data. |
 
-The table sums to 278. The other 2 open criteria are Phase 0's documentation box (§2) and Phase 1's voice standard-array box (§1), which the Core residuals goal measures.
+The table sums to 273. The other 2 open criteria are Phase 0's documentation box (§2) and Phase 1's voice standard-array box (§1), which the Core residuals goal measures.
 
 The table counts by phase file. The [area goal Measures](../../.xp/milestones.md)
 assign Phase 11 criteria beginning with `[P12]` to the Story machinery and
