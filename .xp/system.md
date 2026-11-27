@@ -362,9 +362,11 @@ item number, not this section.
   lowering the bar.
 
 **Story review drops each operand** (lessons #812, #776; human 2026-11-26). For
-each operand of a new product guard in the story range, the story reviewer drops
+each operand of a new product guard that Constraint 3 fault-injects in the story
+range, the story reviewer drops
 that operand alone on a scratch copy and runs the card's Acceptance tasks. An
-operand with no committed red is a finding. An executor's or lead's claim that
+operand with no committed red, reached through state real setup can build, is
+a finding. An executor's or lead's claim that
 the operand is unreachable does not settle it: dead-reactions sprint test-vacuity
 F1 was such a claim, and a committed fixture disproved it. Restore the sources
 afterwards and leave `git status` clean.
