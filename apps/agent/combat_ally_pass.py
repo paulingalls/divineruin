@@ -214,7 +214,7 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls: PhaseRol
         expire_guiding_light(state, actor_id)
         cursor["turns"].pop(0)
 
-    state.held_actions.extend(hold_enemy_packets(state, [packets[pid] for pid in cursor["hostiles"]]))
+    state.held_actions = hold_enemy_packets(state, [packets[pid] for pid in cursor["hostiles"]])
     state.ally_continuation = None
     state.beat = PhaseBeat.NARRATION
     return summaries

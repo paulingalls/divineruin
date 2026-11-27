@@ -139,9 +139,7 @@ def _drop_reactions(state: "CombatState", player_id: str) -> bool:
             if packets and packets[0]["actor_id"] == player_id:
                 cancelled_roll |= continuation.pop("counter", None) is not None
             continuation["packets"] = [packet for packet in packets if packet["actor_id"] != player_id]
-        elif "completed_condition" not in head and (
-            reaction_spend.intercepts_damage(spend) and spend["held_seq"] == head["seq"]
-        ):
+        elif reaction_spend.intercepts_damage(spend) and spend["held_seq"] == head["seq"]:
             head["departed_damage_recipient"] = player_id
         packets = head.get("pending_reaction_packets")
         if packets is not None:
