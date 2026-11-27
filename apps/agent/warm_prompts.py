@@ -210,7 +210,7 @@ def format_crafting_decisions(player_id: str, resolved_activities: list[dict]) -
         return None
     return "\n".join(
         [
-            f"FINISHED CRAFTS — Host player {player_id}",
+            f"FINISHED CRAFTS — Player {player_id}",
             *crafts,
             "Read the offered labels aloud and wait for the player's choice. In exploration, "
             'use enter_mode(mode="dispatch", encounter_id=""). Then call '
@@ -234,7 +234,7 @@ async def build_warm_layer(
     party_member_ids: tuple[str, ...] | None = None,
     quest_decisions: dict[str, dict[str, str]] | None = None,
     hallucinations: list[PlayerHallucination] | None = None,
-    resolved_activities: list[dict] | None = None,
+    resolved_activities_by_player: dict[str, list[dict]] | None = None,
 ) -> str:
     import asyncio
 
@@ -376,8 +376,11 @@ async def build_warm_layer(
         if training_section:
             sections.append(f"Host player {player_id}\n{training_section}")
 
-    if crafting := format_crafting_decisions(player_id, resolved_activities or []):
-        sections.append(crafting)
+    for member_id, activities in (resolved_activities_by_player or {}).items():
+        if party_member_ids is not None and member_id not in party_member_ids:
+            continue
+        if crafting := format_crafting_decisions(member_id, activities):
+            sections.append(crafting)
 
     # Companion state
     if companion is not None and companion.is_present:

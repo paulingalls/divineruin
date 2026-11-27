@@ -435,11 +435,12 @@ async def test_resolved_craft_reaches_warm_instructions(bench: SimpleNamespace) 
     success = await craft(bench)
     keep_only = await craft(bench, options=(KEEP,))
     failure = await craft(bench, item=None, options=tuple({"id": c, "label": OPTIONS[c]} for c in ("retry", "abandon")))
+    guest_craft = await craft(bench, owner=1)
     excluded = [
         await craft(bench, status="in_progress"),
         await craft(bench, status="collected"),
         await craft(bench, kind="purification"),
-        await craft(bench, owner=1),
+        guest_craft,
         await craft(bench, options=()),
     ]
     live_session = AgentSession(userdata=session)
@@ -476,3 +477,22 @@ async def test_resolved_craft_reaches_warm_instructions(bench: SimpleNamespace) 
     assert (await voice(bench, failure, "retry"))["decision"] == "retry"
     assert await background._rebuild_warm_layer()
     assert failure not in dispatch.instructions and success in dispatch.instructions
+
+    guest = bench.ids[1]
+    lifecycle = _live_party(session, *bench.ids)
+    try:
+        generation = await lifecycle.authorize(guest)
+        assert generation is not None
+        assert await background._rebuild_warm_layer()
+        assert (
+            f"FINISHED CRAFTS — Player {guest}\n- Wooden Club (id: {guest_craft}) — Keep the item (keep)"
+            in dispatch.instructions
+        )
+        with session._bind_authenticated_actor(guest, generation, lifecycle.require_authorized):
+            collect = game_tools(session, agent=dispatch)
+            receipt = await collect("resolve_activity", kind="crafting", id=guest_craft, decision="keep")
+        assert receipt["id"] == guest_craft and receipt["decision"] == "keep"
+        assert await background._rebuild_warm_layer()
+        assert guest_craft not in dispatch.instructions and success in dispatch.instructions
+    finally:
+        await lifecycle.aclose()

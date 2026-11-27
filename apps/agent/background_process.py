@@ -376,6 +376,7 @@ class BackgroundProcess:
             return await self._build_warm_layer()
 
     async def _build_warm_layer(self) -> bool:
+        craft_members = self._sd.present_member_ids
         try:
             quests, location, npcs_raw, training, episode, (decisions, resolved) = await asyncio.gather(
                 db_queries.get_active_player_quests(self._sd.primary_player_id),
@@ -385,7 +386,9 @@ class BackgroundProcess:
                 db_queries.get_player_flag_value(self._sd.primary_player_id, "first_episode"),
                 asyncio.gather(
                     db_queries.get_player_quest_decisions(self._sd.primary_player_id),
-                    db_activity_queries.get_player_activities(self._sd.primary_player_id, status="resolved"),
+                    asyncio.gather(
+                        *(db_activity_queries.get_player_activities(pid, status="resolved") for pid in craft_members)
+                    ),
                 ),
             )
             self._quest_cache = quests
@@ -410,10 +413,7 @@ class BackgroundProcess:
 
         try:
             # Update hot context caches on SessionData (read by voice loop, zero I/O)
-            if location:
-                self._sd.cached_location_name = location.get("name", self._sd.location_id)
-            else:
-                self._sd.cached_location_name = self._sd.location_id
+            self._sd.cached_location_name = (location or {}).get("name", self._sd.location_id)
             self._sd.cached_npc_names = [
                 sanitize_for_prompt(n.get("name", n.get("id", "?")), max_len=100) for n in (npcs_raw or [])
             ]
@@ -435,7 +435,7 @@ class BackgroundProcess:
                 party_member_ids=present,
                 quest_decisions=decisions,
                 hallucinations=hallucinations,
-                resolved_activities=resolved,
+                resolved_activities_by_player=dict(zip(craft_members, resolved, strict=True)),
             )
         except TRANSIENT_IO_ERRORS:
             logger.error("Warm layer build failed", exc_info=True)
