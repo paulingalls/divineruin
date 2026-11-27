@@ -1,16 +1,4 @@
-"""The `enter_mode` verb (combat/dispatch/blacksmith handoffs).
-
-`enter_mode(mode, ...)` is the consolidated mode-entry verb (M5, ADR 0007, Verbs &
-Stages §4/§10): it folds start_combat, enter_dispatch, and enter_blacksmith into one
-mode-discriminated handoff tool, dispatching to the per-mode `_*_impl` handoffs that
-keep living in their home modules (combat_init / dispatch_tools / blacksmith_tools).
-The exit paths (end_combat, conclude_dispatch, conclude_blacksmith) stay internal to
-the mode agents — out of scope here.
-
-Errors raise LiveKit `ToolError` (ADR 0002). The dispatcher is `@db_tool`-wrapped
-because the combat branch hits the DB (rolling initiative, persisting CombatState);
-it is a no-op cost for the dispatch/blacksmith branches.
-"""
+"""The exploration verb that hands off to a focused gameplay mode."""
 
 from typing import Literal
 
@@ -22,9 +10,10 @@ from blacksmith_tools import _enter_blacksmith_impl
 from combat_init import _start_combat_impl
 from db_errors import db_tool
 from dispatch_tools import _enter_dispatch_impl
+from merchant_tools import _enter_trade_impl
 from session_data import SessionData
 
-VALID_MODES = ("combat", "dispatch", "blacksmith")
+VALID_MODES = ("combat", "dispatch", "blacksmith", "trade")
 
 
 @function_tool()
@@ -52,6 +41,7 @@ async def enter_mode(
       training with a mentor, or sending a companion on an errand.
     - mode="blacksmith": the player wants to repair gear at a settlement forge. A
       forge is a settlement activity; only offer it where one would plausibly exist.
+    - mode="trade": the player wants to sell goods to a shopkeeper.
 
     Control returns here when the mode concludes."""
     return await _enter_mode_impl(
@@ -80,5 +70,9 @@ async def _enter_mode_impl(
     if mode == "blacksmith":
         result = await _enter_blacksmith_impl(context)
         await publish_action_sound(context.userdata, ACTION_SOUND_EXPORTS["ACTION_ENTER_MODE_BLACKSMITH"])
+        return result
+    if mode == "trade":
+        result = await _enter_trade_impl(context)
+        await publish_action_sound(context.userdata, ACTION_SOUND_EXPORTS["ACTION_ENTER_MODE_TRADE"])
         return result
     raise ToolError(f"Unknown mode {mode!r}; expected one of: {', '.join(VALID_MODES)}.")

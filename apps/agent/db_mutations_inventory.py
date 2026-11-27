@@ -64,10 +64,7 @@ async def transact_inventory(
 ) -> int:
     """Decrement a stack's quantity by a negative delta; return the remaining quantity.
 
-    The transact verb's LOSS path is the only caller — gains route through
-    db_mutations.add_inventory_item (which inserts a missing row), so delta is
-    always negative here. The signed UPDATE would increment on a positive delta,
-    but that path is unused by design; pass gains to add_inventory_item instead.
+    Pass gains to db_mutations.add_inventory_item, which inserts missing rows.
 
     When the result is at or below zero the row is deleted (via
     db_mutations.remove_inventory_item) and 0 is returned. Single UPDATE ...

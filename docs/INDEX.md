@@ -38,17 +38,17 @@ Additional topics: Cosmology: The Veil, the Wellspring, the Sundering, the Hollo
 
 ---
 
-## agent_handoffs_and_scenes.md (126 lines)
+## agent_handoffs_and_scenes.md (127 lines)
 
 Shipped agent flow, mode handoffs, scene context, and H.1–H.8 history.
 
 | Section | Lines | What's There |
 |---|---|---|
-| Agent flow | 7-48 | Entry chain, exploration, combat, and focused mode agents |
-| Context transfer and reconnection | 49-59 | Session state and handoff context |
-| Scenes and structured play | 60-67 | Quest scenes, Stage context, and beat hints |
-| LiveKit rooms and multiplayer | 68-74 | Current session model and shared-room proposal |
-| Development Milestones | 75-126 | Original H.1–H.8 plan and shipped outcomes |
+| Agent flow | 7-49 | Entry chain, exploration, combat, and focused mode agents |
+| Context transfer and reconnection | 50-60 | Session state and handoff context |
+| Scenes and structured play | 61-68 | Quest scenes, Stage context, and beat hints |
+| LiveKit rooms and multiplayer | 69-75 | Current session model and shared-room proposal |
+| Development Milestones | 76-127 | Original H.1–H.8 plan and shipped outcomes |
 
 ---
 
@@ -77,7 +77,7 @@ Additional topics: Luna evidence and production route: Seeded 27-case Luna matri
 
 ---
 
-## agent_tool_surface.md (643 lines)
+## agent_tool_surface.md (644 lines)
 
 Strict tool-schema limits and context timing, measured live against trunk `08fa9b8`
 (2026-09-04). Design source for ADR 0008 (sum-typed verbs, `next` in results) and for
@@ -88,15 +88,15 @@ Additional topics: Verbs take sum types: The schema rules + per-verb rewrites (c
 | Section | Lines | What's There |
 |---|---|---|
 | 0. Summary | 17-54 | The six findings: sum types, exact limits, 2-4 unions/agent, state machine not tool list, layer placement, no tool search |
-| 1. What trunk sends today | 55-95 | Per-agent tool + union counts; the bags of optionals |
-| 2. The limits, precisely | 96-136 | 20 strict tools, 16 unions (recursive), ~13-nullable object cliff, additionalProperties/enum-null/oneOf rejections, and what does vs doesn't traverse `$ref` |
-| 3. Diagnosis | 137-158 | Why folding nouns into verbs produced product-types-with-nulls |
-| 4. Design | 159-405 | Schema rules for sum-typed verbs, growing verb sets, right information and action at the right time, plugin escape hatches |
-| 5. Sequencing | 406-463 | Order of work for story-019 (Sprint 47, ahead of the M29 restore) |
-| 6. Risks and how to measure them | 464-485 | Tool-selection eval, cache-read assertion |
-| 7. Open questions for the human | 486-500 | query_info shape, enter_mode, resolve_phase-as-advance-verb, creation agent model |
-| Appendix — how this was measured | 501-528 | The schema walk and the live limit probes |
-| 8. Cost recommendations | 529-643 | Cache protection, fewer turns/session, models, TTS, a cost budget test |
+| 1. What trunk sends today | 55-96 | Per-agent tool + union counts; the bags of optionals |
+| 2. The limits, precisely | 97-137 | 20 strict tools, 16 unions (recursive), ~13-nullable object cliff, additionalProperties/enum-null/oneOf rejections, and what does vs doesn't traverse `$ref` |
+| 3. Diagnosis | 138-159 | Why folding nouns into verbs produced product-types-with-nulls |
+| 4. Design | 160-406 | Schema rules for sum-typed verbs, growing verb sets, right information and action at the right time, plugin escape hatches |
+| 5. Sequencing | 407-464 | Order of work for story-019 (Sprint 47, ahead of the M29 restore) |
+| 6. Risks and how to measure them | 465-486 | Tool-selection eval, cache-read assertion |
+| 7. Open questions for the human | 487-501 | query_info shape, enter_mode, resolve_phase-as-advance-verb, creation agent model |
+| Appendix — how this was measured | 502-529 | The schema walk and the live limit probes |
+| 8. Cost recommendations | 530-644 | Cache protection, fewer turns/session, models, TTS, a cost budget test |
 
 ---
 
