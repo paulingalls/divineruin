@@ -123,7 +123,7 @@ async def test_wait_for_sale_dawn_and_collect_exactly_once(reset_db_pool: str, m
         assert snapshot == await rows(sale.player_id)
 
 
-@pytest.mark.parametrize("read", ["ledger", "collect", "sale"])
+@pytest.mark.parametrize("read", ["ledger", "owner_ledger", "collect", "sale"])
 async def test_expiry_restores_inventory_once(reset_db_pool: str, monkeypatch: pytest.MonkeyPatch, read: str) -> None:
     day = db_mutations_merchant.aethos_today()
     monkeypatch.setattr(db_mutations_merchant, "aethos_today", lambda: day)
@@ -148,13 +148,18 @@ async def test_expiry_restores_inventory_once(reset_db_pool: str, monkeypatch: p
         day = entry["expiry_day"]
         reader = visitor if read == "ledger" else owner
         previous_packets = len(reader.publications)
+        came_back = [{"consignment_id": entry["consignment_id"], "item_id": SWORD, "quantity": 2}]
         if read == "ledger":
-            assert receipt_data(await visitor.ledger(MAREN))["entries"] == []
+            assert receipt_data(await visitor.ledger(MAREN)) == {"npc_id": MAREN, "entries": []}
+        elif read == "owner_ledger":
+            assert receipt_data(await owner.ledger(MAREN)) == {"npc_id": MAREN, "entries": [], "returned": came_back}
         elif read == "collect":
             returned = receipt_data(await owner.collect(MAREN, entry["consignment_id"]))
             assert returned["status"] == "returned"
         else:
-            offer_id = await consignment_offer(owner)
+            offer = receipt_data(await owner.sell(SWORD, MAREN, 1))
+            assert offer["status"] == "offer" and offer["returned"] == came_back
+            offer_id = next(option["offer_id"] for option in offer["options"] if option["kind"] == "consignment")
             assert receipt_data(await owner.sell(SWORD, MAREN, 1, offer_id))["status"] == "consigned"
 
         after_player, after_inventory = await rows(owner.player_id)

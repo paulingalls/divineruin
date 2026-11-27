@@ -84,6 +84,18 @@ async def merchant_visit(context: RunContext[SessionData], npc_id: str) -> Async
         )
 
 
+def receipt(visit: "MerchantVisit", payload: dict) -> str:
+    """Serialize a merchant receipt, naming any of the actor's goods this read returned unsold."""
+    returned = [
+        {"consignment_id": entry["consignment_id"], "item_id": entry["item_id"], "quantity": entry["quantity"]}
+        for entry in visit.merchant.returned
+        if entry["consignor_id"] == visit.player_id
+    ]
+    if returned:
+        payload["returned"] = returned
+    return json.dumps(payload)
+
+
 def _ledger_entry(entry: Consignment, today: int) -> dict:
     return {
         "consignment_id": entry["consignment_id"],
@@ -111,7 +123,7 @@ async def query_merchant_ledger(context: RunContext[SessionData], npc_id: str) -
             for entry in visit.merchant.state["consigned_items"]
             if entry["consignor_id"] == visit.player_id
         ]
-        return json.dumps({"npc_id": npc_id, "entries": entries})
+        return receipt(visit, {"npc_id": npc_id, "entries": entries})
 
 
 @function_tool()

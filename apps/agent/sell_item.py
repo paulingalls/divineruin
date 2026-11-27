@@ -1,4 +1,3 @@
-import json
 from typing import Annotated
 
 from livekit.agents.llm import ToolError, function_tool
@@ -16,7 +15,7 @@ from db_errors import db_tool
 from disposition import resolve_disposition
 from durability import max_hits
 from merchant_purse import bind_sale_option, sale_terms
-from merchant_tools import merchant_visit
+from merchant_tools import merchant_visit, receipt
 from session_data import SessionData
 from tool_support import _validate_id
 
@@ -92,7 +91,7 @@ async def sell_item(
         if offer_id.startswith(OFFER_PREFIX) and not any(kind == "consignment" for kind, _ in terms):
             raise ToolError(refusal.get("reason", "That item is no longer eligible for consignment."))
         if not terms:
-            return json.dumps({"status": "refused", **refusal})
+            return receipt(visit, {"status": "refused", **refusal})
 
         if not offer_id and terms[0][0] == "full":
             total_sp = terms[0][1]
@@ -113,7 +112,7 @@ async def sell_item(
                     response["reason"] = "That offer has changed. Ask about the current offer."
                 elif refusal:
                     response.update(refusal)
-                return json.dumps(response)
+                return receipt(visit, response)
             total_sp = chosen["total_price_sp"]
             if chosen["kind"] == "consignment":
                 entry = place(player_id, item_id, quantity, total_sp, merchant.today)
@@ -121,14 +120,15 @@ async def sell_item(
                 await db_mutations_merchant.record_sale(npc_id, merchant.state, item_id, quantity, 0, conn=conn)
                 await db_mutations_inventory.transact_inventory(player_id, item_id, -quantity, conn=conn)
                 merchant.inventory_owners.add(player_id)
-                return json.dumps(
+                return receipt(
+                    visit,
                     {
                         "status": "consigned",
                         "npc_id": npc_id,
                         **entry,
                         "days_until_sale": entry["sale_day"] - merchant.today,
                         "expiry_day": expires_on(entry),
-                    }
+                    },
                 )
 
         await db_mutations_merchant.record_sale(npc_id, merchant.state, item_id, quantity, total_sp, conn=conn)
@@ -137,7 +137,8 @@ async def sell_item(
         await visit.credit(total_sp / visit.pricing["silver_per_gold"], "sale")
 
     await publish_action_sound(context.userdata, ACTION_SOUND_EXPORTS["ACTION_SELL_ITEM"])
-    return json.dumps(
+    return receipt(
+        visit,
         {
             "status": "sold",
             "item_id": item_id,
@@ -145,5 +146,5 @@ async def sell_item(
             "quantity": quantity,
             "unit_price_sp": total_sp // quantity if total_sp % quantity == 0 else None,
             "total_price_sp": total_sp,
-        }
+        },
     )
