@@ -11,7 +11,7 @@ from acceptance.test_architect_fight import pos
 from acceptance.test_opportunity_strike import participant, stamina
 from acceptance.test_slippery_restrain import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_slippery_restrain import strike
-from livekit.agents.llm import FunctionCallOutput
+from livekit.agents.llm import FunctionCallOutput, FunctionTool
 
 import combat_spatial
 import db
@@ -19,6 +19,7 @@ import db_mutations
 import db_mutations_concentration
 import db_queries
 from combat_structures import THORNWALL, add_wall
+from combat_turn import resolve_phase
 
 INTERCEPT = "guardian_intercept"
 BANDIT = "bandit"
@@ -31,7 +32,7 @@ SPELL = "arcane_fly"
 
 
 @pytest.fixture
-async def fight(reset_db_pool: str, scenario: str) -> AsyncIterator[MawlingHarness]:
+async def fight(reset_db_pool: str, scenario: str, request: pytest.FixtureRequest) -> AsyncIterator[MawlingHarness]:
     harness = MawlingHarness()
     try:
         await harness.prepare((3, 6, 3), companion=None)
@@ -88,6 +89,15 @@ async def fight(reset_db_pool: str, scenario: str) -> AsyncIterator[MawlingHarne
             json.dumps(template),
         )
         await harness.command("enter_mode", {"mode": "combat", "encounter_id": harness.encounter_id})
+        if getattr(request, "param", False):
+            # Register the underlying verb to exercise settlement without Fate's tool wrapper.
+            agent = harness.session.current_agent
+            await agent.update_tools(
+                [
+                    resolve_phase if isinstance(tool, FunctionTool) and tool.id == "resolve_phase" else tool
+                    for tool in agent.tools
+                ]
+            )
         state = await harness.reload()
         combat_spatial.require_spatial(state)["positions"].update(
             {guardian: pos(6 if scenario == "range" else 5), ally: pos(0), other: pos(0, -5)}
@@ -106,6 +116,12 @@ async def fight(reset_db_pool: str, scenario: str) -> AsyncIterator[MawlingHarne
             sword["properties"] = [*sword.get("properties", []), "grapple"]
         if scenario == "condition":
             sword.update(applies_condition="frightened", save="wisdom", dc=12)
+        if scenario == "critical":
+            participant(state, guardian).attributes["constitution"] = 20
+            participant(state, ally).attributes["constitution"] = 10
+            sword["critical_save"] = {"applies_condition": "hollowed", "save": "CON", "dc": 8, "stage": 1}
+        if scenario == "prepared":
+            bandit.pending_preparation = {"on_hit": {"applies_condition": "poisoned", "duration": 3}}
         if followup:
             bandit.initiative = 30
             participant(state, "lookout").initiative = 29
@@ -126,7 +142,10 @@ async def fight(reset_db_pool: str, scenario: str) -> AsyncIterator[MawlingHarne
         with (
             patch(
                 "check_resolution.dice_roll",
-                side_effect=chain([_d20(17)], repeat(_d20(4 if scenario in ("condition", "concentration") else 17))),
+                side_effect=chain(
+                    [_d20(20 if scenario == "critical" else 17)],
+                    repeat(_d20(4 if scenario in ("condition", "concentration", "critical") else 17)),
+                ),
             ),
             patch("check_resolution_attack.dice_roll", return_value=_damage_die(7)),
         ):
@@ -174,12 +193,14 @@ def blows(packets: list[dict]) -> list[dict]:
 
 
 @pytest.mark.parametrize(
-    "scenario, intercept",
+    "scenario, intercept, fight",
     [
-        pytest.param(scenario, intercept, id=f"{scenario}-{'intercept' if intercept else 'baseline'}")
-        for scenario in ("plain", "resistance", "temp", "grapple", "condition", "followup")
+        pytest.param(scenario, intercept, False, id=f"{scenario}-{'intercept' if intercept else 'baseline'}")
+        for scenario in ("plain", "resistance", "temp", "grapple", "condition", "critical", "prepared", "followup")
         for intercept in ((True,) if scenario == "followup" else (False, True))
-    ],
+    ]
+    + [pytest.param(scenario, True, True, id=f"{scenario}-immediate") for scenario in ("critical", "prepared")],
+    indirect=["fight"],
 )
 async def test_hit(fight: MawlingHarness, scenario: str, intercept: bool) -> None:
     guardian, ally, _ = fight.players
@@ -195,7 +216,7 @@ async def test_hit(fight: MawlingHarness, scenario: str, intercept: bool) -> Non
     assert await stamina(guardian) == start - (3 if intercept else 0)
     packets = await fight.drain()
     (guardian_hp, guardian_temp), (ally_hp, ally_temp), other_pool = await pools(fight)
-    damage = 3 if scenario == "resistance" else 7
+    damage = {"resistance": 3, "critical": 14}.get(scenario, 7)
     absorbed = 5 if scenario == "temp" and intercept else 0
     assert (guardian_hp, guardian_temp) == (
         before[0][0] - (damage - absorbed if intercept else 0),
@@ -211,9 +232,14 @@ async def test_hit(fight: MawlingHarness, scenario: str, intercept: bool) -> Non
     if scenario == "followup":
         (second,) = later
         assert second["damage"] == 7 and "damage_target_id" not in second
-    if scenario in ("grapple", "condition"):
+    if scenario == "critical":
+        assert blow["critical"] and blow["critical_save"]["success"] is False
+    if scenario in ("grapple", "condition", "critical", "prepared"):
         state = await fight.reload()
-        condition, source = ("grappled", BANDIT) if scenario == "grapple" else ("frightened", SWORD)
+        condition = {"grapple": "grappled", "condition": "frightened", "critical": "hollowed", "prepared": "poisoned"}[
+            scenario
+        ]
+        source = BANDIT if scenario == "grapple" else SWORD
         assert blow["condition_inflicted"] == condition
         assert any(c["type"] == condition and c["source"] == source for c in participant(state, ally).conditions)
         assert all(c["type"] != condition for c in participant(state, guardian).conditions)
