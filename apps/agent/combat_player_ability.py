@@ -1,5 +1,6 @@
 """Player ability packet dispatch inside the phase transaction."""
 
+import combat_marshal_rally
 import combat_martial
 import combat_reposition
 import combat_sacrifice_play
@@ -15,6 +16,7 @@ from combat_ability import (
 from combat_ability_gate import (
     EXPLOIT_WEAKNESS,
     MARSHAL_ORDERS,
+    MARSHAL_RALLY,
     REPOSITION,
     SECOND_WIND,
     SHADOW_STEP,
@@ -110,6 +112,8 @@ async def resolve(
         return await combat_martial.second_wind(
             state, attacker, resolved, conn=conn, queries=queries, mutations=mutations
         )
+    if resolved is not None and resolved[0].id == MARSHAL_RALLY:
+        return await combat_marshal_rally.resolve(state, attacker, resolved, conn=conn, queries=queries)
     if resolved is not None and resolved[0].id == REPOSITION:
         return await combat_reposition.resolve(state, attacker, decl, resolved, conn=conn, queries=queries)
     if resolved is not None and resolved[0].id in MARSHAL_ORDERS:

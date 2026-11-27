@@ -3238,9 +3238,10 @@
         "name": "Rally at Dawn",
         "clauses": [
           {
-            "effect": "An ally healed by your rallying ability regains 1 additional HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Rally grants each recipient 1 additional temporary HP.",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_marshal_rally"
           }
         ]
       },

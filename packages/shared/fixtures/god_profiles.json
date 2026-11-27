@@ -23,6 +23,18 @@
       }
     ]
   },
+  "rally_at_dawn": {
+    "name": "Rally at Dawn",
+    "type": "divine",
+    "clauses": [
+      {
+        "effect": "Rally grants each recipient 1 additional temporary HP.",
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "orenthel_marshal_rally"
+      }
+    ]
+  },
   "lawful_command": {
     "name": "Lawful Command",
     "type": "divine",

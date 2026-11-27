@@ -47,6 +47,7 @@ import spells
 import temp_hp
 import wild_shape
 from combat_ability_gate import (
+    MARSHAL_RALLY,
     RALLYING_SHOUT,
     SHADOW_STEP,
     SHIELD_BASH,
@@ -92,6 +93,8 @@ async def _request_ability_activation_impl(
     session: SessionData = context.userdata
     if ability.id == wild_shape.DRUID_ABILITY:
         raise ToolError(wild_shape.activation_refusal(in_combat=session.in_combat))
+    if ability.id == MARSHAL_RALLY and not session.in_combat:
+        raise ToolError(f"Rally can only be used in combat. To use it, declare {ability.id} in a combat phase.")
     reaction_actor = session.require_reaction_actor() if ability.ability_type == "reaction" else None
     player_id = reaction_actor.player_id if reaction_actor is not None else session.acting_player_id
 

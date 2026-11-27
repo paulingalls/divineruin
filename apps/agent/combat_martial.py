@@ -31,6 +31,7 @@ from combat_ability_gate import (
     EXPLOIT_WEAKNESS,
     IRON_STANCE_ABILITY,
     MARSHAL_ORDERS,
+    MARSHAL_RALLY,
     MULTI_TARGET_WEAPON_ABILITIES,
     QUICK_FINGERS,
     QUICK_FINGERS_RIDER,
@@ -95,8 +96,8 @@ def require_targets(
             or any(not standing_foe(state.get_participant(tid)) for tid in targets)
         ):
             raise ValueError("Cleaving Blow requires one or two distinct standing foes.")
-    if ability.id == WHIRLWIND and (decl.target_id is not None or decl.target_ids):
-        raise ValueError("Whirlwind chooses its own targets. Leave targets empty.")
+    if ability.id in (WHIRLWIND, MARSHAL_RALLY) and (decl.target_id is not None or decl.target_ids):
+        raise ValueError(f"{ability.name} chooses its own targets. Leave targets empty.")
     if ability.id == EXPLOIT_WEAKNESS and _study_target(state, decl) is None:
         raise ValueError("Exploit Weakness requires one standing foe.")
     if ability.id == RALLYING_SHOUT:
