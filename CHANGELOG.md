@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.85.5
+
+Proof invalidates every affected acceptance check when coverage for a shared agent source or a reaching acceptance task has yet to be measured.
+
+Release steps: none.
+
 ## 0.85.4
 
 Refresh the dependency inventory for the current lockfiles and Expo SDK 58. The manual all-scope report check now validates the refreshed inventory.
