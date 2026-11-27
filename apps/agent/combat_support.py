@@ -32,8 +32,7 @@ logger = logging.getLogger("divineruin.tools")
 
 
 def _participant_summary(p: CombatParticipant) -> dict:
-    """Serialize a participant for LLM response (no internal state like HP numbers)."""
-    return {
+    summary = {
         "id": p.id,
         "name": p.name,
         "yielded": p.yielded,
@@ -51,6 +50,14 @@ def _participant_summary(p: CombatParticipant) -> dict:
         "deferred_effects": p.deferred_effects,
         **action_summary(p),
     }
+    if form := p.wild_shape:
+        summary["wild_shape"] = {
+            "form_id": form["form_id"],
+            "name": form["name"],
+            "hp_current": form["hp_current"],
+            "hp_max": form["hp_max"],
+        }
+    return summary
 
 
 def _participant_roster(participants: list[CombatParticipant]) -> list[dict]:

@@ -398,7 +398,10 @@ def format_combat_hot_line(combat_state: CombatState | None) -> str | None:
     for pid in combat_state.initiative_order:
         p = combat_state.get_participant(pid)
         if p is not None:
-            combatants.append(f"{p.name}({hp_threshold_status(p.hp_current, p.hp_max)})")
+            status = hp_threshold_status(p.hp_current, p.hp_max)
+            if form := p.wild_shape:
+                status += f"; {form['name']} {form['hp_current']}/{form['hp_max']}"
+            combatants.append(f"{p.name}({status})")
     return f"[COMBAT Round {combat_state.round_number}: {', '.join(combatants)}]"
 
 

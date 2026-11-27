@@ -166,7 +166,8 @@ async def test_just_verdict_consumes_temporary_hp_first(world) -> None:
         assert result["roll"] == {"notation": "2d8", "total": 7}
         assert result["damage"] == 7 and not result["stunned"]
         assert "attacked no party member or companion" in result["dm_cue"]
-        assert "5 temporary HP" in result["dm_cue"]
+        assert result["temp_hp_absorbed"] == 5
+        assert "Temporary HP absorbed 5 damage." in result["dm_cue"]
         player = await row(world, 0)
         assert player["hp"]["current"] == 18 and player["temp_hp"] == 0
         state = await saved(world)

@@ -38,6 +38,7 @@
   "kaelen_oath_of_valor": "patron_synergy_combat:outnumbered_rider",
   "aelora_common_bond": "patron_gifts:skill_gift",
   "thyra_wild_kinship": "patron_gifts:skill_gift",
+  "thyra_wild_shape": "patron_synergy:wild_shape_bonus",
   "syrath_silent_casting": "cast_modifiers:apply_patron_generation",
   "mortaen_death_feeds_renewal": "encounter_facts:renew_on_death",
   "mortaen_deaths_awareness": "patron_senses:deaths_awareness",

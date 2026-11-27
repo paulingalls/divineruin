@@ -5,7 +5,7 @@ The [catalog](../../content/spells.json) supplies the IDs. The [magic design](..
 
 ## Classification
 
-The 87 spells include **11 engine**, **4 narrated**, **72 unwired** and **0 uncertified**.
+The 87 spells include **12 engine**, **4 narrated**, **71 unwired** and **0 uncertified**.
 
 - **engine** — The named function resolves the effect and the linked committed test asserts the outcome.
 - **narrated** — The design assigns the result to the DM’s narration.
@@ -14,7 +14,7 @@ The 87 spells include **11 engine**, **4 narrated**, **72 unwired** and **0 unce
 
 A RUN label identifies the story’s saved tool receipts, player rows, combat snapshots and events. Each RUN below returned a successful cast receipt. The Focus amounts reflect the observed debit. The damage and heal results come from settlement. The generic cast packet repeats the catalog’s mechanics text. Settlement packets and saved state show which effects landed.
 
-The dead-reactions sprint is changing the archetype `mage_shield_spell`, which has a separate reaction ID from the catalog spell. Counterspell keeps its existing follow-up. The divineruin2-m3 sprint-wild-shape owns the changes to `primal_wild_shape`. This ledger records both spells at the baseline above.
+The dead-reactions sprint is changing the archetype `mage_shield_spell`, which has a separate reaction ID from the catalog spell. Counterspell keeps its existing follow-up. Sprint wild-shape reclassified `primal_wild_shape` as engine on 2026-11-26. The ledger records `mage_shield_spell` at the baseline above.
 
 ## Catalog
 
@@ -95,7 +95,7 @@ The dead-reactions sprint is changing the archetype `mage_shield_spell`, which h
 | `primal_protection_from_hollow` | unwired | RUN `primal_protection_from_hollow` (3 Focus). Concentration started without a condition on the ally or a source-specific save or attack modifier. [M14.1](14_engine_completeness.md#spell-primal_protection_from_hollow). |
 | `primal_water_breathing` | unwired | RUN `primal_water_breathing` (3 Focus). The recipient row gained no underwater breathing capability or expiry. [M14.1](14_engine_completeness.md#spell-primal_water_breathing). |
 | `primal_natures_grasp` | unwired | RUN `primal_natures_grasp` (2 Focus). Ordinary cast succeeded. The enemy moved 10 ft through forest with no spell offer, STR save or restraint. [M14.1](14_engine_completeness.md#spell-primal_natures_grasp). |
-| `primal_wild_shape` | unwired | RUN `primal_wild_shape` (4 Focus). The ordinary action spent Focus. Stamina, species profile, HP pool and actions stayed unchanged. [Druid Wild Shape](14_engine_completeness.md#spell-wild-shape). Owned by divineruin2-m3’s sprint-wild-shape. |
+| `primal_wild_shape` | engine | `wild_shape.transform`, with `wild_shape.land_damage` and `wild_shape.require_casting`. [`test_transform`](../../apps/agent/tests/acceptance/test_wild_shape.py) asserts the persisted form, beast HP, form AC and the one 4 Focus + 3 Stamina debit. [`test_wild_shape_hp.py`](../../apps/agent/tests/acceptance/test_wild_shape_hp.py) covers beast-HP absorption and overflow. Reclassified by sprint wild-shape (2026-11-26). |
 | `primal_wall_of_thorns` | unwired | RUN `primal_wall_of_thorns` (5 Focus). Settlement explicitly deferred crossing damage. The enemy crossed at ordinary movement cost with no barrier, cover or save. [M14.1](14_engine_completeness.md#spell-primal_wall_of_thorns). |
 | `primal_commune_with_nature` | unwired | RUN `primal_commune_with_nature` (3 Focus). The forest cast returned no terrain, water, life, corruption, settlement or creature facts. [M14.1](14_engine_completeness.md#spell-primal_commune_with_nature). |
 | `primal_blight` | unwired | RUN `primal_blight` (5 Focus). Damage landed, but the plant target rolled a CON save and received rolled damage. [M14.1](14_engine_completeness.md#spell-primal_blight). |

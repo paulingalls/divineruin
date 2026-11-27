@@ -1681,6 +1681,15 @@
     "source": "primal",
     "spell_tier": "major",
     "focus_cost": 4,
+    "wild_shape": {
+      "stamina_cost": 3,
+      "forms": [
+        { "creature_id": "grey_wolf", "min_level": 5 },
+        { "creature_id": "wild_boar", "min_level": 5 },
+        { "creature_id": "steppe_bison", "min_level": 5 },
+        { "creature_id": "dire_bear", "min_level": 10 }
+      ]
+    },
     "mechanics": "Transform into a beast form with its own HP pool, natural attacks, and beast senses. Costs Focus and Stamina. No spellcasting in form until L10.",
     "narration_cue": "Bones shift. Skin ripples. One terrible, exhilarating moment of being neither — then something new.",
     "resonance_by_source": {
