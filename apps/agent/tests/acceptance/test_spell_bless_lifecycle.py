@@ -244,7 +244,7 @@ async def test_migration_clears_only_legacy_bless_from_players_and_checkpoints(s
     assert await save_total(legacy) == await save_total(control)
 
 
-async def test_combat_reconcile_keeps_only_the_surviving_caster(unravel):
+async def test_bless_replacement_leaves_one_caster_until_combat_ends(unravel):
     from _zhael_fate_fixtures import defend as defend_packet
     from _zhael_unravel_fixtures import patch_player
 
