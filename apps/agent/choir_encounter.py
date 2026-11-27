@@ -225,7 +225,9 @@ def destroyed(state):
         actor.conditions = [condition for condition in actor.conditions if condition.get("source") != source.id]
 
 
-async def turn_start(session, state, actor, *, conn, concentration_break_mod, progress=None, sink=None):
+async def turn_start(
+    session, state, actor, *, conn, concentration_break_mod, progress=None, sink=None, queries=db_queries
+):
     if state.choir_encounter is None or state.choir_encounter["phase"] == "destroyed":
         return None
     from condition_restrictions import cannot_act
@@ -264,6 +266,7 @@ async def turn_start(session, state, actor, *, conn, concentration_break_mod, pr
         ),
         state=state,
         conn=conn,
+        queries=queries,
     )
     if save is None:
         return None
@@ -282,7 +285,7 @@ async def turn_start(session, state, actor, *, conn, concentration_break_mod, pr
         "success": save.success,
         "concentration_broken": broken,
         "cue": "Lost voices tug at your focus.",
-        **save.justice_fields(),
+        **save.oath_fields(),
         **encounter_facts.rally_receipt(actor.id, save.rally_sources),
     }
 

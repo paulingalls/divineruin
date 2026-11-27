@@ -11,6 +11,7 @@ import db_mutations
 import db_queries
 import event_types as E
 import oath_breach
+import oath_timed
 import patron_combat_edges
 import veythar_wellspring
 from _gods_content import load_gods
@@ -244,6 +245,8 @@ async def _activate_combat_damage(
     sink = EventSink()
     end_data = None
     async with scratch_guard(session), db.transaction() as conn:
+        state = session.combat_state
+        oath_before = await oath_timed.snapshot(conn, state, session) if state is not None else {}
         await lock_damage_players(session, None, queries=db_queries, conn=conn)
         ability = await _locked_ability(conn, actor, ability_id)
         if ability_id == patron_combat_edges.SCALES_VERDICT:
@@ -264,6 +267,13 @@ async def _activate_combat_damage(
             )
             if residue is not None:
                 end_data["lost_scout_residue"] = residue
+
+        oath_changes = await oath_timed.changes(conn, updated, session, oath_before)
+        if oath_changes:
+            if end_data is None:
+                response["oath_changes"] = oath_changes
+            else:
+                end_data["oath_changes"] = oath_changes
 
     name = ability["name"]
     handoff = None

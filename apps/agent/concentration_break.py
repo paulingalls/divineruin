@@ -107,13 +107,13 @@ async def break_concentration_on_damage(
         if save is None:
             return None
         holds = save.success
-        if receipt is not None and (save.rally_sources or save.oath_justice is not None):
+        if receipt is not None and (save.rally_sources or save.oath_justice is not None or save.oath_timed is not None):
             receipt["concentration_save"] = {
                 "roll": save.roll,
                 "total": save.total,
                 "dc": save.dc,
                 "success": save.success,
-                **save.justice_fields(),
+                **save.oath_fields(),
                 **encounter_facts.rally_receipt(damaged_player_id, save.rally_sources),
             }
 

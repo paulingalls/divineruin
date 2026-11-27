@@ -20,6 +20,7 @@ from livekit.agents.voice import RunContext
 
 import check_payloads
 import check_resolution_save
+import combat_fate_rolls
 import condition_voice_rules
 import db
 import db_content_queries
@@ -30,7 +31,6 @@ import db_queries
 import dice
 import encounter_facts
 import event_types as E
-import oath_justice
 import rules_engine
 import zhael_fate
 from check_discovery import _check_discover_impl
@@ -221,8 +221,8 @@ async def _check_save_impl(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
-    result = await oath_justice.prepare_save(
-        session, state, player_id, result, effect_on_fail, queries=queries, conn=None, player=player
+    result = await combat_fate_rolls._prepare_save(
+        session, state, player_id, effect_on_fail, lambda: result, queries=queries, conn=None, player=player
     )
     d20 = result.d20
     if d20 is not None:
@@ -294,7 +294,7 @@ async def _finish_save(session, player_id, result, conditions_mutations, db_mod,
         E.DICE_ROLL,
         {
             "roll_type": "saving_throw",
-            **result.justice_fields(),
+            **result.oath_fields(),
             **encounter_facts.rally_receipt(player_id, result.rally_sources),
             "save_type": result.save_type,
             "roll": result.roll,
@@ -311,7 +311,7 @@ async def _finish_save(session, player_id, result, conditions_mutations, db_mod,
 
     response = {
         "outcome": outcome,
-        **result.justice_fields(),
+        **result.oath_fields(),
         **encounter_facts.rally_receipt(player_id, result.rally_sources),
         "save_type": result.save_type,
         "roll": result.roll,

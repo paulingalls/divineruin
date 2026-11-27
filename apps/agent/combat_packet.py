@@ -24,6 +24,7 @@ import combat_recharge
 import combat_retreat
 import combat_spatial_declarations
 import combat_turn_flight
+import combat_turn_start
 import combat_voice_rules
 import combat_yield
 import item_heal
@@ -158,13 +159,12 @@ async def _resolve_action_packet(
     opportunity_attack = held_head.get("opportunity_attack", False)
     resuming_movement = player_movement is not None and player_movement.route is not None
     if not (resuming_movement or opportunity_attack or "legendary_kind" in held_head):
-        from combat_turn_start import start_choir_packet
-
-        forced_move = await start_choir_packet(
+        forced_move = await combat_turn_start.start_choir_packet(
             session,
             state,
             attacker,
             conn=conn,
+            queries=queries,
             concentration_break_mod=concentration_break_mod,
             sink=sink,
             progress=progress,

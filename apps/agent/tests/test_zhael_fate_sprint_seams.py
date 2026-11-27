@@ -176,7 +176,14 @@ async def test_receipt_branch_lands_the_critical_save_rider(world):
             save = (await _keep(call, blow))["fate_offer"]
             result = await _keep(call, save)
         packet = next(p for p in result["packets"] if p.get("actor_id") == "knight" and p.get("hit"))
-        assert packet["critical"] and packet["critical_save"] == {"dc": 14, "roll": 3, "total": 3, "success": False}
+        assert packet["critical"] and packet["critical_save"] == {
+            "dc": 14,
+            "roll": 3,
+            "total": 3,
+            "success": False,
+            "combat_id": state.combat_id,
+            "round_number": 1,
+        }
         assert packet["condition_inflicted"] == "hollowed"
         assert has_condition(required_player(session.combat_state, pid).conditions, "hollowed")
     finally:

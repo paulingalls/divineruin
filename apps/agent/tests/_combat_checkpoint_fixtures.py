@@ -7,12 +7,19 @@ import choir_scene
 import combat_round_checkpoint
 import db
 import db_content_queries
+import oath_timed
 
 
 @pytest.fixture(autouse=True)
 def checkpoint_fake_connections(monkeypatch) -> None:
     read_party = combat_round_checkpoint.read_party
     start = choir_scene.start
+    books = oath_timed._books
+
+    async def books_on_connection(conn, ids: set[str], *, lock: bool = False):
+        if isinstance(conn, Mock):
+            return {}
+        return await books(conn, ids, lock=lock)
 
     async def read_on_connection(conn, ids: list[str]) -> dict[str, dict]:
         if isinstance(conn, Mock):
@@ -31,3 +38,4 @@ def checkpoint_fake_connections(monkeypatch) -> None:
 
     monkeypatch.setattr(combat_round_checkpoint, "read_party", read_on_connection)
     monkeypatch.setattr(choir_scene, "start", start_on_connection)
+    monkeypatch.setattr(oath_timed, "_books", books_on_connection)

@@ -145,9 +145,10 @@ async def test_defeat_applies_tiered_cost_and_revives_at_anchor(reset_db_pool: s
     await db_mutations.save_combat_state(cs.combat_id, cs.to_dict(), conn=pool)
     ctx.userdata.combat_state = cs
 
-    end_data = await combat_end._end_combat_db(
-        ctx.userdata, cs, "defeat", mutations=db_mutations, queries=db_queries, conn=pool, sink=EventSink()
-    )
+    async with pool.acquire() as conn, conn.transaction():
+        end_data = await combat_end._end_combat_db(
+            ctx.userdata, cs, "defeat", mutations=db_mutations, queries=db_queries, conn=conn, sink=EventSink()
+        )
     dc = end_data["death_context"]
     assert dc["tier"] == "moderate" and dc["death_count"] == 2
     assert dc["attribute_delta"] == -1 and dc["attribute"] is not None
@@ -276,9 +277,10 @@ async def test_precombat_exhausted_loads_then_survives_death(reset_db_pool: str)
     # The player falls; the defeat router persists the death AND the Exhausted survives it.
     loaded.is_fallen = True
     loaded.is_dead = True
-    end_data = await combat_end._end_combat_db(
-        ctx.userdata, cs, "defeat", mutations=db_mutations, queries=db_queries, conn=pool, sink=EventSink()
-    )
+    async with pool.acquire() as conn, conn.transaction():
+        end_data = await combat_end._end_combat_db(
+            ctx.userdata, cs, "defeat", mutations=db_mutations, queries=db_queries, conn=conn, sink=EventSink()
+        )
     assert end_data["death_context"]["death_count"] == 1  # first death recorded
 
     revived = await db_queries.get_player(player_id, conn=pool)
@@ -360,9 +362,10 @@ async def test_hollowed_rise_destroy_then_mortaen_death(reset_db_pool: str) -> N
     assert wrap.combat_ended is True and wrap.outcome == "defeat"
 
     # The defeat router runs the Mortaen death keyed on the player row (Hollowed branch).
-    end_data = await combat_end._end_combat_db(
-        ctx.userdata, cs, "defeat", mutations=db_mutations, queries=db_queries, conn=pool, sink=EventSink()
-    )
+    async with pool.acquire() as conn, conn.transaction():
+        end_data = await combat_end._end_combat_db(
+            ctx.userdata, cs, "defeat", mutations=db_mutations, queries=db_queries, conn=conn, sink=EventSink()
+        )
     assert end_data["death_context"]["hollow_killed"] is True
 
     revived = await db_queries.get_player(player_id, conn=pool)

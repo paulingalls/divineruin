@@ -55,6 +55,10 @@ class TimedOath(Oath):
     last_round: Round
     objective_kind: Objective
     target_id: Id
+    transition_round: Round | None = None
+    transition_reason: Literal["target_defeated", "ally_fell", "ally_stood", "deadline", "encounter_ended"] | None = (
+        None
+    )
 
     @model_validator(mode="after")
     def validate_terms(self) -> Self:
@@ -62,6 +66,13 @@ class TimedOath(Oath):
             raise ValueError("Invalid timed oath terms or round window")
         if self.bound_entity_ids != [self.target_id]:
             raise ValueError("Invalid timed oath target binding")
+        if self.status == "active":
+            if self.transition_round is not None or self.transition_reason is not None:
+                raise ValueError("Active timed oath cannot have a terminal transition")
+        elif (
+            self.transition_round is None or self.transition_round < self.round_number or self.transition_reason is None
+        ):
+            raise ValueError("Terminal timed oath requires its transition round and reason")
         return self
 
 

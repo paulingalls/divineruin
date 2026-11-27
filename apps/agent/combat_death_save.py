@@ -13,6 +13,7 @@ import db_mutations
 import db_queries
 import encounter_facts
 import event_types as E
+import oath_timed
 import zhael_fate
 from combat_down import revive, sync_companion_consciousness
 from combat_participant import CombatParticipant
@@ -115,9 +116,18 @@ async def _roll_death_save(
     personal_bonus = creation_deities.patron_death_save_bonus(member.patron_id if member is not None else "none")
     synergy_bonus = await marshal_death_save_bonus(cs, queries=queries)
     rally_sources = encounter_facts.pending_rally(cs, faller.id)
-    bonus = personal_bonus + synergy_bonus + len(rally_sources)
+    timed = None
+    if faller.type == "player":
+        player = await queries.get_player(faller.id)
+        if player is None:
+            raise ToolError(f"Player '{faller.id}' not found")
+        timed = oath_timed.save_receipt(cs, faller.id, player, cs.round_number)
+    bonus = personal_bonus + synergy_bonus + len(rally_sources) + (timed["modifier"] if timed else 0)
     bonus_receipt = {
         "bonus": bonus,
+        "combat_id": cs.combat_id,
+        "round_number": cs.round_number,
+        **({"oath_timed": timed} if timed is not None else {}),
         **encounter_facts.rally_receipt(faller.id, rally_sources),
         "synergy_bonus": synergy_bonus,
         "synergy_clause_id": MORTAEN_HOLD_THE_CROSSING if synergy_bonus else None,
@@ -254,6 +264,8 @@ async def _request_death_save_locked(
         E.DICE_ROLL,
         {
             "roll_type": "death_save",
+            **bonus_receipt,
+            "total": result.roll + bonus_receipt["bonus"],
             **encounter_facts.rally_receipt(faller_id, rally_sources),
             "roll": result.roll,
             "success": result.success,
@@ -275,6 +287,7 @@ async def _request_death_save_locked(
 
     response = {
         **bonus_receipt,
+        "total": result.roll + bonus_receipt["bonus"],
         "roll": result.roll,
         "success": result.success,
         "critical_success": result.critical_success,

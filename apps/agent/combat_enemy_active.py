@@ -105,7 +105,7 @@ def land_critical_save(state, attacker, target, action, summary, rider, result):
         "roll": result.roll,
         "total": result.total,
         "success": result.success,
-        **result.justice_fields(),
+        **result.oath_fields(),
         **override_fields(result),
         **encounter_facts.rally_receipt(target.id, result.rally_sources),
     }

@@ -120,7 +120,7 @@ async def resolve_rider(
         save_total=result.total,
         save_dc=result.dc,
         save_success=result.success,
-        **result.justice_fields(),
+        **result.oath_fields(),
         **encounter_facts.rally_receipt(target.id, result.rally_sources),
     )
     if result.success:

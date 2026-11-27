@@ -3563,8 +3563,9 @@
         "clauses": [
           {
             "effect": "Gain +1 to saving throws while fulfilling an oath at its promised time.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_promised_hour"
           }
         ]
       },

@@ -94,6 +94,7 @@
   "zhael_moment_to_rally": "patron_synergy_combat:grant_marshal_rally",
   "mortaen_hold_the_crossing": "patron_synergy_combat:marshal_death_save_bonus",
   "zhael_second_before": "patron_synergy_combat:first_attack_defense",
+  "zhael_promised_hour": "oath_timed:prepare_save",
   "zhael_appointed_mercy": "patron_synergy_heal:for_cast",
   "thyra_natures_edge": "patron_synergy_combat:critical_rider",
   "veythar_simplest_mysteries": "cast_modifiers:ward_combat_modifiers",

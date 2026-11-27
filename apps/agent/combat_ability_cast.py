@@ -84,6 +84,7 @@ async def _resolve_ability_packet(
     cleanses = spell.id == GREATER_RESTORATION
     turns_undead = spell.id == combat_turn_undead.TURN_UNDEAD
     steps = progress.steps if progress is not None else {}
+    queries = (damage_deps or {}).get("queries", db_queries)
     shield_receipts = steps.setdefault("harmonic_shield_saves", [])
     shield = progress.scope("shield") if progress is not None else None
     deliveries = None
@@ -122,6 +123,8 @@ async def _resolve_ability_packet(
                 replace(decl, target_id=target_id, target_ids=None),
                 progress=shield.scope(target_id) if shield is not None else None,
                 receipts=shield_receipts,
+                queries=queries,
+                conn=conn,
             )
             if redirected is None:
                 return {}
@@ -132,7 +135,9 @@ async def _resolve_ability_packet(
             if not turns_undead or redirects[d["target_id"]] == d["target_id"]
         ]
     elif spell.heal is None and not cleanses:
-        decl = await effective_declaration(session, state, attacker, decl, progress=shield, receipts=shield_receipts)
+        decl = await effective_declaration(
+            session, state, attacker, decl, progress=shield, receipts=shield_receipts, queries=queries, conn=conn
+        )
         if decl is None:
             return {}
     landing_intent, deliveries, interception = (
@@ -153,7 +158,6 @@ async def _resolve_ability_packet(
         if spell.wild_shape is not None:
             if player is None:
                 raise RuntimeError(f"Missing locked player row for Wild Shape: {attacker.id}")
-            queries = (damage_deps or {}).get("queries", db_queries)
             locked = await queries.get_player(attacker.id, conn=conn, for_update=True)
             if locked is None:
                 raise RuntimeError(f"Missing locked player row for Wild Shape: {attacker.id}")
@@ -272,10 +276,10 @@ async def _resolve_ability_packet(
             )
     if (spell.combat_damage or {}).get("resolution") == "attack" and "hit" not in cast_packet.get("damage_result", {}):
         cast_packet.pop("spell_attack_bonus", None)
-        if "concealment" not in cast_packet:
-            queries = (damage_deps or {}).get("queries", db_queries)
-            if reveal := await concealment.reveal_attacker(attacker.id, conn=conn, queries=queries, ended_by="cast"):
-                cast_packet["concealment"] = reveal
+        if "concealment" not in cast_packet and (
+            reveal := await concealment.reveal_attacker(attacker.id, conn=conn, queries=queries, ended_by="cast")
+        ):
+            cast_packet["concealment"] = reveal
     # Beneficial-condition PRODUCER (M4.8 story-004), in-combat half: land the produced condition on the
     # recipients that remain after Absorb Magic. The mutation rides this phase's save_combat_state.
     cond_type = cast_packet.get("condition_applied")

@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from combat_damage_results import AutomaticDamageResult, SaveDamageResult
     from combat_participant import CombatParticipant
     from combat_state import CombatState
+    from session_data import SessionData
 
 MORTAEN_RENEWAL = "mortaen_death_feeds_renewal"
 ZHAEL_THREADED_BLADE = "zhael_threaded_blade"
@@ -234,9 +235,22 @@ async def renew_on_death(
     *,
     queries,
     conn: Connection | None,
+    session: SessionData | None = None,
 ) -> list[dict]:
     if state is None or counted_before or not counted_death(target):
         return []
+
+    if not target.is_ally:
+        from oath_timed import settle
+
+        await settle(
+            state,
+            conn=conn,
+            reason="target_defeated",
+            round_number=state.round_number,
+            target_id=target.id,
+            session=session,
+        )
 
     receipts = []
     for recipient in sorted(state.participants, key=lambda p: p.id):

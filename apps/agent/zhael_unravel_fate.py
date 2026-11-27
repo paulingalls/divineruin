@@ -26,6 +26,7 @@ from combat_ui_update import build_combat_ui_update
 from game_events import publish_game_event
 from inventory_refresh import publish_inventory
 from oath_breach import breach_marker
+from oaths import OathBook, TimedOath
 from patron_ability_events import publish_patron_abilities
 from patron_passives import effective_hp
 from resonance_events import publish_resonance_changed
@@ -211,9 +212,9 @@ async def activate(session: SessionData) -> str:
         except (RuntimeError, ValueError) as error:
             raise ToolError(str(error)) from error
         members = {member.player_id: member for member in session.party.members}
-        previous_live = live.round_checkpoints[-2]["players"] if len(live.round_checkpoints) >= 2 else {}
+        history_ids = {pid for checkpoint in live.round_checkpoints for pid in checkpoint["players"]}
         participant_ids = {p.id for p in live.participants if p.type in ("player", "temporary_hollowed")}
-        player_ids = sorted(members.keys() | previous_live.keys() | participant_ids)
+        player_ids = sorted(members.keys() | history_ids | participant_ids)
         async with db.transaction() as conn:
             current = await db_queries.get_players_for_update(player_ids, conn=conn)
             if missing := members.keys() - current.keys():
@@ -228,7 +229,7 @@ async def activate(session: SessionData) -> str:
             if committed.combat_id != live.combat_id or committed.round_number != live.round_number:
                 raise ToolError("The fight opening changed. Reload it before using Unravel Fate.")
             previous = _previous_opening(committed)
-            for player in current.values():
+            for pid, player in current.items():
                 marker = breach_marker(player)
                 if (
                     marker
@@ -236,6 +237,12 @@ async def activate(session: SessionData) -> str:
                     and marker.round_number >= previous["round_number"]
                 ):
                     raise ToolError("Unravel Fate cannot rewind across a broken Oath of Justice.")
+                for oath in OathBook.from_player(player, pid).records:
+                    if isinstance(oath, TimedOath) and oath.combat_id == committed.combat_id:
+                        if oath.round_number >= previous["round_number"]:
+                            raise ToolError("Unravel Fate cannot rewind across a sworn Promised Hour.")
+                        if oath.transition_round is not None and oath.transition_round >= previous["round_number"]:
+                            raise ToolError("Unravel Fate cannot rewind across a settled Promised Hour.")
             await _require_untouched(conn, committed, members.keys())
             saved = previous["players"]
             roster = members.keys() & saved.keys()

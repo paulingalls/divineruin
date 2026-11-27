@@ -31,6 +31,11 @@ def test_valdris_paladin_oath_clause():
     assert valdris["layer_4_synergy_matrix"]["paladin"] == CORPUS["oath_of_justice"]
 
 
+def test_zhael_paladin_timed_oath_clause():
+    zhael = next(row for row in load_gods() if row["god_id"] == "zhael")
+    assert zhael["layer_4_synergy_matrix"]["paladin"] == CORPUS["promised_hour"]
+
+
 def test_authored_layers_match_mechanics():
     rows = load_gods()
     assert len(rows) == len(CORPUS["patron_ids"]) == 10
