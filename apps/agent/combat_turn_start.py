@@ -105,6 +105,7 @@ def ally_turns(state, packets):
 async def turn_start(
     session, state, victim, *, conn, sink, mutations, queries, concentration_break_mod, progress=None, **unused
 ):
+    victim.shield_spell_active = False
     packet = await _damage(
         session,
         state,

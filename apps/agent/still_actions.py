@@ -188,6 +188,7 @@ async def resolve_touch(
     concentration,
     sink,
     advantage,
+    psychic_shield_id: str | None = None,
 ):
     target = state.get_participant(declaration.target_id)
     steps = head if head is not None else {}
@@ -211,6 +212,7 @@ async def resolve_touch(
             concentration_break_mod=concentration,
             sink=sink,
             publish_roll=False,
+            psychic_shield_id=psychic_shield_id,
             progress=progress.scope("still_damage") if progress is not None else None,
         )
         if progress is not None and progress.paused:

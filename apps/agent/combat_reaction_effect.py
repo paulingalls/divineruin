@@ -9,7 +9,6 @@ engine can open, rather than shipping a guard that certifies nothing.
 from __future__ import annotations
 
 import logging
-from dataclasses import replace
 from typing import cast
 
 import abilities
@@ -21,12 +20,9 @@ import combat_structures
 import conditions
 import reaction_spend
 import reaction_windows
-import temp_hp
-from check_resolution import D20Roll
 from combat_attack_roll import held_reaction_ac
-from combat_damage_affinity import with_landed_damage
-from combat_participant import BARK_SKIN_AC_BONUS
-from combat_support import deserialize_roll, serialize_roll
+from combat_participant import SHIELD_SPELL_AC_BONUS
+from combat_reaction_defense import BRACE, SHIELD_SPELL, THOUGHT_SHIELD, apply_bark_skin, brace, halve
 from declarations import resolve_declaration
 from session_data import CombatParticipant
 
@@ -189,61 +185,6 @@ def _held_target(state, head: dict):
     return state.get_participant(declaration.target_id) if declaration.target_id else None
 
 
-def halve(head: dict, target) -> None:
-    """Halve the held blow against live HP so its summary and impact agree after a reload.
-
-    The dice event precedes the post-roll reaction window and still describes the original roll.
-    """
-    result, held_ac = deserialize_roll(head["roll"])
-    halved = with_landed_damage(
-        result,
-        result.damage // 2,
-        target.hp_current,
-        temporary=temp_hp.player_pool(target),
-        hp_floor=conditions.damage_hp_floor(target.conditions),
-        bonus_damage=result.bonus_damage // 2,
-        rider_damage=result.rider_damage // 2,
-        synergy_damage=result.synergy_damage // 2,
-    )
-    head["roll"] = serialize_roll(halved, held_ac)
-
-
-def apply_bark_skin(head: dict, target: CombatParticipant) -> None:
-    result, held_ac = deserialize_roll(head["roll"])
-    if not D20Roll(result.attack_modifier, held_ac).evaluate(result.roll).success:
-        raise ValueError("Bark Skin expected a held hit that reached the original AC")
-
-    raised_ac = held_ac + BARK_SKIN_AC_BONUS
-    verdict = D20Roll(result.attack_modifier, raised_ac).evaluate(result.roll)
-    result = replace(result, target_ac=raised_ac, narrative_hint=verdict.narrative_hint)
-    if not verdict.success:
-        result = with_landed_damage(
-            replace(result, hit=False),
-            0,
-            target.hp_current,
-            critical_success=False,
-            bonus_damage=0,
-            bonus_damage_type=None,
-            rider_damage=0,
-            rider_damage_type=None,
-            rider_ignores_resistance=False,
-            sneak_attack_dice=None,
-            sneak_attack_raw_damage=0,
-            synergy_damage=0,
-            synergy_damage_type=None,
-            synergy_clause_id=None,
-            order_rider=None,
-            order_damage_dice=None,
-            order_raw_damage=0,
-            coordinated_rider=None,
-            pincer_dice=None,
-            pincer_raw_damage=0,
-            sacrifice_rider=None,
-        )
-    target.bark_skin_active = True
-    head["roll"] = serialize_roll(result, raised_ac)
-
-
 def _apply(
     state,
     head: dict,
@@ -253,33 +194,35 @@ def _apply(
     contest: dict | None,
     ac_spend: dict | None = None,
     hesitated: bool = False,
-) -> str | None:
-    """Do what this reaction does to the held blow, and name it — or None if it did nothing.
-
-    The label is what the close ACTUALLY did, never a lookup on the ability id: a shield of faith
-    spent at the pre-roll window of an ``applies_condition`` action (Hollow Shriek resolves through
-    the save-gated path, with no attack roll) modified no AC, and reporting one would tell the DM
-    a blow was turned aside that was never rolled.
-    """
+) -> dict:
     ability_id = spend["ability_id"]
     target = _held_target(state, head)
 
     if contest is not None:
         if not contest["success"]:
-            return None
-        return combat_reaction_contest.EFFECTS[ability_id]
+            return {}
+        return {"mechanical_effect": combat_reaction_contest.EFFECTS[ability_id]}
 
     if hesitated:
-        return None
+        return {}
 
     if window["stage"] == reaction_windows.PRE_ROLL:
+        if ability_id == SHIELD_SPELL:
+            if attack_action is None:
+                return {"reason": "Shield Spell only protects against attack rolls."}
+            state.get_participant(spend["actor_id"]).shield_spell_active = True
+            return {"mechanical_effect": "target_ac_bonus", "ac_bonus": SHIELD_SPELL_AC_BONUS}
         if spend is ac_spend and attack_action is not None:
-            return "target_ac_bonus"
-        return None
+            return {"mechanical_effect": "target_ac_bonus"}
+        return {}
+
+    if ability_id == BRACE:
+        reduction, prevented = brace(head, state.get_participant(spend["actor_id"]))
+        return {"mechanical_effect": "damage_reduced", "damage_reduction": reduction, "damage_prevented": prevented}
 
     if ability_id in BARK_SKIN and target is not None and spend["actor_id"] == target.id:
         apply_bark_skin(head, target)
-        return "round_ac_bonus"
+        return {"mechanical_effect": "round_ac_bonus"}
 
     if (
         ability_id in HALVES_DAMAGE
@@ -289,7 +232,7 @@ def _apply(
     ):
         halve(head, target)
         logger.info("reaction %s halved %s's blow against %s", ability_id, head["actor_id"], target.id)
-        return "damage_halved"
+        return {"mechanical_effect": "damage_halved"}
     if ability_id in SLIPPERY_REACTIONS and target is not None and spend["actor_id"] == target.id:
         if "completed_condition" in head:
             chamber_id = head["completed_condition"]["chamber_id"]
@@ -297,11 +240,11 @@ def _apply(
             if chamber is None or architect_entomb.source(state, target.id) != chamber_id:
                 raise ValueError(f"Entomb chamber {chamber_id!r} is not linked to {target.id!r}")
             combat_structures.collapse_wall(state, chamber)
-            return "restraint_escaped"
+            return {"mechanical_effect": "restraint_escaped"}
         if conditions.has_condition(target.conditions, "grappled"):
-            return "grapple_blocked_still_held"
-        return "grapple_escaped"
-    return None
+            return {"mechanical_effect": "grapple_blocked_still_held"}
+        return {"mechanical_effect": "grapple_escaped"}
+    return {}
 
 
 def close(state, head: dict, window: dict, *, attack_action: dict | None, contest_rng=None) -> list[dict]:
@@ -331,7 +274,7 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None, contes
         ac_spend = None
     packets = []
     for spend, contest in zip(spends, contests, strict=True):
-        effect = _apply(state, head, window, spend, attack_action, contest, ac_spend, hesitated)
+        effects = _apply(state, head, window, spend, attack_action, contest, ac_spend, hesitated)
         ability = abilities.get_ability(spend["ability_id"])
         packet = {
             "actor_id": spend["actor_id"],
@@ -343,11 +286,13 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None, contes
             "window_id": spend["window_id"],
             "stage": window["stage"],
             "against_actor_id": head["actor_id"],
-            "mechanical_effect": effect,
+            "mechanical_effect": None,
+            **effects,
         }
         if contest is not None:
             packet["reactor_total"] = contest["reactor_total"]
             packet["opposer_total"] = contest["opposer_total"]
+        effect = packet["mechanical_effect"]
         if effect == "restraint_escaped":
             packet["chamber_id"] = head["completed_condition"]["chamber_id"]
         if effect == "grapple_blocked_still_held":
@@ -367,3 +312,40 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None, contes
                 packet["grappler_id"] = grappler_id
         packets.append(packet)
     return packets
+
+
+def psychic_shield_id(state, head: dict) -> str | None:
+    return next(
+        (
+            spend["actor_id"]
+            for spend in bound_spends(state, head, reaction_windows.PRE_ROLL)
+            if spend["ability_id"] == THOUGHT_SHIELD
+        ),
+        None,
+    )
+
+
+def defer_thought_shield(head: dict, packets: list[dict]) -> list[dict]:
+    for packet in packets:
+        if packet["ability_id"] == THOUGHT_SHIELD:
+            head["thought_shield_packet"] = packet
+            return [row for row in packets if row is not packet]
+    return packets
+
+
+def finish_thought_shield(head: dict, summary: dict) -> list[dict]:
+    packet = head.pop("thought_shield_packet", None)
+    if packet is None:
+        return []
+    prevented = sum(row.get("thought_shield_prevented", 0) for row in summary.get("targets", [summary]))
+    if prevented:
+        packet.update(mechanical_effect="damage_halved", damage_prevented=prevented)
+    else:
+        packet["reason"] = "Thought Shield only reduces psychic damage dealt to the character who spends it."
+    return [packet]
+
+
+def record_settled(packets: list[dict], state, head: dict, summary: dict) -> None:
+    record_intercept(packets, summary)
+    record_shield_wear(packets, state, head, summary)
+    record_save_advantage(packets, summary)

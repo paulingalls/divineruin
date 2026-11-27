@@ -106,6 +106,7 @@ async def _resolve_action_packet(
     reaction_save_advantage: bool = False,
     shield_reaction: str | None = None,
     damage_target: CombatParticipant | None = None,
+    psychic_shield_id: str | None = None,
     grapple_blocked: bool = False,
     mark_cancelled: bool = False,
     publish_roll: bool = True,
@@ -296,6 +297,7 @@ async def _resolve_action_packet(
             concentration_break_mod=concentration_break_mod,
             sink=sink,
             reaction_save_advantage=reaction_save_advantage,
+            psychic_shield_id=psychic_shield_id,
         )
         if special is not None:
             return special
@@ -362,6 +364,7 @@ async def _resolve_action_packet(
             reaction_save_advantage=reaction_save_advantage,
             progress=progress,
             head=_held_head,
+            psychic_shield_id=psychic_shield_id,
         )
     if not attacker.is_ally and action is not None:
         enemy_summary = await resolve_enemy_strike(
@@ -379,6 +382,7 @@ async def _resolve_action_packet(
             sink=sink,
             reaction_ac_bonus=reaction_ac_bonus,
             shield_reaction=shield_reaction,
+            psychic_shield_id=psychic_shield_id,
             damage_target=damage_target,
             reaction_save_advantage=reaction_save_advantage,
             progress=progress,
@@ -432,6 +436,7 @@ async def _resolve_action_packet(
         reaction_ac_bonus=reaction_ac_bonus,
         reaction_save_advantage=reaction_save_advantage,
         shield_reaction=shield_reaction,
+        psychic_shield_id=psychic_shield_id,
         damage_target=damage_target,
         grapple_blocked=grapple_blocked,
         publish_roll=publish_roll,

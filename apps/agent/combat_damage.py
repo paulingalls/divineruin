@@ -29,6 +29,7 @@ from combat_enemy_active import apply_critical_save, apply_prepared_hit, heal
 from combat_events import emit_or_publish
 from combat_fate_rolls import packet_save
 from combat_fortitude import roll_fortitude, try_fortitude
+from combat_reaction_defense import halve_psychic
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from patron_combat_edges import reward_worthy_foe
 from patron_zero_hp import trigger_damage_gifts
@@ -182,6 +183,7 @@ async def _apply_damage(
     effective_ac: int,
     *,
     shield_reaction: str | None = None,
+    psychic_shield_id: str | None = None,
     rider_target: CombatParticipant | None = None,
     mutations=db_mutations,
     queries=db_queries,
@@ -207,6 +209,9 @@ async def _apply_damage(
     rider_target = target if rider_target is None else rider_target
     still_encounter.guard_target(combat_state, target.id)
     attack_result = choir_encounter.guard_damage(combat_state, attacker, target, attack_result)
+    psychic_prevented = 0
+    if target.id == psychic_shield_id:
+        action, attack_result, psychic_prevented = halve_psychic(action, attack_result, target)
     action, attack_result = combat_damage_affinity.apply(target, action, attack_result, state=combat_state)
     from combat_veilrender import mark_radiant
 
@@ -432,6 +437,8 @@ async def _apply_damage(
         "context": attack_result.context,
         "target_rose_hollowed": rose_hollowed,
     }
+    if psychic_prevented:
+        response["thought_shield_prevented"] = psychic_prevented
     if rider_target is not target:
         response.update(target_id=rider_target.id, damage_target_id=target.id, damage_target=target.name)
     if renewals:
