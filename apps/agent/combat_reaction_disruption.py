@@ -129,6 +129,8 @@ async def _save(
             combat_state=state,
         ),
         state=state,
+        queries=deps["queries"],
+        conn=deps["conn"],
     )
     if result is None:
         return False
@@ -141,6 +143,7 @@ async def _save(
         save_total=result.total,
         save_success=result.success,
         **override_fields(result),
+        **result.oath_fields(),
     )
     if result.success:
         packet["reason"] = "The attacker resisted the disruption."

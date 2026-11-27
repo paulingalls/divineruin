@@ -27,13 +27,13 @@ async def test_reconnect_during_first_entry_preserves_the_authorized_spend(dev_d
         recharge = session_hydration._recharge_session_abilities
         calls = 0
 
-        async def delayed(pid, conn):
+        async def delayed(pid, session_id, conn):
             nonlocal calls
             calls += 1
             if calls == 1:
                 paused.set()
                 await release.wait()
-            await recharge(pid, conn)
+            await recharge(pid, session_id, conn)
 
         with patch.object(session_hydration, "_recharge_session_abilities", delayed):
             owner = _setup_party_join(room, sd, queries=mods[0], resonance_mod=mods[1], concentration_mod=mods[2])

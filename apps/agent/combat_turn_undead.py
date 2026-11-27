@@ -98,6 +98,7 @@ async def _resolve_target(
             "dc": save.dc,
             "success": save.success,
             **override_fields(save),
+            **save.oath_fields(),
             **encounter_facts.rally_receipt(target.id, save.rally_sources),
         }
     }

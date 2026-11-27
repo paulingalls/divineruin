@@ -6,6 +6,7 @@ import pytest
 from acceptance._capstone_helpers import _d20, _resolve_round
 from acceptance._catalog_cutover_helpers import started as started
 from acceptance.test_catalog_action_runtime import runtime as runtime
+from combat._helpers import save_result
 
 import combat_turn
 import db_mutations
@@ -87,7 +88,6 @@ async def test_silence_production_expiry_transaction_rollback(runtime):
 
 @pytest.mark.parametrize("success", [False, True])
 async def test_shield_real_cast_transaction_replay(runtime, success):
-    from types import SimpleNamespace
 
     from acceptance.seeds import seed_player_with_pools
 
@@ -120,7 +120,7 @@ async def test_shield_real_cast_transaction_replay(runtime, success):
     with (
         patch(
             "check_resolution_save.roll_participant_save",
-            return_value=SimpleNamespace(success=success, rally_sources=()),
+            return_value=save_result(success),
         ),
         patch("db_mutations.save_combat_state", side_effect=fail_after_write),
     ):
@@ -131,7 +131,7 @@ async def test_shield_real_cast_transaction_replay(runtime, success):
     with (
         patch(
             "check_resolution_save.roll_participant_save",
-            return_value=SimpleNamespace(success=success, rally_sources=()),
+            return_value=save_result(success),
         ) as saves,
         patch("spell_casting._resolve_cast", wraps=spell_casting._resolve_cast) as casts,
     ):
@@ -173,9 +173,7 @@ async def test_choir_public_actions_hold_reload(runtime):
         ],
     )
     with (
-        patch(
-            "check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=False, rally_sources=())
-        ) as saves,
+        patch("check_resolution_save.roll_participant_save", return_value=save_result(False)) as saves,
         patch("combat_recharge.roll", return_value=SimpleNamespace(total=4)),
     ):
         raw = await combat_turn._resolve_phase_impl(ctx)

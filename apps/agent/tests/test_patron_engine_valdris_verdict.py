@@ -366,6 +366,7 @@ async def test_legacy_checkpoint_refuses_verdict(world, history: str) -> None:
             del data["encounter_facts"]
         else:
             del data["encounter_facts"]["party_aggressors"]
+            del data["encounter_facts"]["opening_actors"]
             del data["encounter_facts"]["rally_pending"]
             del data["encounter_facts"]["yielded_ally_attackers"]
         await db_mutations.save_combat_state(state.combat_id, data, conn=world.pool)

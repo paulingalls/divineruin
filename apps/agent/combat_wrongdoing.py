@@ -22,7 +22,9 @@ def record_attack(state, attacker, target):
     if state is None or attacker.is_ally == target.is_ally:
         return
     hostile = target if attacker.is_ally else attacker
-    state.first_hostility.setdefault(hostile.id, "ally" if attacker.is_ally else "hostile")
+    if hostile.id not in state.first_hostility:
+        state.first_hostility[hostile.id] = "ally" if attacker.is_ally else "hostile"
+        state.encounter_facts["opening_actors"][hostile.id] = attacker.id
 
 
 def aggression_facts(state):

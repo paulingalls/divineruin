@@ -4,6 +4,7 @@ from dataclasses import replace
 from functools import partial
 
 import check_resolution_save
+import db_queries
 import encounter_facts
 import spells
 from choir_effects import suppressed
@@ -12,7 +13,9 @@ from condition_restrictions import cannot_act
 from spell_voice_rules import is_silenced
 
 
-async def effective_declaration(session, state, caster, declaration, *, progress=None, receipts=None):
+async def effective_declaration(
+    session, state, caster, declaration, *, progress=None, receipts=None, queries=db_queries, conn=None
+):
     spell = spells.get_spell(declaration.action)
     if not spell.verbal:
         return declaration
@@ -49,12 +52,17 @@ async def effective_declaration(session, state, caster, declaration, *, progress
                     action["name"],
                     bonus_dice_eligible=False,
                     combat_state=state,
+                    originating_participant_id=target.id,
                 ),
                 state=state,
+                queries=queries,
+                conn=conn,
             )
             if save is None:
                 return None
-            if receipts is not None and save.rally_sources:
+            if receipts is not None and (
+                save.rally_sources or save.oath_justice is not None or save.oath_timed is not None
+            ):
                 receipts.append(
                     {
                         "target_id": target.id,
@@ -62,6 +70,7 @@ async def effective_declaration(session, state, caster, declaration, *, progress
                         "total": save.total,
                         "dc": save.dc,
                         "success": save.success,
+                        **save.oath_fields(),
                         **encounter_facts.rally_receipt(caster.id, save.rally_sources),
                     }
                 )

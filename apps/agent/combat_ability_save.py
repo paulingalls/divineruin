@@ -91,11 +91,18 @@ async def resolve_hostile_condition(
                 originating_participant_id=attacker.id,
                 combat_state=state,
             ),
+            state=state,
         )
         if result is None:
             return {}
         result = finalize_save(state, target, result, failed_conditions=(cond_type,))
-        summary.update(override_fields(result), save_success=result.success)
+        summary.update(
+            override_fields(result),
+            save_success=result.success,
+            save_roll=result.roll,
+            save_total=result.total,
+            **result.oath_fields(),
+        )
         if result.success:
             summary["condition_resisted"] = cond_type
             return summary

@@ -35,6 +35,40 @@
       }
     ]
   },
+  "oath_of_justice": {
+    "type": "natural",
+    "name": "Oath of Justice",
+    "clauses": [
+      {
+        "effect": "Breaking the Oath of Justice suppresses Valdris tier abilities for the rest of the current gameplay session.",
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "valdris_oath_breach"
+      },
+      {
+        "effect": "Gain +2 on attacks and saves against wrongdoers in combat, and on checks when justice is at stake.",
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "valdris_justice_at_stake",
+        "kind": "context_check",
+        "synergy_context": "justice_at_stake",
+        "skill": null,
+        "bonus": 2
+      }
+    ]
+  },
+  "promised_hour": {
+    "type": "divine",
+    "name": "Promised Hour",
+    "clauses": [
+      {
+        "effect": "Gain +1 to saving throws while fulfilling an oath at its promised time.",
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "zhael_promised_hour"
+      }
+    ]
+  },
   "context_clause": {
     "kind": "context_check",
     "synergy_context": "fixture_context",

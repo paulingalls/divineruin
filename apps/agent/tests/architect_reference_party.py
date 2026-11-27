@@ -129,7 +129,7 @@ async def choose_techniques(ctx: RunContext[SessionData], archetype: str) -> tup
         pick_id = ELECTIVE_PICKS[archetype][level]
         pick = next(a for a in pool if a.id == pick_id)
         assert combat_ability(pick) or attack_recipe(pick_id) is not None, pick_id
-        receipt = json.loads(await select(ctx, f"{elective_choices.PREFIX}{level}", pick.id))
+        receipt = json.loads(await select(ctx, f"{elective_choices.PREFIX}{level}", pick.id, "none", "", 0))
         assert receipt["chosen"] == pick.id
         assert await ability_persistence.owns_elective(pid, pick.id)
         selected.append(pick.id)

@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from combat._helpers import save_result
 from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import FixedRng
 from weapon_fixtures import LONGSWORD
@@ -42,7 +43,7 @@ async def test_concentration_break_save_passes_eligible_false():
     import concentration_break
 
     resolver = MagicMock()
-    resolver.resolve_saving_throw = MagicMock(return_value=SimpleNamespace(total=18, consumed_conditions=()))
+    resolver.resolve_saving_throw = MagicMock(return_value=save_result(True, total=18))
     queries = MagicMock()
     queries.get_player = AsyncMock(return_value=_player(BLESSED))
     concentration_mutations = MagicMock()

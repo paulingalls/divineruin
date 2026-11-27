@@ -273,7 +273,9 @@ async def test_concentration_break_threads_caster_conditions_into_save():
     queries = MagicMock()
     queries.get_player = AsyncMock(return_value={"attributes": {"constitution": 14}, "level": 5})
     resolver = MagicMock()
-    resolver.resolve_saving_throw = MagicMock(return_value=MagicMock(total=99))  # holds; we assert the input
+    from combat._helpers import save_result
+
+    resolver.resolve_saving_throw = MagicMock(return_value=save_result(True, total=99))  # holds; we assert the input
     cm = MagicMock(update_player_concentration=AsyncMock())
 
     await break_concentration_on_damage(

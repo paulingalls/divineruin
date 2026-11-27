@@ -62,7 +62,9 @@ async def _resolve_save_damage(*, save_seed: int, damage: str = "1d1+6", player_
     declaration = Declaration(type=DeclarationType.ATTACK, action=action["name"], target_id="player_1")
     packet = SimpleNamespace(actor_id=enemy.id, declaration=declaration)
     mutations = MagicMock(update_player_hp=AsyncMock())
-    queries = MagicMock(get_player_inventory=AsyncMock(return_value=[_armor()]))
+    queries = MagicMock(
+        get_player=AsyncMock(return_value={"class": "warrior"}), get_player_inventory=AsyncMock(return_value=[_armor()])
+    )
     durability_mutations = MagicMock(update_item_durability=AsyncMock())
     sink = EventSink()
     player = _participant(state, "player_1")
@@ -127,6 +129,8 @@ async def test_save_damage_announces_the_save_and_applied_damage(
     assert [event.event_type for event in sink.captured[:1]] == [E.DICE_ROLL]
     assert sink.captured[0].payload == {
         "roll_type": "saving_throw",
+        "combat_id": state.combat_id,
+        "round_number": state.round_number,
         "save_type": save.save_type,
         "roll": save.roll,
         "total": save.total,
@@ -246,7 +250,9 @@ async def test_held_combined_ability_wastes_before_windows_when_target_dead():
             "resolver": resolver,
             "sink": sink,
             "mutations": MagicMock(update_player_hp=AsyncMock()),
-            "queries": MagicMock(get_player_inventory=AsyncMock(return_value=[])),
+            "queries": MagicMock(
+                get_player=AsyncMock(return_value={"class": "warrior"}), get_player_inventory=AsyncMock(return_value=[])
+            ),
             "concentration_break_mod": _concentration(),
         },
     )
@@ -291,7 +297,9 @@ async def test_combined_damage_preserves_a_wasted_condition_reason():
         state,
         packet,
         mutations=MagicMock(update_player_hp=AsyncMock()),
-        queries=MagicMock(get_player_inventory=AsyncMock(return_value=[])),
+        queries=MagicMock(
+            get_player=AsyncMock(return_value={"class": "warrior"}), get_player_inventory=AsyncMock(return_value=[])
+        ),
         resolver=resolver,
         concentration_break_mod=_concentration(),
         sink=EventSink(),

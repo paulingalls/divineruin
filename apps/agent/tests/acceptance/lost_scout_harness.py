@@ -34,7 +34,16 @@ class ScoutHarness(MawlingHarness):
 
     async def search(self, target="scattered rubble", skill="investigation"):
         return await self.command(
-            "check", {"roll": {"kind": "discover", "skill": skill, "target": target, "hearing_only": False}}
+            "check",
+            {
+                "roll": {
+                    "kind": "discover",
+                    "synergy_context": "none",
+                    "skill": skill,
+                    "target": target,
+                    "hearing_only": False,
+                }
+            },
         )
 
     async def enter(self, location):

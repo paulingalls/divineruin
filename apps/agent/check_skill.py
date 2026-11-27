@@ -86,6 +86,8 @@ async def _check_skill_run(
         natural_terrain=await skill_natural_terrain(session, player, skill),
         hearing_only=hearing_only,
         synergy_context=synergy_context,
+        player_id=player_id,
+        in_combat=session.combat_state is not None,
         season=await thyra_seasons.skill_season(player, skill, conn=conn),
     )
 
@@ -168,6 +170,7 @@ async def _finish_skill(
         return json.dumps(
             {
                 **({"concealment": concealment_packet} if concealment_packet else {}),
+                **({"context_synergy": result.context_synergy} if result.context_synergy is not None else {}),
                 "outcome": "automatic_failure",
                 "skill": result.skill,
                 "skill_tier": skill_tier,
