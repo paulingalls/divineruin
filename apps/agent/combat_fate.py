@@ -121,6 +121,7 @@ async def continue_attack(
     reaction_save_advantage=False,
     shield_reaction=None,
     damage_target: CombatParticipant | None = None,
+    psychic_shield_id: str | None = None,
     grapple_blocked=False,
     publish_roll=True,
     progress=None,
@@ -324,6 +325,7 @@ async def continue_attack(
                 # rides the call instead of being written into that map.
                 target_ac_bonus=state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
                 shield_reaction=shield_reaction,
+                psychic_shield_id=psychic_shield_id,
                 damage_target=damage_target,
                 grapple_blocked=grapple_blocked,
                 enemies_remaining=enemies_remaining,
@@ -363,6 +365,7 @@ async def continue_attack(
                 result,
                 prepared.d20.dc,
                 shield_reaction=shield_reaction,
+                psychic_shield_id=psychic_shield_id,
                 damage_target=damage_target,
                 grapple_blocked=grapple_blocked,
                 mutations=mutations,

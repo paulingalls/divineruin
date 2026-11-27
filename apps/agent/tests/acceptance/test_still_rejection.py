@@ -59,8 +59,6 @@ async def test_rejection_only_recharges_with_a_pending_anchor_attack(still):
     state = await still.reload()
     owner = state.get_participant(owner_id)
     player = state.get_participant(still.players[0])
-    player.has_reaction_ability = True
-    player.reaction_ids = ["whisper_implant_doubt"]
     origin = state.spatial["positions"][anchor]
     state.spatial["positions"][player.id] = {**origin, "y": origin["y"] - 30}
     for name, offset in (("inside", 25), ("outside", 31)):
@@ -77,9 +75,8 @@ async def test_rejection_only_recharges_with_a_pending_anchor_attack(still):
     await still.persist()
     await declare(still, actor_id=owner_id, **rejection)
     await still.command("resolve_phase", {})
-    paused = await still.command("resolve_phase", {})
-    assert "whisper_implant_doubt" in [reaction["id"] for reaction in paused["next"]["waiting_on"]["reactions"]]
     state = await still.reload()
+    assert state.held_actions[0]["declaration"]["action"] == "Rejection"
     anchors_before = [state.get_participant(a).hp_current for a in state.still_encounter["anchor_ids"]]
     revealed = state.still_encounter["revealed_ids"]
     trigger = state.still_encounter["pending_rejection"]

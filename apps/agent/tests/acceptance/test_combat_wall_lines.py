@@ -246,7 +246,8 @@ async def test_added_wall_wastes_a_ready_allied_delivery(spatial_entry, action) 
 
 @pytest.mark.parametrize("blocked", [True, False])
 async def test_held_shot_checks_line_before_reaction_or_roll(spatial_entry, blocked) -> None:
-    ctx, _ = await spatial_entry(caster_data("skirmisher"), encounter="bandit_ambush")
+    # Shield Spell answers a ranged shot; Sidestep answers only melee attacks.
+    ctx, _ = await spatial_entry(caster_data("mage"), encounter="bandit_ambush")
     state = ctx.userdata.combat_state
     player, enemy = ctx.userdata.player_id, "bandit_1"
     combat_spatial.place(state, enemy, pos())
@@ -273,6 +274,7 @@ async def test_held_shot_checks_line_before_reaction_or_roll(spatial_entry, bloc
             roll.assert_not_called()
         else:
             assert after_allies["next"]["waiting_on"] is not None
+            assert [r["id"] for r in after_allies["next"]["waiting_on"]["reactions"]] == ["mage_shield_spell"]
             await _resolve_round(ctx)
             roll.assert_awaited_once()
     saved = await _reload(ctx)

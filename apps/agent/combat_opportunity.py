@@ -106,20 +106,18 @@ async def _find_exits(state: CombatState, mover: CombatParticipant, route: dict,
     ]
 
 
-async def _strike(
+async def counter_strike(
     session: SessionData,
     state: CombatState,
-    mover: CombatParticipant,
-    window: dict,
+    target: CombatParticipant,
+    action: dict,
     spend: dict,
     deps: dict,
     fate_rolls,
 ) -> dict:
-    warrior = state.get_participant(spend["actor_id"])
-    assert warrior is not None
-    weapon = window["reactors"][warrior.id]["action"]
-    action = {key: value for key, value in weapon.items() if key != "durability_rider"}
-    packet = ResolutionPacket(warrior.id, Declaration(DeclarationType.ATTACK, action["name"], target_id=mover.id), 0)
+    reactor = state.get_participant(spend["actor_id"])
+    assert reactor is not None
+    packet = ResolutionPacket(reactor.id, Declaration(DeclarationType.ATTACK, action["name"], target_id=target.id), 0)
     progress = None
     if fate_rolls is not None and (session.fate_lock.locked() or "steps" in spend):
         progress = PacketRolls(fate_rolls, spend.setdefault("steps", {}), deps["queries"], deps["conn"])
@@ -127,8 +125,8 @@ async def _strike(
         session,
         state,
         packet,
-        warrior,
-        mover,
+        reactor,
+        target,
         [action],
         sum(p.type == "enemy" and not p.is_fallen for p in state.participants),
         not state.first_attack_resolved,
@@ -136,7 +134,7 @@ async def _strike(
         progress=progress,
         **{key: deps[key] for key in ("queries", "mutations", "resolver", "concentration_break_mod", "conn", "sink")},
     )
-    return {**receipt, "reaction": STRIKE, "window_id": window["id"], "target_id": mover.id}
+    return {**receipt, "reaction": spend["ability_id"], "window_id": spend["window_id"], "target_id": target.id}
 
 
 async def prepare_held(
@@ -185,7 +183,9 @@ async def prepare_held(
                     "reason": "target already fell",
                 }
             else:
-                receipt = await _strike(session, state, mover, window, spend, packet_deps, fate_rolls)
+                weapon = window["reactors"][spend["actor_id"]]["action"]
+                strike_action = {key: value for key, value in weapon.items() if key != "durability_rider"}
+                receipt = await counter_strike(session, state, mover, strike_action, spend, packet_deps, fate_rolls)
                 if fate_rolls is not None and fate_rolls.pending is not None:
                     return None
             summaries.append(receipt)

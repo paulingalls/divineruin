@@ -109,12 +109,19 @@ def preflight(state, declarations):
 
 
 def apply_move(
-    state: "CombatState", actor: "CombatParticipant", declaration: Declaration, *, allowance: float | None = None
+    state: "CombatState",
+    actor: "CombatParticipant",
+    declaration: Declaration,
+    *,
+    allowance: float | None = None,
+    hard_limit: bool = False,
 ) -> dict:
     if reason := ineligible(actor):
         return {"actor_id": actor.id, "resolved": False, "reason": reason}
     try:
-        destination, travelled, spent, wall = movement_geometry(state, actor.id, declaration, allowance=allowance)
+        destination, travelled, spent, wall = movement_geometry(
+            state, actor.id, declaration, allowance=allowance, hard_limit=hard_limit
+        )
     except MovementRefused as error:
         return {"actor_id": actor.id, "resolved": False, "reason": str(error)}
     climbed = in_pit(state, actor.id)
@@ -168,10 +175,11 @@ async def resolve_traversal(
     *,
     allowance: float | None = None,
     progress: "PacketRolls | None" = None,
+    hard_limit: bool = False,
 ) -> dict | None:
     pending = progress.steps.pop("hearthfire_move", None) if progress is not None else None
     if pending is None:
-        facts = apply_move(state, actor, declaration, allowance=allowance)
+        facts = apply_move(state, actor, declaration, allowance=allowance, hard_limit=hard_limit)
         pending = facts.pop("hearthfire_route", None)
         if pending is None:
             return facts

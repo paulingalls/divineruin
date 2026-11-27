@@ -51,6 +51,7 @@ from item_effects import CONSUME_PREFIX
 from patron_combat_edges import RESTORATION_SURGE, SCALES_VERDICT, VEILSTEP, WILDMOTHERS_WRATH, SurgeCondition
 from patron_gifts import SYRATH_SHADOW_VEIL, VEYTHAR_INSIGHT
 from patron_synergy_heal import INSPIRE_HEAL
+from reaction_spend import SIDESTEP
 from reshape_payloads import WallEndpoints
 from session_data import SessionData
 from spell_condition_cleanse import GREATER_RESTORATION, CleanseCondition
@@ -165,6 +166,9 @@ async def activate(
     owner's whole tainted stack; the owner must be a player in this session's party.
     Item purification is available outside phase resolution, with no target_ids.
 
+    For an offered Sidestep, pass destination={x,y,z} within 5 feet when targeted by melee.
+    The step does not provoke. The attacker may still be in reach of that point.
+
     Some activations refuse — narrate the refusal rather than forcing it: a revival spell is
     refused on a Hollow-killed corpse; a spell's own multi-target cap is enforced (too many is
     refused); a Veil Ward raise is refused while one is already up (one shared ward per party) or
@@ -175,8 +179,10 @@ async def activate(
     answers a different window, or when the round's one reaction is already spent. Outside combat
     reactions activate freely. Cantrips are free and scale
     their damage with level."""
-    if destination is not None and id not in (VEILSTEP, THORNWALL):
-        raise ToolError("The destination selector is only for Veilstep or Thornwall.")
+    if destination is not None and id not in (VEILSTEP, THORNWALL, SIDESTEP):
+        raise ToolError("The destination selector is only for Veilstep, Thornwall or Sidestep.")
+    if id == SIDESTEP and (not isinstance(destination, Destination) or target_id is not None or target_ids is not None):
+        raise ToolError("Sidestep takes a destination point within 5 feet. Omit entity target selectors.")
     if id == VEILSTEP and isinstance(destination, WallEndpoints):
         raise ToolError("Veilstep takes a destination point.")
     if id == THORNWALL and (
@@ -344,7 +350,13 @@ async def _activate_impl(
             return await cast_spell_mod._cast_spell_impl(
                 context, ability.spell_id, target_id=target_id, target_ids=target_ids
             )
-    result = await ability_mod._request_ability_activation_impl(context, id, target_id=target_id, target_ids=target_ids)
+    result = await ability_mod._request_ability_activation_impl(
+        context,
+        id,
+        target_id=target_id,
+        target_ids=target_ids,
+        **({"destination": destination} if id == SIDESTEP else {}),
+    )
     if not context.userdata.in_combat:
         await publish_action_sound(context.userdata, "action_ability")
     return result

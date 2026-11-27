@@ -158,10 +158,11 @@ async def test_choir_public_actions_hold_reload(runtime):
 
     ctx, pid, eid = await choir(runtime)
     pool = await db.get_pool()
-    await seed_player_with_pools(pool, player_id=pid, class_="skirmisher")
+    # Thought Shield answers any action that targets the whisper (Sidestep answers only melee attacks).
+    await seed_player_with_pools(pool, player_id=pid, class_="whisper")
     player = ctx.userdata.combat_state.get_participant(pid)
     assert player is not None
-    player.reaction_ids = class_reaction_ids("skirmisher", player.level)
+    player.reaction_ids = class_reaction_ids("whisper", player.level)
     assert player.reaction_ids
     player.has_reaction_ability = True
     await combat_turn.declare_phase(
@@ -185,6 +186,7 @@ async def test_choir_public_actions_hold_reload(runtime):
             assert isinstance(raw, str)
             response = json.loads(raw)
         assert response["next"]["waiting_on"] is not None
+        assert [r["id"] for r in response["next"]["waiting_on"]["reactions"]] == ["whisper_thought_shield"]
         assert all(call.args[2] == 15 for call in saves.call_args_list)
         state = await reload(ctx)
         held_actor = state.get_participant(eid)

@@ -26,11 +26,11 @@ import temp_hp
 import thyra_seasons
 import wild_shape
 import zhael_fate
-from combat_damage import _handle_hp_zero
 from combat_events import isolated_publish, scratch_guard
 from combat_fate_rolls import PacketRolls, PhaseRolls
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_ui_update import build_combat_ui_update
+from combat_zero_hp import _handle_hp_zero
 from game_events import publish_game_event
 from patron_ability_events import publish_patron_abilities
 from patron_zero_hp import lock_damage_players, trigger_damage_gifts
