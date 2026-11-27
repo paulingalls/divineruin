@@ -13,7 +13,7 @@ from _zhael_unravel_fixtures import unravel as unravel
 from acceptance._spell_hostile_condition_helpers import dev_db_pool as dev_db_pool
 from acceptance.seeds import seed_known_spells
 from acceptance.test_spell_bless_lifecycle import BLESS, context, ooc_player, save_total
-from acceptance.test_spell_lasting_buffs import PROTECTION, save_face
+from acceptance.test_spell_lasting_buffs import BEACON, PROTECTION, save_face
 from combat.test_spell_damage_lands import saved_player
 from livekit.agents.llm import ToolError
 from sample_fixtures import FixedRng, make_context, make_mock_room
@@ -25,6 +25,7 @@ import db_mutations_resonance
 import db_queries
 from activate_tools import activate
 from combat_end import end_combat
+from movement_tools import _move_player_impl
 from participant_lifecycle import PartyLifecycle
 from session_hydration import hydrate_session_state
 from travel_tools import _travel_impl
@@ -93,6 +94,31 @@ async def test_rest_keeps_only_spells_longer_than_an_hour(world) -> None:
         await rest("rest", rest_type="long", use_song_of_rest=False)
         assert not (await reload_guest(host, guest, session.location_id)).is_active
         assert await save_total(remote) == plain + 3
+
+
+async def test_rest_settles_a_caster_who_moved_away(world) -> None:
+    async with song_party(world, ("orenthel", "kaelen")) as rest:
+        cleric, ally = world.ids
+        session = world.ctx.userdata
+        await seed_known_spells(world.pool, cleric, (BEACON,))
+        await world.pool.execute(
+            "UPDATE players SET data=jsonb_set(data,'{focus,current}','12') WHERE player_id=$1", cleric
+        )
+        await game_tools(session, activate)("activate", id=BEACON, target_id=ally)
+        await _move_player_impl(make_context(cleric, session.location_id, room=make_mock_room()), "millhaven")
+        assert (await saved_player(cleric))["location_id"] == "millhaven"
+        lifecycle = session.multiplayer_owner.lifecycle
+        generation = await lifecycle.authorize(ally)
+        with session._bind_authenticated_actor(ally, generation, lifecycle.require_authorized):
+            packet = await rest("rest", rest_type="short", use_song_of_rest=False)
+        assert packet["players"] == [ally]
+        assert packet["concentration_expired"] == [{"caster_id": cleric, "spell_id": BEACON}]
+        fresh = context(cleric)
+        await hydrate_session_state(fresh.userdata, await saved_player(cleric))
+        assert fresh.userdata.concentration.spell_id is None
+        assert (await saved_player(cleric))["concentration"]["spell_id"] is None
+        conditions = (await saved_player(ally))["conditions"]
+        assert not [condition for condition in conditions if "sustaining_caster_ids" in condition]
 
 
 async def test_consecutive_travel_segments_accumulate_cast_time(dev_db_pool) -> None:
