@@ -13,7 +13,6 @@ from acceptance.test_architect_fight import pos
 from acceptance.test_opportunity_strike import participant
 from acceptance.test_slippery_restrain import strike
 from acceptance.test_wild_shape import ABILITY, declare, enter, prepare
-from acceptance.test_wild_shape import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_wild_shape_guards import follow_thyra
 from livekit.agents.llm import FunctionTool
 

@@ -69,7 +69,7 @@ async def test_depletion_restores_own_shape(
     ended = [{"actor_id": pid, "form_id": "grey_wolf", "reason": "beast_hp_depleted", "carryover_damage": carryover}]
     assert receipt["wild_shape_ended"] == ended
     assert "form" in receipt["dm_cue"] and str(carryover) in receipt["dm_cue"]
-    update = next(update for update in updates(fight) if update.get("wild_shape_ended") == ended)
+    (update,) = [event for event in updates(fight) if event.get("wild_shape_ended") == ended]
     assert "wildShape" not in next(row for row in update["combatants"] if row["id"] == pid)
     if carryover:
         await land(fight, monkeypatch, 7)
@@ -97,6 +97,10 @@ async def test_resisted_hit_lands_after_affinity(fight: MawlingHarness, monkeypa
 @pytest.mark.parametrize("fight", ["phase:spell"], indirect=True)
 async def test_spell_save_for_half_lands_on_beast(fight: MawlingHarness, monkeypatch: pytest.MonkeyPatch) -> None:
     pid, caster = fight.players
+    shape = participant(await fight.reload(), pid).wild_shape
+    assert shape is not None
+    shape["hp_current"] = 3
+    await fight.persist()
     await set_temp(fight, pid, 1)
     await declare_round(
         fight,
@@ -113,7 +117,10 @@ async def test_spell_save_for_half_lands_on_beast(fight: MawlingHarness, monkeyp
     monkeypatch.setattr("combat_spell_damage.dice.roll", lambda *_, **__: _damage_die(8))
     cast = next(p["cast"] for p in await fight.drain() if p.get("cast"))
     hit = next(d for d in cast["damage_results"] if d["target_id"] == pid)
-    assert await saved_pools(fight) == (30, 0, 8)
+    assert hit["save"]["success"] and hit["save"]["half_on_success"]
+    assert await saved_pools(fight) == (30, 0, None)
+    (event,) = [event for event in updates(fight) if event.get("wild_shape_ended") == hit["wild_shape_ended"]]
+    assert "wildShape" not in next(row for row in event["combatants"] if row["id"] == pid)
     assert (hit["damage"], hit["temp_hp_absorbed"], hit["beast_hp_absorbed"]) == (4, 1, 3)
 
 
@@ -161,16 +168,18 @@ async def test_guardian_intercepts_away_from_beast(
     assert not reaction.is_error, reaction.output
     monkeypatch.setattr("check_resolution.dice_roll", lambda *_, **__: _d20(4))
     if hold_save:
-        paused = (await fight.command("resolve_phase", {}))["fate_offer"]
+        result = await fight.command("resolve_phase", {})
+        assert await saved_pools(fight) == (4, 1, 11)
+        paused = result["fate_offer"]
         assert (paused["roll_kind"], paused["roller_id"]) == ("save", guardian)
         state = await fight.reload()
         assert (participant(state, guardian).hp_current, participant(state, guardian).temp_hp) == (97, 0)
         packets = (await keep_original(fight, paused))["packets"]
     else:
         packets = await fight.drain()
+    assert await saved_pools(fight) == (4, 1, 11)
     receipt = next(p for p in packets if p.get("hit"))
     assert receipt["concentration_broken"] == spell
-    assert await saved_pools(fight) == (4, 1, 11)
     actor = participant(await fight.reload(), guardian)
     row = await db_queries.get_player(guardian)
     assert row is not None
@@ -201,11 +210,13 @@ async def test_concentration_uses_landed_amount(fight: MawlingHarness, monkeypat
             result = await fight.command("resolve_phase", {})
             if offer := result.get("fate_offer"):
                 if offer["roll_kind"] == "save":
-                    assert offer["roller_id"] == pid
+                    assert (offer["roller_id"], offer["total"]) == (pid, 14)
                     assert await saved_pools(fight) == expected
                     break
                 packets += (await keep_original(fight, offer))["packets"]
         else:
+            assert await saved_pools(fight) == expected
+            assert await db_mutations_concentration.read_player_concentration(pid) == {"spell_id": None}
             raise AssertionError("Concentration did not pause")
         packets += (await keep_original(fight, offer))["packets"]
         if (await fight.reload()).round_number == round_number:
