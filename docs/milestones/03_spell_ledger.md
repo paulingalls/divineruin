@@ -5,7 +5,7 @@ The [catalog](../../content/spells.json) supplies the IDs. The [magic design](..
 
 ## Classification
 
-The 87 spells include **14 engine**, **4 narrated**, **69 unwired** and **0 uncertified**.
+The 87 spells include **17 engine**, **4 narrated**, **66 unwired** and **0 uncertified**.
 
 - **engine** — The named function resolves the effect and the linked committed test asserts the outcome.
 - **narrated** — The design assigns the result to the DM’s narration.
@@ -20,9 +20,9 @@ The dead-reactions sprint is changing the archetype `mage_shield_spell`, which h
 
 | ID | Class | Evidence |
 | --- | --- | --- |
-| `arcane_frost_touch` | unwired | RUN `arcane_frost_touch` (cantrip). Cold hit landed. On its next round the target still had its full movement allowance and moved 20 ft. [M14.1](14_engine_completeness.md#spell-arcane_frost_touch). |
+| `arcane_frost_touch` | engine | `combat_spell_damage.land` applies Frost Touch and subtracts 10 ft from the struck target’s speed through its next turn. [Settlement and reload coverage](../../apps/agent/tests/acceptance/test_spell_damage_riders.py). |
 | `arcane_bolt` | engine | `combat_spell_damage.land`. [`test_ordinary_bolt_hit_and_miss_persist_actual_damage`](../../apps/agent/tests/combat/test_spell_damage_lands.py). Hit and miss produce the matching persisted HP delta. |
-| `arcane_spark` | unwired | RUN `arcane_spark` (cantrip). Lightning hit landed. The struck Mawling still made an opportunity attack during the following movement beat. [M14.1](14_engine_completeness.md#spell-arcane_spark). |
+| `arcane_spark` | engine | `combat_spell_damage.land` applies Spark and blocks the struck target’s reactions until the caster’s next turn starts. [Settlement and reload coverage](../../apps/agent/tests/acceptance/test_spell_damage_riders.py). |
 | `arcane_prestidigitation` | narrated | The DM voices minor sensory and household tricks. [Narrated utility spells](../game_mechanics/game_mechanics_magic.md#narrated-utility-spells). |
 | `arcane_mage_light` | narrated | The DM voices the light until Phase 11 supplies lighting state. [Narrated utility spells](../game_mechanics/game_mechanics_magic.md#narrated-utility-spells). |
 | `arcane_shield_spell` | unwired | RUN `arcane_shield_spell` (1 Focus). Ordinary cast succeeded. An attack at the AC threshold still hit and its window offered `mage_shield_spell` only. [M14.1](14_engine_completeness.md#spell-arcane_shield_spell). |
@@ -76,7 +76,7 @@ The dead-reactions sprint is changing the archetype `mage_shield_spell`, which h
 | `divine_greater_restoration` | unwired | RUN `divine_greater_restoration` (7 Focus). The cast removed Charmed. Disease and exhaustion remained. Committed tests also exercise Hollowed and Petrified. [M14.1](14_engine_completeness.md#spell-divine_greater_restoration). |
 | `divine_resurrection` | unwired | RUN `divine_resurrection` (8 Focus). The target stayed at zero HP with its death flag set. There was no diamond debit, soul adjudication or exhaustion. [M14.1](14_engine_completeness.md#spell-divine_resurrection). |
 | `divine_holy_aura` | unwired | RUN `divine_holy_aura` (7 Focus). Concentration started without save or incoming-attack modifiers or a reactive blindness rule. [M14.1](14_engine_completeness.md#spell-divine_holy_aura). |
-| `divine_divine_judgment` | unwired | RUN `divine_divine_judgment` (7 Focus). The Hollow target failed WIS and took the 8d8 profile’s radiant damage. No stun was applied. [M14.1](14_engine_completeness.md#spell-divine_divine_judgment). |
+| `divine_divine_judgment` | engine | `combat_spell_damage.land` resolves Divine Judgment, rolls 8d8 radiant against Hollow, stuns on a failed Wisdom save, and halves damage on a success. [Settlement and reload coverage](../../apps/agent/tests/acceptance/test_spell_damage_riders.py). |
 | `divine_miracle` | unwired | RUN `divine_miracle` (8 Focus each). Both casts in the same session completed and spent Focus. No replicated spell or divine-intervention receipt appeared. [M14.1](14_engine_completeness.md#spell-divine_miracle). |
 | `primal_thorn_whip` | unwired | RUN `primal_thorn_whip` (cantrip). A piercing hit landed at 20 ft. The target’s position stayed 20 ft away. [M14.1](14_engine_completeness.md#spell-primal_thorn_whip). |
 | `primal_druidcraft` | narrated | The DM voices descriptive nature effects and the forecast. [Narrated utility spells](../game_mechanics/game_mechanics_magic.md#narrated-utility-spells). |

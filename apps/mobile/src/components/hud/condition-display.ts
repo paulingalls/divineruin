@@ -1,3 +1,6 @@
+import type { MaterialCommunityIcons } from "@expo/vector-icons";
+import type { ComponentProps } from "react";
+
 import { BrandColors } from "@/constants/theme";
 
 // Glanceable condition->icon display map for the combat HUD (M4.3, story-005). Kept in a
@@ -40,6 +43,8 @@ export const CONDITION_TYPES = [
   "iron_stance",
   "reckless_assault",
   "crippled",
+  "frost_slowed",
+  "reactions_suppressed",
   "studied_weakness",
   "hollowed",
   "iron_resolve",
@@ -54,7 +59,7 @@ export type ConditionType = (typeof CONDITION_TYPES)[number];
 
 export interface ConditionDisplay {
   label: string;
-  icon: string; // MaterialCommunityIcons glyph name; kept as string to stay RN-free.
+  icon: ComponentProps<typeof MaterialCommunityIcons>["name"];
   color: string;
 }
 
@@ -88,6 +93,12 @@ export const CONDITION_DISPLAY: Record<ConditionType, ConditionDisplay> = {
   cursed: { label: "Cursed", icon: "skull", color: BrandColors.ember },
   taunted: { label: "Taunted", icon: "target", color: BrandColors.ember },
   crippled: { label: "Crippled", icon: "walk", color: BrandColors.ember },
+  frost_slowed: { label: "Frost Slowed", icon: "snowflake", color: BrandColors.ember },
+  reactions_suppressed: {
+    label: "Reactions Suppressed",
+    icon: "flash-off-outline",
+    color: BrandColors.ember,
+  },
   studied_weakness: { label: "Studied Weakness", icon: "target", color: BrandColors.hollow },
   iron_stance: { label: "Iron Stance", icon: "shield-plus", color: BrandColors.hollow },
   reckless_assault: { label: "Reckless Assault", icon: "target", color: BrandColors.ember },

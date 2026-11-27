@@ -1,39 +1,24 @@
 """Land catalog spell damage beside other cast effects in the caller's phase transaction."""
 
 from dataclasses import asdict, replace
-from functools import partial
 
 import check_resolution_attack
-import check_resolution_save
-import combat_damage_affinity
 import concealment
 import concentration_break
 import conditions
 import db_mutations
 import db_queries
 import dice
-import encounter_facts
 import spells
 import thyra_seasons
 from combat_attack_roll import attack_roll_inputs
-from combat_damage_results import AutomaticDamageResult, SaveDamageResult
-from combat_fate_rolls import packet_save
-from combat_legendary_resistance import finalize_save, override_fields
+from combat_spell_condition import land_damage_rider
 from combat_spell_profile import DICE, scaled
+from combat_spell_save import roll_save_damage
 from combat_support import _resolve_attack_packet, apply_attack_result, apply_rolled_attack
 from oath_justice import attack_receipt
 from patron_synergy_combat import attack_player
-from rules_engine import attribute_modifier, proficiency_bonus
 from zhael_fate import candidates
-
-
-def spell_save_dc(caster, attribute: str, cast_packet: dict) -> int:
-    return (
-        8
-        + proficiency_bonus(caster.level)
-        + attribute_modifier(caster.attributes.get(attribute, 10))
-        + cast_packet["resonance_modifiers"]["dc"]
-    )
 
 
 def _components(profile, caster, target, cast_packet, choice):
@@ -154,7 +139,7 @@ async def _land_one(
             # A resumed receipt (a held concentration or Fortitude save) already rolled this blow.
             roll, save_info = None, progress.steps.get("save_info")
         else:
-            rolled = await _roll_save_damage(
+            rolled = await roll_save_damage(
                 session,
                 state,
                 profile,
@@ -198,6 +183,8 @@ async def _land_one(
             result["save"] = save_info
     result["target_id"] = target.id
     result["target_hp_current"] = target.hp_current
+    if rider := profile.get("rider"):
+        land_damage_rider(state, caster, declaration, target, spell.id, rider, result)
     if delivery and "dart_indices" in delivery:
         result["darts"] = [{"index": i, "damage": delivery["dart_rolls"][i]} for i in delivery["dart_indices"]]
         result["dart_indices"] = delivery["dart_indices"]
@@ -205,122 +192,6 @@ async def _land_one(
     deferred = _deferred(state, caster, target, profile)
     if deferred:
         cast_packet["deferred"] = deferred
-
-
-async def _roll_save_damage(
-    session,
-    state,
-    profile,
-    spell,
-    caster,
-    target,
-    cast_packet,
-    components,
-    action,
-    delivery,
-    progress,
-    *,
-    conn,
-    queries,
-):
-    """Roll the recipient's save, then the damage. Returns ``(roll, save_info)``, or None while a
-    Fate's Thread choice holds the save (anyone's d20 is in scope)."""
-    dart_indices = delivery.get("dart_indices") if delivery else None
-    save = None
-    dc = None
-    plant_blight = spell.id == "primal_blight" and "plant" in target.tags
-    if profile["resolution"] == "save" and not plant_blight:
-        dc = spell_save_dc(caster, profile["attribute"], cast_packet)
-        save = await packet_save(
-            progress,
-            session,
-            target.id,
-            spell.name,
-            partial(
-                check_resolution_save.roll_participant_save,
-                target,
-                profile["save"],
-                dc,
-                spell.name,
-                originating_participant_id=caster.id,
-                combat_state=state,
-            ),
-            state=state,
-            queries=queries,
-            conn=conn,
-        )
-        if save is None:
-            return None
-        target.conditions = conditions.remove_conditions(target.conditions, save.consumed_conditions)
-    multiplier = (
-        len(dart_indices)
-        if dart_indices is not None
-        else scaled(profile, "projectile_scaling", profile.get("projectiles", 1), caster.level)
-    )
-    player = (
-        await attack_player(caster, queries=queries, conn=conn)
-        if any(c["damage_type"] in thyra_seasons.DAMAGE_TYPES for c in components)
-        else None
-    )
-    season = await thyra_seasons.season_for(player, conn=conn)
-    rolled = []
-    for i, component in enumerate(components):
-        if dart_indices is not None:
-            assert delivery is not None
-            total = sum(delivery["dart_rolls"][index] for index in dart_indices)
-        else:
-            notation = component["dice"]
-            total = 0
-            if notation != "0":
-                total = dice.maximum(notation) if plant_blight else dice.roll(notation).total
-                total += thyra_seasons.damage_bonus(player, season, component["damage_type"])
-            if multiplier > 1:
-                base = profile["components"][i]["dice"]
-                total += sum(dice.roll(base).total for _ in range(multiplier - 1))
-        if i == 0 and component["dice"] != "0" and profile.get("damage_attribute"):
-            total += attribute_modifier(caster.attributes.get(profile["attribute"], 10))
-        total = max(0, total)
-        # Harmonic Shield can redirect an eligible delivery onto a living caster.
-        if profile.get("restriction") == "undead_hollow" and not (target.hollow or target.category == "undead"):
-            total = 0
-        rolled.append({**component, "damage": total})
-    action["damage_components"] = rolled
-    total = sum(c["damage"] for c in rolled)
-    if save is None:
-        return AutomaticDamageResult(total, components[0]["damage_type"]), None
-    roll = SaveDamageResult(
-        save.save_type,
-        save.success,
-        total,
-        components[0]["damage_type"],
-        save.narrative_hint,
-        save.dramatic,
-        save.context,
-    )
-    if not save.success:
-        _, adjusted = combat_damage_affinity.apply(target, action, roll, state=state)
-        save = finalize_save(state, target, save, failed_damage=adjusted.damage)
-    if save.success:
-        rolled = [{**component, "damage": component["damage"] // 2 if profile["half"] else 0} for component in rolled]
-        action["damage_components"] = rolled
-        roll = replace(
-            roll,
-            save_success=True,
-            damage=sum(component["damage"] for component in rolled),
-            narrative_hint=save.narrative_hint,
-        )
-    save_info = {
-        "attribute": save.save_type,
-        "roll": save.roll,
-        "total": save.total,
-        "dc": dc,
-        "success": save.success,
-        "half_on_success": profile["half"],
-        **override_fields(save),
-        **save.oath_fields(),
-        **encounter_facts.rally_receipt(target.id, save.rally_sources),
-    }
-    return roll, save_info
 
 
 async def _land_attack(

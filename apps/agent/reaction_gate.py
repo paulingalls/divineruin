@@ -15,7 +15,7 @@ from combat_ability import _find_action
 from combat_spatial import distance, inside, position, require_spatial
 from combat_structures import blocked_reason, line_blocker
 from communication_voice_rules import DeliveryRefused
-from condition_restrictions import cannot_act
+from condition_restrictions import cannot_act, no_reactions
 from encounter_actions import ACTION_KINDS
 from session_data import CombatState
 
@@ -115,6 +115,8 @@ def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, win
         raise ReactionUnavailable("only players can activate reactions")
     if actor.is_fallen:
         raise ReactionUnavailable(f"player {actor_id!r} is down and cannot react")
+    if no_reactions(actor.conditions):
+        raise ReactionUnavailable(f"{actor.name} ({actor.id}) cannot take reactions")
     if blocked := cannot_act(actor.conditions):
         raise ReactionUnavailable(f"{actor.name} ({actor.id}) is {blocked[0]} and cannot react")
 

@@ -33,6 +33,8 @@ def _land_condition_on_one(
     *,
     packet: dict,
     duration: int | None = None,
+    skip_first_wrap: bool = False,
+    originating_participant_id: str | None = None,
     tick_save: str | None = None,
     inspire_attack_upgrade: bool = False,
 ) -> bool:
@@ -52,10 +54,12 @@ def _land_condition_on_one(
         source=attacker.id if cond_type == "charmed" else source,
         duration=duration,
         inspire_attack_upgrade=inspire_attack_upgrade,
-        originating_participant_id=attacker.id if tick_save or (spec and spec.tick_save) else None,
+        originating_participant_id=attacker.id
+        if tick_save or (spec and spec.tick_save)
+        else originating_participant_id,
         tick_save=tick_save,
     )
-    if duration is not None and not attacker.is_ally and attacker.type == "enemy":
+    if duration is not None and (skip_first_wrap or (not attacker.is_ally and attacker.type == "enemy")):
         for condition in cond_target.conditions:
             if condition["type"] == cond_type:
                 condition["inflicted_round"] = state.round_number
@@ -75,6 +79,9 @@ def land_condition_on_participant(
     source: str,
     *,
     packet: dict,
+    duration: int | None = None,
+    skip_first_wrap: bool = False,
+    originating_participant_id: str | None = None,
     tick_save: str | None = None,
     inspire_attack_upgrade: bool = False,
 ) -> bool:
@@ -89,6 +96,9 @@ def land_condition_on_participant(
         cond_type,
         source,
         packet=packet,
+        duration=duration,
+        skip_first_wrap=skip_first_wrap,
+        originating_participant_id=originating_participant_id,
         tick_save=tick_save,
         inspire_attack_upgrade=inspire_attack_upgrade,
     )

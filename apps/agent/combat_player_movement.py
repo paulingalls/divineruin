@@ -13,7 +13,7 @@ from combat_fate_rolls import PhaseRolls
 from combat_movement_cost import movement_cost
 from combat_spatial import distance, position, require_spatial
 from combat_structures import blocking_wall
-from condition_restrictions import cannot_act, effective_speed
+from condition_restrictions import cannot_act, effective_speed, no_reactions
 from declarations import Declaration
 from patron_synergy_combat import attack_player, spend_tidal_step
 from session_data import CombatParticipant, CombatState, SessionData
@@ -26,6 +26,7 @@ def _melee_actions(state: CombatState, actor: CombatParticipant) -> list[dict]:
         or actor.is_dead
         or actor.hp_current <= 0
         or cannot_act(actor.conditions)
+        or no_reactions(actor.conditions)
         or reaction_spend.is_spent(state.reactions_available.get(actor.id))
     ):
         return []

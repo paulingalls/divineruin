@@ -9,6 +9,7 @@ import combat_grapple
 import combat_phase
 import combat_regeneration
 from combat_down import is_terminally_down
+from condition_catalog import REACTIONS_SUPPRESSED
 from condition_restrictions import cannot_act
 from dice import roll as dice_roll
 
@@ -107,6 +108,14 @@ def ally_turns(state, packets):
 async def turn_start(
     session, state, victim, *, conn, sink, mutations, queries, concentration_break_mod, progress=None, **unused
 ):
+    for participant in state.participants:
+        participant.conditions = [
+            condition
+            for condition in participant.conditions
+            if not (
+                condition["type"] == REACTIONS_SUPPRESSED and condition.get("originating_participant_id") == victim.id
+            )
+        ]
     victim.shield_spell_active = False
     packet = await _damage(
         session,

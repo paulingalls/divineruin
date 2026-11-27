@@ -103,6 +103,8 @@ def test_exact_restriction_partition_and_complete_spoken_corpus():
                 "costs_declaration",
                 "speed_0",
                 "speed_halved",
+                "speed_minus_10",
+                "no_reactions",
                 "ignores_structures",
                 "damage_resistance_all",
                 "saving_throw_advantage",

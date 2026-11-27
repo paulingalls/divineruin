@@ -3,7 +3,7 @@
 from action_contracts_still import STILL_ZONE_KINDS
 from choir_effects import suppressed
 from combat_recharge import available, initialize
-from condition_restrictions import cannot_act
+from condition_restrictions import cannot_act, no_reactions
 from encounter_actions import action_kind
 
 
@@ -70,6 +70,7 @@ def action_summary(actor):
                 "available": not actor.is_fallen
                 and not actor.is_dead
                 and not cannot_act(actor.conditions)
+                and not no_reactions(actor.conditions)
                 and not suppressed(actor)
                 and not actor.choir_silence_exposed,
             }

@@ -11,7 +11,7 @@ from combat_condition_landing import land_condition_on_participant
 from combat_fate_rolls import PacketRolls, packet_save
 from combat_legendary_resistance import finalize_save, override_fields
 from combat_participant import CombatParticipant
-from combat_spell_damage import spell_save_dc
+from combat_spell_save import spell_save_dc
 from combat_state import CombatState
 from condition_produce import resolve_effective_targets
 from declarations import Declaration
@@ -98,6 +98,7 @@ async def land(
                 combat_state=state,
             ),
             state=state,
+            conn=conn,
         )
         if save is None:
             return
@@ -110,6 +111,7 @@ async def land(
             "dc": save.dc,
             "success": save.success,
             **override_fields(save),
+            **save.oath_fields(),
             **encounter_facts.rally_receipt(target.id, save.rally_sources),
         }
         if save.success:
@@ -129,3 +131,44 @@ async def land(
     else:
         packet["condition_immune"] = condition
         _refuse(packet, "condition_immune", f"{target.name} is immune to {condition}.")
+
+
+def land_damage_rider(
+    state: CombatState,
+    caster: CombatParticipant,
+    declaration: Declaration,
+    target: CombatParticipant,
+    spell_id: str,
+    rider: dict,
+    receipt: dict,
+) -> None:
+    save = receipt.get("save")
+    landed = not save["success"] if save is not None else receipt.get("hit") is True
+    if not landed or target.is_fallen or target.is_structure:
+        return
+
+    condition = rider["condition"]
+    receipt["condition_source"] = spell_id
+    if condition == "stunned" and conditions.has_condition(target.conditions, condition):
+        receipt["condition_already_held"] = condition
+        return
+
+    expires = rider["expires"]
+    on_caster_start = expires == "caster_turn_start"
+    turns = (state.ally_continuation or {}).get("turns", [])
+    # An ally whose turn has started or passed gets the next turn in the following round.
+    skip_first_wrap = target.is_ally and not any(actor_id == target.id for actor_id, _ in turns[1:])
+    if land_condition_on_participant(
+        state,
+        caster,
+        declaration,
+        condition,
+        spell_id,
+        packet=receipt,
+        duration=None if on_caster_start else 1,
+        skip_first_wrap=skip_first_wrap,
+        originating_participant_id=caster.id if on_caster_start else None,
+    ):
+        receipt.update(condition_inflicted=condition, condition_expires=expires)
+    else:
+        receipt["condition_immune"] = condition
