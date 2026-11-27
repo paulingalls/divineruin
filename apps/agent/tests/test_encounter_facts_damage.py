@@ -31,7 +31,7 @@ MORTAEN = "mortaen_last_vigil"
 ZHAEL = "zhael_threaded_blade"
 GOBLIN, OTHER = "goblin_one", "goblin_two"
 PRIOR = {"ally_downers": [], "attacked": [], "death_save_success_round": {}, "misses": {}, "once_spent": {}}
-EMPTY = {**PRIOR, "party_aggressors": {}, "rally_pending": {}, "yielded_ally_attackers": []}
+EMPTY = {**PRIOR, "opening_actors": {}, "party_aggressors": {}, "rally_pending": {}, "yielded_ally_attackers": []}
 
 
 @contextmanager
@@ -144,6 +144,7 @@ async def mortaen_vigil(world: SimpleNamespace) -> None:
         await f.hit(MORTAEN)
         assert f.session.combat_state.encounter_facts == {
             **EMPTY,
+            "opening_actors": {GOBLIN: GOBLIN},
             "ally_downers": [GOBLIN],
             "attacked": [f.ally, GOBLIN],
             "party_aggressors": {GOBLIN: [f.ally]},

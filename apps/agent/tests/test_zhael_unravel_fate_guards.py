@@ -3,7 +3,7 @@ from copy import deepcopy
 from unittest.mock import patch
 
 import pytest
-from _zhael_fate_fixtures import defend, game_tools
+from _zhael_fate_fixtures import attack, defend, game_tools
 from _zhael_unravel_fixtures import (
     GIFT,
     activate,
@@ -22,6 +22,7 @@ from combat._round_checkpoint_helpers import Fight
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_mock_room
 from test_aelora_gift import _live_party
+from weapon_fixtures import DAGGER
 
 from combat_agent import CombatAgent
 from encounter_roles import EncounterRole
@@ -389,3 +390,31 @@ async def test_persisted_checkpoint_rewinds_and_new_session_recharges(unravel) -
     assert (await discovered(fight))["available"]
     await activate(fight)
     assert (await discovered(fight))["spent"]
+
+
+@pytest.mark.parametrize("crosses_breach", [True, False])
+async def test_oath_breach_rewind_after_checkpoint_reload(unravel: Fight, crosses_breach: bool) -> None:
+    fight = unravel
+    _, paladin = fight.ids
+    await favor(fight, paladin, "valdris")
+    await patch_player(fight, paladin, **{"class": "paladin", "equipment": {"main_hand": DAGGER}})
+    await fight.start()
+    offer = (await fight.call("query_info", kind="abilities", actor=paladin))["oath_choice"]
+    await fight.call("select", actor=paladin, choice_id=offer["choice_id"], option="justice")
+    state = fight.session.combat_state
+    foe = next(p.id for p in state.participants if p.type == "enemy")
+    await fight.declare(attack(paladin, foe), *(defend(pid) for pid in state.initiative_order if pid != paladin))
+    await fight.finish_round(2)
+    row = await fight.reload()
+    assert row["encounter_facts"]["opening_actors"][foe] == paladin
+    assert (await durable(fight))["players"][paladin]["data"]["oaths"]["records"][0]["status"] == "broken"
+    if crosses_breach:
+        await assert_refused(fight, "cannot rewind across a broken Oath of Justice")
+    else:
+        await fight.declare()
+        await fight.finish_round(3)
+        await fight.reload()
+        await activate(fight)
+        saved = await durable(fight)
+        assert saved["combat"]["round_number"] == 2
+        assert saved["players"][paladin]["data"]["oaths"]["records"][0]["status"] == "broken"

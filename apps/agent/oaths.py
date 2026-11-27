@@ -68,10 +68,20 @@ class TimedOath(Oath):
 OathRecord = Annotated[JusticeOath | TimedOath, Field(discriminator="kind")]
 
 
+class ValdrisBreach(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    session_id: Annotated[str, StringConstraints(pattern=r"\S")]
+    breach_event_id: Annotated[str, StringConstraints(pattern=r"\S")]
+    combat_id: Annotated[str, StringConstraints(pattern=r"\S")]
+    round_number: Round
+
+
 class OathBook(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     records: list[OathRecord]
+    valdris_breach: ValdrisBreach | None = None
 
     @classmethod
     def from_player(cls, player: dict, owner_id: str) -> Self:

@@ -4,6 +4,9 @@
 def aggregate(attack_summaries: list[dict], *, moved: bool, multi_target: bool = False) -> dict:
     ended_yield = next((s for s in attack_summaries if s.get("yield_ended")), {})
     yield_receipt = {key: ended_yield[key] for key in ("yield_ended", "yielded", "dm_cue") if key in ended_yield}
+    breach = next((s["oath_breach"] for s in attack_summaries if "oath_breach" in s), None)
+    if breach is not None:
+        yield_receipt["oath_breach"] = breach
     if multi_target:
         dramatic = next((s for s in attack_summaries if s.get("dramatic")), None)
         return {

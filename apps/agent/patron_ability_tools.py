@@ -10,6 +10,7 @@ import db
 import db_mutations
 import db_queries
 import event_types as E
+import oath_breach
 import patron_combat_edges
 import veythar_wellspring
 from _gods_content import load_gods
@@ -84,10 +85,13 @@ def project_abilities(player, patron):
     if tier is None:
         return []
     rows = []
+    suppressed = patron["god_id"] == "valdris" and oath_breach.suppressed(player)
     for required in TIERS:
         ability = patron["layer_3_tier_abilities"][required.lower()]
         spent = spent_state(player, ability["id"])["spent"]
-        reason, state = availability(ability, tier, required, spent)
+        reason, state = (
+            (oath_breach.BROKEN_REASON, "locked") if suppressed else availability(ability, tier, required, spent)
+        )
         rows.append(
             {
                 **{key: ability[key] for key in ("id", "name", "recharge", "status")},
@@ -119,6 +123,8 @@ async def _locked_ability(conn, actor, ability_id):
     tier = get_patron_tier(favor)
     if favor["patron"] != patron_id:
         raise ToolError(f"This ability requires a follower of {patron_id}.")
+    if required is not None and patron_id == "valdris" and oath_breach.suppressed(player):
+        raise ToolError(oath_breach.BROKEN_REASON)
     reason = blocking_reason(ability, tier, required, spent_state(player, ability_id)["spent"])
     if reason:
         raise ToolError(reason)

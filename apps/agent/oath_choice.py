@@ -6,6 +6,7 @@ from uuid import uuid4
 from livekit.agents import ToolError
 
 from combat_state import CombatState
+from oath_breach import BROKEN_REASON, suppressed
 from oaths import (
     JUSTICE_NAME,
     JUSTICE_TERMS,
@@ -28,6 +29,8 @@ def _offer(actor: str, player: dict, state: CombatState | None, count: int) -> d
         raise ToolError("Only a paladin can swear a registered oath.")
     patron = (player.get("divine_favor") or {}).get("patron")
     if patron == "valdris":
+        if suppressed(player):
+            raise ToolError(BROKEN_REASON)
         return {
             "choice_id": f"{PREFIX}{actor}_justice_{count}",
             "resolve_with": "select",
@@ -153,6 +156,6 @@ async def select(
         await conn.execute(
             "UPDATE players SET data = jsonb_set(data, '{oaths}', $2::jsonb) WHERE player_id = $1",
             actor,
-            book.model_dump_json(),
+            book.model_dump_json(exclude_none=True),
         )
         return json.dumps(receipt(record))
