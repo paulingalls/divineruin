@@ -18,6 +18,7 @@ from condition_catalog import CONDITION_CATALOG, INVISIBLE
 from condition_produce import resolve_effective_targets
 from declarations import Declaration, DeclarationType
 from party_state import PartyMember
+from patron_synergy_heal import mage_warding_spell
 from resource_costs import gate_pool
 from session_data import CombatState, SessionData
 from tool_support import _validate_id
@@ -123,7 +124,9 @@ async def _prepare_cast(
     heal = voice_spell.heal if combat_state is None else None
     locked_rows: dict[str, dict] | None = None
     if player is None:
-        produces_ooc = voice_spell.applies_condition is not None and not session.in_combat
+        produces_ooc = not session.in_combat and (
+            voice_spell.applies_condition is not None or mage_warding_spell(voice_spell)
+        )
         lock_target_ids = (
             session.party.member_ids if heal is not None and heal["recipients"] == "all_allies" else target_ids
         )

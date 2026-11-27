@@ -20,7 +20,9 @@ from combat_condition_landing import land_condition_on_participants
 from combat_spell_profile import recipient_spec
 from combat_structures import blocked_reason, line_blocker
 from condition_catalog import CONDITION_CATALOG
+from condition_produce import resolve_effective_targets
 from condition_sources import DeliveryRefused
+from patron_synergy_heal import grant_mage_warding, mage_warding_spell
 from session_data import CombatParticipant, SessionData
 from spell_condition_cleanse import GREATER_RESTORATION, CleanseRefused
 from spell_invisibility import InvisibilityRefused, reveal_invisible
@@ -309,6 +311,7 @@ async def _resolve_ability_packet(
             cast_packet["concealment"] = reveal
     # Beneficial-condition PRODUCER (M4.8 story-004), in-combat half: land the produced condition on the
     # recipients that remain after Absorb Magic. The mutation rides this phase's save_combat_state.
+    voiced: list[str] = []
     cond_type = cast_packet.get("condition_applied")
     if cond_type and landing is not None:
         voiced = land_condition_on_participants(
@@ -327,6 +330,24 @@ async def _resolve_ability_packet(
             cast_packet["condition_targets"] = voiced
         else:
             cast_packet.pop("condition_applied", None)
+    if landing is not None and mage_warding_spell(spell):
+        targets = (
+            voiced
+            if spell.applies_condition is not None
+            else resolve_effective_targets(landing.target_ids, landing.target_id, self_value=attacker.id, dedup=True)
+        )
+        recipients = {
+            pid: target
+            for pid in targets
+            if (target := state.get_participant(pid)) is not None and target.is_ally and target.hp_current > 0
+        }
+        if player is None:
+            raise RuntimeError(f"Missing locked player row for spell caster {attacker.id}")
+        if ward := await grant_mage_warding(
+            player, list(recipients), participants=recipients, queries=queries, conn=conn
+        ):
+            cast_packet["mage_warding"] = ward
+
     summary = {
         "actor_id": attacker.id,
         "resolved": True,

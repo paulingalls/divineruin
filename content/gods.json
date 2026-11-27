@@ -3124,9 +3124,10 @@
         "name": "Renewing Spark",
         "clauses": [
           {
-            "effect": "Your healing spells restore 1 additional HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "When you cast a spell on yourself or a willing ally, they gain 1 temporary HP.",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_mage_warding"
           }
         ]
       },

@@ -19,7 +19,7 @@ from patron_synergy_combat import (
     spell_damage_type_override,
     turn_undead_dc_bonus,
 )
-from patron_synergy_heal import for_cast
+from patron_synergy_heal import for_cast, grant_mage_warding, mage_warding_spell
 from session_data import ConcentrationState, SessionData
 from spell_cast_result import CastResult
 from spell_condition_cleanse import Cleanse
@@ -180,6 +180,7 @@ async def _finish_cast(
 
     # Combat applies conditions on its working participant state; OOC must write
     # them here, within the caller's transaction after resource and echo handling.
+    voiced: list[str] = []
     if spell.applies_condition is not None:
         if session.in_combat:
             packet["condition_applied"] = spell.applies_condition
@@ -242,6 +243,22 @@ async def _finish_cast(
                     destination_identities=[pid],
                 )
             )
+
+    if not session.in_combat and mage_warding_spell(spell):
+        recipients = voiced if spell.applies_condition is not None else [target_id or player_id]
+        recipient_ids = [pid for pid in recipients if pid in session.party.member_ids]
+        assert locked_rows is not None
+        if ward := await grant_mage_warding(player, recipient_ids, rows=locked_rows, conn=conn):
+            packet["mage_warding"] = ward
+            for result in ward["recipients"]:
+                pid = result["recipient_id"]
+                hp = locked_rows[pid]["hp"]
+                health = {"current": hp["current"], "max": hp["max"], "temp_hp": result["temp_hp"]}
+                events.append(
+                    lambda pid=pid, payload=health: publish_game_event(
+                        session.room, E.HP_CHANGED, payload, event_bus=session.event_bus, destination_identities=[pid]
+                    )
+                )
 
     return CastResult(
         packet=packet,
