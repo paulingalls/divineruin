@@ -77,6 +77,15 @@ describe.skipIf(!hasDb)("loadLocations — DB row-fetch path", () => {
   test("loadLocations fetches + parses DB rows into the accessor registry", async () => {
     await loadLocations();
 
+    const sanctuaries = ["accord_guild_hall", "accord_temple_row"];
+    expect(
+      listLocations()
+        .filter((location) => location.tags.includes("sanctuary"))
+        .map((location) => location.id)
+        .sort(),
+    ).toEqual(sanctuaries);
+    for (const id of sanctuaries) expect(getLocation(id)?.tags).toContain("sanctuary");
+
     const alpha = getLocation("test_load_alpha");
     expect(alpha).toBeDefined();
     expect(alpha!.name).toBe("Alpha Vault");

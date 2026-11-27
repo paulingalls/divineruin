@@ -18,7 +18,7 @@ Reconciled against `game_mechanics_decisions.md` Decisions 129–132 and the ter
 | M10.2 — Terrain-Gated Magic Rules (6 criteria) | 6 | 0 | 0 |
 | M10.3 — Combat Terrain Resolution & Caching (4 criteria) | 4 | 0 | 0 |
 
-**Headline:** M10.1–M10.3 are shipped (17/17 ACs). All 19 locations have required terrain with strict seed/startup validation. Primal casts scale their catalog generation by terrain, Korath requires earth/stone contact, and Druid wards require natural terrain with a 3-Focus ancient-forest cost. Combat caches terrain once at entry and preserves it through persistence, restored phases and encounter ward saves.
+**Headline:** M10.1–M10.3 are shipped (17/17 ACs). All 28 locations have required terrain with strict seed/startup validation. Primal casts scale their catalog generation by terrain, Korath requires earth/stone contact, and Druid wards require natural terrain with a 3-Focus ancient-forest cost. Combat caches terrain once at entry and preserves it through persistence, restored phases and encounter ward saves.
 
 ### Material gaps
 
@@ -57,7 +57,7 @@ Reconciled against `game_mechanics_decisions.md` Decisions 129–132 and the ter
 
 - Required `terrain: TerrainType` on `location.ts`; Python raw location dictionaries are validated at seed time and read through pure runtime terrain accessors.
 - Strict-loader validation: fail-loud on unknown terrain; reject terrain inconsistent with the entry's `region_type` (per the table above), consistent with the `resonance.py` fail-loud precedent.
-- Content backfill: assign `terrain` to all 19 `content/locations.json` entries (Accord → `city`; Millhaven and Yanna’s farmhouse → `village`; the three dungeon entries → `underground`; ruins exterior → `grassland`; northern wilderness → `forest`; south road → `farmland`).
+- Content backfill: assign `terrain` to all 28 `content/locations.json` entries (Accord → `city`; Millhaven and Yanna’s farmhouse → `village`; dungeon entries → `underground`; ruins exterior → `grassland`; northern wilderness → `forest`; south road → `farmland`).
 - Pure accessors: `is_natural(terrain)`, `is_earth_or_stone(terrain)`, `resonance_base(terrain)`.
 
 **Acceptance criteria:**
@@ -66,7 +66,7 @@ Reconciled against `game_mechanics_decisions.md` Decisions 129–132 and the ter
 - [x] `location.ts` carries required `terrain`; Python seed validation requires it on raw location dictionaries.
 - [x] Loader fails loud on an unknown terrain value.
 - [x] Loader rejects a `terrain` whose `region_type` does not match the table (e.g. `region_type=city` with `terrain=mountain`).
-- [x] All 19 `content/locations.json` entries have a valid `terrain`; a content test asserts none are missing.
+- [x] All 28 `content/locations.json` entries have a valid `terrain`; a content test asserts none are missing.
 - [x] Seed/startup boundary tests cover required terrain and region consistency; accessor tests cover all 10 properties, unknown scalar inputs and actual cross-language export parity.
 
 **Key references:** *Decisions 129, 130*; `terrain-map-scoping.md` (data-model inventory).
@@ -122,4 +122,4 @@ Reconciled against `game_mechanics_decisions.md` Decisions 129–132 and the ter
 
 - **Dynamic hollow corruption** as a live axis (the top 3 old Resonance bands). The damaged 0.6 / hollow_adjacent 0.7 / hollow_corrupted 0.8 bands are documentation-only future seams (Decision 131); no corruption parameter ships here.
 - **Patron/god world-state game loops** — separate future track.
-- **World-state-aware errand risk** (`errand_risk.ts`, debt `45a46b23ad68`, ADR `0006-errand-risk-at-resolution`) — depends on dynamic corruption; deferred with it. Leave the concern open.
+- **World-state-aware errand risk** (`errand_risk.ts`, debt `45a46b23ad68`, ADR `0006-errand-risk-at-resolution`) — depends on Phase 11 dynamic corruption. [M14.1](14_engine_completeness.md#milestone-141--narrated-only-mechanics-and-voice-certification) owns the resolution integration.

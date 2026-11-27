@@ -34,6 +34,46 @@ test("Orenthel's guardian has the registered Sheltering Light clause", () => {
   ]);
 });
 
+test.each(["cleric", "oracle"] as const)("Valdris's %s has Absolute Authority", (archetype) => {
+  const valdris = validateGods(catalog).find((god) => god.god_id === "valdris");
+  expect(valdris?.layer_4_synergy_matrix[archetype]).toEqual({
+    name: "Absolute Authority",
+    type: "divine",
+    clauses: [
+      {
+        effect: "Turn Undead/Hollow DC +1. Absolute authority against unnatural things",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "valdris_absolute_authority",
+      },
+    ],
+  });
+});
+
+test("Valdris's warrior has the registered Measured Reprisal clause", () => {
+  const warrior = validateGods(catalog).find((god) => god.god_id === "valdris")
+    ?.layer_4_synergy_matrix.warrior;
+  expect(warrior).toEqual({
+    name: "Measured Reprisal",
+    type: "divine",
+    clauses: [
+      {
+        effect:
+          "Gain +1 damage against a creature that attacked a surrendering ally this encounter.",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "valdris_measured_reprisal",
+      },
+    ],
+  });
+});
+
+test("Valdris's marshal has the registered Lawful Command clause", () => {
+  const marshal = validateGods(catalog).find((god) => god.god_id === "valdris")
+    ?.layer_4_synergy_matrix.marshal;
+  expect<unknown>(marshal).toEqual(corpus.lawful_command);
+});
+
 test("Orenthel's warrior has the registered Dawnward Strike clause", () => {
   const warrior = validateGods(catalog).find((god) => god.god_id === "orenthel")
     ?.layer_4_synergy_matrix.warrior;
@@ -314,3 +354,9 @@ test.each(["artificer", "bard", "diplomat"] as const)(
     });
   },
 );
+
+test("Valdris's guardian has the registered Witness Shield clause", () => {
+  const guardian = validateGods(catalog).find((god) => god.god_id === "valdris")
+    ?.layer_4_synergy_matrix.guardian;
+  expect<unknown>(guardian).toEqual(corpus.witness_shield);
+});

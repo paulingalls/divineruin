@@ -120,6 +120,19 @@ def test_compiled_check_context_enum_matches_authored_tags(vendor):
             assert set(field["enum"]) == tags
 
 
+@pytest.mark.parametrize("vendor", ["openai", "anthropic"])
+def test_compiled_combat_entry_initiator_is_closed(vendor):
+    tool = next(tool for tool in EXPLORATION_TOOLS if tool.info.name == "enter_mode")
+    [schema] = ToolContext([tool]).parse_function_tools(vendor, strict=True)
+    params = schema["function"]["parameters"] if vendor == "openai" else schema["input_schema"]
+    assert {"initiated_by", "encounter_id"} <= set(params["required"])
+    fields = params["properties"]
+    branches = fields["initiated_by"]["anyOf"]
+    assert {branch["const"] for branch in branches if branch["type"] == "string"} == {"enemies", "party"}
+    assert sorted(branch["type"] for branch in branches) == ["null", "string", "string"]
+    assert fields["encounter_id"]["type"] == "string"
+
+
 def _tracked_python_paths(root: Path) -> list[Path]:
     return [root / name for name in repository_files(root, "*.py")]
 

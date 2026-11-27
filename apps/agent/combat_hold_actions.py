@@ -12,6 +12,7 @@ from combat_down import target_unavailable
 from combat_enemy_action import is_combined_attack_action, is_save_damage_action
 from combat_state import CombatState
 from combat_structures import action_has_direct_line, line_blocker
+from combat_turn_flight import is_flight_turn
 from condition_restrictions import cannot_act
 from condition_sources import DeliveryRefused
 from declarations import Declaration, DeclarationType, resolve_declaration
@@ -30,7 +31,7 @@ async def concealed_target_reason(
     if "execution_receipt" in head:
         return None
     actor = state.get_participant(head["actor_id"])
-    if actor is None or actor.is_ally:
+    if actor is None or actor.is_ally or is_flight_turn(actor, head):
         return None
     for target_id in dict.fromkeys((declaration.target_id, *(declaration.target_ids or ()))):
         target = state.get_participant(target_id) if target_id is not None else None
@@ -129,3 +130,11 @@ def _attack_action(state, head: dict) -> dict | None:
     if declaration.type is not DeclarationType.ATTACK or action.get("applies_condition"):
         return None
     return action
+
+
+def assert_iteration_progress(state, head: dict, summaries: list[dict], summary_start: int) -> None:
+    popped = not state.held_actions or state.held_actions[0] is not head
+    unresolved = any(summary.get("resolved") is False for summary in summaries[summary_start:])
+    opened = state.open_window is not None
+    if not (popped or unresolved or opened):
+        raise RuntimeError(f"held action for {head['actor_id']!r} made no progress")

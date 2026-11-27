@@ -140,7 +140,13 @@ def test_attack_producer_carries_position_eligibility_to_real_resolver():
     state.spatial["zones"] = {"quiet": {"kind": "silence", "center_id": "other", "radius_ft": 0}}
     weapon = dict(LONGSWORD)
     result, _ = roll_attack(
-        actor, weapon, state.participants[1], combat_state=state, weapon_profile=weapon, player={"class": "warrior"}
+        actor,
+        weapon,
+        state.participants[1],
+        valdris_ac_bonus=0,
+        combat_state=state,
+        weapon_profile=weapon,
+        player={"class": "warrior"},
     )
     assert result.consumed_conditions == ("blessed",)
     assert any(c["type"] == "inspired" for c in actor.conditions)

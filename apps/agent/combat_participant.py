@@ -134,9 +134,12 @@ class CombatParticipant:
     hollow_death_resolved: bool = False
 
     temp_hp: int = 0
+    yielded: bool = False
 
     def __post_init__(self) -> None:
         temp_hp.validate(self.temp_hp)
+        if not isinstance(self.yielded, bool):
+            raise ValueError("Combat participant yielded must be a boolean")
 
     @property
     def legendary_capacity(self) -> int:

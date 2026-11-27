@@ -31,7 +31,7 @@ DEFEND_AC_BONUS = 2
 
 
 class DeclarationType(StrEnum):
-    """The six declaration categories. StrEnum so members serialize transparently and
+    """The declaration categories. StrEnum so members serialize transparently and
     compare equal to their wire strings."""
 
     ATTACK = "attack"
@@ -41,6 +41,7 @@ class DeclarationType(StrEnum):
     MANEUVER = "maneuver"
     DEFEND = "defend"
     RETREAT = "retreat"
+    YIELD = "yield"
 
 
 class ManeuverIntent(StrEnum):

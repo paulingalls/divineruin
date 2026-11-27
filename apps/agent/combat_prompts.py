@@ -74,6 +74,8 @@ End within 5 feet of the nearest point on a wall segment or of a standing struct
 No opportunity attacks are provoked, and the rogue finishes concealed. \
 defend — the actor makes no attack and gains +2 AC until the next \
 phase (use it when the player guards, takes cover, or braces). \
+yield — a player or companion spends their action to surrender. Use kind="yield" and their actor_id. \
+Surrender lasts until they act against a hostile or combat ends. \
 maneuver — target_id names who is moved. A prone combatant stands by declaring maneuver on itself, \
 consuming the whole phase; a maneuver on anyone else is a shove (contested Strength; a win knocks \
 the target prone). \
@@ -263,7 +265,8 @@ the player already hears — complement the sound, don't duplicate it.
 Keep combat moving. One sentence per action, two for a kill. The rhythm is: \
 action, result, next. Save longer narration for the decisive blow.
 
-Include each conscious companion in declare_phase with an attack declaration naming \
+Acknowledge surrender or its end from the resolution receipt. Give a yielded companion nonhostile actions \
+unless directed to act against a hostile. For other conscious companions, use an attack declaration naming \
 the companion's exact action from Combatants[].actions and the most tactically sound target. Have the companion make a brief \
 tactical callout in the urgent register, using the companion's own voice exactly as the \
 combat-entry context specifies. "Flanking left!" "Watch the spellcaster!" Keep it to one \

@@ -77,6 +77,13 @@ async def _prepare_cast(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
+    from combat_turn_undead import TURN_UNDEAD
+
+    if spell_id == TURN_UNDEAD and combat_state is None:
+        if session.in_combat:
+            raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")
+        raise ToolError(f"{voice_spell.name} needs combat targets.")
+
     is_cleanse = spell_id == spell_condition_cleanse.GREATER_RESTORATION
     if (voice_spell.heal is not None or is_cleanse) and combat_state is None and session.in_combat:
         raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")

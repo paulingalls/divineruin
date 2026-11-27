@@ -42,7 +42,10 @@ async def declare_phase(
     """Open a combat phase by recording every combatant's declared action for this
     round, then call resolve_phase to resolve them. Pass one declaration per acting
     combatant, each naming its actor_id and picked by its kind: attack, ability,
-    ability_move, interact, consume, attack_consume, maneuver, move, reposition, defend or retreat. For a potion, salve or berry,
+    ability_move, interact, consume, attack_consume, maneuver, move, reposition, defend, retreat or yield.
+    To surrender, declare {"kind":"yield","actor_id":"<player or companion id>"}.
+    This spends their action. Yield ends when they act against a hostile or when combat ends.
+    For a potion, salve or berry,
     declare consume with the holder's actor_id and the queried item_id. Set target_id
     to the ally receiving it or an empty string for the holder. Move names an explicit destination in feet and consumes
     this phase action, limited to the actor's persisted speed. A Nythera skirmisher or rogue can

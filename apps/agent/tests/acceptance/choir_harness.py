@@ -67,6 +67,7 @@ def move(actor: str, destination: Payload) -> Payload:
         "actor_id": actor,
         "destination": destination,
         "movement_mode": "ground",
+        "nythera_step": False,
         "reshape": [],
     }
 

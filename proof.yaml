@@ -52,6 +52,7 @@
       "apps/agent/dramatic.py",
       "apps/agent/encounter_actions.py",
       "apps/agent/encounter_references.py",
+      "apps/agent/encounter_testimony.py",
       "apps/agent/patron_favor.py",
       "apps/agent/patron_gifts.py",
       "apps/agent/patron_passives.py",

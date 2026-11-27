@@ -934,7 +934,7 @@
     "source": "divine",
     "spell_tier": "standard",
     "focus_cost": 3,
-    "mechanics": "Undead and Hollow make a WIS save or are frightened and flee for 1 min. At L5+, a creature with HP under 5x your level is destroyed.",
+    "mechanics": "Combat only. Undead and Hollow within 30 feet make a Wisdom save against your spell DC. On a failure, they are Frightened of you and flee on their turns for up to 10 rounds, clearing early on a successful Wisdom save. At level 5 or higher, a creature that fails and has less than five times your level in current HP is destroyed instead.",
     "narration_cue": "You raise your holy symbol and divine light pours out. The unnatural things shriek and scatter.",
     "resonance_by_source": {
       "divine": 1

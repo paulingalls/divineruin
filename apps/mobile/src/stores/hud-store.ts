@@ -48,6 +48,7 @@ export interface Combatant extends HudHp {
   id: string;
   name: string;
   isAlly: boolean;
+  yielded: boolean;
   conditions: Condition[];
   isActive: boolean;
 }

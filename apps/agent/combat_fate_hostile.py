@@ -15,7 +15,7 @@ from combat_attack_roll import (
     serialize_roll,
     spend_sneak_attack,
 )
-from patron_synergy_combat import attack_player
+from patron_synergy_combat import attack_player, witness_defense
 
 
 async def roll_hostile(session, state, head, declaration, action, contribution, packet_deps, fate_rolls):
@@ -33,38 +33,42 @@ async def roll_hostile(session, state, head, declaration, action, contribution, 
         assert fate_rolls is not None
         prepared = check_resolution_attack.PreparedAttack.from_dict(stored["prepared"])
         attacker_data = stored["attacker_data"]
-    elif fate_rolls is not None:
-        candidates = await zhael_fate.candidates(session, queries=packet_deps["queries"], conn=packet_deps["conn"])
-        if candidates.choices(attacker.id):
-            player = await attack_player(attacker, queries=packet_deps["queries"], conn=packet_deps["conn"])
-            defender = await attack_player(target, queries=packet_deps["queries"], conn=packet_deps["conn"])
-            attacker_data, ac, attack_mod = attack_roll_inputs(
-                attacker,
-                target,
-                ac_bonus,
-                state,
-                action,
-                player=player,
-                defender=defender,
-                season=await thyra_seasons.season_for(player, conn=packet_deps["conn"]),
-            )
-            prepared = check_resolution_attack.prepare_attack(
-                attacker_data, action, ac, attack_mod=attack_mod, target_conditions=target.conditions
-            )
-            if await fate_rolls.hold(
-                session,
-                "attack",
-                attacker.id,
-                prepared.original,
-                prepared.d20,
-                queries=packet_deps["queries"],
-                conn=packet_deps["conn"],
-                candidates=candidates,
-            ):
-                data = asdict(prepared)
-                data["consumed"] = list(prepared.consumed)
-                head["fate_attack"] = {"prepared": data, "attacker_data": attacker_data}
-                return False
+    else:
+        queries, conn = packet_deps["queries"], packet_deps["conn"]
+        player = await attack_player(attacker, queries=queries, conn=conn)
+        defender = await attack_player(target, queries=queries, conn=conn)
+        valdris_ac_bonus = await witness_defense(defender, state, attacker, queries=queries, conn=conn)
+        if fate_rolls is not None:
+            candidates = await zhael_fate.candidates(session, queries=queries, conn=conn)
+            if candidates.choices(attacker.id):
+                attacker_data, ac, attack_mod = attack_roll_inputs(
+                    attacker,
+                    target,
+                    ac_bonus,
+                    state,
+                    action,
+                    valdris_ac_bonus=valdris_ac_bonus,
+                    player=player,
+                    defender=defender,
+                    season=await thyra_seasons.season_for(player, conn=conn),
+                )
+                prepared = check_resolution_attack.prepare_attack(
+                    attacker_data, action, ac, attack_mod=attack_mod, target_conditions=target.conditions
+                )
+                if await fate_rolls.hold(
+                    session,
+                    "attack",
+                    attacker.id,
+                    prepared.original,
+                    prepared.d20,
+                    queries=queries,
+                    conn=conn,
+                    candidates=candidates,
+                ):
+                    data = asdict(prepared)
+                    data["consumed"] = list(prepared.consumed)
+                    head["fate_attack"] = {"prepared": data, "attacker_data": attacker_data}
+                    return False
     if prepared is not None:
         assert fate_rolls is not None
         kept = fate_rolls.select(prepared.original)
@@ -83,12 +87,12 @@ async def roll_hostile(session, state, head, declaration, action, contribution, 
         effective_ac = prepared.d20.dc
         head.pop("fate_attack", None)
     else:
-        player = await attack_player(attacker, queries=packet_deps["queries"], conn=packet_deps["conn"])
-        defender = await attack_player(target, queries=packet_deps["queries"], conn=packet_deps["conn"])
+        assert stored is None
         result, effective_ac = roll_attack(
             attacker,
             action,
             target,
+            valdris_ac_bonus=valdris_ac_bonus,
             target_ac_bonus=ac_bonus,
             enemies_remaining=enemies_remaining,
             is_first_attack_of_combat=first_attack,
@@ -96,7 +100,7 @@ async def roll_hostile(session, state, head, declaration, action, contribution, 
             combat_state=state,
             player=player,
             defender=defender,
-            season=await thyra_seasons.season_for(player, conn=packet_deps["conn"]),
+            season=await thyra_seasons.season_for(player, conn=conn),
         )
     combat_wrongdoing.record_attack(state, attacker, target)
     record_beacon_attack(state, attacker, target, result)

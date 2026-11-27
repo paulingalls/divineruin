@@ -26,6 +26,15 @@ from rules_engine import attribute_modifier, proficiency_bonus
 from zhael_fate import candidates
 
 
+def spell_save_dc(caster, attribute: str, cast_packet: dict) -> int:
+    return (
+        8
+        + proficiency_bonus(caster.level)
+        + attribute_modifier(caster.attributes.get(attribute, 10))
+        + cast_packet["resonance_modifiers"]["dc"]
+    )
+
+
 def _components(profile, caster, target, cast_packet, choice):
     result = []
     for i, component in enumerate(profile["components"]):
@@ -220,12 +229,7 @@ async def _roll_save_damage(
     dc = None
     plant_blight = spell.id == "primal_blight" and "plant" in target.tags
     if profile["resolution"] == "save" and not plant_blight:
-        dc = (
-            8
-            + proficiency_bonus(caster.level)
-            + attribute_modifier(caster.attributes.get(profile["attribute"], 10))
-            + cast_packet["resonance_modifiers"]["dc"]
-        )
+        dc = spell_save_dc(caster, profile["attribute"], cast_packet)
         save = await packet_save(
             progress,
             session,
