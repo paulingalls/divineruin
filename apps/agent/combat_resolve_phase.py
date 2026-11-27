@@ -3,6 +3,7 @@
 import copy
 import json
 import logging
+from dataclasses import replace
 from typing import Any
 
 from livekit.agents.llm import ToolError
@@ -41,6 +42,7 @@ import veil_ward_events
 import ward_resolution
 import zhael_fate
 from combat_ability import AbilityCastOutcome
+from combat_departure import departed_target
 from combat_down import sync_companion_consciousness
 from combat_end import _end_combat_finish
 from combat_events import EventSink, emit_or_publish, isolated_publish
@@ -147,17 +149,22 @@ async def _resolve_phase_locked(
 
                 # Refuse unaffordable abilities before any actor writes HP; recovery reopens declaration.
                 try:
+                    active = [p for p in adv.packets if departed_target(state, p.declaration) is None]
                     players_by_id = await _prevalidate_ability_focus(
                         session,
                         state,
-                        adv,
+                        replace(adv, packets=active),
                         conn=conn,
                         queries=queries,
                         cast_resolver=cast_resolver,
                         character_spells_mod=character_spells_mod,
                     )
                     await item_heal.preflight(
-                        session, state, ((p.actor_id, p.declaration) for p in adv.packets), conn=conn, queries=queries
+                        session,
+                        state,
+                        ((p.actor_id, p.declaration) for p in active),
+                        conn=conn,
+                        queries=queries,
                     )
                 except ToolError as error:
                     raise PrevalidationRefusal(error) from error

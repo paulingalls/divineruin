@@ -30,6 +30,7 @@ import reaction_spend
 import thyra_thornwall
 from combat_ability import _find_action
 from combat_attack_roll import deserialize_roll
+from combat_departure import cancel_held_strike, departed_target
 from combat_fate_hostile import roll_hostile
 from combat_fate_rolls import PacketRolls
 from combat_hold_actions import (
@@ -165,24 +166,30 @@ async def pump(
     """
     summaries: list[dict] = []
     closed, state.open_window = state.open_window, None
-    reacted, reaction_packets = None, []
-    if closed is not None and closed["stage"] != MOVEMENT and state.held_actions:
-        reacted = state.held_actions[0]
-        reason = await concealed_target_reason(state, reacted, _held_declaration(reacted), packet_deps=packet_deps)
-        if reason is not None:
-            summaries.extend(combat_reaction_effect.finish_thought_shield(reacted, {}))
-            summaries.append(_concealed_summary(reacted, reason))
-            state.held_actions.pop(0)
-            reacted = None
-        else:
-            reaction_packets, paused = await close_window(state, reacted, closed, summaries, packet_deps, contest_rng)
-            if paused:
-                return summaries
-
     while state.held_actions:
         head = state.held_actions[0]
         if execution_id is not None and head.get("execution_id") != execution_id:
             break
+        window, closed = closed, None
+        if target := _uncommitted_departed_target(state, head):
+            if fate_rolls is not None:
+                fate_rolls.kept = None
+            summaries.append(cancel_held_strike(state, head, target))
+            continue
+        reacted, reaction_packets = None, []
+        if window is not None and window["stage"] != MOVEMENT:
+            reacted = head
+            reason = await concealed_target_reason(state, head, _held_declaration(head), packet_deps=packet_deps)
+            if reason is not None:
+                summaries.extend(combat_reaction_effect.finish_thought_shield(head, {}))
+                summaries.append(_concealed_summary(head, reason))
+                state.held_actions.pop(0)
+                continue
+            reaction_packets, paused = await close_window(state, head, window, summaries, packet_deps, contest_rng)
+            if paused:
+                return summaries
+            if not state.held_actions or state.held_actions[0] is not head:
+                continue
         if continuation := head.get("counter_settlement"):
             if not await combat_counter_reactions.settle(session, state, head, summaries, packet_deps, fate_rolls):
                 return summaries
@@ -345,6 +352,12 @@ async def pump(
             return summaries
 
     return summaries
+
+
+def _uncommitted_departed_target(state, head: dict) -> str | None:
+    if not state.departed_player_ids or "counter_settlement" in head or "completed_condition" in head:
+        return None
+    return head.get("departed_damage_recipient") or departed_target(state, _held_declaration(head))
 
 
 def _finish_strike(state, head: dict, action: dict | None, summary: dict, summaries: list[dict]) -> bool:

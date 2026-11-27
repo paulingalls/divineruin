@@ -19,6 +19,7 @@ import event_types as E
 import patron_ability_tools
 import reaction_spend
 from caster_state import ConcentrationState
+from combat_departure import forget_participant
 from combat_down import sync_companion_consciousness
 from combat_events import isolated_publish
 from combat_phase import combat_outcome
@@ -68,6 +69,9 @@ def _previous_opening(state: CombatState) -> dict:
 
 def _restore_combat(previous: dict, live: CombatState, roster: set[str]) -> CombatState:
     restored = CombatState.from_dict(deepcopy(previous))
+    restored.departed_player_ids = list(live.departed_player_ids)
+    for pid in restored.departed_player_ids:
+        forget_participant(restored, pid)
     retained = {p.id for p in [*restored.participants, *live.participants] if p.type == "player" and p.id not in roster}
     if not retained:
         return restored
@@ -120,7 +124,7 @@ async def _require_untouched(conn: asyncpg.Connection, committed: CombatState, p
     """Refuse when anything settled since the current round's opening was captured."""
     current_opening = committed.round_checkpoints[-1]
     saved = current_opening["players"]
-    roster = party & saved.keys()
+    roster = (party & saved.keys()) - set(committed.departed_player_ids)
     untouched = _restore_combat(current_opening["combat"], committed, roster)
     if _opening_image(untouched) != _opening_image(committed):
         raise ToolError(_UNTOUCHED)
@@ -246,7 +250,7 @@ async def activate(session: SessionData) -> str:
                             raise ToolError("Unravel Fate cannot rewind across a settled Promised Hour.")
             await _require_untouched(conn, committed, members.keys())
             saved = previous["players"]
-            roster = members.keys() & saved.keys()
+            roster = (members.keys() & saved.keys()) - set(committed.departed_player_ids)
             restored = _restore_combat(previous["combat"], committed, roster)
             if saved.keys() - roster or any(
                 p.id not in roster for p in committed.participants if p.type in ("player", "temporary_hollowed")
