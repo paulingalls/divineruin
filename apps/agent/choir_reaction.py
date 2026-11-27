@@ -49,12 +49,13 @@ async def effective_declaration(session, state, caster, declaration, *, progress
                     action["name"],
                     bonus_dice_eligible=False,
                     combat_state=state,
+                    originating_participant_id=target.id,
                 ),
                 state=state,
             )
             if save is None:
                 return None
-            if receipts is not None and save.rally_sources:
+            if receipts is not None and (save.rally_sources or save.oath_justice is not None):
                 receipts.append(
                     {
                         "target_id": target.id,
@@ -62,6 +63,7 @@ async def effective_declaration(session, state, caster, declaration, *, progress
                         "total": save.total,
                         "dc": save.dc,
                         "success": save.success,
+                        **save.justice_fields(),
                         **encounter_facts.rally_receipt(caster.id, save.rally_sources),
                     }
                 )

@@ -111,7 +111,7 @@ def test_compiled_check_context_enum_matches_authored_tags(vendor):
     variants = [params["$defs"][branch["$ref"].split("/")[-1]] for branch in params["properties"]["roll"]["anyOf"]]
     assert {
         variant["properties"]["kind"]["const"] for variant in variants if "synergy_context" in variant["properties"]
-    } == {"skill", "social"}
+    } == {"skill", "social", "discover"}
     for variant in variants:
         if "synergy_context" in variant["properties"]:
             assert "synergy_context" in variant["required"]

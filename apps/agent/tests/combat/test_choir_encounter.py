@@ -2,6 +2,7 @@ import json
 from unittest.mock import AsyncMock
 
 import pytest
+from combat._helpers import save_result
 from sample_fixtures import CONTENT_ROOT, load_test_creature, make_context, make_db_mod
 
 import combat_init
@@ -204,7 +205,6 @@ async def test_choir_search_and_exposed_reload(phase, mock_combat_agent_factory)
 @pytest.mark.parametrize("phase", ["search", "exposed"])
 @pytest.mark.parametrize("distance,eligible", [(600, True), (600.01, False)])
 async def test_choir_aura_turn_start_once_across_hold_resume(phase, distance, eligible, mock_combat_agent_factory):
-    from types import SimpleNamespace
     from unittest.mock import MagicMock, patch
 
     import combat_packet
@@ -222,7 +222,7 @@ async def test_choir_aura_turn_start_once_across_hold_resume(phase, distance, el
     packet = ResolutionPacket(
         actor_id=actor.id, declaration=resolve_declaration({"type": "defend"}), initiative=actor.initiative
     )
-    with patch(SAVE_ROLL, return_value=SimpleNamespace(success=False, rally_sources=())) as save:
+    with patch(SAVE_ROLL, return_value=save_result(False)) as save:
         await combat_packet._resolve_one_packet(
             ctx.userdata,
             state,
@@ -356,7 +356,6 @@ async def test_choir_core_touch_and_condition_immunities(mock_combat_agent_facto
 
 @pytest.mark.asyncio
 async def test_choir_aura_movement_uses_turn_start_position(mock_combat_agent_factory):
-    from types import SimpleNamespace
     from unittest.mock import patch
 
     import combat_packet
@@ -370,7 +369,7 @@ async def test_choir_aura_movement_uses_turn_start_position(mock_combat_agent_fa
     move = resolve_declaration(
         {"type": "maneuver", "action": "move", "target_id": actor.id, "destination": {"x": 659, "y": 0, "z": 0}}
     )
-    with patch(SAVE_ROLL, return_value=SimpleNamespace(success=True, rally_sources=())) as save:
+    with patch(SAVE_ROLL, return_value=save_result(True)) as save:
         await combat_packet._resolve_one_packet(
             ctx.userdata,
             state,
@@ -471,7 +470,6 @@ async def test_choir_destroyed_removes_only_source_owned_effects(mock_combat_age
 @pytest.mark.asyncio
 @pytest.mark.parametrize("ineligible", ["none", "source", "fallen", "dead", "incapacitated", "destroyed"])
 async def test_choir_aura_eligibility_and_success(ineligible, mock_combat_agent_factory):
-    from types import SimpleNamespace
     from unittest.mock import MagicMock, patch
 
     import choir_encounter
@@ -489,7 +487,7 @@ async def test_choir_aura_eligibility_and_success(ineligible, mock_combat_agent_
     elif ineligible == "destroyed":
         state.choir_encounter["phase"] = "destroyed"
     end = MagicMock(end_concentration=AsyncMock())
-    with patch(SAVE_ROLL, return_value=SimpleNamespace(success=True, rally_sources=())) as save:
+    with patch(SAVE_ROLL, return_value=save_result(True)) as save:
         await choir_encounter.turn_start(ctx.userdata, state, actor, conn=None, concentration_break_mod=end)
         state.round_number += 1
         await choir_encounter.turn_start(ctx.userdata, state, actor, conn=None, concentration_break_mod=end)

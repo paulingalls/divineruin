@@ -80,6 +80,7 @@ class DiscoverCheck(BaseModel):
     roll — never name the secret yourself."""
 
     kind: Literal["discover"]
+    synergy_context: SynergyContext
     skill: str = Field(description="The approach, e.g. perception or investigation.")
     target: str = Field(description="The visible feature being examined, e.g. notice_board.")
     hearing_only: StrictBool = Field(
@@ -152,7 +153,12 @@ def to_impl_args(roll: CheckVariant) -> tuple[str, dict]:
             args["synergy_context"] = roll.synergy_context
         return roll.kind, args
     if isinstance(roll, DiscoverCheck):
-        return "discover", {"skill": roll.skill, "target": roll.target, "hearing_only": roll.hearing_only}
+        return "discover", {
+            "skill": roll.skill,
+            "target": roll.target,
+            "hearing_only": roll.hearing_only,
+            "synergy_context": roll.synergy_context,
+        }
     if isinstance(roll, SaveCheck):
         return "save", {"save_type": roll.save_type, "dc": roll.dc, "effect_on_fail": roll.effect_on_fail}
     if isinstance(roll, DiceRoll):

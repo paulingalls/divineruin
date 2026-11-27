@@ -182,7 +182,7 @@ def test_vendor_boundary_preserves_required_hearing_boolean(kind, hearing):
     raw.update(
         {"difficulty": "easy", "context_description": "inspect", "synergy_context": "none"}
         if kind == "skill"
-        else {"target": "wall"}
+        else {"target": "wall", "synergy_context": "none"}
     )
     bound = _bind(check, {"roll": raw})
     mode, arguments = check_payloads.to_impl_args(bound["roll"])
@@ -197,7 +197,7 @@ def test_vendor_boundary_refuses_malformed_hearing_metadata(kind, defect):
     raw.update(
         {"difficulty": "easy", "context_description": "inspect", "synergy_context": "none"}
         if kind == "skill"
-        else {"target": "wall"}
+        else {"target": "wall", "synergy_context": "none"}
     )
     if defect == "missing":
         raw.pop("hearing_only")

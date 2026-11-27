@@ -320,7 +320,7 @@ When casting a spell targeting a specific creature that has wronged you or allie
 
 | Archetypes | Synergy Type | Enhancement |
 |---|---|---|
-| Paladin | Natural | Breaking the Oath of Justice suppresses Valdris tier abilities for the rest of the current gameplay session. Oath-keeping grants +2 to all d20 rolls when justice is at stake |
+| Paladin | Natural | Breaking the Oath of Justice suppresses Valdris tier abilities for the rest of the current gameplay session. Gain +2 on attacks and saves against wrongdoers in combat, and on checks when justice is at stake. |
 | Cleric, Oracle | Divine | Turn Undead/Hollow DC +1. Absolute authority against unnatural things |
 | Rogue, Spy | Unexpected | Deception for just causes (evidence, infiltration) gains +1. Valdris blesses deception in service of truth |
 

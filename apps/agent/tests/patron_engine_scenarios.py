@@ -5,6 +5,7 @@ from acceptance.test_orenthel_undead_wrath import SCENARIOS as dawnward_strike
 from acceptance.test_restoring_guard import SCENARIOS as restoring_guard
 from acceptance.test_synergy_context import SCENARIOS as context_checks
 from acceptance.test_turn_undead_hollow import SCENARIOS as absolute_authority
+from acceptance.test_valdris_justice_at_stake import SCENARIOS as justice_at_stake
 from acceptance.test_valdris_oath_breach import SCENARIOS as oath_breach
 from acceptance.test_valdris_party_yield import SCENARIOS as measured_reprisal
 from acceptance.test_valdris_sanctuary import SCENARIOS as lawful_command
@@ -88,6 +89,7 @@ ENGINE_SCENARIOS = {
     **witness_shield,
     **measured_reprisal,
     **oath_breach,
+    **justice_at_stake,
     **marshal_death_save,
     **rally,
     **foretold_words,

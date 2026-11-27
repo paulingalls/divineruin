@@ -46,9 +46,14 @@
         "implementation_id": "valdris_oath_breach"
       },
       {
-        "effect": "Oath-keeping grants +2 to all d20 rolls when justice is at stake",
-        "status": "pending",
-        "resolution": "engine"
+        "effect": "Gain +2 on attacks and saves against wrongdoers in combat, and on checks when justice is at stake.",
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "valdris_justice_at_stake",
+        "kind": "context_check",
+        "synergy_context": "justice_at_stake",
+        "skill": null,
+        "bonus": 2
       }
     ]
   },

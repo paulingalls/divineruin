@@ -92,6 +92,7 @@ def roll_critical_save(state, attacker, target, rider):
         dc_mod=attacker.dc_mod,
         combat_state=state,
         bonus_dice_eligible=False,
+        originating_participant_id=attacker.id,
     )
 
 
@@ -104,6 +105,7 @@ def land_critical_save(state, attacker, target, action, summary, rider, result):
         "roll": result.roll,
         "total": result.total,
         "success": result.success,
+        **result.justice_fields(),
         **override_fields(result),
         **encounter_facts.rally_receipt(target.id, result.rally_sources),
     }

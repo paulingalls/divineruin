@@ -40,6 +40,7 @@ from game_events import publish_game_event, publish_hidden_revealed
 from inventory_refresh import publish_inventory
 from patron_gifts import KNOWLEDGE_SKILLS, veythar_gift
 from patron_location import check_first_stay
+from patron_synergy import validate_synergy_context
 from quest_completion import finish_quest
 from quest_progress import advance_on_item_discovered, discovery_quest_ids, lock_discovery_rows
 from session_data import SessionData
@@ -78,6 +79,7 @@ async def _check_discover_impl(
     target: str,
     *,
     hearing_only: bool = False,
+    synergy_context: str = "none",
     content=db_content_queries,
     queries=db_queries,
     mutations=db_mutations,
@@ -85,6 +87,7 @@ async def _check_discover_impl(
     db_mod=db,
 ) -> str:
     try:
+        validate_synergy_context(synergy_context)
         validate_hearing_check(skill, hearing_only)
     except ValueError as e:
         raise ToolError(str(e)) from e
@@ -105,6 +108,7 @@ async def _check_discover_impl(
                 session,
                 skill_lower,
                 target,
+                synergy_context=synergy_context,
                 queries=queries,
                 mutations=mutations,
                 conditions_mutations=conditions_mutations,
@@ -168,6 +172,7 @@ async def _check_discover_impl(
         element,
         location,
         hearing_only=hearing_only,
+        synergy_context=synergy_context,
         content=content,
         queries=queries,
         mutations=mutations,
@@ -209,6 +214,7 @@ async def reroll_discovery(context, player, pending, *, conn):
         element,
         location,
         hearing_only=pending["hearing_only"],
+        synergy_context=validate_synergy_context(pending.get("synergy_context", "none")),
         conn=conn,
         reroll_dc=pending["dc"],
     )
@@ -223,6 +229,7 @@ async def _resolve_discovery(
     location,
     *,
     hearing_only,
+    synergy_context="none",
     content=db_content_queries,
     queries=db_queries,
     mutations=db_mutations,
@@ -239,6 +246,9 @@ async def _resolve_discovery(
         skill_lower,
         dc,
         discovery=True,
+        synergy_context=synergy_context,
+        player_id=player_id,
+        in_combat=session.combat_state is not None,
         ally_present=session.allies_present_for(player_id),
         first_stay=await check_first_stay(player, session, skill_lower, player_id=player_id, conn=conn),
         natural_terrain=await skill_natural_terrain(session, player, skill_lower, content_mod=content),
@@ -263,6 +273,7 @@ async def _resolve_discovery(
         skill_lower=skill_lower,
         target=target,
         hearing_only=hearing_only,
+        synergy_context=synergy_context,
         dc=dc,
         reroll_dc=reroll_dc,
         content=content,
@@ -341,6 +352,7 @@ async def _finish_discovery(
     skill_lower,
     target,
     hearing_only,
+    synergy_context,
     dc,
     reroll_dc,
     content,
@@ -424,6 +436,7 @@ async def _finish_discovery(
                     "element_id": element_id,
                     "location_id": session.location_id,
                     "hearing_only": hearing_only,
+                    "synergy_context": synergy_context,
                 },
                 conn=write_conn,
                 authorized_roller=scope.roller_id if scope else None,

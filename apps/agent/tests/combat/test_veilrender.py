@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 from combat._catalog_fixtures import deps, setup
+from combat._helpers import save_result
 from creature_combat_helpers import catalog, participant
 from sample_fixtures import make_context
 from voice_condition_fixtures import spatial_record
@@ -23,18 +24,7 @@ def boss_state():
 
 
 def save(success=False):
-    return SimpleNamespace(
-        rally_sources=(),
-        success=success,
-        save_type="constitution",
-        roll=10,
-        total=10,
-        dc=16,
-        narrative_hint="",
-        dramatic=False,
-        context="",
-        advantage_applied=False,
-    )
+    return save_result(success, dc=16)
 
 
 def defend(actor):

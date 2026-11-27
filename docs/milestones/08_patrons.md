@@ -208,7 +208,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 
 **Review:** The human approved the final 180-row table on 2026-11-18 (table SHA-256 `5dee713a…`, content SHA-256 `c3238a53…`, commit `903ac541`), closing AC3. The approved table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md` with every changed number. Content and design share the approved corrections, including Nythera’s live Animal Handling +1 instead of advantage. Pending clauses are unavailable.
 
-Layer 4 lookup covers 180 pairings and 200 clauses. 104 are active/engine, 85 are active/narrated, and 11 are pending/engine.
+Layer 4 lookup covers 180 pairings and 200 clauses. 105 are active/engine, 85 are active/narrated, and 10 are pending/engine.
 
 Aelora’s Common Bond gives artificers, bards and diplomats +1 on live Crafting checks, recipe experiments and queued crafting rolls. Both queued crafting entry points save eligibility at creation, so earlier jobs resolve without the bonus. Common Bond stacks with Craft Blessing and is named in narration. Registered tool, HTTP and worker evidence is in `test_common_bond_crafting.py`.
 
@@ -243,6 +243,8 @@ Measured Reprisal adds 1 damage when a Valdris warrior hits a foe that attacked 
 Witness Shield gives Valdris guardians +1 AC against attackers named in an encounter’s testimony while its witness is scheduled at the combat location. Elder Yanna names two members of the Cult Cell in Millhaven. The combat entry receipt supplies their names for narration, and attack receipts identify the clause. `test_valdris_witness.py` covers discovery, entry, checkpoint reload, and attacks at Millhaven and its inn.
 
 Valdris’s Oath of Justice breaks on an uncharmed opening attack or an attack on a surrendered enemy, even on a miss. It locks Valdris’s three tier abilities for the current gameplay session. The yielded-ally term is evaluated by the engine and awaits a legal same-side attack. Combat receipts and checkpoint reloads record the breach and opening attacker. Unravel Fate refuses a rewind across the breach. `test_valdris_oath_breach.py` exercises the registered tools and patron snapshots.
+
+Justice at Stake gives Valdris paladins with an active, unsuppressed oath +2 on combat attacks and saves involving recorded wrongdoers. The patron query offers the same bonus on skill, social and discovery checks tagged `justice_at_stake` outside combat. The attack that breaks the oath receives zero. The Justice at Stake acceptance tests exercise the registered receipts and Fate checkpoints.
 
 Saltwind Casting gives Nythera mages +1 to spell attack rolls on their first stay at a Sunward Coast location. The cast receipt names the bonus. `test_nythera_unseen_coast.py` covers eligibility and Fate’s Thread continuation after checkpoint reload.
 

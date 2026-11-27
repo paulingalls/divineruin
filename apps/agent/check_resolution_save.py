@@ -71,6 +71,11 @@ class SavingThrowResult:
     d20: D20Roll | None = None
     success_override: str | None = None
     rally_sources: tuple[str, ...] = ()
+    originating_participant_id: str | None = None
+    oath_justice: dict | None = None
+
+    def justice_fields(self) -> dict:
+        return {"oath_justice": self.oath_justice} if self.oath_justice is not None else {}
 
 
 def resolve_saving_throw(
@@ -133,6 +138,7 @@ def resolve_saving_throw(
             critical_failure=False,
             effect_applied=effect_on_fail,
             narrative_hint="The condition leaves you unable to resist.",
+            originating_participant_id=originating_participant_id,
             dramatic=False,
             context="",
         )
@@ -165,6 +171,7 @@ def resolve_saving_throw(
             advantage_applied=advantage and not disadvantage,
             d20=d20,
             rally_sources=rally_sources,
+            originating_participant_id=originating_participant_id,
         ),
         d20.roll(rng),
         effect_on_fail,
