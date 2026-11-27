@@ -224,16 +224,19 @@ Additional topics: TTS Evaluation: Provider comparison: Inworld, Cartesia, Chatt
 
 ---
 
-## dependency_upgrade.md (257 lines)
+## dependency_upgrade.md (256 lines)
 
 Reproducible inventory of all direct dependencies, lock resolutions, compatibility and release-age decisions, infrastructure holds, and executed validation lanes.
 
 | Section | Lines | What's There |
 |---|---|---|
-| Python environments | 7-39 | Python environment and lockfile inventory. |
-| Bun workspace | 40-128 | Release age policy: 604800 seconds. |
-| Independent browser toolchain | 129-225 | Browser toolchain dependencies and validation. |
-| Historical validation outcomes | 226-257 | Recorded compatibility checks and test results. |
+| Python environments | 9-42 | Python environment and lockfile inventory. |
+| Bun workspace | 43-132 | Release age policy: 604800 seconds. |
+| Independent browser toolchain | 133-149 | Browser toolchain dependencies and validation. |
+| Mobile SDK 58 baseline | 150-193 | Platform minimums, configured plugins, and the dated Expo release-age exemption. |
+| Root resolution overrides | 194-199 | Exact pins applied across the Bun workspace. |
+| Infrastructure holds | 200-204 | Compose image upgrade decisions. |
+| Historical validation outcomes | 205-256 | Recorded compatibility checks and test results. |
 
 ---
 
@@ -688,17 +691,17 @@ Encounter role system: creature stat/loot/XP modifiers, encounter budget math, n
 
 ---
 
-## game_mechanics/game_mechanics_magic.md (549 lines)
+## game_mechanics/game_mechanics_magic.md (560 lines)
 
 Three magic sources, Resonance system, 87 spells.
 
 | Section | Lines | What's There |
 |---|---|---|
 | Magic System — The Three Sources and Resonance | 9-296 | Arcane/Divine/Primal multipliers, Resonance states, Hollow Echo, Veil Wards, racial interactions |
-| Arcane Spell Catalog | 297-377 | 30 arcane spells with Focus costs and Resonance generation |
-| Divine Spell Catalog | 378-451 | 28 divine spells: healing, protection, anti-Hollow |
-| Primal Spell Catalog | 452-528 | 29 primal spells: terrain manipulation, area denial |
-| Three-Source Catalog Comparison | 529-549 | Side-by-side comparison of spell pools and Resonance profiles |
+| Arcane Spell Catalog | 297-388 | 30 arcane spells with Focus costs and Resonance generation |
+| Divine Spell Catalog | 389-462 | 28 divine spells: healing, protection, anti-Hollow |
+| Primal Spell Catalog | 463-539 | 29 primal spells: terrain manipulation, area denial |
+| Three-Source Catalog Comparison | 540-560 | Side-by-side comparison of spell pools and Resonance profiles |
 
 ---
 
@@ -847,17 +850,18 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## ops/testflight.md (236 lines)
+## ops/testflight.md (258 lines)
 
 | Section | Lines | What's There |
 |---|---|---|
-| Tools and evidence | 14-41 |  |
-| Before starting | 42-55 |  |
-| Prepare the checkout | 56-73 |  |
-| Production / TestFlight | 74-160 |  |
-| Internal device build (separate path) | 161-197 |  |
-| Native plugin release review | 198-218 |  |
-| Credential-free generation evidence | 219-236 |  |
+| Tools and evidence | 17-44 |  |
+| Before starting | 45-58 |  |
+| Prepare the checkout | 59-76 |  |
+| Production / TestFlight | 77-163 |  |
+| Internal device build (separate path) | 164-200 |  |
+| Native plugin release review | 201-221 |  |
+| Credential-free generation evidence | 222-241 |  |
+| Expo SDK 58 update (2026-11-26) | 242-258 |  |
 
 ---
 
@@ -913,6 +917,10 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
+## milestones/03_spell_ledger.md (109 lines)
+
+---
+
 ## milestones/04_combat.md (316 lines)
 
 ---
@@ -953,7 +961,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/14_engine_completeness.md (99 lines)
+## milestones/14_engine_completeness.md (173 lines)
 
 ---
 

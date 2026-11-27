@@ -1,14 +1,19 @@
 """Read and apply the weekly agent acceptance coverage map."""
 
+import ast
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import cache
 from pathlib import Path
+
+from proof_source_cache import source_ast
 
 MAP = Path("scripts/proof-coverage-map.json")
 COLLECTOR = "scripts/proof_coverage_collect.py"
 OUTPUT_ENV = "PROOF_AGENT_COVERAGE_DIR"
 TASK_PREFIX = "agent-acceptance:"
+DEFINED_FUNCTIONS = "<defined-functions>"
 # The measured maximum, 5, preserves full coverage. Only combat_martial.py and
 # db_mutations.py need a fifth combat representative, adding a few seconds when they change.
 COVER_BUDGET = 5
@@ -24,6 +29,24 @@ def ordinary_agent_source(source):
         and path.parts[2:3] != ("tests",)
         and path.suffix == ".py"
     )
+
+
+@cache
+def defined_functions(source: str) -> frozenset[str]:
+    def visit(node: ast.AST, prefix: str) -> None:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            name = prefix + node.name
+            if not isinstance(node, ast.ClassDef):
+                names.add(name)
+            prefix = name + "."
+        # Match coverage.py's RegionFinder without requiring coverage in the generator.
+        for field in ("body", "orelse", "finalbody", "handlers", "cases"):
+            for child in getattr(node, field, ()):
+                visit(child, prefix)
+
+    names: set[str] = set()
+    visit(source_ast(source), "")
+    return frozenset(names)
 
 
 def task_order(inventory, task):
@@ -49,17 +72,19 @@ class CoverageMap:
     generated_at: datetime
     tasks: set[str]
     sources: dict[str, dict[str, set[str]]]
+    defined: dict[str, set[str]]
 
     def prune(self, tasks, sources):
         kept = self.tasks & tasks
+        retained = self.sources.keys() & sources if kept else set()
         return CoverageMap(
             self.generated_at,
             kept,
             {
-                source: {name: readers & kept for name, readers in functions.items() if readers & kept}
-                for source, functions in self.sources.items()
-                if kept and source in sources
+                source: {name: readers & kept for name, readers in self.sources[source].items() if readers & kept}
+                for source in retained
             },
+            {source: self.defined[source] for source in retained},
         )
 
     def write(self, path):
@@ -67,7 +92,10 @@ class CoverageMap:
             "generated_at": self.generated_at.astimezone(UTC).isoformat(),
             "tasks": sorted(self.tasks),
             **{
-                source: {name: sorted(tasks) for name, tasks in sorted(functions.items())}
+                source: {
+                    DEFINED_FUNCTIONS: sorted(self.defined[source]),
+                    **{name: sorted(tasks) for name, tasks in sorted(functions.items())},
+                }
                 for source, functions in sorted(self.sources.items())
             },
         }
@@ -85,30 +113,27 @@ class CoverageMap:
             )
 
     def select(self, source, inventory, reaching, required):
-        functions, mapped, fallback = self.family(source, inventory, reaching, required)
-        return greedy_cover(inventory, functions, mapped, required) | ({fallback} if fallback else set())
+        functions, mapped, fallbacks = self.family(source, inventory, reaching, required)
+        return greedy_cover(inventory, functions, mapped, required) | fallbacks
 
     def audit(self, source, family, inventory, reaching, selected, required):
-        functions, _, fallback = self.family(source, inventory, reaching, required)
-        audit_cover(source, family, functions, selected, required, fallback)
+        functions, _, fallbacks = self.family(source, inventory, reaching, required)
+        audit_cover(source, family, functions, selected, required, fallbacks)
 
     def family(self, source, inventory, reaching, required):
-        fallback_candidates = ordinary_candidates(inventory, source, reaching)
         acceptance = {task for task in reaching if task.startswith(TASK_PREFIX)}
-        if not acceptance or source not in self.sources:
-            return (
-                {},
-                set(),
-                first_reader(inventory, fallback_candidates) if not required else None,
-            )
+        if acceptance and (source not in self.sources or defined_functions(source) - self.defined[source]):
+            return {}, set(), acceptance
 
         mapped = acceptance & self.tasks
-        missing = acceptance - self.tasks
-        functions = {name: readers & mapped for name, readers in self.sources[source].items() if readers & mapped}
-        fallback = first_reader(inventory, missing) if missing else None
-        if not functions and not required and fallback is None:
-            fallback = first_reader(inventory, fallback_candidates)
-        return functions, mapped, fallback
+        functions = {
+            name: readers & mapped for name, readers in self.sources.get(source, {}).items() if readers & mapped
+        }
+        fallbacks = acceptance - self.tasks
+        if not functions and not required and not fallbacks:
+            candidates = ordinary_candidates(inventory, source, reaching)
+            fallbacks.add(first_reader(inventory, candidates))
+        return functions, mapped, fallbacks
 
 
 def load_map(path=MAP):
@@ -125,17 +150,25 @@ def load_map(path=MAP):
     if not tasks and sources:
         raise ValueError(f"{path}: sources require a task roster")
     result = {}
+    defined = {}
     for source in sorted(sources):
         functions = payload[source]
         if not ordinary_agent_source(source) or not isinstance(functions, dict):
             raise ValueError(f"{path}: invalid source entry {source}")
+        label = f"{path}: {source}: {DEFINED_FUNCTIONS}"
+        names = string_set(functions.get(DEFINED_FUNCTIONS), label)
+        if not names or functions.keys() - {DEFINED_FUNCTIONS} - names:
+            raise ValueError(f"{label}: expected a non-empty set containing every executed function")
+        defined[source] = names
         result[source] = {}
         for name, readers in functions.items():
+            if name == DEFINED_FUNCTIONS:
+                continue
             measured = string_set(readers, f"{path}: {source}: {name}")
             if not name or not measured or not measured <= tasks:
                 raise ValueError(f"{path}: {source}: {name}: invalid readers {sorted(measured - tasks)}")
             result[source][name] = measured
-    return CoverageMap(generated_at, tasks, result)
+    return CoverageMap(generated_at, tasks, result, defined)
 
 
 def string_set(value, label):
@@ -157,11 +190,11 @@ def greedy_cover(inventory, functions, candidates, required):
     return selected
 
 
-def audit_cover(source, family, functions, selected, required, fallback):
-    if fallback is not None and fallback not in selected:
-        raise ValueError(f"{source}: family {family}: missing fallback representative {fallback}")
+def audit_cover(source, family, functions, selected, required, fallbacks):
+    if missing_fallbacks := fallbacks - selected:
+        raise ValueError(f"{source}: family {family}: missing fallback readers {sorted(missing_fallbacks)}")
     missing = functions.keys() - covers(functions, selected)
-    additions = selected - required - {fallback}
+    additions = selected - required - fallbacks
     if missing or len(additions) > COVER_BUDGET:
         raise ValueError(
             f"{source}: family {family}: coverage cap {COVER_BUDGET}, needs {len(additions)}, "

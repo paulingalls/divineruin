@@ -1,7 +1,7 @@
 import { readFile, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 
-import { verifySdk57Baseline } from "./sdk-baseline";
+import { verifySdk58Baseline } from "./sdk-baseline";
 
 export interface CommandResult {
   exitCode: number | null;
@@ -135,6 +135,6 @@ if (import.meta.main) {
   const repoRoot = join(projectRoot, "../..");
   await runUpgradeVerification({
     projectRoot,
-    verifyBaseline: () => verifySdk57Baseline({ repoRoot }),
+    verifyBaseline: () => verifySdk58Baseline({ repoRoot }),
   });
 }

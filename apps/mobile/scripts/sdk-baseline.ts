@@ -10,8 +10,9 @@ export interface SdkBaselineOptions {
 
 const REMOVED_OVERRIDES = ["expo-constants", "react-native-screens", "hermes-compiler"];
 const LIVEKIT_NATIVE_GRAPH = {
-  "@livekit/react-native": "2.12.0",
-  "@livekit/react-native-webrtc": "144.1.2",
+  "@livekit/react-native": "3.2.0",
+  "@livekit/react-native-expo-plugin": "1.2.0",
+  "@livekit/react-native-webrtc": "150.2.0",
 };
 
 function record(value: unknown): Record<string, unknown> {
@@ -61,15 +62,6 @@ function stringArray(value: unknown): string[] {
     : [];
 }
 
-function hasSceneSupport(plugins: unknown[]): boolean {
-  return plugins.some(
-    (entry) =>
-      Array.isArray(entry) &&
-      entry[0] === "expo-build-properties" &&
-      record(record(entry[1]).ios).enableSceneSupport === true,
-  );
-}
-
 function verifyEslint(configs: unknown[]): void {
   if (configs.length === 0) throw new Error("evaluated ESLint config corpus is empty");
   const entries = configs.map(record);
@@ -102,7 +94,7 @@ function verifyEslint(configs: unknown[]): void {
   if (!hasReanimatedFloor) throw new Error("evaluated Reanimated ESLint rule floor is missing");
 }
 
-export async function verifySdk57Baseline(options: SdkBaselineOptions): Promise<void> {
+export async function verifySdk58Baseline(options: SdkBaselineOptions): Promise<void> {
   const mobileRoot = join(options.repoRoot, "apps/mobile");
   const [rootManifest, mobileManifest, appConfig] = await Promise.all([
     json(join(options.repoRoot, "package.json")),
@@ -110,8 +102,8 @@ export async function verifySdk57Baseline(options: SdkBaselineOptions): Promise<
     json(join(mobileRoot, "app.json")),
   ]);
   const dependencies = record(mobileManifest.dependencies);
-  if (typeof dependencies.expo !== "string" || !/^57\./.test(dependencies.expo)) {
-    throw new Error("mobile manifest must target Expo SDK 57");
+  if (typeof dependencies.expo !== "string" || !/^58\./.test(dependencies.expo)) {
+    throw new Error("mobile manifest must target Expo SDK 58");
   }
 
   const overrides = record(rootManifest.overrides);
@@ -147,13 +139,6 @@ export async function verifySdk57Baseline(options: SdkBaselineOptions): Promise<
   if (contains(evaluated, (key, value) => key === "buildReactNativeFromSource" && value === true)) {
     throw new Error("evaluated Expo config retains buildReactNativeFromSource=true");
   }
-  if (
-    typeof dependencies["expo-build-properties"] !== "string" ||
-    !hasSceneSupport(directPlugins) ||
-    !hasSceneSupport(evaluatedPlugins)
-  )
-    throw new Error("Expo SDK 57 requires scene support in authored and evaluated config");
-
   const eslint = await (options.loadEslintConfig ?? loadEslintConfig)(options.repoRoot);
   verifyEslint(eslint);
 }

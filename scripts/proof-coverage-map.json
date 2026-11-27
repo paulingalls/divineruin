@@ -214,6 +214,20 @@
     "agent-acceptance:test_zhael_fate_commands"
   ],
   "apps/agent/_gods_content.py": {
+    "<defined-functions>": [
+      "_engine_resolution",
+      "_fail",
+      "_layer_1",
+      "_matrix",
+      "_modifier",
+      "_object",
+      "_readiness",
+      "_text",
+      "_validate_gods",
+      "archetype_ids",
+      "engine_implementations",
+      "load_gods"
+    ],
     "_engine_resolution": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -2559,6 +2573,17 @@
     ]
   },
   "apps/agent/abilities.py": {
+    "<defined-functions>": [
+      "_parse_cost",
+      "_resolve_cost",
+      "get_ability",
+      "get_archetype_abilities",
+      "is_loaded",
+      "load_abilities",
+      "owns_ability",
+      "parse_ability_row",
+      "set_abilities"
+    ],
     "_parse_cost": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -3827,6 +3852,14 @@
     ]
   },
   "apps/agent/ability_persistence.py": {
+    "<defined-functions>": [
+      "get_active_variant",
+      "get_character_abilities",
+      "owns_elective",
+      "set_active_variant",
+      "set_elective_equipped",
+      "update_player_resources"
+    ],
     "get_active_variant": [
       "agent-acceptance:test_blade_flurry",
       "agent-acceptance:test_blade_flurry_guards",
@@ -4041,6 +4074,11 @@
     ]
   },
   "apps/agent/ability_tools.py": {
+    "<defined-functions>": [
+      "_request_ability_activation_impl",
+      "_request_ability_activation_impl.activate_unlocked",
+      "_request_ability_activation_unlocked"
+    ],
     "_request_ability_activation_impl": [
       "agent-acceptance:test_architect_legendary_guard",
       "agent-acceptance:test_catalog_encounter_cutover",
@@ -4094,6 +4132,12 @@
     ]
   },
   "apps/agent/ability_voice_rules.py": {
+    "<defined-functions>": [
+      "policy",
+      "reaction_effect_eligible",
+      "reaction_recipient",
+      "require_ability_delivery"
+    ],
     "policy": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -4266,6 +4310,18 @@
     ]
   },
   "apps/agent/action_contracts.py": {
+    "<defined-functions>": [
+      "invalid",
+      "positive_integer",
+      "validate_action_extensions",
+      "validate_choir_effect",
+      "validate_damage_rider",
+      "validate_durability_rider",
+      "validate_recharge",
+      "validate_resolution",
+      "validate_summon",
+      "validate_weapon_riders"
+    ],
     "invalid": [
       "agent-acceptance:test_catalog_combat_translation"
     ],
@@ -5158,6 +5214,9 @@
     ]
   },
   "apps/agent/action_contracts_still.py": {
+    "<defined-functions>": [
+      "validate_still_action"
+    ],
     "validate_still_action": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -5298,6 +5357,10 @@
     ]
   },
   "apps/agent/action_sound_content.py": {
+    "<defined-functions>": [
+      "_load_action_sounds",
+      "publish_action_sound"
+    ],
     "_load_action_sounds": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -5548,6 +5611,11 @@
     ]
   },
   "apps/agent/activate_tools.py": {
+    "<defined-functions>": [
+      "_activate_impl",
+      "_resolve_kind",
+      "activate"
+    ],
     "_activate_impl": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_legendary_guard",
@@ -5640,6 +5708,9 @@
     ]
   },
   "apps/agent/activity_payloads.py": {
+    "<defined-functions>": [
+      "to_impl_kwargs"
+    ],
     "to_impl_kwargs": [
       "agent-acceptance:test_async_purification",
       "agent-acceptance:test_async_purification_atomicity",
@@ -5648,12 +5719,30 @@
     ]
   },
   "apps/agent/activity_templates.py": {
+    "<defined-functions>": [
+      "_format_cultural_attribution",
+      "_format_quality_note",
+      "_format_recipe_cue",
+      "_format_replacement_notice",
+      "_npc_persona",
+      "_resolve_persona",
+      "build_narration_prompt",
+      "get_companion_context",
+      "get_crafting_npc",
+      "get_training_mentor"
+    ],
     "build_narration_prompt": [
       "agent-acceptance:test_async_purification",
       "agent-acceptance:test_async_purification_atomicity"
     ]
   },
   "apps/agent/activity_tools.py": {
+    "<defined-functions>": [
+      "_begin_activity_impl",
+      "_resolve_activity_impl",
+      "begin_activity",
+      "resolve_activity"
+    ],
     "_begin_activity_impl": [
       "agent-acceptance:test_async_purification",
       "agent-acceptance:test_async_purification_atomicity",
@@ -5672,6 +5761,16 @@
     ]
   },
   "apps/agent/aelora_hearthfire.py": {
+    "<defined-functions>": [
+      "_along",
+      "_occupants",
+      "contacts",
+      "facts",
+      "heal_round",
+      "place",
+      "settle_entry",
+      "tick"
+    ],
     "contacts": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -5951,6 +6050,24 @@
     ]
   },
   "apps/agent/affect_analyzer.py": {
+    "<defined-functions>": [
+      "PlayerAffectAnalyzer.__init__",
+      "PlayerAffectAnalyzer._process_stt_event",
+      "PlayerAffectAnalyzer._run",
+      "PlayerAffectAnalyzer.enqueue_event",
+      "PlayerAffectAnalyzer.get_current_vector",
+      "PlayerAffectAnalyzer.record_tts_end",
+      "PlayerAffectAnalyzer.start",
+      "PlayerAffectAnalyzer.stop",
+      "classify_interaction_mode",
+      "compute_engagement_score",
+      "compute_engagement_trend",
+      "compute_speech_rate",
+      "detect_interaction_signals",
+      "detect_question",
+      "engagement_level",
+      "format_vs_baseline"
+    ],
     "PlayerAffectAnalyzer.__init__": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -6507,6 +6624,17 @@
     ]
   },
   "apps/agent/agent.py": {
+    "<defined-functions>": [
+      "_build_recap_instruction",
+      "_cleanup_db",
+      "_extract_player_id",
+      "_join_session_end",
+      "_livekit_cli_argv",
+      "_session_with_listeners",
+      "_start_dm_session",
+      "dm_session",
+      "validate_env"
+    ],
     "_build_recap_instruction": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_first_episode_reentry",
@@ -6554,6 +6682,10 @@
     ]
   },
   "apps/agent/alignment_heartbeat.py": {
+    "<defined-functions>": [
+      "AlignmentHeartbeat.__init__",
+      "AlignmentHeartbeat.maybe_tick"
+    ],
     "AlignmentHeartbeat.__init__": [
       "agent-acceptance:test_architect_cathedral",
       "agent-acceptance:test_architect_constructs",
@@ -6606,6 +6738,15 @@
     ]
   },
   "apps/agent/archetypes.py": {
+    "<defined-functions>": [
+      "_parse_formula",
+      "get_archetype_chassis",
+      "is_known",
+      "is_loaded",
+      "load_archetypes",
+      "parse_archetype_row",
+      "set_archetypes"
+    ],
     "_parse_formula": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -7463,6 +7604,18 @@
     ]
   },
   "apps/agent/architect_actions.py": {
+    "<defined-functions>": [
+      "_automatic_damage",
+      "_push",
+      "_scope",
+      "_validate_continuation",
+      "geometry_auto_hit",
+      "is_cathedral",
+      "raise_cathedral",
+      "resolve",
+      "slam_refusal",
+      "validate_continuations"
+    ],
     "_automatic_damage": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_fight",
@@ -7851,6 +8004,18 @@
     ]
   },
   "apps/agent/architect_constructs.py": {
+    "<defined-functions>": [
+      "_add",
+      "_prefix",
+      "_timing",
+      "collapse",
+      "expire",
+      "facts",
+      "resolution_order",
+      "resolve",
+      "restore",
+      "validate"
+    ],
     "_add": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_construct_snapshot",
@@ -8232,6 +8397,22 @@
     ]
   },
   "apps/agent/architect_encounter.py": {
+    "<defined-functions>": [
+      "_check_section",
+      "_inside_cathedral",
+      "_remove_cathedral",
+      "_validate_cathedral",
+      "_validate_floor_checkpoint",
+      "_validate_receipts",
+      "cathedral_bonus",
+      "cathedral_ids",
+      "destroyed",
+      "end_cathedral_after_move",
+      "facts",
+      "initialize",
+      "is_owner",
+      "validate"
+    ],
     "_check_section": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -9132,6 +9313,21 @@
     ]
   },
   "apps/agent/architect_entomb.py": {
+    "<defined-functions>": [
+      "_facts",
+      "_prefix",
+      "_sourced",
+      "blocker",
+      "chambers",
+      "facts",
+      "land",
+      "matches",
+      "range_refusal",
+      "release_all",
+      "source",
+      "unlink",
+      "validate_links"
+    ],
     "_facts": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_entomb",
@@ -9950,6 +10146,14 @@
     ]
   },
   "apps/agent/architect_reaction.py": {
+    "<defined-functions>": [
+      "_effective_target",
+      "_raise_wall",
+      "_wall_prefix",
+      "expire_walls",
+      "spell_targets",
+      "weapon_target"
+    ],
     "_effective_target": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_entomb",
@@ -10270,6 +10474,17 @@
     ]
   },
   "apps/agent/architect_reshape.py": {
+    "<defined-functions>": [
+      "_floor_target",
+      "_range",
+      "_shift_wall",
+      "_wall",
+      "place_section",
+      "proposed_state",
+      "remaining",
+      "resolve",
+      "resolve_operation"
+    ],
     "_floor_target": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -10387,6 +10602,17 @@
     ]
   },
   "apps/agent/architect_scene.py": {
+    "<defined-functions>": [
+      "_dormant",
+      "end",
+      "facts",
+      "key",
+      "preflight",
+      "read",
+      "restore",
+      "start",
+      "write"
+    ],
     "_dormant": [
       "agent-acceptance:test_architect_cathedral",
       "agent-acceptance:test_architect_constructs",
@@ -10754,6 +10980,10 @@
     ]
   },
   "apps/agent/architect_zero_hp.py": {
+    "<defined-functions>": [
+      "collapse_owned_walls",
+      "collapse_structure"
+    ],
     "collapse_owned_walls": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -10860,6 +11090,12 @@
     ]
   },
   "apps/agent/asset_utils.py": {
+    "<defined-functions>": [
+      "asset_url",
+      "compute_asset_id",
+      "compute_item_image_url",
+      "slug_asset_url"
+    ],
     "asset_url": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_catalog_encounter_cutover",
@@ -11019,6 +11255,10 @@
     ]
   },
   "apps/agent/async_rules.py": {
+    "<defined-functions>": [
+      "resolve_companion_errand",
+      "resolve_crafting"
+    ],
     "resolve_companion_errand": [
       "agent-acceptance:test_m26_dispatch_verbs_capstone"
     ],
@@ -11028,6 +11268,16 @@
     ]
   },
   "apps/agent/async_worker.py": {
+    "<defined-functions>": [
+      "_backfill_progress_snippets",
+      "_resolve_one_outcome",
+      "_resolve_single_activity",
+      "activity_title",
+      "check_god_whisper_triggers",
+      "main",
+      "resolve_due_activities",
+      "validate_worker_env"
+    ],
     "_backfill_progress_snippets": [
       "agent-acceptance:test_async_purification",
       "agent-acceptance:test_async_purification_atomicity",
@@ -11064,6 +11314,13 @@
     ]
   },
   "apps/agent/async_worker_claim.py": {
+    "<defined-functions>": [
+      "claim_resolving",
+      "mark_resolved",
+      "reset_stale_resolving",
+      "revert_claim",
+      "revert_claim_safe"
+    ],
     "claim_resolving": [
       "agent-acceptance:test_async_purification",
       "agent-acceptance:test_async_purification_atomicity",
@@ -11087,11 +11344,20 @@
     ]
   },
   "apps/agent/async_worker_training.py": {
+    "<defined-functions>": [
+      "advance_training_cycles",
+      "apply_skill_practice_advancement",
+      "build_training_completion_outcome"
+    ],
     "advance_training_cycles": [
       "agent-acceptance:test_first_episode"
     ]
   },
   "apps/agent/attribute_increase_events.py": {
+    "<defined-functions>": [
+      "award_recipients",
+      "publish_snapshots"
+    ],
     "award_recipients": [
       "agent-acceptance:test_attribute_increase_commit",
       "agent-acceptance:test_catalog_encounter_cutover",
@@ -11171,6 +11437,10 @@
     ]
   },
   "apps/agent/attribute_increase_persistence.py": {
+    "<defined-functions>": [
+      "lock_increases",
+      "patch_player"
+    ],
     "lock_increases": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_attribute_increase_commit",
@@ -11206,11 +11476,22 @@
     ]
   },
   "apps/agent/attribute_increase_tools.py": {
+    "<defined-functions>": [
+      "select"
+    ],
     "select": [
       "agent-acceptance:test_attribute_increase_commit"
     ]
   },
   "apps/agent/attribute_increases.py": {
+    "<defined-functions>": [
+      "advance",
+      "offers",
+      "receipt",
+      "recompute",
+      "records",
+      "validate_scores"
+    ],
     "advance": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_attribute_increase_commit",
@@ -11342,6 +11623,30 @@
     ]
   },
   "apps/agent/background_process.py": {
+    "<defined-functions>": [
+      "BackgroundProcess.__init__",
+      "BackgroundProcess._advance_still",
+      "BackgroundProcess._apply_warm",
+      "BackgroundProcess._build_warm_layer",
+      "BackgroundProcess._check_companion_idle",
+      "BackgroundProcess._check_scene_beat_hints",
+      "BackgroundProcess._deliver_one",
+      "BackgroundProcess._deliver_speech",
+      "BackgroundProcess._handle_events",
+      "BackgroundProcess._idle_suppressed",
+      "BackgroundProcess._on_session_close",
+      "BackgroundProcess._process_events",
+      "BackgroundProcess._queue_speech",
+      "BackgroundProcess._rebuild_warm_layer",
+      "BackgroundProcess._refresh_speakers",
+      "BackgroundProcess._run",
+      "BackgroundProcess.discard_idle_speech",
+      "BackgroundProcess.pause",
+      "BackgroundProcess.primary_changed",
+      "BackgroundProcess.resume",
+      "BackgroundProcess.start",
+      "BackgroundProcess.stop"
+    ],
     "BackgroundProcess.__init__": [
       "agent-acceptance:test_architect_cathedral",
       "agent-acceptance:test_architect_constructs",
@@ -11768,6 +12073,27 @@
     ]
   },
   "apps/agent/base_agent.py": {
+    "<defined-functions>": [
+      "BaseGameAgent.__init__",
+      "BaseGameAgent._atomic_llm_node",
+      "BaseGameAgent._enter",
+      "BaseGameAgent._fire_and_forget",
+      "BaseGameAgent._on_bg_task_done",
+      "BaseGameAgent.llm_node",
+      "BaseGameAgent.observe_player_speech",
+      "BaseGameAgent.on_exit",
+      "BaseGameAgent.static_prompt",
+      "BaseGameAgent.stt_node",
+      "BaseGameAgent.tts_node",
+      "BaseGameAgent.tts_node.flush_buffer",
+      "BaseGameAgent.tts_node.flush_transcript",
+      "BaseGameAgent.tts_node.synthesize_chunk",
+      "ReportingEntry._enter",
+      "ReportingEntry.on_enter",
+      "_make_tts",
+      "_player_interrupted",
+      "_silence"
+    ],
     "BaseGameAgent.__init__": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -12534,6 +12860,11 @@
     ]
   },
   "apps/agent/bg_event_handlers.py": {
+    "<defined-functions>": [
+      "_queue",
+      "handle_events",
+      "queue_god_whisper"
+    ],
     "_queue": [
       "agent-acceptance:test_choir_capstone:test_public_choir_encounter_requires_actual_gameplay_delivery",
       "agent-acceptance:test_first_episode",
@@ -12567,6 +12898,10 @@
     ]
   },
   "apps/agent/bg_whisper_delivery.py": {
+    "<defined-functions>": [
+      "mark_whisper",
+      "named_whisper"
+    ],
     "mark_whisper": [
       "agent-acceptance:test_choir_capstone:test_public_choir_encounter_requires_actual_gameplay_delivery",
       "agent-acceptance:test_first_episode",
@@ -12581,6 +12916,19 @@
     ]
   },
   "apps/agent/card_tap_handler.py": {
+    "<defined-functions>": [
+      "CardTapHandler._handle",
+      "SpecializationTapHandler._handle",
+      "_PlayerHintsListener.__init__",
+      "_PlayerHintsListener._handle",
+      "_PlayerHintsListener._on_data_received",
+      "_PlayerHintsListener.start",
+      "_PlayerHintsListener.stop",
+      "authorized_hint_actor",
+      "build_hint_instruction",
+      "build_specialization_instruction",
+      "start_specialization_tap"
+    ],
     "SpecializationTapHandler._handle": [
       "agent-acceptance:test_leave_summary",
       "agent-acceptance:test_session_limits"
@@ -12725,6 +13073,15 @@
     ]
   },
   "apps/agent/cast_modifiers.py": {
+    "<defined-functions>": [
+      "apply_patron_generation",
+      "apply_ward_halving",
+      "compute_effective_resonance",
+      "compute_generated_resonance",
+      "patron_modifiers",
+      "resolve_overreach_echo",
+      "ward_combat_modifiers"
+    ],
     "apply_patron_generation": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -12993,6 +13350,10 @@
     ]
   },
   "apps/agent/caster_state.py": {
+    "<defined-functions>": [
+      "ConcentrationState.is_active",
+      "ResonanceTrack.state"
+    ],
     "ResonanceTrack.state": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_constructs",
@@ -13042,6 +13403,18 @@
     ]
   },
   "apps/agent/catalog_parse.py": {
+    "<defined-functions>": [
+      "opt_int",
+      "opt_str",
+      "parse_attributes",
+      "parse_dict",
+      "parse_int",
+      "parse_int_dict",
+      "parse_number",
+      "parse_str",
+      "parse_str_list",
+      "parse_str_tuple"
+    ],
     "opt_int": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -15174,6 +15547,16 @@
     ]
   },
   "apps/agent/character_spells.py": {
+    "<defined-functions>": [
+      "advance_learning_cycle",
+      "delete_learning_progress",
+      "get_known",
+      "get_learning_progress",
+      "get_prepared",
+      "list_learning_progress",
+      "record_learned",
+      "set_prepared"
+    ],
     "advance_learning_cycle": [
       "agent-acceptance:test_spell_acquisition"
     ],
@@ -15297,6 +15680,19 @@
     ]
   },
   "apps/agent/check_discovery.py": {
+    "<defined-functions>": [
+      "_check_discover_impl",
+      "_finish_discovery",
+      "_finish_discovery.flush",
+      "_publish_roll",
+      "_resolve_discovery",
+      "_resolve_discovery.no_effects",
+      "_resolve_discovery.write",
+      "_resolve_discovery.write.publish",
+      "_roll_response",
+      "_target_matches",
+      "reroll_discovery"
+    ],
     "_check_discover_impl": [
       "agent-acceptance:test_choir_encounter",
       "agent-acceptance:test_greyvale_arc_walk",
@@ -15371,6 +15767,11 @@
     ]
   },
   "apps/agent/check_payloads.py": {
+    "<defined-functions>": [
+      "DiscoverCheck.valid_hearing_skill",
+      "SkillCheck.valid_hearing_skill",
+      "to_impl_args"
+    ],
     "DiscoverCheck.valid_hearing_skill": [
       "agent-acceptance:test_greyvale_arc_walk",
       "agent-acceptance:test_journal_atomicity",
@@ -15405,6 +15806,22 @@
     ]
   },
   "apps/agent/check_resolution.py": {
+    "<defined-functions>": [
+      "D20CheckCore.critical_failure",
+      "D20CheckCore.critical_success",
+      "D20Roll.evaluate",
+      "D20Roll.evaluate_pair",
+      "D20Roll.roll",
+      "_apply_condition_modifiers",
+      "_check_auto_fail",
+      "_evaluate_d20",
+      "_resolve_skill_check_impl",
+      "_roll_d20_check",
+      "resolve_check",
+      "resolve_skill_check",
+      "resolve_skill_check_dc",
+      "skill_with_roll"
+    ],
     "D20CheckCore.critical_failure": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -16292,6 +16709,16 @@
     ]
   },
   "apps/agent/check_resolution_attack.py": {
+    "<defined-functions>": [
+      "PreparedAttack.from_dict",
+      "_is_ranged",
+      "attack_modes",
+      "attack_modifier",
+      "finish_attack",
+      "prepare_attack",
+      "resolve_attack",
+      "weapon_attribute_modifier"
+    ],
     "PreparedAttack.from_dict": [
       "agent-acceptance:test_architect_constructs",
       "agent-acceptance:test_architect_fight",
@@ -16942,6 +17369,12 @@
     ]
   },
   "apps/agent/check_resolution_save.py": {
+    "<defined-functions>": [
+      "_save_result",
+      "is_valid_save_key",
+      "resolve_saving_throw",
+      "roll_participant_save"
+    ],
     "_save_result": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -17331,6 +17764,13 @@
     ]
   },
   "apps/agent/check_skill.py": {
+    "<defined-functions>": [
+      "_check_skill_run",
+      "_check_skill_run.write",
+      "_check_skill_run.write.flush",
+      "_finish_skill",
+      "_finish_skill.validate"
+    ],
     "_check_skill_run": [
       "agent-acceptance:test_choir_encounter",
       "agent-acceptance:test_m45_dramatic_dice_capstone",
@@ -17354,6 +17794,17 @@
     ]
   },
   "apps/agent/check_tools.py": {
+    "<defined-functions>": [
+      "_check_dice_impl",
+      "_check_impl",
+      "_check_save_impl",
+      "_check_save_impl.resume",
+      "_check_skill_impl",
+      "_finish_save",
+      "_mark_skill_breakthrough_impl",
+      "check",
+      "mark_skill_breakthrough"
+    ],
     "_check_impl": [
       "agent-acceptance:test_choir_capstone:test_public_choir_encounter_requires_actual_gameplay_delivery",
       "agent-acceptance:test_choir_capstone_guards",
@@ -17408,6 +17859,11 @@
     ]
   },
   "apps/agent/choice_tools.py": {
+    "<defined-functions>": [
+      "_fork_block_reason",
+      "_select_impl",
+      "select"
+    ],
     "_fork_block_reason": [
       "agent-acceptance:test_milestone_progression"
     ],
@@ -17428,6 +17884,11 @@
     ]
   },
   "apps/agent/choir_actions.py": {
+    "<defined-functions>": [
+      "require_targets",
+      "resolve_area",
+      "resolve_effect"
+    ],
     "require_targets": [
       "agent-acceptance:test_choir_capstone:test_public_choir_encounter_requires_actual_gameplay_delivery",
       "agent-acceptance:test_choir_encounter",
@@ -17457,6 +17918,14 @@
     ]
   },
   "apps/agent/choir_effects.py": {
+    "<defined-functions>": [
+      "advance_round",
+      "approach",
+      "exposure",
+      "inflict_silence",
+      "suppressed",
+      "validate_data"
+    ],
     "advance_round": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -18056,6 +18525,22 @@
     ]
   },
   "apps/agent/choir_encounter.py": {
+    "<defined-functions>": [
+      "_spell_exceptions",
+      "destroyed",
+      "engine_damage_spell_ids",
+      "exposure_cue",
+      "facts",
+      "guard_damage",
+      "guard_declaration",
+      "initialize",
+      "owner",
+      "search",
+      "search.roll",
+      "stale_reason",
+      "turn_start",
+      "validate"
+    ],
     "_spell_exceptions": [
       "agent-acceptance:test_choir_action_contract",
       "agent-acceptance:test_choir_capstone:test_public_choir_encounter_requires_actual_gameplay_delivery",
@@ -19079,6 +19564,9 @@
     ]
   },
   "apps/agent/choir_reaction.py": {
+    "<defined-functions>": [
+      "effective_declaration"
+    ],
     "effective_declaration": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -19111,6 +19599,16 @@
     ]
   },
   "apps/agent/choir_scene.py": {
+    "<defined-functions>": [
+      "check_data",
+      "end",
+      "facts",
+      "key",
+      "load",
+      "preflight",
+      "read",
+      "start"
+    ],
     "check_data": [
       "agent-acceptance:test_choir_encounter",
       "agent-acceptance:test_greyvale_arc_walk",
@@ -19601,6 +20099,17 @@
     ]
   },
   "apps/agent/combat_ability.py": {
+    "<defined-functions>": [
+      "_attach_riders",
+      "_deduct_ability_cost",
+      "_find_action",
+      "_gate_ability_condition",
+      "_resolve_ability_condition_packet",
+      "_resolve_ability_packet",
+      "_resolve_condition_target",
+      "_with_variant",
+      "condition_ability"
+    ],
     "_attach_riders": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -20062,6 +20571,13 @@
     ]
   },
   "apps/agent/combat_ability_gate.py": {
+    "<defined-functions>": [
+      "attack_recipe",
+      "combat_ability",
+      "declared_ability",
+      "require_rally_target",
+      "war_cry_targets"
+    ],
     "attack_recipe": [
       "agent-acceptance:test_attribute_increase_commit",
       "agent-acceptance:test_blade_flurry",
@@ -20204,6 +20720,15 @@
     ]
   },
   "apps/agent/combat_ability_save.py": {
+    "<defined-functions>": [
+      "gate_hostile_condition_targets",
+      "gate_hostile_target",
+      "player_ability_dc",
+      "rally_allies",
+      "requires_hostile_target",
+      "resolve_hostile_condition",
+      "resolve_war_cry"
+    ],
     "gate_hostile_condition_targets": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -20305,6 +20830,14 @@
     ]
   },
   "apps/agent/combat_action_availability.py": {
+    "<defined-functions>": [
+      "action_summary",
+      "available_actions",
+      "begin_execution",
+      "item_rider_facts",
+      "replay_valid",
+      "require_available"
+    ],
     "action_summary": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -20991,6 +21524,11 @@
     ]
   },
   "apps/agent/combat_agent.py": {
+    "<defined-functions>": [
+      "CombatAgent.__init__",
+      "CombatAgent.on_user_turn_completed",
+      "create_combat_agent"
+    ],
     "CombatAgent.__init__": [
       "agent-acceptance:test_architect_cathedral",
       "agent-acceptance:test_architect_construct_snapshot",
@@ -21208,6 +21746,14 @@
     ]
   },
   "apps/agent/combat_ally_pass.py": {
+    "<defined-functions>": [
+      "_packetless_turn_start",
+      "begin_ally_pass",
+      "cancel_queued_move",
+      "held_argument",
+      "lock_remaining_players",
+      "run_ally_pass"
+    ],
     "_packetless_turn_start": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -21640,6 +22186,18 @@
     ]
   },
   "apps/agent/combat_attack_roll.py": {
+    "<defined-functions>": [
+      "attack_roll_inputs",
+      "build_attack_dice_roll_payload",
+      "deserialize_roll",
+      "held_reaction_ac",
+      "prepare_player_swing",
+      "promote_attack",
+      "record_beacon_attack",
+      "roll_attack",
+      "serialize_roll",
+      "spend_sneak_attack"
+    ],
     "attack_roll_inputs": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -22413,6 +22971,9 @@
     ]
   },
   "apps/agent/combat_attack_summary.py": {
+    "<defined-functions>": [
+      "aggregate"
+    ],
     "aggregate": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -22510,6 +23071,12 @@
     ]
   },
   "apps/agent/combat_condition_landing.py": {
+    "<defined-functions>": [
+      "_land_condition_on_one",
+      "can_land_condition",
+      "land_condition_on_participant",
+      "land_condition_on_participants"
+    ],
     "_land_condition_on_one": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -22614,6 +23181,13 @@
     ]
   },
   "apps/agent/combat_conditions_persist.py": {
+    "<defined-functions>": [
+      "_conditions_changed",
+      "_conditions_changed._key",
+      "_merge_persistent_conditions",
+      "_merge_persistent_conditions._severity",
+      "reconcile_member_conditions"
+    ],
     "_conditions_changed": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -22867,6 +23441,13 @@
     ]
   },
   "apps/agent/combat_cunning_action.py": {
+    "<defined-functions>": [
+      "hide",
+      "hide.roll",
+      "movement_allowance",
+      "pay",
+      "preflight"
+    ],
     "hide": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_martial_core_kit",
@@ -23110,6 +23691,10 @@
     ]
   },
   "apps/agent/combat_damage.py": {
+    "<defined-functions>": [
+      "_apply_damage",
+      "_handle_hp_zero"
+    ],
     "_apply_damage": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -23288,6 +23873,13 @@
     ]
   },
   "apps/agent/combat_damage_affinity.py": {
+    "<defined-functions>": [
+      "amount",
+      "apply",
+      "apply.adjusted",
+      "validate_traits",
+      "with_landed_damage"
+    ],
     "apply": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -23730,6 +24322,9 @@
     ]
   },
   "apps/agent/combat_damage_events.py": {
+    "<defined-functions>": [
+      "record_damage_event"
+    ],
     "record_damage_event": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -23838,6 +24433,11 @@
     ]
   },
   "apps/agent/combat_damage_results.py": {
+    "<defined-functions>": [
+      "attack_fields",
+      "freeze_blow",
+      "thaw_blow"
+    ],
     "attack_fields": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -23939,6 +24539,11 @@
     ]
   },
   "apps/agent/combat_damage_settlement.py": {
+    "<defined-functions>": [
+      "_pincer_first_hit",
+      "_settle_pincer",
+      "apply_attack_result"
+    ],
     "_pincer_first_hit": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -24153,6 +24758,15 @@
     ]
   },
   "apps/agent/combat_death_save.py": {
+    "<defined-functions>": [
+      "_request_death_save_impl",
+      "_request_death_save_locked",
+      "_resolve_faller",
+      "_roll_death_save",
+      "_roll_death_save.resume",
+      "_roll_death_save.roll",
+      "request_death_save"
+    ],
     "_request_death_save_impl": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_first_episode_reentry",
@@ -24205,6 +24819,10 @@
     ]
   },
   "apps/agent/combat_declaration_validation.py": {
+    "<defined-functions>": [
+      "_require_taunt_target",
+      "validate_declaration"
+    ],
     "_require_taunt_target": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -24427,6 +25045,15 @@
     ]
   },
   "apps/agent/combat_deescalation.py": {
+    "<defined-functions>": [
+      "_finish_argument",
+      "_gate_deescalation",
+      "_resolve_deescalation_packet",
+      "_resolve_deescalation_packet.roll_argument",
+      "_validate_argument_type",
+      "eligible_argument_targets",
+      "resume_deescalation"
+    ],
     "_finish_argument": [
       "agent-acceptance:test_first_episode_settlement",
       "agent-acceptance:test_m15_deescalation_scene_capstone",
@@ -24459,6 +25086,14 @@
     ]
   },
   "apps/agent/combat_down.py": {
+    "<defined-functions>": [
+      "damage_target_unavailable",
+      "has_damage",
+      "is_terminally_down",
+      "revive",
+      "sync_companion_consciousness",
+      "target_unavailable"
+    ],
     "damage_target_unavailable": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -25020,6 +25655,10 @@
     ]
   },
   "apps/agent/combat_durability.py": {
+    "<defined-functions>": [
+      "_accrue_durability",
+      "_find_equipped"
+    ],
     "_accrue_durability": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_durability_e2e",
@@ -25117,6 +25756,13 @@
     ]
   },
   "apps/agent/combat_end.py": {
+    "<defined-functions>": [
+      "_end_combat_db",
+      "_end_combat_finish",
+      "_end_combat_impl",
+      "_end_combat_locked",
+      "end_combat"
+    ],
     "_end_combat_db": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -25338,6 +25984,11 @@
     ]
   },
   "apps/agent/combat_end_lives.py": {
+    "<defined-functions>": [
+      "settle_lives",
+      "settle_lives._fallen_savable",
+      "settle_lives._is_truly_dead"
+    ],
     "settle_lives": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -25523,6 +26174,16 @@
     ]
   },
   "apps/agent/combat_enemy_action.py": {
+    "<defined-functions>": [
+      "_resolve_enemy_condition_packet",
+      "_save_fields",
+      "failed_conditions",
+      "is_combined_attack_action",
+      "is_save_damage_action",
+      "resolve_combined_attack_action",
+      "resolve_enemy_strike",
+      "resolve_save_damage_action"
+    ],
     "_resolve_enemy_condition_packet": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_entomb",
@@ -25821,6 +26482,17 @@
     ]
   },
   "apps/agent/combat_enemy_active.py": {
+    "<defined-functions>": [
+      "already_hollowed",
+      "apply_critical_save",
+      "apply_prepared_hit",
+      "critical_save_rider",
+      "heal",
+      "healed_hp",
+      "land_critical_save",
+      "resolve_active",
+      "roll_critical_save"
+    ],
     "already_hollowed": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_entomb",
@@ -26134,6 +26806,10 @@
     ]
   },
   "apps/agent/combat_enemy_conditions.py": {
+    "<defined-functions>": [
+      "_apply_condition_result",
+      "land_outcome"
+    ],
     "_apply_condition_result": [
       "agent-acceptance:test_catalog_combat_translation",
       "agent-acceptance:test_catalog_encounter_cutover",
@@ -26167,6 +26843,11 @@
     ]
   },
   "apps/agent/combat_enhancers.py": {
+    "<defined-functions>": [
+      "attack_sequence",
+      "declaration_riders",
+      "enhancers_from_flags"
+    ],
     "attack_sequence": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -26490,6 +27171,12 @@
     ]
   },
   "apps/agent/combat_entry.py": {
+    "<defined-functions>": [
+      "generated_encounter",
+      "load_party_players",
+      "mean_player_level",
+      "validate_entry_form"
+    ],
     "generated_encounter": [
       "agent-acceptance:test_generated_combat",
       "agent-acceptance:test_generated_combat_movement"
@@ -26750,6 +27437,15 @@
     ]
   },
   "apps/agent/combat_events.py": {
+    "<defined-functions>": [
+      "EventSink.emit",
+      "EventSink.flush",
+      "_CombatScratchSnapshot.capture",
+      "_CombatScratchSnapshot.restore",
+      "emit_or_publish",
+      "isolated_publish",
+      "scratch_guard"
+    ],
     "EventSink.emit": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -27545,6 +28241,11 @@
     ]
   },
   "apps/agent/combat_fate.py": {
+    "<defined-functions>": [
+      "attack_sequence",
+      "continue_attack",
+      "continue_attack.checkpoint"
+    ],
     "attack_sequence": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -27756,6 +28457,9 @@
     ]
   },
   "apps/agent/combat_fate_hostile.py": {
+    "<defined-functions>": [
+      "roll_hostile"
+    ],
     "roll_hostile": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_constructs",
@@ -27823,6 +28527,20 @@
     ]
   },
   "apps/agent/combat_fate_rolls.py": {
+    "<defined-functions>": [
+      "PacketRolls.paused",
+      "PacketRolls.save",
+      "PacketRolls.scope",
+      "PacketRolls.skill",
+      "PacketRolls.take_skill",
+      "PendingRoll.offer",
+      "PhaseRolls.hold",
+      "PhaseRolls.save",
+      "PhaseRolls.select",
+      "packet_save",
+      "saved_throw",
+      "store_throw"
+    ],
     "PacketRolls.paused": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -28328,6 +29046,9 @@
     ]
   },
   "apps/agent/combat_field_medic.py": {
+    "<defined-functions>": [
+      "settle"
+    ],
     "settle": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -28444,6 +29165,10 @@
     ]
   },
   "apps/agent/combat_fortitude.py": {
+    "<defined-functions>": [
+      "roll_fortitude",
+      "try_fortitude"
+    ],
     "roll_fortitude": [
       "agent-acceptance:test_hollow_troops_fight",
       "agent-acceptance:test_hollowed_knight_fight"
@@ -28454,6 +29179,12 @@
     ]
   },
   "apps/agent/combat_grapple.py": {
+    "<defined-functions>": [
+      "escape_dc",
+      "grappler_id",
+      "release_from_grappler",
+      "validate_grapple_action"
+    ],
     "escape_dc": [
       "agent-acceptance:test_catalog_combat_translation",
       "agent-acceptance:test_catalog_encounter_cutover",
@@ -28793,6 +29524,9 @@
     ]
   },
   "apps/agent/combat_handoff.py": {
+    "<defined-functions>": [
+      "build_handoff_agent"
+    ],
     "build_handoff_agent": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -28843,6 +29577,22 @@
     ]
   },
   "apps/agent/combat_hold.py": {
+    "<defined-functions>": [
+      "_assert_iteration_progress",
+      "_assert_single_swing",
+      "_concealed_summary",
+      "_open",
+      "_replay_resolver",
+      "_replay_resolver._resolve",
+      "_resolve_held",
+      "_window",
+      "_with_reshape",
+      "hold_enemy_packets",
+      "new_head",
+      "preflight_spend",
+      "pump",
+      "record_spend"
+    ],
     "_assert_iteration_progress": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -29858,6 +30608,13 @@
     ]
   },
   "apps/agent/combat_hold_actions.py": {
+    "<defined-functions>": [
+      "_attack_action",
+      "_held_declaration",
+      "_is_wasted",
+      "_opens_windows",
+      "concealed_target_reason"
+    ],
     "_attack_action": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -30365,6 +31122,9 @@
     ]
   },
   "apps/agent/combat_hold_conditions.py": {
+    "<defined-functions>": [
+      "window_for"
+    ],
     "window_for": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -30445,6 +31205,11 @@
     ]
   },
   "apps/agent/combat_hollow_death.py": {
+    "<defined-functions>": [
+      "accrue_death",
+      "mark_destroyed",
+      "new_destruction"
+    ],
     "accrue_death": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -30659,6 +31424,12 @@
     ]
   },
   "apps/agent/combat_hollow_resonance.py": {
+    "<defined-functions>": [
+      "cast_generation",
+      "current_total",
+      "stage_total",
+      "take_totals"
+    ],
     "cast_generation": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -30904,6 +31675,10 @@
     ]
   },
   "apps/agent/combat_init.py": {
+    "<defined-functions>": [
+      "_start_combat_impl",
+      "_start_combat_locked"
+    ],
     "_start_combat_impl": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -31150,6 +31925,10 @@
     ]
   },
   "apps/agent/combat_init_participants.py": {
+    "<defined-functions>": [
+      "assemble_participants",
+      "class_reaction_ids"
+    ],
     "assemble_participants": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -31396,6 +32175,11 @@
     ]
   },
   "apps/agent/combat_init_validation.py": {
+    "<defined-functions>": [
+      "_validate_enemy_tiers",
+      "validate_enemy_action_shapes",
+      "validate_enemy_resistance_tags"
+    ],
     "_validate_enemy_tiers": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -31771,6 +32555,12 @@
     ]
   },
   "apps/agent/combat_item_rider.py": {
+    "<defined-functions>": [
+      "eligible_items",
+      "party_player",
+      "preflight",
+      "resolve_rider"
+    ],
     "eligible_items": [
       "agent-acceptance:test_catalog_combat_translation",
       "agent-acceptance:test_deep_ashmark",
@@ -31937,6 +32727,14 @@
     ]
   },
   "apps/agent/combat_legendary.py": {
+    "<defined-functions>": [
+      "_other_continuation",
+      "_runtime_binding",
+      "bind",
+      "prepare",
+      "require_boundary",
+      "validate"
+    ],
     "_other_continuation": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_legendary",
@@ -32107,6 +32905,10 @@
     ]
   },
   "apps/agent/combat_legendary_resistance.py": {
+    "<defined-functions>": [
+      "finalize_save",
+      "override_fields"
+    ],
     "finalize_save": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -32198,6 +33000,9 @@
     ]
   },
   "apps/agent/combat_maneuver.py": {
+    "<defined-functions>": [
+      "resolve_maneuver"
+    ],
     "resolve_maneuver": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_entomb_release",
@@ -32208,6 +33013,11 @@
     ]
   },
   "apps/agent/combat_marks.py": {
+    "<defined-functions>": [
+      "_mark_source",
+      "attack_bonus",
+      "resolve_mark_action"
+    ],
     "_mark_source": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -32411,6 +33221,31 @@
     ]
   },
   "apps/agent/combat_martial.py": {
+    "<defined-functions>": [
+      "_order_targets",
+      "_study_target",
+      "active_rider_variant",
+      "attack_ability",
+      "bash_save",
+      "cleave_faces",
+      "cleave_targets",
+      "cripple",
+      "exploit_weakness",
+      "main_hand",
+      "order_receipt",
+      "order_recipients",
+      "pay",
+      "preflight_orders",
+      "reach_refusal",
+      "require_targets",
+      "resolve_order",
+      "second_wind",
+      "skip_swing",
+      "smoke_bomb",
+      "standing_foe",
+      "vanish",
+      "whirlwind_targets"
+    ],
     "_study_target": [
       "agent-acceptance:test_strike_riders",
       "agent-acceptance:test_strike_riders_guards"
@@ -32800,6 +33635,19 @@
     ]
   },
   "apps/agent/combat_melee_approach.py": {
+    "<defined-functions>": [
+      "_record_leg",
+      "apply_leg",
+      "cache_held",
+      "finish",
+      "is_melee",
+      "leg_declaration",
+      "melee_reach",
+      "plan",
+      "prepare",
+      "prepare_packet",
+      "resolve_leg"
+    ],
     "_record_leg": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_reentry",
@@ -33425,6 +34273,16 @@
     ]
   },
   "apps/agent/combat_movement_cost.py": {
+    "<defined-functions>": [
+      "_covered",
+      "_interval",
+      "_union",
+      "crosses_low_ceiling",
+      "movement_cost",
+      "reachable_point",
+      "rectangle",
+      "validate_areas"
+    ],
     "_covered": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -33771,6 +34629,11 @@
     ]
   },
   "apps/agent/combat_multiattack.py": {
+    "<defined-functions>": [
+      "expand_declaration",
+      "held_declarations",
+      "strike_summary"
+    ],
     "expand_declaration": [
       "agent-acceptance:test_combat_wall_lines",
       "agent-acceptance:test_hollow_troops_fight",
@@ -34002,6 +34865,13 @@
     ]
   },
   "apps/agent/combat_opportunity.py": {
+    "<defined-functions>": [
+      "_find_exits",
+      "_strike",
+      "movement_candidate",
+      "prepare_held",
+      "reach_exits"
+    ],
     "_find_exits": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_terrain",
@@ -34163,6 +35033,23 @@
     ]
   },
   "apps/agent/combat_order_riders.py": {
+    "<defined-functions>": [
+      "_coordinated",
+      "_grant",
+      "_validate_coordinated",
+      "consume",
+      "expire",
+      "grant_coordinated_assault",
+      "grant_direct_strike",
+      "grant_field_medic",
+      "grant_sacrifice_play",
+      "select",
+      "select_coordinated",
+      "select_field_medic",
+      "select_sacrifice",
+      "settle_coordinated",
+      "validate"
+    ],
     "_coordinated": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -34707,6 +35594,10 @@
     ]
   },
   "apps/agent/combat_packet.py": {
+    "<defined-functions>": [
+      "_resolve_action_packet",
+      "_resolve_one_packet"
+    ],
     "_resolve_action_packet": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -34943,6 +35834,9 @@
     ]
   },
   "apps/agent/combat_packet_gate.py": {
+    "<defined-functions>": [
+      "_prevalidate_ability_focus"
+    ],
     "_prevalidate_ability_focus": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -35063,6 +35957,9 @@
     ]
   },
   "apps/agent/combat_packet_special.py": {
+    "<defined-functions>": [
+      "resolve"
+    ],
     "resolve": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -35168,6 +36065,10 @@
     ]
   },
   "apps/agent/combat_packet_weapon.py": {
+    "<defined-functions>": [
+      "resolve",
+      "resolve_multi_target"
+    ],
     "resolve": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -35269,6 +36170,12 @@
     ]
   },
   "apps/agent/combat_participant.py": {
+    "<defined-functions>": [
+      "CombatParticipant.__post_init__",
+      "CombatParticipant.is_ally",
+      "CombatParticipant.is_structure",
+      "CombatParticipant.legendary_capacity"
+    ],
     "CombatParticipant.__post_init__": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -35804,6 +36711,18 @@
     ]
   },
   "apps/agent/combat_phase.py": {
+    "<defined-functions>": [
+      "_boss_legendaries",
+      "_reset_legendary_actions",
+      "_resolve_packets",
+      "_wrap",
+      "advance_combat_phase",
+      "combat_outcome",
+      "consume_legendary_action",
+      "partition_packets",
+      "reopen_declaration",
+      "resolution_sort_key"
+    ],
     "_boss_legendaries": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -36748,6 +37667,10 @@
     ]
   },
   "apps/agent/combat_phase_recovery.py": {
+    "<defined-functions>": [
+      "PrevalidationRefusal.__init__",
+      "phase_transaction_with_recovery"
+    ],
     "PrevalidationRefusal.__init__": [
       "agent-acceptance:test_blade_flurry_guards",
       "agent-acceptance:test_cleave_and_whirlwind_guards",
@@ -36878,6 +37801,9 @@
     ]
   },
   "apps/agent/combat_player_ability.py": {
+    "<defined-functions>": [
+      "resolve"
+    ],
     "resolve": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -36931,6 +37857,18 @@
     ]
   },
   "apps/agent/combat_player_movement.py": {
+    "<defined-functions>": [
+      "PlayerMovement._finish",
+      "PlayerMovement._leg",
+      "PlayerMovement._start",
+      "PlayerMovement.advance",
+      "PlayerMovement.approach",
+      "PlayerMovement.move",
+      "PlayerMovement.route",
+      "_damage_average",
+      "_exits",
+      "_melee_actions"
+    ],
     "PlayerMovement._finish": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_encounter_templates_surface_entry",
@@ -37318,6 +38256,19 @@
     ]
   },
   "apps/agent/combat_quick_fingers.py": {
+    "<defined-functions>": [
+      "_definition",
+      "_plant",
+      "_plant_row",
+      "_steal",
+      "_transfer",
+      "inventory_selector",
+      "preflight",
+      "require_target",
+      "resolve",
+      "resolve.roll",
+      "take_advantage"
+    ],
     "_definition": [
       "agent-acceptance:test_quick_fingers",
       "agent-acceptance:test_quick_fingers_fault",
@@ -37556,6 +38507,16 @@
     ]
   },
   "apps/agent/combat_reaction_contest.py": {
+    "<defined-functions>": [
+      "_attribute",
+      "_validate_stored",
+      "_won_effects",
+      "hesitated",
+      "hesitation_reason",
+      "mark_cancelled",
+      "normalize_held_actions",
+      "resolve_or_reuse"
+    ],
     "_won_effects": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -37999,6 +38960,19 @@
     ]
   },
   "apps/agent/combat_reaction_effect.py": {
+    "<defined-functions>": [
+      "_apply",
+      "_held_target",
+      "ac_bonus",
+      "bound_spends",
+      "close",
+      "grapple_blocked",
+      "halve",
+      "record_save_advantage",
+      "record_shield_wear",
+      "save_advantage",
+      "shield_reaction"
+    ],
     "_apply": [
       "agent-acceptance:test_architect_legendary_guard",
       "agent-acceptance:test_catalog_encounter_cutover",
@@ -38722,6 +39696,14 @@
     ]
   },
   "apps/agent/combat_recharge.py": {
+    "<defined-functions>": [
+      "action_key",
+      "available",
+      "capacity",
+      "initialize",
+      "recharge_round",
+      "spend"
+    ],
     "action_key": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -39448,6 +40430,13 @@
     ]
   },
   "apps/agent/combat_regeneration.py": {
+    "<defined-functions>": [
+      "_condition",
+      "_remaining",
+      "publish_settled_hp",
+      "settle",
+      "tick"
+    ],
     "_condition": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -39817,6 +40806,9 @@
     ]
   },
   "apps/agent/combat_reshape_packet.py": {
+    "<defined-functions>": [
+      "resolve_reshape"
+    ],
     "resolve_reshape": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -39926,6 +40918,16 @@
     ]
   },
   "apps/agent/combat_resolution.py": {
+    "<defined-functions>": [
+      "calculate_combat_xp",
+      "hp_threshold_status",
+      "is_heavily_armored",
+      "is_hollow_zone",
+      "resolve_argument_round",
+      "resolve_death_save",
+      "roll_initiative",
+      "weapon_hits_for_encounter"
+    ],
     "calculate_combat_xp": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -40352,6 +41354,10 @@
     ]
   },
   "apps/agent/combat_resolve_phase.py": {
+    "<defined-functions>": [
+      "_resolve_phase_locked",
+      "_resolve_phase_locked.resume"
+    ],
     "_resolve_phase_locked": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -40487,6 +41493,10 @@
     ]
   },
   "apps/agent/combat_retreat.py": {
+    "<defined-functions>": [
+      "_endpoint",
+      "resolve"
+    ],
     "_endpoint": [
       "agent-acceptance:test_iron_stance",
       "agent-acceptance:test_m42_action_economy_capstone",
@@ -40499,6 +41509,15 @@
     ]
   },
   "apps/agent/combat_rewards.py": {
+    "<defined-functions>": [
+      "RewardChannel.emit",
+      "distribute_currency",
+      "distribute_loot",
+      "distribute_xp",
+      "grant_victory_rewards",
+      "roll_encounter_spoils",
+      "seat_order_for"
+    ],
     "RewardChannel.emit": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -40813,6 +41832,17 @@
     ]
   },
   "apps/agent/combat_round_checkpoint.py": {
+    "<defined-functions>": [
+      "_id",
+      "_json_object",
+      "_validate_player",
+      "_validate_snapshot",
+      "capture",
+      "combat_image",
+      "load_history",
+      "read_inventory",
+      "read_party"
+    ],
     "_id": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -41912,6 +42942,13 @@
     ]
   },
   "apps/agent/combat_shadow_step.py": {
+    "<defined-functions>": [
+      "_covered",
+      "_move",
+      "_require_cover",
+      "resolve",
+      "validate"
+    ],
     "_covered": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_shadow_step",
@@ -41939,6 +42976,9 @@
     ]
   },
   "apps/agent/combat_sound_content.py": {
+    "<defined-functions>": [
+      "_load_combat_sounds"
+    ],
     "_load_combat_sounds": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -42154,6 +43194,9 @@
     ]
   },
   "apps/agent/combat_sound_events.py": {
+    "<defined-functions>": [
+      "publish_combat_sounds"
+    ],
     "publish_combat_sounds": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -42295,6 +43338,28 @@
     ]
   },
   "apps/agent/combat_spatial.py": {
+    "<defined-functions>": [
+      "add_smoke",
+      "axis_projection",
+      "distance",
+      "expire_smoke",
+      "facts",
+      "force_place",
+      "in_cone",
+      "in_line",
+      "inside",
+      "mapping",
+      "number",
+      "place",
+      "point",
+      "position",
+      "require_spatial",
+      "response_facts",
+      "smoke_obscures",
+      "validate_maps",
+      "validate_scene",
+      "validate_spatial"
+    ],
     "add_smoke": [
       "agent-acceptance:test_shadow_step",
       "agent-acceptance:test_shadow_step_guards",
@@ -44281,6 +45346,19 @@
     ]
   },
   "apps/agent/combat_spatial_declarations.py": {
+    "<defined-functions>": [
+      "_at_edge",
+      "apply_move",
+      "in_pit",
+      "ineligible",
+      "is_move",
+      "movement_blocker",
+      "movement_geometry",
+      "preflight",
+      "preflight_state",
+      "resolve_traversal",
+      "validate_move"
+    ],
     "apply_move": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -44988,6 +46066,10 @@
     ]
   },
   "apps/agent/combat_spatial_entry.py": {
+    "<defined-functions>": [
+      "build_spatial",
+      "default_scene_placement"
+    ],
     "build_spatial": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -45116,6 +46198,14 @@
     ]
   },
   "apps/agent/combat_spell_damage.py": {
+    "<defined-functions>": [
+      "_components",
+      "_deferred",
+      "_land_attack",
+      "_land_one",
+      "_roll_save_damage",
+      "land"
+    ],
     "_components": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -45265,6 +46355,19 @@
     ]
   },
   "apps/agent/combat_spell_heal.py": {
+    "<defined-functions>": [
+      "_explicit_targets",
+      "_gift_receipt",
+      "_healing_roll",
+      "_receipt",
+      "combat_ally",
+      "combat_recipients",
+      "exploration_recipients",
+      "hp_updates",
+      "land",
+      "land_exploration",
+      "restore"
+    ],
     "_explicit_targets": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_entomb",
@@ -45345,6 +46448,13 @@
     ]
   },
   "apps/agent/combat_spell_profile.py": {
+    "<defined-functions>": [
+      "parse_heal_profile",
+      "parse_item_creation",
+      "parse_profile",
+      "scaled",
+      "validate_target"
+    ],
     "parse_heal_profile": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -46045,6 +47155,12 @@
     ]
   },
   "apps/agent/combat_spell_recipients.py": {
+    "<defined-functions>": [
+      "select",
+      "select.clear",
+      "select.pos",
+      "validate_spec"
+    ],
     "select": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_entomb",
@@ -46303,6 +47419,13 @@
     ]
   },
   "apps/agent/combat_state.py": {
+    "<defined-functions>": [
+      "CombatState.from_dict",
+      "CombatState.get_participant",
+      "CombatState.to_dict",
+      "_authored_rally_reach",
+      "_upgrade_legacy_rally"
+    ],
     "CombatState.from_dict": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -46805,6 +47928,33 @@
     ]
   },
   "apps/agent/combat_structures.py": {
+    "<defined-functions>": [
+      "_coords",
+      "_cross",
+      "_first_contact",
+      "_interpolate",
+      "_intersection_interval",
+      "_place_wall",
+      "_segment",
+      "_xy_delta",
+      "action_has_direct_line",
+      "add_wall",
+      "blocked_reason",
+      "blocking_wall",
+      "blocks_path",
+      "chamber_line_blocker",
+      "collapse_wall",
+      "first_wall_contact",
+      "line_blocker",
+      "move_wall",
+      "nearest_wall_point",
+      "require_line",
+      "stop_before_wall",
+      "touches",
+      "validate_participants",
+      "validate_segments",
+      "wall_facts"
+    ],
     "_coords": [
       "agent-acceptance:test_architect_entomb",
       "agent-acceptance:test_architect_reaction",
@@ -47979,6 +49129,13 @@
     ]
   },
   "apps/agent/combat_support.py": {
+    "<defined-functions>": [
+      "_participant_roster",
+      "_participant_summary",
+      "_require_combat",
+      "_resolve_attack_packet",
+      "apply_rolled_attack"
+    ],
     "_participant_roster": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -48574,6 +49731,10 @@
     ]
   },
   "apps/agent/combat_terrain.py": {
+    "<defined-functions>": [
+      "resolve_terrain",
+      "skill_natural_terrain"
+    ],
     "resolve_terrain": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -48740,6 +49901,16 @@
     ]
   },
   "apps/agent/combat_turn.py": {
+    "<defined-functions>": [
+      "_consume_legendary_action_impl",
+      "_consume_legendary_action_locked",
+      "_declare_phase_impl",
+      "_declare_phase_locked",
+      "_resolve_phase_impl",
+      "consume_legendary_action",
+      "declare_phase",
+      "resolve_phase"
+    ],
     "_consume_legendary_action_impl": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_legendary",
@@ -49317,6 +50488,16 @@
     ]
   },
   "apps/agent/combat_turn_start.py": {
+    "<defined-functions>": [
+      "_apply",
+      "_damage",
+      "_finish_packet_start",
+      "ally_turns",
+      "start_choir_packet",
+      "start_held_packet",
+      "turn_start",
+      "validate_turn_start_damage"
+    ],
     "_apply": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_entomb",
@@ -50136,6 +51317,12 @@
     ]
   },
   "apps/agent/combat_ui_update.py": {
+    "<defined-functions>": [
+      "_active_id",
+      "_project_combatant",
+      "_project_condition",
+      "build_combat_ui_update"
+    ],
     "_active_id": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -50606,6 +51793,13 @@
     ]
   },
   "apps/agent/combat_veilrender.py": {
+    "<defined-functions>": [
+      "_regenerate",
+      "absorb_spell",
+      "living",
+      "mark_radiant",
+      "turn_start"
+    ],
     "_regenerate": [
       "agent-acceptance:test_combat_wall_lines_areas",
       "agent-acceptance:test_enemy_opportunity_attacks_guards",
@@ -50987,6 +52181,10 @@
     ]
   },
   "apps/agent/combat_voice_rules.py": {
+    "<defined-functions>": [
+      "guard_declaration",
+      "guard_spell"
+    ],
     "guard_declaration": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -51159,6 +52357,12 @@
     ]
   },
   "apps/agent/combat_wrap.py": {
+    "<defined-functions>": [
+      "_held_action_name",
+      "_roll_tick_save",
+      "next_envelope",
+      "wrap_phase"
+    ],
     "_held_action_name": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_constructs",
@@ -51454,6 +52658,14 @@
     ]
   },
   "apps/agent/combat_wrongdoing.py": {
+    "<defined-functions>": [
+      "aggression_facts",
+      "grievance",
+      "grievance_key",
+      "record_attack",
+      "validate_ledger",
+      "wrongdoing"
+    ],
     "aggression_facts": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -51788,6 +53000,12 @@
     ]
   },
   "apps/agent/communication_voice_rules.py": {
+    "<defined-functions>": [
+      "actor_conditions",
+      "can_hear",
+      "require_delivery",
+      "require_source"
+    ],
     "actor_conditions": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_first_episode_settlement",
@@ -51851,6 +53069,9 @@
     ]
   },
   "apps/agent/companion_cue_events.py": {
+    "<defined-functions>": [
+      "publish_companion_cue"
+    ],
     "publish_companion_cue": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_first_episode_reentry",
@@ -51859,6 +53080,23 @@
     ]
   },
   "apps/agent/companion_profiles.py": {
+    "<defined-functions>": [
+      "_parse_active",
+      "_parse_attack",
+      "_parse_passive",
+      "_parse_portrait",
+      "_parse_progression",
+      "_parse_reaction",
+      "_parse_scaling_rules",
+      "_parse_scaling_step",
+      "get_companion_profile",
+      "is_loaded",
+      "load_companion_profiles",
+      "parse_companion_row",
+      "progression_gains_up_to",
+      "select_companion_for_archetype",
+      "set_companion_profiles"
+    ],
     "_parse_active": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -54132,6 +55370,13 @@
     ]
   },
   "apps/agent/companion_prompts.py": {
+    "<defined-functions>": [
+      "_non_verbal_note",
+      "build_companion_cue",
+      "build_companion_prompt",
+      "companion_voice_directive",
+      "is_companion_cue"
+    ],
     "_non_verbal_note": [
       "agent-acceptance:test_catalog_encounter_cutover",
       "agent-acceptance:test_choir_encounter",
@@ -54193,6 +55438,13 @@
     ]
   },
   "apps/agent/companion_relationship.py": {
+    "<defined-functions>": [
+      "apply_relationship_change",
+      "effective_tier_rank",
+      "tier_name",
+      "tier_rank_for_session_count",
+      "unlocks_up_to"
+    ],
     "effective_tier_rank": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_first_episode_reentry",
@@ -54225,6 +55477,13 @@
     ]
   },
   "apps/agent/companion_relationship_queries.py": {
+    "<defined-functions>": [
+      "apply_errand_affinity",
+      "cached_effective_rank",
+      "hydrate_assigned_companion_state",
+      "hydrate_companion_state",
+      "query_companion_relationship"
+    ],
     "apply_errand_affinity": [
       "agent-acceptance:test_m26_dispatch_verbs_capstone",
       "agent-acceptance:test_m6_4_companion_chain_capstone"
@@ -54250,6 +55509,12 @@
     ]
   },
   "apps/agent/companion_scaling.py": {
+    "<defined-functions>": [
+      "_hit_to_governing_attribute",
+      "_strip_to_dice_notation",
+      "companion_attacks_to_action_pool",
+      "scale_companion_stats_to_player_level"
+    ],
     "_hit_to_governing_attribute": [
       "agent-acceptance:test_architect_cathedral",
       "agent-acceptance:test_architect_entomb",
@@ -54360,6 +55625,19 @@
     ]
   },
   "apps/agent/concealment.py": {
+    "<defined-functions>": [
+      "_expire_orphaned_gift",
+      "_lock_players",
+      "_validate_lifetime",
+      "concealed_ids",
+      "expire_combat",
+      "expire_orphaned_gift",
+      "gift_lifetime",
+      "is_concealed",
+      "reveal_attacker",
+      "tick_gift_round",
+      "transition"
+    ],
     "_expire_orphaned_gift": [
       "agent-acceptance:test_syrath_gift"
     ],
@@ -55298,6 +56576,10 @@
     ]
   },
   "apps/agent/concentration.py": {
+    "<defined-functions>": [
+      "check_concentration",
+      "concentration_holds"
+    ],
     "check_concentration": [
       "agent-acceptance:test_architect_cathedral",
       "agent-acceptance:test_architect_entomb",
@@ -55327,6 +56609,12 @@
     ]
   },
   "apps/agent/concentration_break.py": {
+    "<defined-functions>": [
+      "_another_member_sustains",
+      "break_concentration_on_damage",
+      "break_concentration_on_incapacitation",
+      "end_concentration"
+    ],
     "_another_member_sustains": [
       "agent-acceptance:test_architect_cathedral",
       "agent-acceptance:test_architect_entomb",
@@ -55437,6 +56725,9 @@
     ]
   },
   "apps/agent/condition_bonus.py": {
+    "<defined-functions>": [
+      "roll_bonus_dice"
+    ],
     "roll_bonus_dice": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -55544,6 +56835,12 @@
     ]
   },
   "apps/agent/condition_consume.py": {
+    "<defined-functions>": [
+      "consume_beneficial_conditions",
+      "persist_combat_consumption",
+      "serialize_combat_check",
+      "serialize_combat_check.serialized"
+    ],
     "consume_beneficial_conditions": [
       "agent-acceptance:test_m48_beneficial_conditions_capstone",
       "agent-acceptance:test_veythar_gift",
@@ -55801,6 +57098,11 @@
     ]
   },
   "apps/agent/condition_produce.py": {
+    "<defined-functions>": [
+      "lock_ooc_caster_and_targets",
+      "produce_ooc_condition",
+      "resolve_effective_targets"
+    ],
     "lock_ooc_caster_and_targets": [
       "agent-acceptance:test_architect_legendary_guard",
       "agent-acceptance:test_catalog_encounter_cutover",
@@ -55869,6 +57171,27 @@
     ]
   },
   "apps/agent/condition_restrictions.py": {
+    "<defined-functions>": [
+      "_carriers",
+      "attack_consumed_conditions",
+      "cannot_act",
+      "damage_resistance_all",
+      "declaration_costs",
+      "effective_speed",
+      "ignores_structures",
+      "immovable",
+      "incoming_advantage",
+      "incoming_attack_modes",
+      "incoming_disadvantage",
+      "incoming_melee_advantage",
+      "incoming_melee_autocrit",
+      "incoming_ranged_disadvantage",
+      "mark_save_penalty",
+      "required_attack_sources",
+      "saving_throw_advantage",
+      "speed_halved",
+      "speed_zero"
+    ],
     "_carriers": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -57483,6 +58806,13 @@
     ]
   },
   "apps/agent/condition_sources.py": {
+    "<defined-functions>": [
+      "charm_sources",
+      "clear_charm_from_damage",
+      "no_hostile_source",
+      "require_hostile_targets",
+      "validate_combat_sources"
+    ],
     "charm_sources": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -58059,6 +59389,13 @@
     ]
   },
   "apps/agent/condition_voice_rules.py": {
+    "<defined-functions>": [
+      "auto_fail_hearing_perception",
+      "no_spoken_buffs",
+      "roll_data",
+      "spoken_buff_targets",
+      "validate_hearing_check"
+    ],
     "auto_fail_hearing_perception": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_choir_action_contract",
@@ -58376,6 +59713,22 @@
     ]
   },
   "apps/agent/conditions.py": {
+    "<defined-functions>": [
+      "_find",
+      "_hollowed_effects",
+      "apply_condition",
+      "assert_known_condition",
+      "cap_exhaustion",
+      "damage_hp_floor",
+      "get_condition_effects",
+      "has_condition",
+      "hollowed_stage",
+      "remove_condition",
+      "remove_conditions",
+      "tick_conditions",
+      "validate_condition_dict",
+      "validate_conditions"
+    ],
     "_find": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -59816,6 +61169,10 @@
     ]
   },
   "apps/agent/crafting_gates.py": {
+    "<defined-functions>": [
+      "tainted_blocks_crafter",
+      "workspace_accessible"
+    ],
     "tainted_blocks_crafter": [
       "agent-acceptance:test_crafting_resolution_gate_e2e",
       "agent-acceptance:test_inventory_taint",
@@ -59832,11 +61189,24 @@
     ]
   },
   "apps/agent/crafting_resolution.py": {
+    "<defined-functions>": [
+      "resolve_crafting_outcome"
+    ],
     "resolve_crafting_outcome": [
       "agent-acceptance:test_m53_quality_outcomes_capstone"
     ]
   },
   "apps/agent/crafting_tools.py": {
+    "<defined-functions>": [
+      "_bundle_refusal",
+      "_default_now",
+      "_offers_hosted_here",
+      "_owns_portable_lab",
+      "_query_available_workspaces_impl",
+      "_rent_workspace_impl",
+      "_resolve_crafting_slot",
+      "_start_crafting_project_impl"
+    ],
     "_bundle_refusal": [
       "agent-acceptance:test_m26_dispatch_verbs_capstone",
       "agent-acceptance:test_m52_workspace_resolution_capstone"
@@ -59877,6 +61247,12 @@
     ]
   },
   "apps/agent/creation_agent.py": {
+    "<defined-functions>": [
+      "CreationAgent.__init__",
+      "CreationAgent._enter",
+      "CreationAgent.on_exit",
+      "CreationAgent.on_user_turn_completed"
+    ],
     "CreationAgent.__init__": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_fresh_recap",
@@ -59898,6 +61274,11 @@
     ]
   },
   "apps/agent/creation_deities.py": {
+    "<defined-functions>": [
+      "_load_deities",
+      "patron_death_save_bonus",
+      "patron_waives_first_death"
+    ],
     "_load_deities": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -60136,6 +61517,17 @@
     ]
   },
   "apps/agent/creation_rules.py": {
+    "<defined-functions>": [
+      "build_character_data",
+      "calculate_ac",
+      "calculate_starting_hp",
+      "generate_attributes",
+      "get_skill_proficiencies",
+      "get_starting_equipment",
+      "get_starting_location",
+      "infer_culture",
+      "select_starting_spells"
+    ],
     "build_character_data": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_attribute_increase_commit",
@@ -60386,6 +61778,9 @@
     ]
   },
   "apps/agent/creation_subset.py": {
+    "<defined-functions>": [
+      "remaining_choices"
+    ],
     "remaining_choices": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_first_episode",
@@ -60393,6 +61788,17 @@
     ]
   },
   "apps/agent/creation_tools.py": {
+    "<defined-functions>": [
+      "_build_cards_and_data",
+      "_safe_id_snippet",
+      "_sanitize_backstory",
+      "_sanitize_name",
+      "finalize_character",
+      "push_cards_to_client",
+      "push_creation_cards",
+      "push_creation_music",
+      "set_creation_choice"
+    ],
     "_build_cards_and_data": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_m27_audio_stage_capstone",
@@ -60434,6 +61840,16 @@
     ]
   },
   "apps/agent/creature_catalog.py": {
+    "<defined-functions>": [
+      "_scene_bindings",
+      "creature_summary",
+      "encounter_template_summaries",
+      "query_creature_by_id",
+      "query_creatures_by_region",
+      "query_scene_only_creature_ids",
+      "scene_encounter_ids",
+      "scene_only_creature_ids"
+    ],
     "_scene_bindings": [
       "agent-acceptance:test_creature_catalog",
       "agent-acceptance:test_deep_ashmark",
@@ -60609,6 +62025,11 @@
     ]
   },
   "apps/agent/creature_combat.py": {
+    "<defined-functions>": [
+      "_action",
+      "_translate",
+      "translate_creature"
+    ],
     "_action": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -60986,6 +62407,9 @@
     ]
   },
   "apps/agent/creature_combat_effects.py": {
+    "<defined-functions>": [
+      "deferred_effects"
+    ],
     "deferred_effects": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -61113,6 +62537,9 @@
     ]
   },
   "apps/agent/creature_combat_loader.py": {
+    "<defined-functions>": [
+      "load_creature_enemy"
+    ],
     "load_creature_enemy": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -61238,6 +62665,15 @@
     ]
   },
   "apps/agent/creature_schema.py": {
+    "<defined-functions>": [
+      "_legendary_binding",
+      "legendary_problems",
+      "validate_creature_stat_block",
+      "validate_creature_stat_block.combat_entry",
+      "validate_creature_stat_block.field",
+      "validate_creature_stat_block.references",
+      "validate_creature_stat_block.strings"
+    ],
     "_legendary_binding": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -61853,6 +63289,10 @@
     ]
   },
   "apps/agent/creature_tiers.py": {
+    "<defined-functions>": [
+      "player_level_range_for_tier",
+      "tier_for_player_level"
+    ],
     "tier_for_player_level": [
       "agent-acceptance:test_creature_catalog",
       "agent-acceptance:test_deep_ashmark",
@@ -61864,6 +63304,10 @@
     ]
   },
   "apps/agent/creature_turn_traits.py": {
+    "<defined-functions>": [
+      "validate_snapshot",
+      "validate_turn_traits"
+    ],
     "validate_snapshot": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -62114,6 +63558,19 @@
     ]
   },
   "apps/agent/db.py": {
+    "<defined-functions>": [
+      "_build_portraits",
+      "_cache_get",
+      "_cache_set",
+      "_connect_with_retry",
+      "_discard_desynced_redis",
+      "close_all",
+      "extract_exit_connections",
+      "get_pool",
+      "get_redis",
+      "resolve_player_companion_id",
+      "transaction"
+    ],
     "_build_portraits": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_fight",
@@ -63480,6 +64937,19 @@
     ]
   },
   "apps/agent/db_activity_queries.py": {
+    "<defined-functions>": [
+      "count_active_by_slot",
+      "count_session_story_moments",
+      "get_activity",
+      "get_divine_favor",
+      "get_due_activities",
+      "get_pending_god_whispers",
+      "get_player_activities",
+      "get_player_map_progress",
+      "get_session_story_moments",
+      "lock_player_slot_rows",
+      "player_exists"
+    ],
     "count_active_by_slot": [
       "agent-acceptance:test_inventory_taint",
       "agent-acceptance:test_live_material_inventory",
@@ -63592,6 +65062,28 @@
     ]
   },
   "apps/agent/db_content_queries.py": {
+    "<defined-functions>": [
+      "_validate_location",
+      "get_all_locations",
+      "get_encounter_template",
+      "get_errand_template",
+      "get_faction",
+      "get_gathering_nodes_at_location",
+      "get_item",
+      "get_location",
+      "get_location_region_type",
+      "get_location_terrain",
+      "get_loot_table",
+      "get_material_definition",
+      "get_npc",
+      "get_quest",
+      "get_scene",
+      "get_scenes_batch",
+      "get_training_program",
+      "list_errand_templates",
+      "list_training_programs",
+      "search_lore"
+    ],
     "_validate_location": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -64455,6 +65947,17 @@
     ]
   },
   "apps/agent/db_errors.py": {
+    "<defined-functions>": [
+      "DatabaseConnectionError.__init__",
+      "DatabaseError.__init__",
+      "DatabaseIntegrityError.__init__",
+      "DatabaseNotFoundError.__init__",
+      "DatabaseTimeoutError.__init__",
+      "db_tool",
+      "db_tool.wrapper",
+      "validated_player_conditions",
+      "with_db_error_handling"
+    ],
     "DatabaseConnectionError.__init__": [
       "agent-acceptance:test_async_purification_atomicity",
       "agent-acceptance:test_enemy_pockets_fault",
@@ -64943,6 +66446,10 @@
     ]
   },
   "apps/agent/db_inventory_snapshot.py": {
+    "<defined-functions>": [
+      "get_inventory_snapshot",
+      "project_inventory"
+    ],
     "get_inventory_snapshot": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_constructs",
@@ -65177,6 +66684,34 @@
     ]
   },
   "apps/agent/db_mutations.py": {
+    "<defined-functions>": [
+      "add_inventory_item",
+      "add_player_known_recipe",
+      "consume_player_materials",
+      "create_async_activity",
+      "create_player",
+      "create_workspace_rental",
+      "delete_combat_state",
+      "increment_crafting_skill_counter",
+      "load_combat_state",
+      "log_world_event",
+      "quantity_delta_expr",
+      "record_departure",
+      "remove_inventory_item",
+      "save_combat_state",
+      "save_session_summary",
+      "set_npc_disposition",
+      "set_player_flag",
+      "set_player_quest",
+      "update_activity",
+      "update_player_gold",
+      "update_player_hp",
+      "update_player_location",
+      "update_player_portrait",
+      "update_player_temp_hp",
+      "update_player_xp",
+      "upsert_map_progress"
+    ],
     "add_inventory_item": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_async_purification",
@@ -66051,6 +67586,12 @@
     ]
   },
   "apps/agent/db_mutations_companion.py": {
+    "<defined-functions>": [
+      "bump_companion_affinity",
+      "cache_companion_tier",
+      "insert_companion_relationship_if_absent",
+      "upsert_companion_relationship"
+    ],
     "bump_companion_affinity": [
       "agent-acceptance:test_m26_dispatch_verbs_capstone",
       "agent-acceptance:test_m6_4_companion_chain_capstone"
@@ -66071,6 +67612,10 @@
     ]
   },
   "apps/agent/db_mutations_concentration.py": {
+    "<defined-functions>": [
+      "read_player_concentration",
+      "update_player_concentration"
+    ],
     "read_player_concentration": [
       "agent-acceptance:test_choir_capstone:test_committed_choir_aura_preserves_concentration_outside_radius",
       "agent-acceptance:test_choir_capstone:test_committed_choir_entry_and_public_search",
@@ -66122,6 +67667,12 @@
     ]
   },
   "apps/agent/db_mutations_conditions.py": {
+    "<defined-functions>": [
+      "read_player_conditions",
+      "remove_player_conditions",
+      "save_many_player_conditions",
+      "save_player_conditions"
+    ],
     "read_player_conditions": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -66207,6 +67758,10 @@
     ]
   },
   "apps/agent/db_mutations_death.py": {
+    "<defined-functions>": [
+      "read_death_history",
+      "record_death"
+    ],
     "read_death_history": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_legendary",
@@ -66239,6 +67794,15 @@
     ]
   },
   "apps/agent/db_mutations_divine.py": {
+    "<defined-functions>": [
+      "create_god_whisper",
+      "initialize_favor_clock",
+      "mark_favor_whisper_level",
+      "mark_god_whisper_played",
+      "persist_favor_decay",
+      "save_story_moment",
+      "update_divine_favor"
+    ],
     "create_god_whisper": [
       "agent-acceptance:test_first_episode"
     ],
@@ -66262,6 +67826,11 @@
     ]
   },
   "apps/agent/db_mutations_gathering.py": {
+    "<defined-functions>": [
+      "deplete_node_quantity",
+      "mark_node_discovered",
+      "restore_node_quantity"
+    ],
     "deplete_node_quantity": [
       "agent-acceptance:test_live_material_inventory",
       "agent-acceptance:test_m46c_gathering_capstone"
@@ -66272,6 +67841,10 @@
     ]
   },
   "apps/agent/db_mutations_hollow_echo.py": {
+    "<defined-functions>": [
+      "consume",
+      "store"
+    ],
     "consume": [
       "agent-acceptance:test_patron_echo_choice_voice"
     ],
@@ -66280,6 +67853,13 @@
     ]
   },
   "apps/agent/db_mutations_inventory.py": {
+    "<defined-functions>": [
+      "lock_equipment_stacks",
+      "save_loadout",
+      "set_equipped_flags",
+      "transact_inventory",
+      "update_item_durability"
+    ],
     "lock_equipment_stacks": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_equip_and_electives",
@@ -66320,6 +67900,9 @@
     ]
   },
   "apps/agent/db_mutations_reputation.py": {
+    "<defined-functions>": [
+      "adjust_player_faction_reputation"
+    ],
     "adjust_player_faction_reputation": [
       "agent-acceptance:test_attribute_increase_commit",
       "agent-acceptance:test_catalog_encounter_cutover",
@@ -66332,6 +67915,12 @@
     ]
   },
   "apps/agent/db_mutations_resonance.py": {
+    "<defined-functions>": [
+      "read_player_resonance",
+      "reset_player_resonance",
+      "update_player_flickering_bonus",
+      "update_player_resonance"
+    ],
     "read_player_resonance": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -66474,6 +68063,15 @@
     ]
   },
   "apps/agent/db_mutations_resurrection.py": {
+    "<defined-functions>": [
+      "apply_attribute_penalty",
+      "apply_maxhp_override_delta",
+      "read_hollow_killed",
+      "read_last_rested_settlement",
+      "revive_player",
+      "set_hollow_killed",
+      "set_last_rested_settlement"
+    ],
     "apply_attribute_penalty": [
       "agent-acceptance:test_m44_death_system_capstone",
       "agent-acceptance:test_still_absorption"
@@ -66520,6 +68118,11 @@
     ]
   },
   "apps/agent/db_mutations_skill_advancement.py": {
+    "<defined-functions>": [
+      "clear_narrative_moment",
+      "mark_narrative_moment",
+      "update_skill_advancement"
+    ],
     "update_skill_advancement": [
       "agent-acceptance:test_choir_encounter",
       "agent-acceptance:test_m45_dramatic_dice_capstone",
@@ -66529,6 +68132,11 @@
     ]
   },
   "apps/agent/db_mutations_travel.py": {
+    "<defined-functions>": [
+      "add_travel_hours",
+      "reset_travel_hours",
+      "update_player_travel_state"
+    ],
     "add_travel_hours": [
       "agent-acceptance:test_deep_ashmark",
       "agent-acceptance:test_greyvale_arc_walk",
@@ -66566,6 +68174,12 @@
     ]
   },
   "apps/agent/db_mutations_veil_ward.py": {
+    "<defined-functions>": [
+      "_require_location",
+      "dismiss_ward",
+      "read_active_ward",
+      "write_ward"
+    ],
     "_require_location": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -66732,6 +68346,34 @@
     ]
   },
   "apps/agent/db_queries.py": {
+    "<defined-functions>": [
+      "_hydrate_skill_tiers",
+      "_player_data",
+      "count_player_known_recipes",
+      "get_accessible_workspaces",
+      "get_active_player_quests",
+      "get_companion_relationship",
+      "get_crafting_skill_counter",
+      "get_inventory_item",
+      "get_last_session_summary",
+      "get_npc_disposition",
+      "get_npc_dispositions",
+      "get_npcs_at_location",
+      "get_player",
+      "get_player_at_patron_revision",
+      "get_player_faction_reputation",
+      "get_player_flag",
+      "get_player_flag_value",
+      "get_player_inventory",
+      "get_player_known_recipe_ids",
+      "get_player_materials",
+      "get_player_quest",
+      "get_player_quest_decisions",
+      "get_players_for_update",
+      "get_single_skill_advancement",
+      "get_skill_advancement",
+      "get_targets_at_location"
+    ],
     "_hydrate_skill_tiers": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -68019,6 +69661,12 @@
     ]
   },
   "apps/agent/db_session_queries.py": {
+    "<defined-functions>": [
+      "_build_player_spells",
+      "_enrich_quests_with_scene_hints",
+      "_enrich_spell_row",
+      "get_session_init_payload"
+    ],
     "_build_player_spells": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_fight",
@@ -68188,6 +69836,18 @@
     ]
   },
   "apps/agent/db_training.py": {
+    "<defined-functions>": [
+      "_to_dict",
+      "claim_training_accrual",
+      "create_training_activity",
+      "get_due_training_transitions",
+      "get_player_active_training_activities",
+      "get_player_training_activities",
+      "get_training_activity",
+      "prune_training_cycle_accruals",
+      "update_training_activity",
+      "upsert_learning_cycle"
+    ],
     "_to_dict": [
       "agent-acceptance:test_harness_db",
       "agent-acceptance:test_m26_dispatch_verbs_capstone"
@@ -68260,6 +69920,9 @@
     ]
   },
   "apps/agent/death_cost.py": {
+    "<defined-functions>": [
+      "determine_death_cost"
+    ],
     "determine_death_cost": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_legendary",
@@ -68277,6 +69940,11 @@
     ]
   },
   "apps/agent/declaration_payloads.py": {
+    "<defined-functions>": [
+      "DeclarationPayload.require_attack_for_quick_fingers",
+      "_raw",
+      "to_engine_declarations"
+    ],
     "DeclarationPayload.require_attack_for_quick_fingers": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -68585,6 +70253,9 @@
     ]
   },
   "apps/agent/declarations.py": {
+    "<defined-functions>": [
+      "resolve_declaration"
+    ],
     "resolve_declaration": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -68709,6 +70380,9 @@
     ]
   },
   "apps/agent/dialogue_parser.py": {
+    "<defined-functions>": [
+      "parse_dialogue_stream"
+    ],
     "parse_dialogue_stream": [
       "agent-acceptance:test_choir_capstone:test_committed_choir_aura_preserves_concentration_outside_radius",
       "agent-acceptance:test_choir_capstone:test_committed_choir_entry_and_public_search",
@@ -68731,6 +70405,12 @@
     ]
   },
   "apps/agent/dice.py": {
+    "<defined-functions>": [
+      "_ordinary_dice",
+      "average",
+      "maximum",
+      "roll"
+    ],
     "_ordinary_dice": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_encounter_templates_surface_entry",
@@ -68899,6 +70579,9 @@
     ]
   },
   "apps/agent/disposition.py": {
+    "<defined-functions>": [
+      "resolve_disposition"
+    ],
     "resolve_disposition": [
       "agent-acceptance:test_attribute_increase_commit",
       "agent-acceptance:test_catalog_encounter_cutover",
@@ -68919,6 +70602,12 @@
     ]
   },
   "apps/agent/draethar_inner_fire.py": {
+    "<defined-functions>": [
+      "_inner_fire_impl",
+      "_inner_fire_locked",
+      "_inner_fire_locked.resume",
+      "resume_inner_fire"
+    ],
     "_inner_fire_impl": [
       "agent-acceptance:test_m25_activate_capstone",
       "agent-acceptance:test_m34_concentration_racial_capstone"
@@ -68932,6 +70621,9 @@
     ]
   },
   "apps/agent/dramatic.py": {
+    "<defined-functions>": [
+      "evaluate_dramatic_context"
+    ],
     "evaluate_dramatic_context": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -69056,6 +70748,13 @@
     ]
   },
   "apps/agent/durability.py": {
+    "<defined-functions>": [
+      "apply_durability_damage",
+      "calculate_repair_cost",
+      "check_item_condition",
+      "max_hits",
+      "repair_skill_tier"
+    ],
     "apply_durability_damage": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_durability_e2e",
@@ -69092,12 +70791,22 @@
     ]
   },
   "apps/agent/elective_choice_tools.py": {
+    "<defined-functions>": [
+      "select"
+    ],
     "select": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_equip_and_electives"
     ]
   },
   "apps/agent/elective_choices.py": {
+    "<defined-functions>": [
+      "already_chosen",
+      "describe",
+      "offers",
+      "pool",
+      "pools"
+    ],
     "already_chosen": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_attribute_increase_commit",
@@ -69242,6 +70951,10 @@
     ]
   },
   "apps/agent/encounter_actions.py": {
+    "<defined-functions>": [
+      "action_kind",
+      "validate_encounter_actions"
+    ],
     "action_kind": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -69511,6 +71224,11 @@
     ]
   },
   "apps/agent/encounter_budget.py": {
+    "<defined-functions>": [
+      "_band_for_level",
+      "_budget_cost",
+      "calculate_encounter_budget"
+    ],
     "_band_for_level": [
       "agent-acceptance:test_catalog_encounter_cutover",
       "agent-acceptance:test_encounter_templates_surface_entry",
@@ -69538,6 +71256,11 @@
     ]
   },
   "apps/agent/encounter_builder.py": {
+    "<defined-functions>": [
+      "_player_damage",
+      "_reachable",
+      "build_encounter"
+    ],
     "_player_damage": [
       "agent-acceptance:test_generated_combat",
       "agent-acceptance:test_generated_combat_movement"
@@ -69552,6 +71275,28 @@
     ]
   },
   "apps/agent/encounter_facts.py": {
+    "<defined-functions>": [
+      "_death_save_rounds",
+      "_id_map",
+      "_ids",
+      "_is_id",
+      "_remember",
+      "consume_rally",
+      "counted_death",
+      "empty",
+      "has_attacked_party",
+      "hearth_save_advantage",
+      "party_victims",
+      "pending_rally",
+      "rally_entry",
+      "rally_receipt",
+      "record_landing",
+      "record_party_attack",
+      "renew_on_death",
+      "upgrade_legacy_snapshot",
+      "validate",
+      "validate_history"
+    ],
     "_death_save_rounds": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -71235,6 +72980,16 @@
     ]
   },
   "apps/agent/encounter_loot.py": {
+    "<defined-functions>": [
+      "_base_currency",
+      "_role_drop_chance",
+      "_role_quantity",
+      "_validate_category",
+      "_validate_role",
+      "calculate_currency_drop",
+      "generate_loot",
+      "party_reward_multiplier"
+    ],
     "_base_currency": [
       "agent-acceptance:test_combat_structures_fight",
       "agent-acceptance:test_enemy_pockets",
@@ -71768,6 +73523,9 @@
     ]
   },
   "apps/agent/encounter_references.py": {
+    "<defined-functions>": [
+      "validate_encounter_references"
+    ],
     "validate_encounter_references": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -71896,6 +73654,13 @@
     ]
   },
   "apps/agent/encounter_roles.py": {
+    "<defined-functions>": [
+      "_apply_hp",
+      "_derive_action_pool",
+      "_is_active_ability",
+      "derive_role_stats",
+      "enhance_abilities"
+    ],
     "_apply_hp": [
       "agent-acceptance:test_blade_flurry",
       "agent-acceptance:test_blade_flurry_guards",
@@ -72229,6 +73994,9 @@
     ]
   },
   "apps/agent/encounter_stance.py": {
+    "<defined-functions>": [
+      "resolve_encounter_stance"
+    ],
     "resolve_encounter_stance": [
       "agent-acceptance:test_catalog_encounter_cutover",
       "agent-acceptance:test_combat_spatial_entry",
@@ -72238,6 +74006,10 @@
     ]
   },
   "apps/agent/enemy_pockets.py": {
+    "<defined-functions>": [
+      "_best_skill_tiers",
+      "initialize"
+    ],
     "_best_skill_tiers": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -72502,6 +74274,11 @@
     ]
   },
   "apps/agent/equipment_rules.py": {
+    "<defined-functions>": [
+      "loadout_entry",
+      "needs_weapon_profile",
+      "resolve_weapon_profile"
+    ],
     "loadout_entry": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_equip_and_electives",
@@ -72707,6 +74484,10 @@
     ]
   },
   "apps/agent/equipment_tools.py": {
+    "<defined-functions>": [
+      "_starter_item",
+      "equip"
+    ],
     "_starter_item": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_equip_and_electives",
@@ -72719,6 +74500,10 @@
     ]
   },
   "apps/agent/errand_resolution.py": {
+    "<defined-functions>": [
+      "companion_errand_data",
+      "resolve_errand_outcome"
+    ],
     "companion_errand_data": [
       "agent-acceptance:test_m26_dispatch_verbs_capstone"
     ],
@@ -72727,6 +74512,11 @@
     ]
   },
   "apps/agent/errand_risk.py": {
+    "<defined-functions>": [
+      "is_blocked_combo",
+      "numeric_to_danger",
+      "roll_errand_risk"
+    ],
     "is_blocked_combo": [
       "agent-acceptance:test_m26_dispatch_verbs_capstone"
     ],
@@ -72754,6 +74544,11 @@
     ]
   },
   "apps/agent/errand_tools.py": {
+    "<defined-functions>": [
+      "_default_now",
+      "_dispatch_companion_errand_impl",
+      "_resolve_companion_errand_impl"
+    ],
     "_default_now": [
       "agent-acceptance:test_m26_dispatch_verbs_capstone"
     ],
@@ -72765,6 +74560,12 @@
     ]
   },
   "apps/agent/error_line.py": {
+    "<defined-functions>": [
+      "_Observer.emit",
+      "install",
+      "install.fatal",
+      "report"
+    ],
     "_Observer.emit": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_first_episode_reentry",
@@ -72790,6 +74591,13 @@
     ]
   },
   "apps/agent/event_bus.py": {
+    "<defined-functions>": [
+      "EventBus.__init__",
+      "EventBus.drain",
+      "EventBus.get",
+      "EventBus.publish",
+      "EventBus.qsize"
+    ],
     "EventBus.__init__": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -73187,6 +74995,11 @@
     ]
   },
   "apps/agent/experimentation.py": {
+    "<defined-functions>": [
+      "find_matching_recipe",
+      "make_combination_key",
+      "resolve_experimentation"
+    ],
     "find_matching_recipe": [
       "agent-acceptance:test_inventory_taint",
       "agent-acceptance:test_live_material_inventory",
@@ -73205,6 +75018,10 @@
     ]
   },
   "apps/agent/experimentation_db.py": {
+    "<defined-functions>": [
+      "has_failed_experiment",
+      "record_failed_experiment"
+    ],
     "has_failed_experiment": [
       "agent-acceptance:test_inventory_taint",
       "agent-acceptance:test_live_material_inventory",
@@ -73218,6 +75035,9 @@
     ]
   },
   "apps/agent/experimentation_tools.py": {
+    "<defined-functions>": [
+      "_experiment_with_materials_impl"
+    ],
     "_experiment_with_materials_impl": [
       "agent-acceptance:test_inventory_taint",
       "agent-acceptance:test_live_material_inventory",
@@ -73226,6 +75046,15 @@
     ]
   },
   "apps/agent/exploration_agent.py": {
+    "<defined-functions>": [
+      "ExplorationAgent.__init__",
+      "ExplorationAgent._build_hot_context",
+      "ExplorationAgent._enter",
+      "ExplorationAgent._publish_session_init",
+      "ExplorationAgent.on_exit",
+      "ExplorationAgent.on_user_turn_completed",
+      "ExplorationAgent.static_prompt"
+    ],
     "ExplorationAgent.__init__": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -73435,6 +75264,11 @@
     ]
   },
   "apps/agent/fate_tool_boundary.py": {
+    "<defined-functions>": [
+      "_attach",
+      "wrap_tool",
+      "wrap_tool.invoke"
+    ],
     "_attach": [
       "agent-acceptance:test_blade_flurry",
       "agent-acceptance:test_cleave_and_whirlwind",
@@ -73684,6 +75518,12 @@
     ]
   },
   "apps/agent/fatigue_narration.py": {
+    "<defined-functions>": [
+      "exhaustion_narrative_for_conditions",
+      "get_exhaustion_narrative",
+      "get_pool_narrative",
+      "get_pool_state"
+    ],
     "exhaustion_narrative_for_conditions": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -73802,6 +75642,11 @@
     ]
   },
   "apps/agent/favor_rules.py": {
+    "<defined-functions>": [
+      "apply_favor_delta",
+      "evaluate_patron_alignment",
+      "neglect_decay"
+    ],
     "apply_favor_delta": [
       "agent-acceptance:test_greyvale_arc_walk",
       "agent-acceptance:test_guest_verbs",
@@ -73822,6 +75667,12 @@
     ]
   },
   "apps/agent/first_episode.py": {
+    "<defined-functions>": [
+      "enter",
+      "finish",
+      "hint_scene",
+      "settle"
+    ],
     "enter": [
       "agent-acceptance:test_architect_cathedral",
       "agent-acceptance:test_architect_constructs",
@@ -73990,6 +75841,12 @@
     ]
   },
   "apps/agent/game_events.py": {
+    "<defined-functions>": [
+      "_wait_for_connection",
+      "_wait_for_connection._on_connected",
+      "publish_game_event",
+      "publish_hidden_revealed"
+    ],
     "_wait_for_connection": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_fresh_recap"
@@ -74183,6 +76040,10 @@
     ]
   },
   "apps/agent/gameplay_agent.py": {
+    "<defined-functions>": [
+      "create_gameplay_agent",
+      "set_agent_region"
+    ],
     "create_gameplay_agent": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -74244,6 +76105,13 @@
     ]
   },
   "apps/agent/gameplay_llm.py": {
+    "<defined-functions>": [
+      "create_gameplay_llm",
+      "create_luna_llm",
+      "gameplay_llm_api_key",
+      "gameplay_llm_selection",
+      "is_luna"
+    ],
     "is_luna": [
       "agent-acceptance:test_architect_cathedral",
       "agent-acceptance:test_architect_construct_snapshot",
@@ -74351,6 +76219,14 @@
     ]
   },
   "apps/agent/gathering.py": {
+    "<defined-functions>": [
+      "accessible_rarities",
+      "gathering_result_tier",
+      "gathering_skill",
+      "resolve_gathering",
+      "select_materials",
+      "select_node"
+    ],
     "accessible_rarities": [
       "agent-acceptance:test_live_material_inventory",
       "agent-acceptance:test_m46c_gathering_capstone"
@@ -74377,6 +76253,13 @@
     ]
   },
   "apps/agent/gathering_tools.py": {
+    "<defined-functions>": [
+      "_check_gather_impl",
+      "_check_gather_impl.write",
+      "_finish_gather",
+      "_finish_gather.flush",
+      "_finish_gather.validate"
+    ],
     "_check_gather_impl": [
       "agent-acceptance:test_live_material_inventory",
       "agent-acceptance:test_m46c_gathering_capstone"
@@ -74395,6 +76278,12 @@
     ]
   },
   "apps/agent/god_whisper_data.py": {
+    "<defined-functions>": [
+      "_load_profiles",
+      "_required_displeasure",
+      "get_god_profile",
+      "should_trigger_whisper"
+    ],
     "_load_profiles": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -74698,6 +76587,10 @@
     ]
   },
   "apps/agent/hollow_echo.py": {
+    "<defined-functions>": [
+      "nothing_stirs",
+      "resolve_hollow_echo"
+    ],
     "resolve_hollow_echo": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_m32_hollow_echo_veil_ward_capstone",
@@ -74707,6 +76600,9 @@
     ]
   },
   "apps/agent/hollow_echo_events.py": {
+    "<defined-functions>": [
+      "publish_hollow_echo"
+    ],
     "publish_hollow_echo": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_m32_hollow_echo_veil_ward_capstone",
@@ -74716,6 +76612,12 @@
     ]
   },
   "apps/agent/hollow_resonance.py": {
+    "<defined-functions>": [
+      "amount",
+      "apply_corruption_aura",
+      "location_bonus",
+      "resolve_resonance_on_death"
+    ],
     "amount": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -74959,6 +76861,9 @@
     ]
   },
   "apps/agent/host_handoff.py": {
+    "<defined-functions>": [
+      "promote_after_departure"
+    ],
     "promote_after_departure": [
       "agent-acceptance:test_host_handoff",
       "agent-acceptance:test_leave_summary",
@@ -74966,6 +76871,10 @@
     ]
   },
   "apps/agent/hp_scaling.py": {
+    "<defined-functions>": [
+      "calculate_hp",
+      "calculate_max_hp"
+    ],
     "calculate_hp": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -75038,6 +76947,16 @@
     ]
   },
   "apps/agent/inventory_allocation.py": {
+    "<defined-functions>": [
+      "allocate_stacks",
+      "consume",
+      "credit_clean",
+      "eligible_stacks",
+      "eligible_totals",
+      "purification_output",
+      "purify_held_stack",
+      "read_stacks"
+    ],
     "allocate_stacks": [
       "agent-acceptance:test_inventory_taint",
       "agent-acceptance:test_live_material_inventory",
@@ -75086,6 +77005,10 @@
     ]
   },
   "apps/agent/inventory_refresh.py": {
+    "<defined-functions>": [
+      "inventory_payload",
+      "publish_inventory"
+    ],
     "inventory_payload": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_async_purification",
@@ -75153,6 +77076,12 @@
     ]
   },
   "apps/agent/inventory_tools.py": {
+    "<defined-functions>": [
+      "_gain",
+      "_lose",
+      "_transact_impl",
+      "transact"
+    ],
     "_gain": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_equip_and_electives",
@@ -75182,6 +77111,11 @@
     ]
   },
   "apps/agent/item_effects.py": {
+    "<defined-functions>": [
+      "_tokens",
+      "combat_traits",
+      "heal_profile"
+    ],
     "_tokens": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_reaction",
@@ -75366,6 +77300,17 @@
     ]
   },
   "apps/agent/item_heal.py": {
+    "<defined-functions>": [
+      "_combat_use",
+      "_held_heal",
+      "_receipt",
+      "attached_consume",
+      "consume_exploration",
+      "is_consume",
+      "preflight",
+      "preflight_declarations",
+      "resolve_combat"
+    ],
     "is_consume": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -75724,6 +77669,9 @@
     ]
   },
   "apps/agent/kaelen_gift.py": {
+    "<defined-functions>": [
+      "trigger_iron_resolve"
+    ],
     "trigger_iron_resolve": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -75834,6 +77782,12 @@
     ]
   },
   "apps/agent/latency.py": {
+    "<defined-functions>": [
+      "TurnTimer.__init__",
+      "TurnTimer.finish",
+      "TurnTimer.mark",
+      "TurnTimer.start"
+    ],
     "TurnTimer.__init__": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -76020,6 +77974,14 @@
     ]
   },
   "apps/agent/leave_request_handler.py": {
+    "<defined-functions>": [
+      "LeaveRequestHandler.__init__",
+      "LeaveRequestHandler._close_after",
+      "LeaveRequestHandler._end_before_gameplay",
+      "LeaveRequestHandler._received",
+      "LeaveRequestHandler.start",
+      "LeaveRequestHandler.stop"
+    ],
     "LeaveRequestHandler.__init__": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_first_episode_reentry",
@@ -76058,6 +78020,15 @@
     ]
   },
   "apps/agent/leveling.py": {
+    "<defined-functions>": [
+      "build_level_up_payload",
+      "build_level_up_payload_for_archetype",
+      "cantrip_damage_dice",
+      "get_level_up_rewards",
+      "get_milestone_narration",
+      "is_spell_tier_unlocked",
+      "min_level_for_tier"
+    ],
     "build_level_up_payload": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_attribute_increase_commit",
@@ -76147,6 +78118,10 @@
     ]
   },
   "apps/agent/llm_config.py": {
+    "<defined-functions>": [
+      "audio_url_for",
+      "extract_llm_text"
+    ],
     "audio_url_for": [
       "agent-acceptance:test_async_purification",
       "agent-acceptance:test_async_purification_atomicity",
@@ -76157,6 +78132,13 @@
     ]
   },
   "apps/agent/lost_scout_combat.py": {
+    "<defined-functions>": [
+      "end",
+      "locked_record",
+      "owns",
+      "residue",
+      "start"
+    ],
     "end": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -76482,6 +78464,18 @@
     ]
   },
   "apps/agent/lost_scout_scene.py": {
+    "<defined-functions>": [
+      "depart",
+      "facts",
+      "has_token",
+      "read",
+      "report",
+      "reveal_token",
+      "scene_text",
+      "token_element",
+      "torin_facts",
+      "write"
+    ],
     "depart": [
       "agent-acceptance:test_greyvale_arc_walk",
       "agent-acceptance:test_lost_scout"
@@ -76573,6 +78567,12 @@
     ]
   },
   "apps/agent/materials.py": {
+    "<defined-functions>": [
+      "get_material",
+      "get_materials_catalog",
+      "list_materials",
+      "parse_material_row"
+    ],
     "get_materials_catalog": [
       "agent-acceptance:test_inventory_taint",
       "agent-acceptance:test_live_material_inventory",
@@ -76594,6 +78594,10 @@
     ]
   },
   "apps/agent/media_dir.py": {
+    "<defined-functions>": [
+      "media_dir",
+      "validate_media_dir"
+    ],
     "media_dir": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -76748,6 +78752,14 @@
     ]
   },
   "apps/agent/mentor_requirements.py": {
+    "<defined-functions>": [
+      "_evaluate_skill",
+      "_parse_skill_requirement",
+      "_skill_tier_meets",
+      "check_mentor_requirements",
+      "check_quest_completed",
+      "check_skill_tier"
+    ],
     "_evaluate_skill": [
       "agent-acceptance:test_mentor_gating_e2e",
       "agent-acceptance:test_mentor_variants"
@@ -76766,6 +78778,15 @@
     ]
   },
   "apps/agent/mentor_variant_progress.py": {
+    "<defined-functions>": [
+      "advance_learning_cycle",
+      "delete_learning_progress",
+      "get_learning_progress",
+      "get_unlocked",
+      "is_unlocked",
+      "record_unlocked",
+      "seed_progress"
+    ],
     "advance_learning_cycle": [
       "agent-acceptance:test_mentor_variants"
     ],
@@ -76794,6 +78815,10 @@
     ]
   },
   "apps/agent/mentor_variant_tools.py": {
+    "<defined-functions>": [
+      "_default_now",
+      "_learn_variant_impl"
+    ],
     "_default_now": [
       "agent-acceptance:test_mentor_gating_e2e",
       "agent-acceptance:test_mentor_variants"
@@ -76804,6 +78829,16 @@
     ]
   },
   "apps/agent/mentor_variants.py": {
+    "<defined-functions>": [
+      "_parse_cost",
+      "get_mentor_variant",
+      "get_variant",
+      "get_variants_for_ability",
+      "is_loaded",
+      "load_mentor_variants",
+      "parse_mentor_variant_row",
+      "set_mentor_variants"
+    ],
     "_parse_cost": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -77522,11 +79557,17 @@
     ]
   },
   "apps/agent/milestone_persistence.py": {
+    "<defined-functions>": [
+      "set_player_specialization"
+    ],
     "set_player_specialization": [
       "agent-acceptance:test_milestone_progression"
     ]
   },
   "apps/agent/milestone_tools.py": {
+    "<defined-functions>": [
+      "apply_milestone_grant"
+    ],
     "apply_milestone_grant": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_catalog_encounter_cutover",
@@ -77541,6 +79582,18 @@
     ]
   },
   "apps/agent/milestones.py": {
+    "<defined-functions>": [
+      "_parse_grant",
+      "_parse_options",
+      "get_archetype_milestones",
+      "get_milestone",
+      "get_milestone_by_level",
+      "is_loaded",
+      "is_selectable_fork",
+      "load_milestones",
+      "parse_milestone_row",
+      "set_milestones"
+    ],
     "_parse_grant": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -78444,6 +80497,10 @@
     ]
   },
   "apps/agent/mode_tools.py": {
+    "<defined-functions>": [
+      "_enter_mode_impl",
+      "enter_mode"
+    ],
     "_enter_mode_impl": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -78659,6 +80716,18 @@
     ]
   },
   "apps/agent/movement_tools.py": {
+    "<defined-functions>": [
+      "_check_exit_requirement",
+      "_move_player_impl",
+      "_move_player_locked",
+      "apply_arrival",
+      "arrival_result",
+      "move_player",
+      "party_level_warning",
+      "write_arrival",
+      "write_arrival.apply",
+      "write_arrival.apply.publish"
+    ],
     "_check_exit_requirement": [
       "agent-acceptance:test_greyvale_arc_walk",
       "agent-acceptance:test_lost_scout",
@@ -78794,6 +80863,12 @@
     ]
   },
   "apps/agent/multiplayer_input.py": {
+    "<defined-functions>": [
+      "MultiplayerInput.__init__",
+      "MultiplayerInput._run",
+      "MultiplayerInput.aclose",
+      "MultiplayerInput.start"
+    ],
     "MultiplayerInput.__init__": [
       "agent-acceptance:test_choir_capstone:test_committed_choir_aura_preserves_concentration_outside_radius",
       "agent-acceptance:test_choir_capstone:test_committed_choir_entry_and_public_search",
@@ -78880,6 +80955,29 @@
     ]
   },
   "apps/agent/multiplayer_transcription.py": {
+    "<defined-functions>": [
+      "MultiParticipantTranscriber.__init__",
+      "MultiParticipantTranscriber._emit_transcript",
+      "MultiParticipantTranscriber._on_connected",
+      "MultiParticipantTranscriber._on_disconnected",
+      "MultiParticipantTranscriber._record_failure",
+      "MultiParticipantTranscriber._schedule_close",
+      "MultiParticipantTranscriber._schedule_close.close",
+      "MultiParticipantTranscriber._start_one",
+      "MultiParticipantTranscriber._start_one.on_error",
+      "MultiParticipantTranscriber.aclose",
+      "MultiParticipantTranscriber.active_identities",
+      "MultiParticipantTranscriber.receive",
+      "MultiParticipantTranscriber.start",
+      "MultiParticipantTranscriber.start_counts",
+      "TranscriptionQueueOverflow.__init__",
+      "TranscriptionQueueOverflow.__str__",
+      "TranscriptionQueueOverflow.add_rejection",
+      "_TranscriberAgent.__init__",
+      "_TranscriberAgent.on_user_turn_completed",
+      "_TranscriberAgent.stt_node",
+      "_input_session"
+    ],
     "MultiParticipantTranscriber.__init__": [
       "agent-acceptance:test_choir_capstone:test_committed_choir_aura_preserves_concentration_outside_radius",
       "agent-acceptance:test_choir_capstone:test_committed_choir_entry_and_public_search",
@@ -79144,6 +81242,17 @@
     ]
   },
   "apps/agent/narration.py": {
+    "<defined-functions>": [
+      "_build_narration_tool",
+      "_decode_segment_array",
+      "_extract_tool_input",
+      "_normalize_segments",
+      "_normalize_segments_or_raise",
+      "_sanitize_player_text",
+      "generate_activity_narration",
+      "generate_notification_hook",
+      "generate_progress_snippets"
+    ],
     "_sanitize_player_text": [
       "agent-acceptance:test_async_purification"
     ],
@@ -79152,6 +81261,16 @@
     ]
   },
   "apps/agent/npcs.py": {
+    "<defined-functions>": [
+      "_validate_unique_voice_ids",
+      "all_npcs",
+      "get_npc_sync",
+      "is_loaded",
+      "load_npcs",
+      "lost_scout_report_lines",
+      "parse_npc_row",
+      "set_npcs"
+    ],
     "_validate_unique_voice_ids": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -80067,6 +82186,11 @@
     ]
   },
   "apps/agent/onboarding_agent.py": {
+    "<defined-functions>": [
+      "OnboardingAgent.__init__",
+      "OnboardingAgent._enter",
+      "OnboardingAgent.on_user_turn_completed"
+    ],
     "OnboardingAgent.__init__": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_first_episode",
@@ -80086,6 +82210,11 @@
     ]
   },
   "apps/agent/onboarding_prompt.py": {
+    "<defined-functions>": [
+      "_unassigned_span",
+      "build_onboarding_instructions",
+      "render_companion_span"
+    ],
     "_unassigned_span": [
       "agent-acceptance:test_first_episode"
     ],
@@ -80105,12 +82234,46 @@
     ]
   },
   "apps/agent/onboarding_tools.py": {
+    "<defined-functions>": [
+      "advance_onboarding_beat"
+    ],
     "advance_onboarding_beat": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_session_limits"
     ]
   },
   "apps/agent/participant_lifecycle.py": {
+    "<defined-functions>": [
+      "PartyLifecycle.__init__",
+      "PartyLifecycle._hydrate_member",
+      "PartyLifecycle._join_finished",
+      "PartyLifecycle._on_connected",
+      "PartyLifecycle._on_disconnected",
+      "PartyLifecycle._publish_member_snapshot",
+      "PartyLifecycle._revoke",
+      "PartyLifecycle.aclose",
+      "PartyLifecycle.authorize",
+      "PartyLifecycle.current_generation",
+      "PartyLifecycle.is_authorized",
+      "PartyLifecycle.is_live",
+      "PartyLifecycle.mark_departed",
+      "PartyLifecycle.require_authorized",
+      "PartyLifecycle.wait_until_revoked",
+      "ReconnectionLifecycle.__init__",
+      "ReconnectionLifecycle._arm_grace",
+      "ReconnectionLifecycle._finish_reconnect",
+      "ReconnectionLifecycle._grace_timeout",
+      "ReconnectionLifecycle._on_disconnect",
+      "ReconnectionLifecycle._on_reconnect",
+      "ReconnectionLifecycle._on_session_close",
+      "ReconnectionLifecycle._report_close",
+      "ReconnectionLifecycle.aclose",
+      "ReconnectionLifecycle.is_disconnected",
+      "ReconnectionLifecycle.member_departed",
+      "_build_reconnect_instruction",
+      "_setup_party_join",
+      "_setup_reconnection"
+    ],
     "PartyLifecycle.__init__": [
       "agent-acceptance:test_choir_capstone:test_committed_choir_aura_preserves_concentration_outside_radius",
       "agent-acceptance:test_choir_capstone:test_committed_choir_entry_and_public_search",
@@ -80543,6 +82706,15 @@
     ]
   },
   "apps/agent/party_state.py": {
+    "<defined-functions>": [
+      "PartyState.contains",
+      "PartyState.from_dict",
+      "PartyState.member",
+      "PartyState.member_ids",
+      "PartyState.primary",
+      "PartyState.solo",
+      "PartyState.to_dict"
+    ],
     "PartyState.contains": [
       "agent-acceptance:test_choir_capstone:test_committed_choir_aura_preserves_concentration_outside_radius",
       "agent-acceptance:test_choir_capstone:test_committed_choir_entry_and_public_search",
@@ -81182,6 +83354,10 @@
     ]
   },
   "apps/agent/patron_ability_events.py": {
+    "<defined-functions>": [
+      "publish_patron_abilities",
+      "snapshot"
+    ],
     "publish_patron_abilities": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_terrain",
@@ -81272,6 +83448,25 @@
     ]
   },
   "apps/agent/patron_ability_tools.py": {
+    "<defined-functions>": [
+      "_activate_combat_damage",
+      "_activation_response",
+      "_locked_ability",
+      "_prepare_shield",
+      "_shield_target",
+      "_spend_activation",
+      "_validate_actor",
+      "_write_spend",
+      "activate",
+      "activate_combat_damage",
+      "availability",
+      "blocking_reason",
+      "catalog",
+      "lucky_ready",
+      "project_abilities",
+      "spend",
+      "spent_state"
+    ],
     "_activation_response": [
       "agent-acceptance:test_architect_terrain",
       "agent-acceptance:test_enemy_pockets"
@@ -81537,6 +83732,9 @@
     ]
   },
   "apps/agent/patron_ability_wire.py": {
+    "<defined-functions>": [
+      "validate_snapshot"
+    ],
     "validate_snapshot": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_terrain",
@@ -81566,6 +83764,10 @@
     ]
   },
   "apps/agent/patron_cast_context.py": {
+    "<defined-functions>": [
+      "_resolve_facts",
+      "apply_patron"
+    ],
     "_resolve_facts": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -81654,6 +83856,18 @@
     ]
   },
   "apps/agent/patron_combat_edges.py": {
+    "<defined-functions>": [
+      "_shield_participant",
+      "battle_cry",
+      "community_shield",
+      "kaelens_judgment",
+      "mark_of_justice",
+      "require_complete_round",
+      "restoration_surge",
+      "reward_worthy_foe",
+      "threshold_walk",
+      "veilstep"
+    ],
     "require_complete_round": [
       "agent-acceptance:test_architect_terrain"
     ],
@@ -81730,6 +83944,11 @@
     ]
   },
   "apps/agent/patron_deeds.py": {
+    "<defined-functions>": [
+      "judge_pending_deeds",
+      "mark_awarded",
+      "record_deed"
+    ],
     "judge_pending_deeds": [
       "agent-acceptance:test_patron_alignment_session"
     ],
@@ -81793,6 +84012,13 @@
     ]
   },
   "apps/agent/patron_echo_choice.py": {
+    "<defined-functions>": [
+      "create",
+      "gate",
+      "offer",
+      "read",
+      "select"
+    ],
     "create": [
       "agent-acceptance:test_patron_echo_choice_voice"
     ],
@@ -81892,6 +84118,10 @@
     ]
   },
   "apps/agent/patron_favor.py": {
+    "<defined-functions>": [
+      "get_patron_tier",
+      "tier_index"
+    ],
     "get_patron_tier": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -81994,6 +84224,15 @@
     ]
   },
   "apps/agent/patron_gift_tools.py": {
+    "<defined-functions>": [
+      "activate_insight",
+      "activate_shadow_veil",
+      "gift_state",
+      "offer",
+      "recharge",
+      "shadow_veil_state",
+      "write_state"
+    ],
     "activate_insight": [
       "agent-acceptance:test_veythar_gift",
       "agent-acceptance:test_veythar_gift_atomicity"
@@ -82067,6 +84306,12 @@
     ]
   },
   "apps/agent/patron_gifts.py": {
+    "<defined-functions>": [
+      "skill_gift",
+      "syrath_gift",
+      "thyra_gift",
+      "veythar_gift"
+    ],
     "skill_gift": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_choir_action_contract",
@@ -82168,6 +84413,10 @@
     ]
   },
   "apps/agent/patron_location.py": {
+    "<defined-functions>": [
+      "check_first_stay",
+      "first_stay_at_location"
+    ],
     "check_first_stay": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_choir_action_contract",
@@ -82204,6 +84453,16 @@
     ]
   },
   "apps/agent/patron_passives.py": {
+    "<defined-functions>": [
+      "acknowledged_passive",
+      "dawns_resilience",
+      "effective_hp",
+      "effective_max_hp",
+      "orenthel_beacon",
+      "scholars_ward",
+      "tidewalker",
+      "warriors_endurance"
+    ],
     "acknowledged_passive": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -83150,11 +85409,22 @@
     ]
   },
   "apps/agent/patron_senses.py": {
+    "<defined-functions>": [
+      "_nearest_unexplored",
+      "deaths_awareness",
+      "horizon_sense"
+    ],
     "deaths_awareness": [
       "agent-acceptance:test_architect_terrain"
     ]
   },
   "apps/agent/patron_synergy.py": {
+    "<defined-functions>": [
+      "get_archetype_synergy",
+      "has_engine_clause",
+      "has_engine_synergy",
+      "synergy_for_patron"
+    ],
     "get_archetype_synergy": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -83395,6 +85665,26 @@
     ]
   },
   "apps/agent/patron_synergy_combat.py": {
+    "<defined-functions>": [
+      "attack_flags",
+      "attack_player",
+      "critical_rider",
+      "encounter_damage_clause",
+      "expanded_critical",
+      "fallen_ally_defense",
+      "first_attack_defense",
+      "grant_interceding_rallies",
+      "grant_marshal_rally",
+      "inspire_attack_upgrade",
+      "marshal_death_save_bonus",
+      "outnumbered_oath",
+      "outnumbered_rider",
+      "shadow_veil_rounds",
+      "spell_attack_bonus",
+      "spell_damage_type_override",
+      "veiled_strike",
+      "weapon_damage_bonus"
+    ],
     "attack_flags": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -84341,6 +86631,11 @@
     ]
   },
   "apps/agent/patron_synergy_heal.py": {
+    "<defined-functions>": [
+      "bonus_components",
+      "for_cast",
+      "for_cast.bonuses"
+    ],
     "bonus_components": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_fight",
@@ -84367,6 +86662,21 @@
     ]
   },
   "apps/agent/patron_zero_hp.py": {
+    "<defined-functions>": [
+      "_donor_ids",
+      "_drops_to_zero",
+      "_embrace_donor",
+      "_embrace_hp",
+      "_embrace_transition",
+      "_gift_ready",
+      "death_ward_ready",
+      "lock_damage_players",
+      "lock_lethal_damage_players",
+      "provisional_ward_verdict",
+      "trigger_damage_gifts",
+      "trigger_dawns_embrace",
+      "trigger_death_ward"
+    ],
     "_donor_ids": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_legendary",
@@ -85138,6 +87448,9 @@
     ]
   },
   "apps/agent/player_session.py": {
+    "<defined-functions>": [
+      "hydrate_player_session"
+    ],
     "hydrate_player_session": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_first_episode_reentry",
@@ -85151,6 +87464,9 @@
     ]
   },
   "apps/agent/preflight_pipeline.py": {
+    "<defined-functions>": [
+      "run_preflight"
+    ],
     "run_preflight": [
       "agent-acceptance:test_inventory_taint",
       "agent-acceptance:test_live_material_inventory",
@@ -85158,6 +87474,11 @@
     ]
   },
   "apps/agent/pricing_queries.py": {
+    "<defined-functions>": [
+      "_as_json_number",
+      "_validate_economy_pricing",
+      "get_economy_pricing"
+    ],
     "_as_json_number": [
       "agent-acceptance:test_durability_e2e",
       "agent-acceptance:test_enemy_pockets",
@@ -85208,6 +87529,13 @@
     ]
   },
   "apps/agent/production_preflight.py": {
+    "<defined-functions>": [
+      "_production_preflight",
+      "is_production",
+      "load_catalogs",
+      "production_preflight",
+      "validate_production_env"
+    ],
     "is_production": [
       "agent-acceptance:test_first_episode"
     ],
@@ -85219,6 +87547,10 @@
     ]
   },
   "apps/agent/progression_tools.py": {
+    "<defined-functions>": [
+      "_award_divine_favor_core",
+      "_award_xp_core"
+    ],
     "_award_divine_favor_core": [
       "agent-acceptance:test_attribute_increase_commit",
       "agent-acceptance:test_greyvale_arc_walk",
@@ -85278,6 +87610,11 @@
     ]
   },
   "apps/agent/prologue.py": {
+    "<defined-functions>": [
+      "_wait_for_participant",
+      "_wait_for_participant._on_join",
+      "play_prologue"
+    ],
     "_wait_for_participant": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_fresh_recap",
@@ -85290,6 +87627,11 @@
     ]
   },
   "apps/agent/prologue_agent.py": {
+    "<defined-functions>": [
+      "PrologueAgent.__init__",
+      "PrologueAgent._enter",
+      "PrologueAgent.on_user_turn_completed"
+    ],
     "PrologueAgent.__init__": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_fresh_recap",
@@ -85302,6 +87644,12 @@
     ]
   },
   "apps/agent/purification_tools.py": {
+    "<defined-functions>": [
+      "begin_purification",
+      "credit_purification",
+      "purification_outcome",
+      "utc_now"
+    ],
     "begin_purification": [
       "agent-acceptance:test_async_purification",
       "agent-acceptance:test_async_purification_atomicity"
@@ -85320,6 +87668,13 @@
     ]
   },
   "apps/agent/quality_outcomes.py": {
+    "<defined-functions>": [
+      "_parse_entry",
+      "_parse_entry_list",
+      "apply_quality_outcome",
+      "get_quality_outcomes",
+      "parse_quality_outcome_row"
+    ],
     "_parse_entry": [
       "agent-acceptance:test_m53_quality_outcomes_capstone"
     ],
@@ -85337,6 +87692,10 @@
     ]
   },
   "apps/agent/query_patron.py": {
+    "<defined-functions>": [
+      "ecosystem_cue",
+      "query_patron"
+    ],
     "ecosystem_cue": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_terrain",
@@ -85353,6 +87712,17 @@
     ]
   },
   "apps/agent/query_tools.py": {
+    "<defined-functions>": [
+      "_query_abilities_impl",
+      "_query_info_impl",
+      "_query_inventory_impl",
+      "_query_location_impl",
+      "_query_lore_impl",
+      "_query_npc_impl",
+      "_query_settlement_population_impl",
+      "_resolve_disposition",
+      "query_info"
+    ],
     "_query_abilities_impl": [
       "agent-acceptance:test_attribute_increase_commit",
       "agent-acceptance:test_blade_flurry",
@@ -85496,6 +87866,14 @@
     ]
   },
   "apps/agent/quest_authority.py": {
+    "<defined-functions>": [
+      "_advance_one",
+      "_advance_one.validate",
+      "_is_unpaid_for_stage",
+      "_scene_transition",
+      "advance_quest_db",
+      "item_condition_satisfied"
+    ],
     "_advance_one": [
       "agent-acceptance:test_attribute_increase_commit",
       "agent-acceptance:test_catalog_encounter_cutover",
@@ -85601,6 +87979,9 @@
     ]
   },
   "apps/agent/quest_completion.py": {
+    "<defined-functions>": [
+      "finish_quest"
+    ],
     "finish_quest": [
       "agent-acceptance:test_attribute_increase_commit",
       "agent-acceptance:test_catalog_encounter_cutover",
@@ -85622,6 +88003,18 @@
     ]
   },
   "apps/agent/quest_progress.py": {
+    "<defined-functions>": [
+      "_arrival_steps",
+      "_discovery_steps",
+      "advance_on_arrival",
+      "advance_on_arrival_db",
+      "advance_on_combat_end",
+      "advance_on_item_discovered",
+      "discovery_quest_ids",
+      "finish_combat_quests",
+      "lock_discovery_rows",
+      "lock_party_quests"
+    ],
     "_arrival_steps": [
       "agent-acceptance:test_architect_fight",
       "agent-acceptance:test_deep_ashmark",
@@ -85805,6 +88198,10 @@
     ]
   },
   "apps/agent/quest_tools.py": {
+    "<defined-functions>": [
+      "_update_quest_impl",
+      "update_quest"
+    ],
     "_update_quest_impl": [
       "agent-acceptance:test_attribute_increase_commit",
       "agent-acceptance:test_catalog_encounter_cutover",
@@ -85829,6 +88226,10 @@
     ]
   },
   "apps/agent/quest_world_effects.py": {
+    "<defined-functions>": [
+      "_apply_world_effects",
+      "decision_option"
+    ],
     "_apply_world_effects": [
       "agent-acceptance:test_attribute_increase_commit",
       "agent-acceptance:test_catalog_encounter_cutover",
@@ -85862,6 +88263,15 @@
     ]
   },
   "apps/agent/racial_resonance.py": {
+    "<defined-functions>": [
+      "_validate_modifier_value",
+      "compute_flickering_bonus",
+      "get_racial_resonance_modifier",
+      "is_loaded",
+      "load_racial_resonance",
+      "parse_racial_resonance_row",
+      "set_racial_bonuses"
+    ],
     "_validate_modifier_value": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -86541,6 +88951,14 @@
     ]
   },
   "apps/agent/reaction_gate.py": {
+    "<defined-functions>": [
+      "_validate_for_window",
+      "_validate_social_subject",
+      "is_hollow",
+      "offered_reactions",
+      "offers_for_window",
+      "validate_reaction_activation"
+    ],
     "_validate_for_window": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -86810,6 +89228,13 @@
     ]
   },
   "apps/agent/reaction_spend.py": {
+    "<defined-functions>": [
+      "drop_pre_declared_reactions",
+      "is_spent",
+      "normalize",
+      "spend",
+      "unspent"
+    ],
     "drop_pre_declared_reactions": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -87275,6 +89700,13 @@
     ]
   },
   "apps/agent/reaction_windows.py": {
+    "<defined-functions>": [
+      "condition_triggers",
+      "open_window_for",
+      "post_roll_triggers",
+      "pre_roll_triggers",
+      "upgrade_legacy_window"
+    ],
     "condition_triggers": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -87690,6 +90122,10 @@
     ]
   },
   "apps/agent/recipe_slots.py": {
+    "<defined-functions>": [
+      "get_recipe_slots",
+      "parse_recipe_slot_row"
+    ],
     "get_recipe_slots": [
       "agent-acceptance:test_m5_verb_consolidation",
       "agent-acceptance:test_recipe_learning",
@@ -87704,6 +90140,12 @@
     ]
   },
   "apps/agent/recipe_tools.py": {
+    "<defined-functions>": [
+      "_learn_impl",
+      "_learn_recipe_impl",
+      "_query_recipe_requirements_impl",
+      "learn"
+    ],
     "_learn_impl": [
       "agent-acceptance:test_architect_balance"
     ],
@@ -87722,6 +90164,14 @@
     ]
   },
   "apps/agent/recipe_validation.py": {
+    "<defined-functions>": [
+      "_candidate_ids",
+      "_eligible_substitute_ids",
+      "allocate_materials",
+      "check_material_requirements",
+      "validate_magic_item_craft_tier",
+      "validate_recipe_slot_capacity"
+    ],
     "_candidate_ids": [
       "agent-acceptance:test_inventory_taint",
       "agent-acceptance:test_live_material_inventory",
@@ -87755,6 +90205,13 @@
     ]
   },
   "apps/agent/recipes.py": {
+    "<defined-functions>": [
+      "_parse_material_req",
+      "_require_int_at_least",
+      "get_recipe",
+      "list_recipes",
+      "parse_recipe_row"
+    ],
     "_parse_material_req": [
       "agent-acceptance:test_crafting_resolution_gate_e2e",
       "agent-acceptance:test_inventory_taint",
@@ -87808,6 +90265,11 @@
     ]
   },
   "apps/agent/repair_item.py": {
+    "<defined-functions>": [
+      "_can_repair_tier",
+      "_repair_item_impl",
+      "repair_item"
+    ],
     "_can_repair_tier": [
       "agent-acceptance:test_durability_e2e",
       "agent-acceptance:test_inventory_taint"
@@ -87821,6 +90283,9 @@
     ]
   },
   "apps/agent/reputation.py": {
+    "<defined-functions>": [
+      "reputation_shift"
+    ],
     "reputation_shift": [
       "agent-acceptance:test_attribute_increase_commit",
       "agent-acceptance:test_equip_and_electives",
@@ -87831,6 +90296,9 @@
     ]
   },
   "apps/agent/reshape_payloads.py": {
+    "<defined-functions>": [
+      "parse_operations"
+    ],
     "parse_operations": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -87846,6 +90314,13 @@
     ]
   },
   "apps/agent/resonance.py": {
+    "<defined-functions>": [
+      "apply_primal_reduction",
+      "apply_resonance_decay",
+      "calculate_resonance_generated",
+      "get_resonance_state",
+      "get_state_modifiers"
+    ],
     "apply_primal_reduction": [
       "agent-acceptance:test_terrain_commands:a",
       "agent-acceptance:test_terrain_commands:b"
@@ -88009,6 +90484,9 @@
     ]
   },
   "apps/agent/resonance_events.py": {
+    "<defined-functions>": [
+      "publish_resonance_changed"
+    ],
     "publish_resonance_changed": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_constructs",
@@ -88058,6 +90536,9 @@
     ]
   },
   "apps/agent/resource_costs.py": {
+    "<defined-functions>": [
+      "gate_pool"
+    ],
     "gate_pool": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -88145,6 +90626,15 @@
     ]
   },
   "apps/agent/rest_mechanics.py": {
+    "<defined-functions>": [
+      "apply_long_rest",
+      "apply_rest",
+      "apply_short_rest",
+      "prepare_spells_on_long_rest",
+      "record_last_rested_settlement",
+      "reset_resonance_on_rest",
+      "swap_elective_on_long_rest"
+    ],
     "apply_long_rest": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_attribute_increase_commit",
@@ -88210,6 +90700,10 @@
     ]
   },
   "apps/agent/rest_tools.py": {
+    "<defined-functions>": [
+      "_pool_values",
+      "rest"
+    ],
     "_pool_values": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_attribute_increase_commit",
@@ -88236,6 +90730,17 @@
     ]
   },
   "apps/agent/resurrection.py": {
+    "<defined-functions>": [
+      "_primary_attribute",
+      "apply_death_cost",
+      "highest_attribute",
+      "is_attribute_depleted",
+      "lowest_attribute",
+      "resolve_resurrection_anchor",
+      "resurrect_on_defeat",
+      "resurrect_party_on_defeat",
+      "trigger_character_death"
+    ],
     "apply_death_cost": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_legendary",
@@ -88313,6 +90818,23 @@
     ]
   },
   "apps/agent/role_archetypes.py": {
+    "<defined-functions>": [
+      "_jsonable",
+      "_parse_action",
+      "_parse_combat_stats",
+      "_parse_personality_traits",
+      "_parse_service",
+      "_parse_variant",
+      "_parse_voice_id",
+      "create_npc_from_archetype",
+      "disposition_rank",
+      "get_role_archetype",
+      "is_loaded",
+      "load_role_archetypes",
+      "parse_role_archetype_row",
+      "set_role_archetypes",
+      "shift_disposition"
+    ],
     "_jsonable": [
       "agent-acceptance:test_m62_settlement_capstone",
       "agent-acceptance:test_story_005_m6_npc_archetype_capstone"
@@ -90073,6 +92595,9 @@
     ]
   },
   "apps/agent/room_admin.py": {
+    "<defined-functions>": [
+      "remove_player"
+    ],
     "remove_player": [
       "agent-acceptance:test_guest_leaves",
       "agent-acceptance:test_host_handoff",
@@ -90082,6 +92607,21 @@
     ]
   },
   "apps/agent/rules_engine.py": {
+    "<defined-functions>": [
+      "_apply_pool_formula",
+      "_get_skill_tier",
+      "attribute_modifier",
+      "calculate_max_pools",
+      "check_level_up",
+      "dc_for_tier",
+      "exhaustion_stack_cap",
+      "has_iron_constitution",
+      "level_for_xp",
+      "narrative_hint",
+      "proficiency_bonus",
+      "prone_immunity",
+      "skill_modifier"
+    ],
     "_apply_pool_formula": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -91258,6 +93798,9 @@
     ]
   },
   "apps/agent/sanitize.py": {
+    "<defined-functions>": [
+      "sanitize_for_prompt"
+    ],
     "sanitize_for_prompt": [
       "agent-acceptance:test_choir_capstone:test_public_choir_encounter_requires_actual_gameplay_delivery",
       "agent-acceptance:test_first_episode",
@@ -91278,6 +93821,14 @@
     ]
   },
   "apps/agent/scene_tools.py": {
+    "<defined-functions>": [
+      "_build_scene_context",
+      "_enter_location_impl",
+      "_resolve_scene_from_graph",
+      "detect_scene_transition",
+      "enter_location",
+      "get_active_scene_for_context"
+    ],
     "_build_scene_context": [
       "agent-acceptance:test_architect_cathedral",
       "agent-acceptance:test_architect_construct_snapshot",
@@ -91430,6 +93981,34 @@
     ]
   },
   "apps/agent/session_data.py": {
+    "<defined-functions>": [
+      "SessionData.__getattribute__",
+      "SessionData.__post_init__",
+      "SessionData.__setattr__",
+      "SessionData._bind_authenticated_actor",
+      "SessionData.acting_player_id",
+      "SessionData.actor_player_id",
+      "SessionData.allies_present_for",
+      "SessionData.ally_present_for",
+      "SessionData.companion_can_act",
+      "SessionData.concentration",
+      "SessionData.corruption_level",
+      "SessionData.handoff_primary",
+      "SessionData.has_companion",
+      "SessionData.in_combat",
+      "SessionData.in_creation",
+      "SessionData.in_onboarding",
+      "SessionData.member_state",
+      "SessionData.present_member_ids",
+      "SessionData.primary_player_id",
+      "SessionData.record_companion_memory",
+      "SessionData.record_event",
+      "SessionData.record_item_found",
+      "SessionData.record_player_metric",
+      "SessionData.require_reaction_actor",
+      "SessionData.resonance",
+      "SessionData.validate_acting_player"
+    ],
     "SessionData.__getattribute__": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -93811,6 +96390,12 @@
     ]
   },
   "apps/agent/session_end.py": {
+    "<defined-functions>": [
+      "_end",
+      "ensure_session_end",
+      "run_guest_departure",
+      "run_session_end"
+    ],
     "_end": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_first_episode_reentry",
@@ -93844,6 +96429,13 @@
     ]
   },
   "apps/agent/session_hydration.py": {
+    "<defined-functions>": [
+      "_decay_locked",
+      "_recharge_session_abilities",
+      "apply_session_favor_decay",
+      "hydrate_patron_ability_session",
+      "hydrate_session_state"
+    ],
     "_decay_locked": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_first_episode_reentry",
@@ -93933,6 +96525,21 @@
     ]
   },
   "apps/agent/session_limits.py": {
+    "<defined-functions>": [
+      "LimitClock.now",
+      "LimitClock.wait",
+      "SessionLimits.__init__",
+      "SessionLimits._finished",
+      "SessionLimits._notification_finished",
+      "SessionLimits._notify",
+      "SessionLimits._run",
+      "SessionLimits._solo_speech",
+      "SessionLimits.aclose",
+      "SessionLimits.close",
+      "SessionLimits.interrupt_notifications",
+      "SessionLimits.player_speech",
+      "SessionLimits.start"
+    ],
     "LimitClock.now": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_first_episode_reentry",
@@ -94019,6 +96626,15 @@
     ]
   },
   "apps/agent/session_outcome.py": {
+    "<defined-functions>": [
+      "_decode",
+      "_taken_over",
+      "complete",
+      "resolve_predecessor",
+      "startup",
+      "watch_close",
+      "watch_close.closed"
+    ],
     "_decode": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_first_episode_reentry",
@@ -94071,6 +96687,9 @@
     ]
   },
   "apps/agent/session_room_ownership.py": {
+    "<defined-functions>": [
+      "transfer_room"
+    ],
     "transfer_room": [
       "agent-acceptance:test_host_handoff",
       "agent-acceptance:test_leave_summary",
@@ -94079,6 +96698,21 @@
     ]
   },
   "apps/agent/session_startup.py": {
+    "<defined-functions>": [
+      "GameplayInputOwner.aclose",
+      "_make_agent_session",
+      "_make_agent_session.report_session_error",
+      "_observe_through_current_agent",
+      "_observe_through_current_agent.observe",
+      "_primary_room_options",
+      "_register_speech_end_tracking",
+      "_register_speech_end_tracking._on_agent_state",
+      "gameplay_room_options",
+      "solo_room_options",
+      "start_gameplay_session",
+      "start_gameplay_session.close_multiplayer_input",
+      "start_session"
+    ],
     "GameplayInputOwner.aclose": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_first_episode_reentry",
@@ -94175,6 +96809,11 @@
     ]
   },
   "apps/agent/session_summary.py": {
+    "<defined-functions>": [
+      "_call_llm_summary",
+      "generate_session_summary",
+      "generate_session_summary._fetch_story_moments"
+    ],
     "generate_session_summary": [
       "agent-acceptance:test_first_episode",
       "agent-acceptance:test_first_episode_reentry",
@@ -94193,6 +96832,14 @@
     ]
   },
   "apps/agent/session_tools.py": {
+    "<defined-functions>": [
+      "_record_story_moment_impl",
+      "_update_npc_disposition_impl",
+      "end_session",
+      "end_session.after_playout",
+      "record_story_moment",
+      "update_npc_disposition"
+    ],
     "_update_npc_disposition_impl": [
       "agent-acceptance:test_exploration_collapse"
     ],
@@ -94208,6 +96855,13 @@
     ]
   },
   "apps/agent/settlement_generation.py": {
+    "<defined-functions>": [
+      "_effective_ranges",
+      "_name_candidates",
+      "generate_settlement_npcs",
+      "generate_settlement_roster",
+      "instantiate_npc_from_template"
+    ],
     "_effective_ranges": [
       "agent-acceptance:test_m62_settlement_capstone"
     ],
@@ -94225,6 +96879,19 @@
     ]
   },
   "apps/agent/settlement_templates.py": {
+    "<defined-functions>": [
+      "_parse_name_list",
+      "_parse_name_pool",
+      "_parse_personality",
+      "_parse_tier",
+      "get_settlement_name_pool",
+      "get_settlement_personality",
+      "get_settlement_tier",
+      "is_loaded",
+      "load_settlement_templates",
+      "parse_settlement_template_row",
+      "set_settlement_templates"
+    ],
     "_parse_name_list": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -95526,6 +98193,10 @@
     ]
   },
   "apps/agent/skill_advancement.py": {
+    "<defined-functions>": [
+      "check_skill_capabilities",
+      "record_skill_use"
+    ],
     "record_skill_use": [
       "agent-acceptance:test_choir_encounter",
       "agent-acceptance:test_m45_dramatic_dice_capstone",
@@ -95535,6 +98206,9 @@
     ]
   },
   "apps/agent/skill_check_effects.py": {
+    "<defined-functions>": [
+      "SkillCheckEffects.flush"
+    ],
     "SkillCheckEffects.flush": [
       "agent-acceptance:test_choir_encounter",
       "agent-acceptance:test_m45_dramatic_dice_capstone",
@@ -95544,6 +98218,15 @@
     ]
   },
   "apps/agent/skill_fate.py": {
+    "<defined-functions>": [
+      "SkillScope.capture",
+      "SkillScope.lock_roller",
+      "SkillScope.restored",
+      "SkillScope.validate",
+      "SkillScope.validate_location",
+      "prepare_skill_offer",
+      "prepare_skill_offer.resume"
+    ],
     "SkillScope.capture": [
       "agent-acceptance:test_choir_encounter",
       "agent-acceptance:test_deep_ashmark",
@@ -95598,6 +98281,9 @@
     ]
   },
   "apps/agent/skill_persistence.py": {
+    "<defined-functions>": [
+      "apply_skill_use_with_persistence"
+    ],
     "apply_skill_use_with_persistence": [
       "agent-acceptance:test_choir_encounter",
       "agent-acceptance:test_m45_dramatic_dice_capstone",
@@ -95607,6 +98293,17 @@
     ]
   },
   "apps/agent/social_resolution.py": {
+    "<defined-functions>": [
+      "_contested_band",
+      "_contested_cue",
+      "_outcome_band",
+      "argument_dc_adjust",
+      "disposition_shift",
+      "resolve_contested_social",
+      "resolve_social_check",
+      "social_dc",
+      "social_dc_modifier"
+    ],
     "_outcome_band": [
       "agent-acceptance:test_first_episode_settlement",
       "agent-acceptance:test_guest_verbs",
@@ -95645,6 +98342,12 @@
     ]
   },
   "apps/agent/social_tools.py": {
+    "<defined-functions>": [
+      "_check_social_impl",
+      "_check_social_impl.write",
+      "_finish_social",
+      "_finish_social.flush"
+    ],
     "_check_social_impl": [
       "agent-acceptance:test_guest_verbs",
       "agent-acceptance:test_m46a_social_capstone",
@@ -95660,6 +98363,12 @@
     ]
   },
   "apps/agent/speaker_context.py": {
+    "<defined-functions>": [
+      "SpeakerSummary.render",
+      "_format_hp",
+      "build_speaker_context",
+      "speaker_line"
+    ],
     "SpeakerSummary.render": [
       "agent-acceptance:test_choir_capstone:test_public_choir_encounter_requires_actual_gameplay_delivery",
       "agent-acceptance:test_first_episode",
@@ -95728,6 +98437,12 @@
     ]
   },
   "apps/agent/speech_delivery.py": {
+    "<defined-functions>": [
+      "_deliver",
+      "_generate_reply",
+      "deliver_player_turn",
+      "deliver_speech"
+    ],
     "_deliver": [
       "agent-acceptance:test_choir_capstone:test_committed_choir_aura_preserves_concentration_outside_radius",
       "agent-acceptance:test_choir_capstone:test_committed_choir_entry_and_public_search",
@@ -95803,6 +98518,9 @@
     ]
   },
   "apps/agent/spell_cast_effects.py": {
+    "<defined-functions>": [
+      "_finish_cast"
+    ],
     "_finish_cast": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -95848,6 +98566,10 @@
     ]
   },
   "apps/agent/spell_cast_resolution.py": {
+    "<defined-functions>": [
+      "_resolve_cast",
+      "_resolve_cast.generation"
+    ],
     "_resolve_cast": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -95937,6 +98659,9 @@
     ]
   },
   "apps/agent/spell_cast_result.py": {
+    "<defined-functions>": [
+      "CastResult.flush_events"
+    ],
     "CastResult.flush_events": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -95981,6 +98706,11 @@
     ]
   },
   "apps/agent/spell_cast_validation.py": {
+    "<defined-functions>": [
+      "_gate_spell",
+      "_prepare_cast",
+      "revivify_refused"
+    ],
     "_gate_spell": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -96074,6 +98804,9 @@
     ]
   },
   "apps/agent/spell_casting.py": {
+    "<defined-functions>": [
+      "_cast_spell_impl"
+    ],
     "_cast_spell_impl": [
       "agent-acceptance:test_dispel_corruption",
       "agent-acceptance:test_dispel_corruption_atomicity",
@@ -96093,6 +98826,12 @@
     ]
   },
   "apps/agent/spell_item_resolution.py": {
+    "<defined-functions>": [
+      "create_item",
+      "defer_inventory",
+      "purify_item",
+      "resolve_item_target"
+    ],
     "create_item": [
       "agent-acceptance:test_terrain_commands:b"
     ],
@@ -96189,6 +98928,10 @@
     ]
   },
   "apps/agent/spell_knowledge.py": {
+    "<defined-functions>": [
+      "castable_spell_ids",
+      "validate_spell_source"
+    ],
     "castable_spell_ids": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -96283,6 +99026,10 @@
     ]
   },
   "apps/agent/spell_preparation.py": {
+    "<defined-functions>": [
+      "can_change_preparation",
+      "can_prepare"
+    ],
     "can_change_preparation": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_spell_acquisition"
@@ -96293,12 +99040,20 @@
     ]
   },
   "apps/agent/spell_tools.py": {
+    "<defined-functions>": [
+      "_learn_spell_impl"
+    ],
     "_learn_spell_impl": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_spell_acquisition"
     ]
   },
   "apps/agent/spell_voice_rules.py": {
+    "<defined-functions>": [
+      "is_area_spell",
+      "is_silenced",
+      "require_speech"
+    ],
     "is_area_spell": [
       "agent-acceptance:test_still_actions",
       "agent-acceptance:test_still_paradise_trap"
@@ -96480,6 +99235,16 @@
     ]
   },
   "apps/agent/spells.py": {
+    "<defined-functions>": [
+      "get_spell",
+      "get_spells_by_source",
+      "is_loaded",
+      "load_spells",
+      "normalize_target_list",
+      "parse_spell_row",
+      "set_spells",
+      "validate_target_count"
+    ],
     "get_spell": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -97180,6 +99945,9 @@
     ]
   },
   "apps/agent/starter_zone.py": {
+    "<defined-functions>": [
+      "get_starter_zone_id"
+    ],
     "get_starter_zone_id": [
       "agent-acceptance:test_architect_legendary",
       "agent-acceptance:test_m44_death_system_capstone",
@@ -97187,6 +99955,16 @@
     ]
   },
   "apps/agent/still_actions.py": {
+    "<defined-functions>": [
+      "_charm",
+      "_freeze_zone",
+      "_save",
+      "_stun",
+      "range_refusal",
+      "resolve_touch",
+      "resolve_zone",
+      "zone_edge"
+    ],
     "_charm": [
       "agent-acceptance:test_legendary_resistance_callers",
       "agent-acceptance:test_still_absorption",
@@ -97240,6 +100018,21 @@
     ]
   },
   "apps/agent/still_charm.py": {
+    "<defined-functions>": [
+      "clear",
+      "dwell_key",
+      "end_instance",
+      "grant",
+      "key",
+      "lock_players",
+      "project",
+      "read",
+      "read_clock",
+      "require_departure",
+      "save_on_arrival",
+      "unwilling",
+      "write_clock"
+    ],
     "clear": [
       "agent-acceptance:test_still_absorption",
       "agent-acceptance:test_still_anchors",
@@ -97449,6 +100242,12 @@
     ]
   },
   "apps/agent/still_dwell.py": {
+    "<defined-functions>": [
+      "_advance_member",
+      "_drain",
+      "_resave",
+      "advance"
+    ],
     "_advance_member": [
       "agent-acceptance:test_architect_cathedral",
       "agent-acceptance:test_architect_constructs",
@@ -97524,6 +100323,27 @@
     ]
   },
   "apps/agent/still_encounter.py": {
+    "<defined-functions>": [
+      "_valid_trigger",
+      "_validate_held_zone",
+      "after_damage",
+      "anchor_ids",
+      "facts",
+      "guard_declaration",
+      "guard_target",
+      "hidden_ids",
+      "in_zone",
+      "initialize",
+      "is_owner",
+      "owner_alias",
+      "protected_ids",
+      "record_attack",
+      "search",
+      "search.roll",
+      "settlement_facts",
+      "validate",
+      "zone_radius"
+    ],
     "_valid_trigger": [
       "agent-acceptance:test_iron_stance",
       "agent-acceptance:test_still_absorption",
@@ -98875,6 +101695,11 @@
     ]
   },
   "apps/agent/still_illusions.py": {
+    "<defined-functions>": [
+      "generate",
+      "investigate",
+      "validate"
+    ],
     "generate": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -99000,6 +101825,16 @@
     ]
   },
   "apps/agent/still_scene.py": {
+    "<defined-functions>": [
+      "end",
+      "facts",
+      "key",
+      "preflight",
+      "read",
+      "restore",
+      "start",
+      "write"
+    ],
     "end": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -99344,6 +102179,9 @@
     ]
   },
   "apps/agent/system_prompts.py": {
+    "<defined-functions>": [
+      "build_system_prompt"
+    ],
     "build_system_prompt": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -99404,6 +102242,9 @@
     ]
   },
   "apps/agent/task_logging.py": {
+    "<defined-functions>": [
+      "log_task_failure"
+    ],
     "log_task_failure": [
       "agent-acceptance:test_architect_cathedral",
       "agent-acceptance:test_architect_constructs",
@@ -99447,6 +102288,14 @@
     ]
   },
   "apps/agent/temp_hp.py": {
+    "<defined-functions>": [
+      "Damage.receipt",
+      "absorb",
+      "from_player",
+      "grant",
+      "player_pool",
+      "validate"
+    ],
     "Damage.receipt": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -100096,6 +102945,13 @@
     ]
   },
   "apps/agent/terrain.py": {
+    "<defined-functions>": [
+      "is_earth_or_stone",
+      "is_natural",
+      "properties",
+      "region_type",
+      "resonance_base"
+    ],
     "is_earth_or_stone": [
       "agent-acceptance:test_terrain_commands:a",
       "agent-acceptance:test_terrain_commands:b"
@@ -100248,6 +103104,14 @@
     ]
   },
   "apps/agent/thyra_seasons.py": {
+    "<defined-functions>": [
+      "damage_bonus",
+      "eligible",
+      "healing_bonus",
+      "season_for",
+      "skill_bonus",
+      "skill_season"
+    ],
     "damage_bonus": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -100629,6 +103493,12 @@
     ]
   },
   "apps/agent/thyra_thornwall.py": {
+    "<defined-functions>": [
+      "apply_contact",
+      "resolve_held_contact",
+      "resolve_move",
+      "thornwall"
+    ],
     "apply_contact": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -100668,6 +103538,9 @@
     ]
   },
   "apps/agent/tool_preconditions.py": {
+    "<defined-functions>": [
+      "require_npc_present"
+    ],
     "require_npc_present": [
       "agent-acceptance:test_durability_e2e",
       "agent-acceptance:test_exploration_collapse",
@@ -100680,6 +103553,19 @@
     ]
   },
   "apps/agent/tool_support.py": {
+    "<defined-functions>": [
+      "_cap_str",
+      "_location_for_narration",
+      "_npc_for_narration",
+      "_npc_summary",
+      "_player_summary",
+      "_resolve_ambient_sounds",
+      "_target_summary",
+      "_validate_id",
+      "apply_time_conditions",
+      "build_item_acquired_payload",
+      "filter_knowledge"
+    ],
     "_cap_str": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_choir_capstone:test_public_choir_encounter_requires_actual_gameplay_delivery",
@@ -101042,6 +103928,18 @@
     ]
   },
   "apps/agent/training_rules.py": {
+    "<defined-functions>": [
+      "complete_training_cycle",
+      "get_activity_type_config",
+      "get_cycles_required",
+      "get_midpoint_decision",
+      "load_training_activity_types",
+      "parse_activity_type_row",
+      "resolve_midpoint_decision",
+      "set_training_activity_types",
+      "start_training_cycle",
+      "validate_training_activity_type"
+    ],
     "load_training_activity_types": [
       "agent-acceptance:test_first_episode"
     ],
@@ -101482,6 +104380,13 @@
     ]
   },
   "apps/agent/training_tools.py": {
+    "<defined-functions>": [
+      "_default_now",
+      "_initiate_training_cycle_impl",
+      "_player_chassis",
+      "_query_training_programs_impl",
+      "_resolve_training_midpoint_impl"
+    ],
     "_default_now": [
       "agent-acceptance:test_guest_verbs",
       "agent-acceptance:test_m26_dispatch_verbs_capstone"
@@ -101501,6 +104406,18 @@
     ]
   },
   "apps/agent/transcript.py": {
+    "<defined-functions>": [
+      "TranscriptLogger.__init__",
+      "TranscriptLogger._publish",
+      "TranscriptLogger._write",
+      "TranscriptLogger.close",
+      "TranscriptLogger.log_dm",
+      "TranscriptLogger.log_path",
+      "TranscriptLogger.log_player",
+      "TranscriptLogger.log_tool",
+      "_default_log_path",
+      "_ts"
+    ],
     "TranscriptLogger.__init__": [
       "agent-acceptance:test_architect_cathedral",
       "agent-acceptance:test_architect_construct_snapshot",
@@ -102014,6 +104931,12 @@
     ]
   },
   "apps/agent/travel.py": {
+    "<defined-functions>": [
+      "forced_march_exhaustion",
+      "navigation_dc",
+      "resolve_travel_segment",
+      "travel_mode_params"
+    ],
     "forced_march_exhaustion": [
       "agent-acceptance:test_m46b_travel_capstone"
     ],
@@ -102045,6 +104968,16 @@
     ]
   },
   "apps/agent/travel_tools.py": {
+    "<defined-functions>": [
+      "_publish_travel_result",
+      "_travel_impl",
+      "_travel_impl.write",
+      "_travel_impl.write.flush",
+      "_write_lost_travel",
+      "_write_travel_conditions",
+      "resolve_segment",
+      "travel"
+    ],
     "_publish_travel_result": [
       "agent-acceptance:test_deep_ashmark",
       "agent-acceptance:test_greyvale_arc_walk",
@@ -102100,6 +105033,11 @@
     ]
   },
   "apps/agent/unbound_autonomy.py": {
+    "<defined-functions>": [
+      "judge_autonomy",
+      "load_unbound",
+      "read_autonomy"
+    ],
     "judge_autonomy": [
       "agent-acceptance:test_patron_alignment_session"
     ],
@@ -102172,6 +105110,14 @@
     ]
   },
   "apps/agent/unbound_tools.py": {
+    "<defined-functions>": [
+      "_activate_milestone_locked",
+      "_raw_channeling_impl",
+      "activate_milestone",
+      "is_unbound",
+      "patron_query",
+      "veil_mastery"
+    ],
     "is_unbound": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_attribute_increase_commit",
@@ -102215,12 +105161,25 @@
     ]
   },
   "apps/agent/veil_anchor_tools.py": {
+    "<defined-functions>": [
+      "_deploy_veil_anchor_impl"
+    ],
     "_deploy_veil_anchor_impl": [
       "agent-acceptance:test_m24_veil_ward_scope_capstone",
       "agent-acceptance:test_m25_activate_capstone"
     ]
   },
   "apps/agent/veil_ward.py": {
+    "<defined-functions>": [
+      "WardDuration.__post_init__",
+      "WardScope.__post_init__",
+      "WardScope.encounter",
+      "WardScope.location",
+      "halve_generation",
+      "location_expires_at",
+      "tick_ward_rounds",
+      "ward_rounds_expired"
+    ],
     "WardDuration.__post_init__": [
       "agent-acceptance:test_archetype_chassis",
       "agent-acceptance:test_architect_balance",
@@ -102622,6 +105581,10 @@
     ]
   },
   "apps/agent/veil_ward_events.py": {
+    "<defined-functions>": [
+      "publish_veil_ward_changed",
+      "veil_ward_payload"
+    ],
     "publish_veil_ward_changed": [
       "agent-acceptance:test_exploration_collapse",
       "agent-acceptance:test_m24_veil_ward_scope_capstone",
@@ -102640,6 +105603,11 @@
     ]
   },
   "apps/agent/veil_ward_tools.py": {
+    "<defined-functions>": [
+      "_activate_veil_ward_impl",
+      "_activate_veil_ward_locked",
+      "_dismiss_impl"
+    ],
     "_activate_veil_ward_impl": [
       "agent-acceptance:test_exploration_collapse",
       "agent-acceptance:test_m24_veil_ward_scope_capstone",
@@ -102660,6 +105628,15 @@
     ]
   },
   "apps/agent/veythar_wellspring.py": {
+    "<defined-functions>": [
+      "arm",
+      "cast_receipt",
+      "describe_cast",
+      "effective_focus_cost",
+      "publish_spend",
+      "settle",
+      "state"
+    ],
     "effective_focus_cost": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -102753,6 +105730,10 @@
     ]
   },
   "apps/agent/voices.py": {
+    "<defined-functions>": [
+      "apply_markup",
+      "get_voice_config"
+    ],
     "apply_markup": [
       "agent-acceptance:test_choir_capstone:test_committed_choir_aura_preserves_concentration_outside_radius",
       "agent-acceptance:test_choir_capstone:test_committed_choir_entry_and_public_search",
@@ -102795,6 +105776,10 @@
     ]
   },
   "apps/agent/ward_resolution.py": {
+    "<defined-functions>": [
+      "resolve_scope_ward",
+      "resolve_scope_ward_with_scope"
+    ],
     "resolve_scope_ward": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -102940,6 +105925,15 @@
     ]
   },
   "apps/agent/warm_prompts.py": {
+    "<defined-functions>": [
+      "build_full_prompt",
+      "build_warm_layer",
+      "format_affect_context",
+      "format_combat_hot_line",
+      "format_training_section",
+      "quest_finish_line",
+      "quest_objective"
+    ],
     "build_full_prompt": [
       "agent-acceptance:test_choir_capstone:test_public_choir_encounter_requires_actual_gameplay_delivery",
       "agent-acceptance:test_first_episode",
@@ -103014,6 +106008,12 @@
     ]
   },
   "apps/agent/weapon_proficiency.py": {
+    "<defined-functions>": [
+      "_covers",
+      "has_weapon_proficiency",
+      "parse_weapon_proficiencies",
+      "validate_weapon_profile"
+    ],
     "_covers": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -103425,6 +106425,13 @@
     ]
   },
   "apps/agent/workspace.py": {
+    "<defined-functions>": [
+      "compute_rental_price",
+      "compute_workspace_rental_price",
+      "resolve_rental_offer",
+      "settlement_workspace_availability",
+      "whole_silver"
+    ],
     "compute_rental_price": [
       "agent-acceptance:test_durability_e2e",
       "agent-acceptance:test_inventory_taint",
@@ -103447,6 +106454,9 @@
     ]
   },
   "apps/agent/world_effect_targets.py": {
+    "<defined-functions>": [
+      "is_valid_disposition_target"
+    ],
     "is_valid_disposition_target": [
       "agent-acceptance:test_creature_catalog",
       "agent-acceptance:test_seed_atomic",
@@ -103454,6 +106464,24 @@
     ]
   },
   "apps/agent/zhael_fate.py": {
+    "<defined-functions>": [
+      "Candidates.choices",
+      "FateOffer.response",
+      "Resumed.tool_result",
+      "_activate_lucky",
+      "_gift_active",
+      "_usage",
+      "activate",
+      "availability",
+      "cancel",
+      "candidates",
+      "effects_committed",
+      "make_offer",
+      "make_offer.replace_face",
+      "make_offer.show_reroll",
+      "settle",
+      "uses_spent"
+    ],
     "Candidates.choices": [
       "agent-acceptance:test_architect_balance",
       "agent-acceptance:test_architect_cathedral",
@@ -103956,6 +106984,19 @@
     ]
   },
   "apps/agent/zhael_unravel_fate.py": {
+    "<defined-functions>": [
+      "_opening_image",
+      "_previous_opening",
+      "_publish",
+      "_require_opening",
+      "_require_pocket_rewind",
+      "_require_untouched",
+      "_restore_combat",
+      "_restore_inventory",
+      "_restore_player",
+      "_rewindable",
+      "activate"
+    ],
     "_opening_image": [
       "agent-acceptance:test_enemy_pockets"
     ],

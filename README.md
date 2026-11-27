@@ -415,7 +415,7 @@ The DM agent joins, calls `enter_location` for the starting scene, and begins na
 
 ### Android development build
 
-Android builds also work on Macs that can't run the Xcode version Expo SDK 57 requires.
+Android builds also work on Macs that can't run Xcode 26.4 or newer, the [Expo SDK 58 minimum for iOS](https://docs.expo.dev/versions/v58.0.0/#support-for-android-and-ios-versions).
 
 **Prerequisites:**
 

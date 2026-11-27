@@ -1,10 +1,18 @@
 def render_markdown(report: dict) -> str:
+    check = report.get("report_check")
+    execution = (
+        f"`--check --scope all` exited {check['exit_status']} at `{check['commit']}` on {check['checked_at']}."
+        if check
+        else "All-scope check execution has yet to be recorded."
+    )
     lines = [
         "# Dependency upgrade",
         "",
-        f"Registry snapshot: {report['registry_snapshot_date']}  ",
-        f"Toolchain: CPython {report['python_version']}; uv {report['uv_version']}; Bun {report.get('bun_version', 'unreported')}",
-        f"Execution evidence: historical record accepted at {report['evidence_record']['accepted_commit']} on {report['evidence_record']['accepted_at']}.",
+        f"Registry snapshot: {report['registry_snapshot_date']} (acquisition completed {report['registry_acquired_at']})",
+        "",
+        f"Toolchain: CPython {report['python_version']}, uv {report['uv_version']}, Bun {report.get('bun_version', 'unreported')}",
+        "",
+        f"Execution evidence: {execution}",
         "",
         "## Python environments",
         "",
@@ -20,11 +28,7 @@ def render_markdown(report: dict) -> str:
         )
         for row in (item for item in report["dependencies"] if item["project"] == project):
             held = row.get("held_back_by")
-            holdback = (
-                "—"
-                if not held
-                else f"{held['package']}=={held['version']} requires {row['name']}{held['specifier']}: {held['reason']}"
-            )
+            holdback = held["reason"] if held else "—"
             lines.append(
                 f"| {row['group']} | {row['name']} | `{row['requested']}` | {row['resolved']} / {row['installed']} | {row['latest_stable']} | {holdback} |"
             )
@@ -34,6 +38,8 @@ def render_markdown(report: dict) -> str:
             "## Bun workspace",
             "",
             f"Release age policy: {report['minimum_release_age']} seconds.",
+            "",
+            "Candidate is the version selected in the committed graph. Registry columns show — for Git and workspace sources.",
             "",
             "| Project | Group | Dependency | Requested | Locked / installed | Candidate | Registry latest | Decision |",
             "|---|---|---|---|---|---|---|---|",
@@ -59,13 +65,8 @@ def render_markdown(report: dict) -> str:
         lines.append(
             f"| {row['group']} | {row['name']} | `{row['requested']}` | {row['locked']} / {row['installed']} | {row['candidate']} | {row['registry_latest']} | {row.get('reason') or 'Current'} |"
         )
-    lines.extend(
-        [
-            "",
-            "| Release-age exception | Published | Command | Evidence |",
-            "|---|---|---|---|",
-        ]
-    )
+    if report["e2e_release_age_exceptions"]:
+        lines.extend(["", "| Release-age exception | Published | Command | Evidence |", "|---|---|---|---|"])
     for exception in report["e2e_release_age_exceptions"]:
         lines.append(
             f"| {exception['name']}@{exception['version']} | {exception['published_at']} | `{exception['command']}` | {exception['evidence']} |"
@@ -75,10 +76,10 @@ def render_markdown(report: dict) -> str:
     lines.extend(
         [
             "",
-            "### Mobile SDK 57 baseline",
+            "## Mobile SDK 58 baseline",
             "",
-            f"- Expo {mobile['expo']}; React Native {mobile['react_native']}; {mobile['engine']}.",
-            f"- Platform minimums: Android {minimums['android']} (compile/target SDK {minimums['compile_sdk']}/{minimums['target_sdk']}); iOS {minimums['ios']}; Xcode {minimums['xcode']}.",
+            f"- Expo {mobile['expo']}, React Native {mobile['react_native']}, {mobile['engine']}.",
+            f"- Android {minimums['android']} (compile SDK {minimums['compile_sdk']}, target SDK {minimums['target_sdk']}), iOS {minimums['ios']}, Xcode {minimums['xcode']}.",
             f"- Config plugins: {', '.join(mobile['plugins'])}.",
             f"- Patch files: {', '.join(mobile['patches']) if mobile['patches'] else 'none'}.",
             "",
@@ -88,17 +89,6 @@ def render_markdown(report: dict) -> str:
     )
     for source in mobile["git_sources"]:
         lines.append(f"| {source['name']} | `{source['requested']}` | `{source['commit']}` |")
-    lines.extend(
-        [
-            "",
-            "| Release-age exception | Published | Command | Evidence |",
-            "|---|---|---|---|",
-        ]
-    )
-    for exception in mobile["release_age_exceptions"]:
-        lines.append(
-            f"| {exception['name']}@{exception['version']} | {exception['published_at']} | `{exception['command']}` | {exception['evidence']} |"
-        )
     compatibility = mobile["compatibility_exceptions"]
     lines.extend(["", "Compatibility exceptions:"])
     if not compatibility:
@@ -107,6 +97,49 @@ def render_markdown(report: dict) -> str:
         lines.append(
             f"- {exception['producer']} declares `{exception['declared_peer']}`; selected `{exception['selected']}`. {exception['evidence']}"
         )
+    exemption = report["mobile_release_age_exemption"]
+    lines.extend(
+        [
+            "",
+            f"### One-off Expo release-age exemption, {exemption['date']}",
+            "",
+            f"{exemption['evidence']} [Expo 58.1.0 upgrade]({exemption['reference']})",
+            "",
+            "| Package | Previous | Exempted version |",
+            "|---|---|---|",
+        ]
+    )
+    for package in exemption["packages"]:
+        lines.append(f"| {package['name']} | {package['previous']} | {package['version']} |")
+
+    overrides = report.get("overrides", [])
+    if overrides:
+        lines.extend(
+            [
+                "",
+                "## Root resolution overrides",
+                "",
+                "| Override | Requested | Reason |",
+                "|---|---|---|",
+            ]
+        )
+        for row in overrides:
+            lines.append(f"| {row['name']} | `{row['requested']}` | {row['reason']} |")
+    lines.extend(["", "## Infrastructure holds", ""])
+    for hold in report["infrastructure_holds"]:
+        lines.append(f"- `{hold['reference']}` ({hold['name']}): {hold['status']}. {hold['reason']}")
+
+    record = report["evidence_record"]
+    lines.extend(
+        [
+            "",
+            "## Historical validation outcomes",
+            "",
+            f"The SDK 57 validation record was accepted at `{record['accepted_commit']}` on {record['accepted_at']}.",
+            "",
+            "### Native builds",
+        ]
+    )
     ios = mobile["native_validation"]["ios"]
     android = mobile["native_validation"]["android"]
     lines.extend(
@@ -132,26 +165,8 @@ def render_markdown(report: dict) -> str:
             f"- Evidence: {transport['artifact']}; driver: {transport['tool']}; Expo MCP: {transport['expo_mcp']}.",
         ]
     )
-    overrides = report.get("overrides", [])
-    if overrides:
-        lines.extend(
-            [
-                "",
-                "### Root resolution overrides",
-                "",
-                "| Override | Requested | Reason |",
-                "|---|---|---|",
-            ]
-        )
-        for row in overrides:
-            lines.append(f"| {row['name']} | `{row['requested']}` | {row['reason']} |")
-    lines.extend(["", "### Infrastructure holds", ""])
-    for hold in report["infrastructure_holds"]:
-        lines.append(f"- `{hold['reference']}` ({hold['name']}): {hold['status']}. {hold['reason']}")
     if report.get("validation_outcomes"):
-        lines.extend(
-            ["", "## Historical validation outcomes", "", "| Lane | Recorded outcome | Evidence |", "|---|---|---|"]
-        )
+        lines.extend(["", "### Other recorded checks", "", "| Lane | Recorded outcome | Evidence |", "|---|---|---|"])
         for outcome in report["validation_outcomes"]:
             lines.append(f"| {outcome['lane']} | {outcome['status']} | {outcome['evidence']} |")
     lines.extend(
