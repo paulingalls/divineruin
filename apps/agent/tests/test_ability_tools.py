@@ -15,6 +15,7 @@ import reaction_spend
 import reaction_windows
 import spells
 from ability_tools import _request_ability_activation_impl
+from combat_ability_gate import MARSHAL_RALLY
 from combat_phase import PhaseBeat, advance_combat_phase
 from combat_spatial import add_smoke, position, require_spatial
 from session_data import CombatParticipant
@@ -209,6 +210,7 @@ class TestActivation:
             elif ability.id == "warrior_rallying_shout":
                 action["target_id"] = "ally"
             elif ability.id not in (
+                MARSHAL_RALLY,
                 "warrior_second_wind",
                 "warrior_whirlwind",
                 "warrior_iron_stance",

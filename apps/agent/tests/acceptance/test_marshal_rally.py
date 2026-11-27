@@ -20,6 +20,7 @@ from sample_fixtures import published_payloads
 from test_aelora_gift import _live_party
 from voice_condition_fixtures import participant
 
+import abilities
 import combat_spatial
 import db_mutations
 import db_queries
@@ -109,6 +110,8 @@ async def test_discovered_rally_pays_focus_and_persists_each_recipient(fight: Ma
     before = await player(marshal)
     previous_events = len(published_payloads(fight.sd.room))
     result = await cast_rally(fight, ability["id"])
+    authored = abilities.get_ability(RALLY)
+    assert (result["effect"], result["narration_cue"]) == (authored.effect, authored.narration_cue)
     assert result["effect_resolution"] == "engine"
     assert result["deducted"] == {"focus": 3, "stamina": 0}
     outcomes = {row["recipient_id"]: row for row in result["rally_results"]}
