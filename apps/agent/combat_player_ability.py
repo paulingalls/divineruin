@@ -64,7 +64,8 @@ async def resolve(
         locked = await queries.get_player(attacker.id, conn=conn, for_update=True)
         if locked is None:
             raise RuntimeError(f"Missing locked player row for Wild Shape: {attacker.id}")
-        cost = resolved[0].cost
+        ability = resolved[0]
+        cost = ability.cost
         form_id, focus, stamina = wild_shape.gate(
             attacker, decl, locked, wild_shape.druid_profile(), focus_cost=cost.focus, stamina_cost=cost.stamina
         )
@@ -76,6 +77,8 @@ async def resolve(
             "declaration_type": str(decl.type),
             "action": decl.action,
             "wild_shape": form,
+            "effect": ability.effect,
+            "narration_cue": ability.narration_cue,
         }
     if resolved is not None and resolved[0].id == SACRIFICE_PLAY:
         return await combat_sacrifice_play.resolve(

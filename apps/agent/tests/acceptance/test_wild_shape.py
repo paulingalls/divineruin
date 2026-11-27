@@ -248,6 +248,8 @@ async def test_transform(
     assert packet["wild_shape"] == {"form_id": form, "name": name, "hp_current": hp, "hp_max": hp}
     if action == SPELL:
         assert packet["cast"]["resonance_generated"] > 0
+    else:
+        assert packet["effect"] and packet["narration_cue"]
     assert any(
         p.get("wildShape") == {"formId": form, "name": name, "hpCurrent": hp, "hpMax": hp}
         for event in updates(walk)
