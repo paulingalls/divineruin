@@ -1,9 +1,11 @@
 """Prepared combat rolls shared by the phase's continuation owners."""
 
 from collections.abc import Awaitable, Callable
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 
+import db_queries
 import encounter_facts
+import oath_justice
 import zhael_fate
 from check_resolution import D20CheckCore, D20Roll, SkillCheckResult, skill_with_roll
 from check_resolution_save import SavingThrowResult, _save_result
@@ -51,14 +53,14 @@ class PhaseRolls:
         self.pending = PendingRoll(kind, roller_id, original, d20, candidates)
         return True
 
-    async def save(self, session, checkpoint, roller_id, effect, roll, *, queries, conn):
+    async def save(self, session, checkpoint, roller_id, effect, roll, *, queries, conn, state=None):
         if "save" in checkpoint:
             original = saved_throw(checkpoint.pop("save"))
             d20 = original.d20
             assert d20 is not None
             kept = self.select(d20.evaluate(original.roll))
             return _save_result(original, kept, effect)
-        original = roll()
+        original = await _prepare_save(session, state, roller_id, effect, roll, queries=queries, conn=conn)
         if not session.fate_lock.locked():
             return original
         d20 = original.d20
@@ -77,18 +79,22 @@ class PacketRolls:
     queries: object
     conn: object
     deescalation_round: int | None = None
+    originating_participant_id: str | None = None
 
     @property
     def paused(self) -> bool:
         return self.phase.pending is not None
 
     def scope(self, name: str) -> "PacketRolls":
-        return PacketRolls(
-            self.phase, self.steps.setdefault(name, {}), self.queries, self.conn, self.deescalation_round
-        )
+        return replace(self, steps=self.steps.setdefault(name, {}))
 
-    async def save(self, session, roller_id, effect, roll):
-        return await self.phase.save(session, self.steps, roller_id, effect, roll, queries=self.queries, conn=self.conn)
+    def with_origin(self, participant_id: str) -> "PacketRolls":
+        return replace(self, originating_participant_id=participant_id)
+
+    async def save(self, session, roller_id, effect, roll, *, state):
+        return await self.phase.save(
+            session, self.steps, roller_id, effect, roll, queries=self.queries, conn=self.conn, state=state
+        )
 
     def take_skill(self):
         if "skill" not in self.steps:
@@ -114,8 +120,33 @@ class PacketRolls:
         return original
 
 
-async def packet_save(progress, session, roller_id, effect, roll, *, state=None):
-    result = roll() if progress is None else await progress.save(session, roller_id, effect, roll)
+async def _prepare_save(session, state, roller_id, effect, roll, *, queries, conn, player=None):
+    result = roll()
+    if state is None and player is None:
+        if result.originating_participant_id is not None and session.combat_state is not None:
+            raise ValueError("Sourced combat save requires its working combat state")
+        return result
+    return await oath_justice.prepare_save(
+        session, state, roller_id, result, effect, queries=queries, conn=conn, player=player
+    )
+
+
+async def packet_save(
+    progress,
+    session,
+    roller_id,
+    effect,
+    roll,
+    *,
+    state=None,
+    queries=db_queries,
+    conn=None,
+    player=None,
+):
+    if progress is None:
+        result = await _prepare_save(session, state, roller_id, effect, roll, queries=queries, conn=conn, player=player)
+    else:
+        result = await progress.save(session, roller_id, effect, roll, state=state)
     if result is not None and state is not None:
         encounter_facts.consume_rally(state, roller_id, result.rally_sources)
     return result

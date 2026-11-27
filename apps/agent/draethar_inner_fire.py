@@ -160,7 +160,9 @@ async def _inner_fire_locked(
         steps: dict = {}
         if participant.type == "player":
             kwargs = (
-                {"progress": PacketRolls(fate_rolls, steps, queries_mod, conn)} if session.fate_lock.locked() else {}
+                {"progress": PacketRolls(fate_rolls, steps, queries_mod, conn).with_origin(player_id)}
+                if session.fate_lock.locked()
+                else {}
             )
             facts["concentration_broken"] = await concentration_break_mod.break_concentration_on_damage(
                 session,
@@ -234,7 +236,7 @@ async def resume_inner_fire(session, *, db_mod, queries, mutations, concentratio
             damaged_player_id=player_id,
             combat_state=state,
             conn=conn,
-            progress=PacketRolls(fate_rolls, cursor["steps"], queries, conn),
+            progress=PacketRolls(fate_rolls, cursor["steps"], queries, conn).with_origin(player_id),
             receipt=facts,
         )
         assert fate_rolls.pending is None and fate_rolls.kept is None

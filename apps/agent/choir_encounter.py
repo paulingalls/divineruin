@@ -260,8 +260,10 @@ async def turn_start(session, state, actor, *, conn, concentration_break_mod, pr
             "Aura of Lost Voices",
             bonus_dice_eligible=False,
             combat_state=state,
+            originating_participant_id=source.id,
         ),
         state=state,
+        conn=conn,
     )
     if save is None:
         return None
@@ -280,6 +282,7 @@ async def turn_start(session, state, actor, *, conn, concentration_break_mod, pr
         "success": save.success,
         "concentration_broken": broken,
         "cue": "Lost voices tug at your focus.",
+        **save.justice_fields(),
         **encounter_facts.rally_receipt(actor.id, save.rally_sources),
     }
 

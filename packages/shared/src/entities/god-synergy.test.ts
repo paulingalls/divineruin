@@ -68,7 +68,7 @@ test("Valdris's warrior has the registered Measured Reprisal clause", () => {
   });
 });
 
-test("Valdris's paladin has the registered Oath of Justice breach clause", () => {
+test("Valdris's paladin has both registered Oath of Justice clauses", () => {
   const paladin = validateGods(catalog).find((god) => god.god_id === "valdris")
     ?.layer_4_synergy_matrix.paladin;
   expect<unknown>(paladin).toEqual(corpus.oath_of_justice);

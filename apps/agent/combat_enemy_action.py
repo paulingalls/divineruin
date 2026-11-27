@@ -10,6 +10,7 @@ import combat_damage_affinity
 import combat_wrongdoing
 import concentration_break
 import conditions
+import db_queries
 import encounter_facts
 import event_types as E
 from combat_ability import _attach_riders
@@ -44,6 +45,7 @@ def is_combined_attack_action(action: dict) -> bool:
 
 def _save_fields(result, roller_id: str) -> dict:
     return {
+        **result.justice_fields(),
         **override_fields(result),
         **encounter_facts.rally_receipt(roller_id, result.rally_sources),
         "save_type": result.save_type,
@@ -71,6 +73,7 @@ async def _resolve_enemy_condition_packet(
     *,
     state,
     conn,
+    queries=db_queries,
     save_resolver=check_resolution_save,
     concentration_break_mod=concentration_break,
     reaction_save_advantage: bool = False,
@@ -97,8 +100,11 @@ async def _resolve_enemy_condition_packet(
             bonus_dice_eligible=False,
             advantage=reaction_save_advantage,
             combat_state=state,
+            originating_participant_id=attacker.id,
         ),
         state=state,
+        queries=queries,
+        conn=conn,
     )
     if result is None:
         return {}
@@ -192,6 +198,7 @@ async def resolve_combined_attack_action(
             action,
             state=state,
             conn=conn,
+            queries=queries,
             concentration_break_mod=concentration_break_mod,
             reaction_save_advantage=reaction_save_advantage,
             progress=progress,
@@ -250,8 +257,11 @@ async def resolve_save_damage_action(
                 bonus_dice_eligible=False,
                 advantage=reaction_save_advantage,
                 combat_state=state,
+                originating_participant_id=attacker.id,
             ),
             state=state,
+            queries=queries,
+            conn=conn,
         )
         if result is None:
             return {}
@@ -291,6 +301,7 @@ async def resolve_save_damage_action(
             session.room,
             E.DICE_ROLL,
             {
+                **result.justice_fields(),
                 **override_fields(result),
                 **encounter_facts.rally_receipt(target.id, result.rally_sources),
                 "roll_type": "saving_throw",
@@ -432,6 +443,7 @@ async def resolve_enemy_strike(
             action,
             state=state,
             conn=conn,
+            queries=queries,
             concentration_break_mod=concentration_break_mod,
             reaction_save_advantage=reaction_save_advantage,
             progress=progress,

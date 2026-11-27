@@ -315,7 +315,15 @@ async def test_autumn_discovery_uses_insight_modifier(dev_db_pool):
         ):
             receipt = await walk.command(
                 "check",
-                {"roll": {"kind": "discover", "skill": "insight", "target": "innkeeper", "hearing_only": False}},
+                {
+                    "roll": {
+                        "kind": "discover",
+                        "synergy_context": "none",
+                        "skill": "insight",
+                        "target": "innkeeper",
+                        "hearing_only": False,
+                    }
+                },
             )
         event = next(p for p in published_payloads(walk.sd.room) if p["type"] == "dice_roll")
         assert (receipt["modifier"], receipt["total"], event["total"]) == (1, 12, 12)

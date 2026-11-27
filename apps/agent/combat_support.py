@@ -15,6 +15,7 @@ import conditions
 import db_mutations
 import db_queries
 import oath_breach
+import oath_justice
 import reaction_windows
 import thyra_seasons
 from combat_action_availability import action_summary
@@ -116,6 +117,9 @@ async def _resolve_attack_packet(
             combat_state=combat_state,
             weapon_attack=weapon_attack,
             weapon_profile=profile,
+            oath_justice=await oath_justice.attack_receipt(
+                session, combat_state, attacker, target, player, queries=queries, conn=conn
+            ),
             veiled_strike=veiled_strike,
             player=player,
             defender=defender,
@@ -166,6 +170,8 @@ async def apply_rolled_attack(
 ):
     steps = progress.steps if progress is not None else {}
     if attack_result is not None:
+        if attack_result.oath_justice is not None:
+            steps["oath_justice"] = attack_result.oath_justice
         if combat_state is not None and conn is not None:
             breach = await oath_breach.settle(session, combat_state, attacker, target, conn=conn, queries=queries)
             if breach is not None:
@@ -191,9 +197,11 @@ async def apply_rolled_attack(
         conn=conn,
         sink=sink,
         publish_roll=publish_roll,
-        progress=progress,
+        progress=progress.with_origin(attacker.id) if progress is not None else None,
     )
     summary.update(steps.get("yield_receipt", {}))
+    if "oath_justice" in steps:
+        summary["oath_justice"] = steps["oath_justice"]
     if "oath_breach" in steps:
         summary["oath_breach"] = steps["oath_breach"]
     if (

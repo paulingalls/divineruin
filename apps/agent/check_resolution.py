@@ -21,6 +21,7 @@ from patron_synergy import (
     common_bond_crafting_bonus,
     context_skill_bonus,
     discovery_skill_bonus,
+    validate_synergy_context,
 )
 from rules_engine import (
     SKILL_TIER_BONUS,
@@ -35,8 +36,6 @@ from rules_engine import (
 )
 from world_season import Season
 
-# --- Result dataclasses ---
-
 
 @dataclass(frozen=True)
 class CheckResult:
@@ -50,9 +49,6 @@ class CheckResult:
     critical_success: bool
     critical_failure: bool
     narrative_hint: str
-    # Intrinsic dramatic-dice verdict (M4.5): nat-20/nat-1 only here, since a
-    # check has no roll_type. Defaulted + appended so encounter-context signals
-    # (story-004 emission sites) stay additive. See dramatic.py.
     dramatic: bool = False
     context: str = ""
     d20: D20Roll | None = None
@@ -68,16 +64,8 @@ class SkillCheckResult:
     success: bool
     margin: int
     narrative_hint: str
-    # Intrinsic dramatic-dice verdict (M4.5): nat-20/nat-1 only — an out-of-combat
-    # check has no roll_type / encounter context, so only crits fire. Threaded from
-    # the underlying CheckResult so the skill-check DICE_ROLL packet (story-005)
-    # carries the same verdict as every other roll packet. See dramatic.py.
     dramatic: bool = False
     context: str = ""
-    # Beneficial conditions whose +1d4 was rolled into this check and must now be consumed (M4.8
-    # story-002): Inspired applies to any roll; Blessed does not (attack+save only). Additive +
-    # defaulted so existing packets stay valid. story-003 reads this to remove + persist the
-    # condition. Empty when the roller had no applicable beneficial condition.
     consumed_conditions: tuple[str, ...] = ()
     gift_name: str | None = None
     auto_fail: bool = False
@@ -88,13 +76,7 @@ class SkillCheckResult:
 
 @dataclass(frozen=True)
 class D20CheckCore:
-    """Internal d20+mod-vs-DC outcome shared by resolve_check (skill side)
-    and resolve_saving_throw. NOT part of the public API — callers should
-    consume CheckResult / SkillCheckResult / SavingThrowResult instead.
-
-    Centralizes the success rule (nat-20 auto-success, nat-1 auto-fail,
-    else total >= dc) so the two call-sites can't drift independently.
-    """
+    """The one success rule (nat 20 succeeds, nat 1 fails, else total >= DC) so call sites cannot drift."""
 
     roll: int
     total: int
@@ -319,10 +301,33 @@ def _resolve_skill_check_impl(
     first_stay: bool = False,
     season: Season | None = None,
     synergy_context: str = "none",
+    player_id: str | None = None,
+    in_combat: bool = False,
     discovery: bool = False,
 ) -> SkillCheckResult:
+    from oath_justice import TAG
+
+    validate_synergy_context(synergy_context)
+
     skill_lower = skill.lower()
-    if auto_fail_hearing_perception(player_data.get("conditions") or [], skill=skill, hearing_only=hearing_only):
+    hearing_failed = auto_fail_hearing_perception(
+        player_data.get("conditions") or [], skill=skill, hearing_only=hearing_only
+    )
+    tier = _get_skill_tier(player_data, skill_lower)
+    auto_fail = hearing_failed or _check_auto_fail(dc, tier)
+    context_synergy = (
+        context_skill_bonus(
+            player_data,
+            skill_lower,
+            synergy_context,
+            player_id=player_id,
+            in_combat=in_combat,
+            auto_fail=auto_fail,
+        )
+        if not auto_fail or synergy_context == TAG
+        else None
+    )
+    if hearing_failed:
         return SkillCheckResult(
             skill=skill_lower,
             roll=0,
@@ -333,6 +338,7 @@ def _resolve_skill_check_impl(
             margin=-dc,
             narrative_hint="You cannot hear; this hearing-only Perception check automatically fails",
             auto_fail=True,
+            context_synergy=context_synergy,
         )
     attr = SKILLS.get(skill_lower)
     if attr is None:
@@ -342,11 +348,7 @@ def _resolve_skill_check_impl(
     score = max(attributes.get(a, 10) for a in attr) if isinstance(attr, tuple) else attributes.get(attr, 10)
 
     level = player_data.get("level", 1)
-    tier = _get_skill_tier(player_data, skill_lower)
 
-    # Condition modifiers (M4.3): a check's scopes are its governing attribute(s) plus the
-    # skill name, so Poisoned (str/dex/con) disadvantages physical skills and Blinded
-    # (perception) the Perception skill. Checks have no auto-fail (that is a saving-throw rule).
     attr_names = attr if isinstance(attr, tuple) else (attr,)
     scopes = {_ATTR_ABBREV.get(a, a) for a in attr_names} | {skill_lower}
     effects = get_condition_effects(
@@ -354,12 +356,8 @@ def _resolve_skill_check_impl(
     )
     flat_mod, advantage, disadvantage, _auto_fail = _apply_condition_modifiers(effects, scopes)
     disadvantage = disadvantage or skill_lower in player_data.get("scene_disadvantage_skills", ())
-    # Beneficial bonus die (M4.8 story-002): a skill check is roll-kind "check", so Inspired (+1d4 on
-    # any roll) applies but Blessed (attack+save only) does not. Skip it on a beyond-tier task that
-    # auto-fails without a roll — the die is not spent when it cannot help (mirrors the save auto-fail
-    # gate). Folded into the total via extra_modifier; the consumed condition is signalled for
-    # story-003 to remove.
-    if _check_auto_fail(dc, tier):
+    # An auto-failed check rolls nothing, so the bonus die is not spent when it cannot help.
+    if auto_fail:
         bonus, consumed = 0, ()
     else:
         rolled = roll_bonus_dice(
@@ -368,21 +366,22 @@ def _resolve_skill_check_impl(
         bonus, consumed = rolled.total, rolled.consumed
 
     gift_name = None
-    context_synergy = None
     crafting_synergy = None
-    if not _check_auto_fail(dc, tier):
+    if not auto_fail:
         gift_bonus, gift_advantage, gift_name = skill_gift(
             player_data, skill_lower, ally_present=ally_present, natural_terrain=natural_terrain, first_stay=first_stay
         )
         bonus += gift_bonus + thyra_seasons.skill_bonus(player_data, season, skill_lower)
         advantage = advantage or gift_advantage
-        context_synergy = (
-            discovery_skill_bonus(player_data, skill_lower)
-            if discovery
-            else context_skill_bonus(player_data, skill_lower, synergy_context)
-        )
+        automatic = discovery_skill_bonus(player_data, skill_lower) if discovery else None
+        if automatic is not None:
+            bonus += automatic["bonus"]
         if context_synergy is not None:
             bonus += context_synergy["bonus"]
+            if automatic is not None:
+                context_synergy["automatic_discovery"] = dict(automatic)
+        else:
+            context_synergy = automatic
         if skill_lower == "crafting":
             crafting_synergy = common_bond_crafting_bonus(player_data)
             if crafting_synergy is not None:
@@ -431,6 +430,8 @@ def resolve_skill_check(
     first_stay: bool = False,
     season: Season | None = None,
     synergy_context: str = "none",
+    player_id: str | None = None,
+    in_combat: bool = False,
 ) -> SkillCheckResult:
     return _resolve_skill_check_impl(
         player_data,
@@ -443,6 +444,8 @@ def resolve_skill_check(
         first_stay=first_stay,
         season=season,
         synergy_context=synergy_context,
+        player_id=player_id,
+        in_combat=in_combat,
     )
 
 
@@ -458,13 +461,10 @@ def resolve_skill_check_dc(
     first_stay: bool = False,
     season: Season | None = None,
     synergy_context: str = "none",
+    player_id: str | None = None,
+    in_combat: bool = False,
     discovery: bool = False,
 ) -> SkillCheckResult:
-    """Like resolve_skill_check but accepts a numeric DC directly.
-
-    Use when the DC is stored as a number (e.g. hidden element DCs)
-    rather than a difficulty tier string.
-    """
     return _resolve_skill_check_impl(
         player_data,
         skill,
@@ -476,6 +476,8 @@ def resolve_skill_check_dc(
         first_stay=first_stay,
         season=season,
         synergy_context=synergy_context,
+        player_id=player_id,
+        in_combat=in_combat,
         discovery=discovery,
     )
 

@@ -42,8 +42,8 @@ async def break_concentration_on_damage(
     the primary.
 
     The DC scales with damage (concentration.check_concentration); the save is the canonical
-    proficiency-aware CON save (resolver.resolve_saving_throw); the keep/break decision and the
-    incapacitation auto-fail are the engine's (concentration.concentration_holds). Persists the
+    proficiency-aware CON save (resolver.resolve_saving_throw); the save's own verdict decides
+    keep or break (natural 1 fails, natural 20 holds), and incapacitation auto-fails without a roll. Persists the
     end via concentration_mutations.update_player_concentration(damaged_player_id, None) and clears
     the in-memory member state, mirroring how cast_spell sets/ends concentration.
 
@@ -69,7 +69,7 @@ async def break_concentration_on_damage(
 
     dc = concentration.check_concentration(damage)
     # Incapacitation auto-fails (the engine enforces it) — skip the pointless roll and DB fetch.
-    save_total = 0
+    holds = False
     if not incapacitated:
         player = await queries.get_player(damaged_player_id, conn=conn)
         if player is None:
@@ -96,23 +96,28 @@ async def break_concentration_on_damage(
                 "concentration",
                 advantage=encounter_facts.hearth_save_advantage(cstate, damaged_player_id),
                 bonus_dice_eligible=False,
+                originating_participant_id=progress.originating_participant_id if progress is not None else None,
                 rally_sources=encounter_facts.pending_rally(combat_state, damaged_player_id),
             ),
-            state=combat_state,
+            state=cstate,
+            queries=queries,
+            conn=conn,
+            player=player,
         )
         if save is None:
             return None
-        save_total = save.total
-        if receipt is not None and save.rally_sources:
+        holds = save.success
+        if receipt is not None and (save.rally_sources or save.oath_justice is not None):
             receipt["concentration_save"] = {
                 "roll": save.roll,
                 "total": save.total,
                 "dc": save.dc,
                 "success": save.success,
+                **save.justice_fields(),
                 **encounter_facts.rally_receipt(damaged_player_id, save.rally_sources),
             }
 
-    if concentration.concentration_holds(save_total, dc, incapacitated=incapacitated):
+    if holds:
         return None
 
     return await end_concentration(

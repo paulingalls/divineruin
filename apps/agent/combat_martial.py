@@ -423,6 +423,7 @@ async def bash_save(
             originating_participant_id=actor.id,
             combat_state=state,
         ),
+        state=state,
     )
     if save is None:
         return

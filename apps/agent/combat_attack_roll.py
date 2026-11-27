@@ -16,6 +16,7 @@ from combat_participant import BARK_SKIN_AC_BONUS
 from condition_catalog import INCORPOREAL, STUDIED_WEAKNESS, WAR_CRY_RALLY
 from dramatic import DramaticContext, evaluate_dramatic_context
 from equipment_rules import needs_weapon_profile, resolve_weapon_profile, with_weapon_magic
+from oath_justice import attack_receipt
 from patron_synergy_combat import VeiledStrike, attack_player
 from weapon_proficiency import has_weapon_proficiency
 from world_season import Season
@@ -42,6 +43,7 @@ def roll_attack(
     orenthel_ac_override: int | None = None,
     veiled_strike: VeiledStrike | None = None,
     season: Season | None = None,
+    oath_justice: dict | None = None,
 ) -> tuple:
     """Roll without applying HP changes; held reactions pause before impact."""
     attacker_data, effective_ac, attack_mod = attack_roll_inputs(
@@ -60,6 +62,8 @@ def roll_attack(
         veiled_strike=veiled_strike,
         season=season,
     )
+    if oath_justice is not None:
+        attacker_data["oath_justice"] = oath_justice
     attack_result = resolver.resolve_attack(
         attacker_data,
         action,
@@ -287,6 +291,8 @@ def build_attack_dice_roll_payload(attacker, attack_result) -> dict:
         "dramatic": attack_result.dramatic,
         "context": attack_result.context,
     }
+    if attack_result.oath_justice is not None:
+        payload["oath_justice"] = attack_result.oath_justice
     if attack_result.sneak_attack_dice is not None:
         payload.update(
             damage_type=attack_result.damage_type,
@@ -312,7 +318,7 @@ def held_reaction_ac(head: dict) -> int:
 
 
 async def prepare_player_swing(
-    state, attacker, target, act, reaction_ac_bonus, *, player, queries, conn, strike_mode, faces
+    session, state, attacker, target, act, reaction_ac_bonus, *, player, queries, conn, strike_mode, faces
 ) -> tuple[dict, check_resolution_attack.PreparedAttack]:
     if player is None:
         player = await attack_player(attacker, queries=queries, conn=conn)
@@ -331,6 +337,10 @@ async def prepare_player_swing(
         season=await thyra_seasons.season_for(player, conn=conn),
         veiled_strike=strike_mode,
     )
+    if (
+        justice := await attack_receipt(session, state, attacker, target, player, queries=queries, conn=conn)
+    ) is not None:
+        attacker_data["oath_justice"] = justice
     return attacker_data, check_resolution_attack.prepare_attack(
         attacker_data, act, target_ac, attack_mod=attack_mod, target_conditions=target.conditions, faces=faces
     )

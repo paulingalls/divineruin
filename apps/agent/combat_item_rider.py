@@ -106,8 +106,11 @@ async def resolve_rider(
             bonus_dice_eligible=False,
             advantage=reaction_save_advantage,
             combat_state=state,
+            originating_participant_id=attacker.id,
         ),
         state=state,
+        queries=queries,
+        conn=conn,
     )
     if result is None:
         return
@@ -117,6 +120,7 @@ async def resolve_rider(
         save_total=result.total,
         save_dc=result.dc,
         save_success=result.success,
+        **result.justice_fields(),
         **encounter_facts.rally_receipt(target.id, result.rally_sources),
     )
     if result.success:

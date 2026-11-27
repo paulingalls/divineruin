@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from combat._helpers import _damage_resolver, _make_combat_state, _resolve_deps
+from combat._helpers import _damage_resolver, _make_combat_state, _resolve_deps, save_result
 from sample_fixtures import catalog_encounters, make_context
 from voice_condition_fixtures import place_actors
 
@@ -143,7 +143,7 @@ async def test_player_hostile_cannot_act_condition_reports_released_grapple():
     ability = replace(abilities.get_ability("warrior_unstoppable_charge"), applies_condition="stunned")
     decl = Declaration(type=DeclarationType.ABILITY, action=ability.id, target_id=target.id)
 
-    with patch("check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=False)):
+    with patch("check_resolution_save.roll_participant_save", return_value=save_result(False)):
         summary = await combat_ability_save.resolve_hostile_condition(
             None, state, attacker, target, decl, ability, _land_condition_on_one
         )

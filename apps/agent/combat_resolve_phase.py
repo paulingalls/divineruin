@@ -366,6 +366,7 @@ async def _resolve_phase_locked(
         ),
         "death_saves_due": wrap.death_saves_due if wrap else [],
         **({"rally_saves": wrap.rally_saves} if wrap and wrap.rally_saves else {}),
+        **({"oath_saves": wrap.oath_saves} if wrap and wrap.oath_saves else {}),
         "threshold_walk_returns": wrap.threshold_walk_returns if wrap else [],
         "exhaustion_narration": exhaustion_narration,
         "legendary_available": wrap_adv.legendary_available,

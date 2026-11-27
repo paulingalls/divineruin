@@ -74,6 +74,8 @@ async def _resolve_one_packet(session, state, packet, *, _reshape_prepared=False
                 return {}
         except ReshapeRefused as error:
             return {"actor_id": packet.actor_id, "resolved": False, "reason": str(error)}
+    if progress is not None:
+        deps["progress"] = progress.with_origin(packet.actor_id)
     result = await _resolve_action_packet(session, state, packet, turn_effects=effects, **deps)
     if "reshape_receipts" in steps:
         result["reshape"] = steps["reshape_receipts"]

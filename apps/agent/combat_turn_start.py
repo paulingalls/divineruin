@@ -209,7 +209,7 @@ async def _apply(
         conn=conn,
         sink=sink,
         publish_roll=False,
-        progress=progress,
+        progress=progress.with_origin(owner.id) if progress is not None else None,
     )
     if progress is not None and progress.paused:
         return None
