@@ -33,6 +33,7 @@ def _land_condition_on_one(
     *,
     packet: dict,
     duration: int | None = None,
+    tick_save: str | None = None,
     inspire_attack_upgrade: bool = False,
 ) -> bool:
     """Land a condition (beneficial or hostile) on ONE in-combat participant (M4.8; M13 story-002
@@ -51,7 +52,8 @@ def _land_condition_on_one(
         source=attacker.id if cond_type == "charmed" else source,
         duration=duration,
         inspire_attack_upgrade=inspire_attack_upgrade,
-        originating_participant_id=attacker.id if spec is not None and spec.tick_save is not None else None,
+        originating_participant_id=attacker.id if tick_save or (spec and spec.tick_save) else None,
+        tick_save=tick_save,
     )
     if duration is not None and not attacker.is_ally and attacker.type == "enemy":
         for condition in cond_target.conditions:
@@ -73,6 +75,7 @@ def land_condition_on_participant(
     source: str,
     *,
     packet: dict,
+    tick_save: str | None = None,
     inspire_attack_upgrade: bool = False,
 ) -> bool:
     """Single-target landing rule for the combat producers (the spell path in _resolve_ability_packet
@@ -80,7 +83,14 @@ def land_condition_on_participant(
     ``decl.target_id`` (self when absent). Returns True iff it landed. Thin wrapper over
     ``_land_condition_on_one``; ``packet`` receives any release caused by the condition."""
     return _land_condition_on_one(
-        state, decl.target_id, attacker, cond_type, source, packet=packet, inspire_attack_upgrade=inspire_attack_upgrade
+        state,
+        decl.target_id,
+        attacker,
+        cond_type,
+        source,
+        packet=packet,
+        tick_save=tick_save,
+        inspire_attack_upgrade=inspire_attack_upgrade,
     )
 
 

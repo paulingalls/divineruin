@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, cast
 import architect_reaction
 import combat_enhancers
 import combat_hollow_resonance
+import combat_spell_condition
 import combat_spell_damage
 import combat_spell_heal
 import combat_turn_undead
@@ -252,6 +253,18 @@ async def _resolve_ability_packet(
         )
         if progress is not None and progress.paused:
             return {}
+    elif spell.save_condition is not None:
+        if landing is not None:
+            await combat_spell_condition.land(
+                session,
+                state,
+                attacker,
+                landing,
+                spell,
+                cast_packet,
+                progress=progress.scope("spell_condition") if progress is not None else None,
+                conn=conn,
+            )
     elif deliveries is not None or landing is not None:
         await combat_spell_damage.land(
             session,

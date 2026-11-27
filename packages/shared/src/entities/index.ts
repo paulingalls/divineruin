@@ -67,7 +67,7 @@ export type {
   ProgressionMilestone,
   RelationshipUnlocks,
 } from "./companion";
-export type { Spell, SpellSource, SpellTier } from "./spell";
+export type { SaveConditionProfile, Spell, SpellSource, SpellTier } from "./spell";
 export type {
   Milestone,
   MilestoneTier,
@@ -77,6 +77,7 @@ export type {
 } from "./milestone";
 
 export type { CreatureStatBlock, Attack, Hollow, Ability as CreatureAbility } from "./creature";
+export { CATEGORIES as CREATURE_CATEGORIES } from "./creature_validation";
 export { validateCreatureStatBlock } from "./creature";
 export { CONDITION_NAMES } from "./encounter";
 export { REGION_IDS } from "./region";

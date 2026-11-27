@@ -3,6 +3,9 @@
 import re
 from typing import Literal, NotRequired, TypedDict, cast
 
+from condition_catalog import CONDITION_CATALOG
+from creature_schema import CATEGORIES
+
 ATTRIBUTES = frozenset({"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"})
 DAMAGE_TYPES = frozenset(
     {
@@ -22,6 +25,47 @@ DAMAGE_TYPES = frozenset(
     }
 )
 DICE = re.compile(r"([1-9][0-9]*)d([1-9][0-9]*)(?:\+([0-9]+))?")
+
+
+class SaveConditionProfile(TypedDict):
+    save: str | None
+    condition: str
+    resave: str
+    attribute: NotRequired[str]
+    target_category: NotRequired[str]
+    hp_ceiling: NotRequired[int]
+
+
+def parse_save_condition(raw: object) -> SaveConditionProfile:
+    if not isinstance(raw, dict) or raw.keys() - {
+        "save",
+        "condition",
+        "resave",
+        "attribute",
+        "target_category",
+        "hp_ceiling",
+    }:
+        raise ValueError("save_condition must contain only supported fields")
+
+    def validate(field: str, vocabulary) -> None:
+        value = raw.get(field)
+        if not isinstance(value, str) or value not in vocabulary:
+            raise ValueError(f"save_condition.{field} must name a known value")
+
+    validate("condition", CONDITION_CATALOG)
+    validate("resave", ATTRIBUTES)
+    if "save" not in raw or raw["save"] is not None:
+        validate("save", ATTRIBUTES)
+        validate("attribute", ATTRIBUTES)
+    elif "attribute" in raw:
+        raise ValueError("save_condition.attribute requires an initial save")
+    if "target_category" in raw:
+        validate("target_category", CATEGORIES)
+    if "hp_ceiling" in raw:
+        ceiling = raw["hp_ceiling"]
+        if type(ceiling) is not int or ceiling < 1:
+            raise ValueError("save_condition.hp_ceiling must be a positive integer")
+    return cast(SaveConditionProfile, dict(raw))
 
 
 class HealProfile(TypedDict):
@@ -189,6 +233,11 @@ def validate_target(state, caster, declaration, spell):
         from combat_spell_heal import combat_recipients
 
         combat_recipients(state, caster, declaration, spell, heal)
+        return
+    if spell.save_condition is not None:
+        from combat_spell_condition import validate_target as validate_condition_target
+
+        validate_condition_target(state, caster, declaration, spell)
         return
     profile = getattr(spell, "combat_damage", None)
     if profile is None or profile["resolution"] == "deferred":

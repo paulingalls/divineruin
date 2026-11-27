@@ -310,18 +310,15 @@ async def test_area_spell_keeps_other_recipients(archers, attack_profile, monkey
 
 
 @pytest.mark.parametrize("case", ["save", "automatic", "condition", "condition_clear"])
-async def test_spell_without_attack_roll_is_blocked(archers, case, monkeypatch):
-    spell_id = {"save": "divine_sacred_flame", "automatic": "arcane_magic_missile"}.get(case, "arcane_hold_person")
-    if case.startswith("condition"):
-        row = json.loads(await archers.pool.fetchval("SELECT data FROM spells WHERE id=$1", spell_id))
-        monkeypatch.setitem(
-            spells._spells, spell_id, spells.parse_spell_row(spell_id, {**row, "applies_condition": "restrained"})
-        )
+async def test_spell_without_attack_roll_is_blocked(archers, case):
+    spell_id = {"save": "divine_sacred_flame", "automatic": "arcane_magic_missile"}.get(case, "arcane_power_word_stun")
     spell = await teach(archers, spell_id)
     actor = archers.players[0]
     pools = await caster_pools(actor)
     state = await archers.reload()
     owner = state.architect_encounter["owner_id"]
+    if case.startswith("condition"):
+        participant(state, owner).hp_current = 75
     if case == "condition_clear":
         state.architect_encounter["reaction_round"] = state.round_number
     before = await archers.persist()
@@ -337,12 +334,13 @@ async def test_spell_without_attack_roll_is_blocked(archers, case, monkeypatch):
     assert_cost(pools, await caster_pools(actor), spell)
     packet = result["cast"]
     if case == "condition_clear":
-        assert packet["condition_targets"] == [owner] and packet["condition_applied"] == "restrained"
+        assert packet["condition_targets"] == [owner] and packet["condition_inflicted"] == "stunned"
+        assert [c["type"] for c in participant(after, owner).conditions] == ["stunned"]
         assert after.architect_encounter == before.architect_encounter
         return
     wall = wall_raised(before, after, actor)
     assert wall.hp_current == 30
-    assert not packet.get("damage_results") and "condition_applied" not in packet and "damage_result" not in packet
+    assert not packet.get("damage_results") and "condition_inflicted" not in packet and "damage_result" not in packet
     assert after.get_participant(owner).conditions == before.get_participant(owner).conditions
     interception = result["reactive_architecture"]
     assert (interception["target_id"], interception["wall_id"], interception["redirected"]) == (owner, wall.id, False)
