@@ -173,7 +173,7 @@ async def test_terminal_tool_fight(fight: ChoirFight, seed_value: int, monkeypat
                         elif damage["target_id"] == pid and damage["damage"] > 0:
                             assert spells.get_spell(declared["action"]).verbal
                             if not redirects:
-                                assert damage["target_hp_current"] == round_hp[pid] - damage["damage"]
+                                assert damage["target_hp_current"] == max(0, round_hp[pid] - damage["damage"])
                                 committed = await db_queries.get_player(pid)
                                 assert committed is not None
                                 assert committed["hp"]["current"] == damage["target_hp_current"]
