@@ -204,9 +204,9 @@ without certifying paid speech-recognition accuracy.
   within the rewound round. Sprint quick-fingers shipped the pocket mirror
   without such a case and silently duplicated items across a rewind
   (fixed in 419ab22d).
-- Checking a box in `docs/milestones/*.md` also moves the README phase count, the
-  REMAINING.md position and `docs/INDEX.md` line ranges (`doc_index.py --write`);
-  review checks all three; regenerate the index with `doc_index.py --write`.
+- After editing a milestone checklist, run `python3 scripts/doc_index.py --write`
+  to regenerate the README and REMAINING counts and the documentation index.
+  The commit hook's Proof selection validates all three files.
 - pytest collects only `test_*.py`. A pin module named otherwise (e.g.
   `creature_spec_pins_*.py`) may hold DATA a collected test imports, never test
   functions: sprint-062 story-130's pins ran only through its Verify, so no tier

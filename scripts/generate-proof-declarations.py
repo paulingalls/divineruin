@@ -476,6 +476,12 @@ def main():
         json.loads(source_text("proof.yaml"))["inputs"],
         graph,
     )
+    tasks["doc-index"] = {
+        "run": "python3 scripts/doc_index.py",
+        "sets": ["commit", "land", "super"],
+        "inputs": ["docs/**", "scripts/doc_index.py"],
+        "keyed": ["scripts/doc_index.py"],
+    }
     unkeyed = restored | content | SHARED_INPUTS | runtime_sources
     # Proof drains earlier tasks and releases their providers before admitting a solo task.
     native = tasks.pop("native-maestro")
