@@ -5,7 +5,7 @@ The [catalog](../../content/spells.json) supplies the IDs. The [magic design](..
 
 ## Classification
 
-The 87 spells include **22 engine**, **4 narrated**, **61 unwired** and **0 uncertified**.
+The 87 spells include **25 engine**, **4 narrated**, **58 unwired** and **0 uncertified**.
 
 - **engine** — The named function resolves the effect and the linked committed test asserts the outcome.
 - **narrated** — The design assigns the result to the DM’s narration.
@@ -36,7 +36,7 @@ The dead-reactions sprint is changing the archetype `mage_shield_spell`, which h
 | `arcane_counterspell` | unwired | RUN `arcane_counterspell` (3 Focus). Ordinary cast succeeded with no contest or cancellation. Enemy spell casting has no reaction-window producer in this baseline. [Counterspell reaction window](14_engine_completeness.md#spell-counterspell). |
 | `arcane_dispel_magic` | unwired | RUN `arcane_dispel_magic` (3 Focus). The target kept its active spell and 4 Resonance. No dispel check appeared. [M14.1](14_engine_completeness.md#spell-arcane_dispel_magic). |
 | `arcane_fly` | unwired | RUN `arcane_fly` (3 Focus). Concentration started. The same 10 ft flying move succeeded both before and after casting. No spell-granted movement state appeared. [M14.1](14_engine_completeness.md#spell-arcane_fly). |
-| `arcane_invisibility` | unwired | RUN `arcane_invisibility` (3 Focus). Concentration started. The target gained no concealment or invisible condition. [M14.1](14_engine_completeness.md#spell-arcane_invisibility). |
+| `arcane_invisibility` | engine | Grants Stealth advantage and disadvantage on incoming attacks to one willing ally. Attacks and hostile spells remove invisibility, and loss of the caster’s concentration releases it. [Combat rolls and breaks](../../apps/agent/tests/acceptance/test_spell_marks.py) and [exploration and companion coverage](../../apps/agent/tests/acceptance/test_spell_marks_guards.py). |
 | `arcane_fireball` | unwired | RUN `arcane_fireball` (5 Focus). Failed DEX saves landed fire damage in the forest fight. The packet and saved geometry recorded no ignition. [M14.1](14_engine_completeness.md#spell-arcane_fireball). |
 | `arcane_lightning_bolt` | engine | `combat_spell_recipients.select + combat_spell_damage.land`. [`test_authored_shapes_land_on_union_once`](../../apps/agent/tests/combat/test_area_spell_recipients.py). The Lightning Bolt case checks line aim, boundary exclusions and persisted damage. |
 | `arcane_wall_of_force` | unwired | RUN `arcane_wall_of_force` (5 Focus). Concentration started. The foe crossed the cast area at ordinary cost and no barrier was persisted. [M14.1](14_engine_completeness.md#spell-arcane_wall_of_force). |
@@ -51,7 +51,7 @@ The dead-reactions sprint is changing the archetype `mage_shield_spell`, which h
 | `arcane_meteor_swarm` | unwired | RUN `arcane_meteor_swarm` (8 Focus). Both damage types landed across two overlapping centers. Targets in both centers got one delivery and one save, as in the committed area test. [M14.1](14_engine_completeness.md#spell-arcane_meteor_swarm). |
 | `arcane_time_stop` | unwired | RUN `arcane_time_stop` (8 Focus). The caster got no extra turns and the enemy moved normally on the next round. [M14.1](14_engine_completeness.md#spell-arcane_time_stop). |
 | `divine_sacred_flame` | engine | `combat_spell_damage.land`. [`test_catalog_damage_lands_once_on_declared_recipient`](../../apps/agent/tests/combat/test_spell_damage_lands.py). The Sacred Flame case persists radiant damage after a failed WIS save. The successful-save case leaves HP unchanged. |
-| `divine_guiding_light` | unwired | RUN `divine_guiding_light` (cantrip). The target received no mark or one-use attack modifier. [M14.1](14_engine_completeness.md#spell-divine_guiding_light). |
+| `divine_guiding_light` | engine | Combat only. Marks one foe without a save. The next attack roll against the foe gains advantage and spends the mark even on a miss. An unused mark expires at the end of the caster’s next turn. [Attack and expiry coverage](../../apps/agent/tests/acceptance/test_spell_marks.py) and [Fate and reaction coverage](../../apps/agent/tests/acceptance/test_spell_marks_guards.py). |
 | `divine_mend` | unwired | RUN `divine_mend` (cantrip). The oak staff stayed at 1 durability hit and the cast produced no repair receipt. [M14.1](14_engine_completeness.md#spell-divine_mend). |
 | `divine_sacred_word` | engine | `combat_spell_recipients.select + combat_spell_damage.land`. [`test_sacred_word_selects_only_nearby_undead_and_hollow`](../../apps/agent/tests/combat/test_area_spell_recipients.py). The caster-radius case checks eligible and excluded recipients. The damage lane also tests d4 scaling. |
 | `divine_heal_wounds` | engine | `combat_spell_heal.land_exploration + combat_spell_heal.land_combat_cast`. [`test_immediate_healing_persists_and_names_the_actual_restoration`](../../apps/agent/tests/test_spell_heal_landing.py). The Heal Wounds cases check the authored roll, Wisdom bonus, receipt and persisted HP in and out of combat. |
@@ -88,7 +88,7 @@ The dead-reactions sprint is changing the archetype `mage_shield_spell`, which h
 | `primal_entangle` | unwired | RUN `primal_entangle` (3 Focus). Concentration started. No STR saves, restraint or difficult-terrain zone appeared. [M14.1](14_engine_completeness.md#spell-primal_entangle). |
 | `primal_speak_with_animals` | narrated | The spell opens a conversation and the DM voices the animal. [Narrated utility spells](../game_mechanics/game_mechanics_magic.md#narrated-utility-spells). |
 | `primal_goodberry` | unwired | RUN `primal_goodberry` (1 Focus). Five berries appeared. Consumption decremented the stack and restored HP, with no nourishment or expiry recorded. [M14.1](14_engine_completeness.md#spell-primal_goodberry). |
-| `primal_faerie_fire` | unwired | RUN `primal_faerie_fire` (2 Focus). Concentration started. No DEX saves, outline or attack/exposure modifier appeared. [M14.1](14_engine_completeness.md#spell-primal_faerie_fire). |
+| `primal_faerie_fire` | engine | Creatures in the cube roll DEX saves. A failed save ends invisibility, applies the outline, and grants advantage to attacks against the creature. An outlined creature cannot become invisible. [Both cast orders](../../apps/agent/tests/acceptance/test_spell_marks.py) and [cube and save coverage](../../apps/agent/tests/acceptance/test_spell_new_conditions.py#L41). |
 | `primal_call_lightning` | unwired | RUN `primal_call_lightning` (4 Focus each). The first bolt landed. Later damage was explicitly deferred. A normal recast again spent 4 Focus and generated Resonance. [M14.1](14_engine_completeness.md#spell-primal_call_lightning). |
 | `primal_plant_growth` | unwired | RUN `primal_plant_growth` (3 Focus). The foe crossed the supposed area at ordinary movement cost and no zone was saved. [M14.1](14_engine_completeness.md#spell-primal_plant_growth). |
 | `primal_conjure_animals` | unwired | RUN `primal_conjure_animals` (3 Focus). Concentration started and the roster stayed the same. [M14.1](14_engine_completeness.md#spell-primal_conjure_animals). |

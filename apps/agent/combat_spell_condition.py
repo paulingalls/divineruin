@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 from functools import partial
+from typing import TypeGuard
 
 import check_resolution_save
 import concentration_break
@@ -19,6 +20,7 @@ from combat_structures import require_line
 from condition_produce import resolve_effective_targets
 from declarations import Declaration
 from session_data import SessionData
+from spell_invisibility import reveal_invisible
 from spells import Spell, normalize_target_list
 
 
@@ -29,7 +31,7 @@ def _single_enemy(
     if len(targets) != 1:
         raise ValueError(f"{spell.name} requires one standing enemy")
     target = state.get_participant(targets[0])
-    if target is None or target.is_ally == caster.is_ally or target.is_fallen:
+    if not _standing_creature(target) or target.is_ally == caster.is_ally:
         raise ValueError(f"{spell.name} requires one standing enemy")
     assert spell.save_condition is not None
     category = "hollow" if target.hollow is not None else target.category
@@ -43,7 +45,7 @@ def multiple_recipients(spell: Spell) -> bool:
     return spell.save_condition is not None and (spell.max_targets is not None or recipient_spec(spell) is not None)
 
 
-def _standing_creature(target: CombatParticipant | None) -> bool:
+def _standing_creature(target: CombatParticipant | None) -> TypeGuard[CombatParticipant]:
     return target is not None and not (target.is_fallen or target.is_dead or target.is_structure)
 
 
@@ -222,6 +224,8 @@ async def _land_one(
         originating_participant_id=caster.id,
         tick_save=resave[:3] if (resave := profile["resave"]) is not None else None,
     ):
+        if condition == "outlined":
+            packet.update(reveal_invisible(target))
         packet["condition_inflicted"] = condition
         packet["condition_targets"] = [target.id]
     else:

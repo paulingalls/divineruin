@@ -86,6 +86,10 @@ BEACON_OF_HOPE = "beacon_of_hope"
 PROTECTION_FROM_HOLLOW = "protection_from_hollow"
 
 
+GUIDING_LIGHT_MARK = "guiding_light_mark"
+INVISIBLE = "invisible"
+
+
 CONDITION_CATALOG: dict[str, ConditionSpec] = {
     DIVINE_WARD: ConditionSpec(clearance="start_of_caster_next_turn", restrictions=("damage_resistance_all",)),
     BEACON_OF_HOPE: ConditionSpec(clearance="concentration", advantage_scopes=("wis", "death_save")),
@@ -116,6 +120,10 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
         clearance="long_rest",
         persists_across_encounters=True,
         restrictions=("reduced_max_hp",),
+    ),
+    GUIDING_LIGHT_MARK: ConditionSpec(clearance="end_of_caster_next_turn"),
+    INVISIBLE: ConditionSpec(
+        clearance="concentration", advantage_scopes=("stealth",), restrictions=("incoming_disadvantage",)
     ),
     "outlined": ConditionSpec(clearance="duration", restrictions=("incoming_advantage",)),
     "slowed": ConditionSpec(

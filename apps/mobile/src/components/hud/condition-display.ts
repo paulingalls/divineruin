@@ -19,6 +19,8 @@ import { BrandColors } from "@/constants/theme";
 export const CONDITION_TYPES = [
   "wounded",
   "outlined",
+  "guiding_light_mark",
+  "invisible",
   "slowed",
   "stunned",
   "prone",
@@ -77,6 +79,8 @@ export const CONDITION_DISPLAY: Record<ConditionType, ConditionDisplay> = {
   incorporeal: { label: "Incorporeal", icon: "ghost", color: BrandColors.hollow },
   mark_of_justice: { label: "Mark of Justice", icon: "target", color: BrandColors.ember },
   iron_resolve: { label: "Iron Resolve", icon: "shield-plus", color: BrandColors.hollow },
+  guiding_light_mark: { label: "Guiding Light", icon: "target", color: BrandColors.ember },
+  invisible: { label: "Invisible", icon: "eye-off", color: BrandColors.hollow },
   outlined: { label: "Outlined", icon: "target", color: BrandColors.ember },
   slowed: { label: "Slowed", icon: "walk", color: BrandColors.ember },
   wounded: { label: "Wounded", icon: "heart-broken", color: BrandColors.ember },
