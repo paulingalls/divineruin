@@ -26,7 +26,7 @@ import lost_scout_combat
 import still_encounter
 import still_scene
 from combat_entry import generated_encounter, load_party_players, validate_entry_form
-from combat_init_participants import assemble_participants
+from combat_init_participants import assemble_participants, collect_initiative_awards, finalize_initiative
 from combat_init_participants import class_reaction_ids as class_reaction_ids
 from combat_init_validation import validate_enemy_action_shapes as validate_enemy_action_shapes
 from combat_init_validation import validate_enemy_resistance_tags as validate_enemy_resistance_tags
@@ -160,15 +160,11 @@ async def _start_combat_locked(
     (
         participants,
         spatial,
-        initiative_summary,
-        initiative_awards,
-        initiative_order,
+        initiative_entries,
         retained_choir,
         retained_still,
         retained_architect,
-    ) = await assemble_participants(
-        session, encounter, encounter_id, member_players, content=content, queries=queries, initiated_by=initiated_by
-    )
+    ) = await assemble_participants(session, encounter, encounter_id, member_players, content=content, queries=queries)
 
     testimony_receipt = None
     if testimony is not None and witness is not None:
@@ -200,7 +196,7 @@ async def _start_combat_locked(
         encounter_id=encounter_id,
         combat_id=combat_id,
         participants=participants,
-        initiative_order=initiative_order,
+        initiative_order=[entry.participant_id for entry in initiative_entries],
         round_number=1,
         current_turn_index=0,
         location_id=session.location_id,
@@ -209,6 +205,9 @@ async def _start_combat_locked(
         testimony=testimony,
         spatial=spatial,
     )
+
+    initiative_awards = await collect_initiative_awards(combat_state, member_players, initiated_by=initiated_by)
+    initiative_summary = finalize_initiative(combat_state, initiative_entries, initiative_awards)
 
     # Persist and update session
     session.validate_acting_player(actor_id)
@@ -315,7 +314,7 @@ async def _start_combat_locked(
     # The handoff drops start_combat's tool output from CombatAgent's context, so the roster rides here.
     parts.append(f"Combatants: {json.dumps(response['participants'])}")
     if initiative_awards:
-        parts.append(f"Initiative bonuses by player: {json.dumps(initiative_awards)}")
+        parts.append(f"Initiative bonuses by participant: {json.dumps(initiative_awards)}")
 
     if testimony_receipt is not None:
         parts.append(f"Witness testimony (use the Stage for current presence): {json.dumps(testimony_receipt)}")

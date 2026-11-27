@@ -8,7 +8,9 @@ from typing import TYPE_CHECKING, Literal
 
 import ability_persistence
 import encounter_facts
+from communication_voice_rules import DeliveryRefused, require_source
 from dice import roll as dice_roll
+from patron_location import first_stay_at_location
 from patron_synergy import get_archetype_synergy, has_engine_synergy
 
 if TYPE_CHECKING:
@@ -22,6 +24,8 @@ ORENTHEL_GUARDIAN_WARD = "orenthel_guardian_ward"
 ORENTHEL_UNDEAD_WRATH = "orenthel_undead_wrath"
 MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
 MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
+NYTHERA_FIRST_ORDER = "nythera_first_order"
+LANDFALL_ORDERS_NAME = "Landfall Orders"
 NYTHERA_SALTWIND_CASTING = "nythera_saltwind_casting"
 VALDRIS_ABSOLUTE_AUTHORITY = "valdris_absolute_authority"
 VALDRIS_MEASURED_REPRISAL = "valdris_measured_reprisal"
@@ -41,6 +45,19 @@ VeiledStrike = Literal["sneak_attack", "weapon"]
 def sanctuary_initiative_bonus(player: dict, *, initiated_by: str | None) -> int:
     """Return the initiative bonus this player can earn if the location is a sanctuary."""
     return int(initiated_by == "enemies" and has_engine_synergy(player, VALDRIS_LAWFUL_COMMAND))
+
+
+async def first_order_initiative_bonus(player: dict, marshal: CombatParticipant, state: CombatState) -> int:
+    """Return the bonus this marshal can give with an opening order."""
+    if not has_engine_synergy(player, NYTHERA_FIRST_ORDER) or marshal.hp_current <= 0:
+        return 0
+    if not await first_stay_at_location(marshal.id, state.location_id):
+        return 0
+    try:
+        require_source(state, marshal.id)
+    except DeliveryRefused:
+        return 0
+    return 1
 
 
 def shadow_veil_rounds(player: dict) -> int:

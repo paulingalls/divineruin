@@ -2862,8 +2862,9 @@
         "clauses": [
           {
             "effect": "Allies who hear your first order in an unexplored location gain +1 initiative.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_first_order"
           }
         ]
       },
