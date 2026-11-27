@@ -87,13 +87,12 @@ async def settle(
     event_id = f"oath_event_{uuid4().hex}"
     oath.status = "broken"
     oath.latest_state_change_event_id = event_id
-    if book.valdris_breach is None or book.valdris_breach.session_id != session.session_id:
-        book.valdris_breach = ValdrisBreach(
-            session_id=session.session_id,
-            breach_event_id=event_id,
-            combat_id=state.combat_id,
-            round_number=state.round_number,
-        )
+    book.valdris_breach = ValdrisBreach(
+        session_id=session.session_id,
+        breach_event_id=event_id,
+        combat_id=state.combat_id,
+        round_number=state.round_number,
+    )
     await conn.execute(
         "UPDATE players SET data = data || $2::jsonb WHERE player_id = $1",
         actor,

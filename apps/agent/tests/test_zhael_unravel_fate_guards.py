@@ -392,7 +392,7 @@ async def test_persisted_checkpoint_rewinds_and_new_session_recharges(unravel) -
     assert (await discovered(fight))["spent"]
 
 
-@pytest.mark.parametrize("scope", ["breach_round", "later_round", "other_combat"])
+@pytest.mark.parametrize("scope", ["breach_round", "departed_breacher", "later_round", "other_combat"])
 async def test_oath_breach_rewind_after_checkpoint_reload(unravel: Fight, scope: str) -> None:
     fight = unravel
     _, paladin = fight.ids
@@ -408,7 +408,10 @@ async def test_oath_breach_rewind_after_checkpoint_reload(unravel: Fight, scope:
     row = await fight.reload()
     assert row["encounter_facts"]["opening_actors"][foe] == paladin
     assert (await durable(fight))["players"][paladin]["data"]["oaths"]["records"][0]["status"] == "broken"
-    if scope == "breach_round":
+    if scope in ("breach_round", "departed_breacher"):
+        if scope == "departed_breacher":
+            party = fight.session.party
+            party.members = [member for member in party.members if member.player_id != paladin]
         before, scratch = await durable(fight), cached(fight)
         refusal = None
         try:
