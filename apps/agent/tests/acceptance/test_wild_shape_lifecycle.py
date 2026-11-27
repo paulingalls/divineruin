@@ -136,9 +136,17 @@ async def test_dismiss_restores_own_shape(walk: MawlingHarness) -> None:
     assert DISMISS in schema["$defs"]["InteractDecl"]["properties"]["action"]["description"]
 
 
-async def test_own_shape_cannot_dismiss(walk: MawlingHarness) -> None:
-    pid = await prepare(walk, "druid")
-    await enter(walk)
+@pytest.mark.parametrize("form", ["own_shape", "hollowed_echo"])
+async def test_dismiss_refuses_ineligible_actor(walk: MawlingHarness, form: str) -> None:
+    if form == "hollowed_echo":
+        pid, _ = await shifted(walk)
+        actor = (await walk.reload()).get_participant(pid)
+        assert actor is not None
+        actor.type = "temporary_hollowed"
+        await walk.persist()
+    else:
+        pid = await prepare(walk, "druid")
+        await enter(walk)
     before = await walk.snapshot()
     error = await player_declaration(walk, {"kind": "interact", "actor_id": pid, "action": DISMISS}, error=True)
     assert "Wild Shape" in error
