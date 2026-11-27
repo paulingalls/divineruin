@@ -102,10 +102,10 @@ async def scales_verdict(
         f"Voice Valdris with [GOD_VALDRIS, stern]. {foe.name} is {verdict}. {foe.name} {evidence_cue}.",
         f"{roll.notation} rolled {roll.total}. {recipient.name} takes {receipt['damage']} radiant and {outcome}.",
     ]
-    if receipt.get("temp_hp_absorbed"):
-        cue.append(f"{receipt['temp_hp_absorbed']} temporary HP absorbed damage.")
+    if damage_cue := receipt.get("dm_cue"):
+        cue.append(damage_cue)
     if receipt.get("gift_triggered"):
-        cue.append(f"{receipt['dm_cue']} {recipient.name} has {recipient.hp_current} HP.")
+        cue.append(f"{recipient.name} has {recipient.hp_current} HP.")
     return working, {
         **receipt,
         "verdict": verdict,

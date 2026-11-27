@@ -5,6 +5,8 @@ each non-terminal Beat-4 wrap buffer it in the phase EventSink, so rolled-back s
 the client.
 """
 
+from collections.abc import Mapping, Sequence
+
 import temp_hp
 from session_data import CombatParticipant, CombatState
 from still_encounter import hidden_ids
@@ -66,7 +68,9 @@ def _project_combatant(p: CombatParticipant, active_id: str | None) -> dict:
     return packet
 
 
-def build_combat_ui_update(state: CombatState, *, wild_shape_ended: list[dict[str, str]] | None = None) -> dict:
+def build_combat_ui_update(
+    state: CombatState, *, wild_shape_ended: Sequence[Mapping[str, str | int]] | None = None
+) -> dict:
     """Build the current tracker packet without publishing it."""
     active_id = _active_id(state)
     hidden = hidden_ids(state) | {p.id for p in state.participants if p.is_structure and p.is_dead}

@@ -281,7 +281,9 @@ async def test_transform(
         enemy = await crossbow_receipt(walk, monkeypatch, pid)
         assert (enemy["hit"], enemy["attack_total"], enemy["target_ac"]) == (True, 12, 12)
         reloaded = (await walk.reload()).get_participant(pid)
-        assert reloaded is not None and reloaded.wild_shape == saved["wild_shape"]
+        assert reloaded is not None
+        assert reloaded.hp_current == before.hp_current
+        assert reloaded.wild_shape == {**saved["wild_shape"], "hp_current": hp - enemy["damage"]}
 
 
 @pytest.mark.parametrize("archetype", ["druid", "warden"])
