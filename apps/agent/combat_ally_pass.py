@@ -82,11 +82,7 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls: PhaseRol
         actor_id, packet_id = cursor["turns"][0]
         actor = state.get_participant(actor_id) if actor_id is not None else None
         if packet_id is not None and (target := departed_target(state, packets[packet_id].declaration)):
-            fate_rolls.kept = None
             summaries.append(target_left_receipt(packet_id, target))
-            state.open_window = None
-            cursor["attack"] = {}
-            cursor.pop("steps", None)
             cursor["turns"].pop(0)
             continue
         attack = cursor["attack"]

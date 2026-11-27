@@ -41,9 +41,7 @@ def facts(state: CombatState, heals: list[dict]) -> dict:
         spatial = combat_spatial.require_spatial(state)
         for zone in state.hearthfire_zones:
             occupants = [{"id": p.id, "name": p.name} for p in _occupants(state, spatial, zone)]
-            zones.append(
-                {**{key: value for key, value in zone.items() if key != "source_save_dc"}, "occupants": occupants}
-            )
+            zones.append({**zone, "occupants": occupants})
     return {"zones": zones, "heals": heals}
 
 

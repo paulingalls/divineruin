@@ -15,11 +15,7 @@ def departed_target(state: "CombatState", declaration: "Declaration") -> str | N
     item = declaration.healing_item
     heal_target = item["target_id"] if item is not None else None
     return next(
-        (
-            target
-            for target in (declaration.target_id, *(declaration.target_ids or ()), heal_target)
-            if target in state.departed_player_ids
-        ),
+        (target for target in (declaration.target_id, heal_target) if target in state.departed_player_ids),
         None,
     )
 
@@ -50,16 +46,14 @@ def forget_participant(state: "CombatState", player_id: str) -> bool:
         state.architect_encounter["pits"].pop(player_id, None)
     state.participants = [actor for actor in state.participants if actor.id != player_id]
     state.initiative_order = [actor for actor in state.initiative_order if actor != player_id]
-    for entries in (state.pending_declarations, state.ac_modifiers, state.first_hostility):
-        entries.pop(player_id, None)
+    state.pending_declarations.pop(player_id, None)
     for declaration in state.pending_declarations.values():
-        # Partial landing, as at resolve time; a list left empty keeps its id so the action cancels.
+        # Partial landing, as at resolve time.
         if remaining := [target for target in declaration.get("target_ids") or () if target != player_id]:
             declaration["target_ids"] = remaining
     if state.spatial is not None:
         for field in ("positions", "speeds"):
             state.spatial[field].pop(player_id, None)
-    state.focus_marks = {target: mark for target, mark in state.focus_marks.items() if mark["source_id"] != player_id}
     _drop_orders(state, player_id)
 
     for actor in state.participants:
@@ -92,7 +86,7 @@ def _drop_orders(state: "CombatState", player_id: str) -> None:
 
 def _needs_departed_source(condition: dict, player_id: str) -> bool:
     kind = condition["type"]
-    if kind in ("charmed", TAUNTED) or (kind == "frightened" and "turn_undead" in condition):
+    if kind == TAUNTED or (kind == "frightened" and "turn_undead" in condition):
         return condition.get("source") == player_id
     return condition.get("originating_participant_id") == player_id and (
         kind == GUIDING_LIGHT_MARK or CONDITION_CATALOG[kind].clearance == "start_of_caster_next_turn"
@@ -113,8 +107,6 @@ def _drop_turn(state: "CombatState", player_id: str) -> bool:
             cursor.pop("steps", None)
             state.open_window = None
         cursor["turns"] = [turn for turn in turns if player_id not in turn]
-        for field in ("prevalidated", "hostiles"):
-            cursor[field] = [actor for actor in cursor[field] if actor != player_id]
 
     wrap = state.wrap_continuation
     if wrap is not None:
@@ -131,14 +123,11 @@ def _drop_turn(state: "CombatState", player_id: str) -> bool:
 
 
 def _drop_reactions(state: "CombatState", player_id: str) -> bool:
-    cancelled_roll = bool(state.held_actions and state.held_actions[0]["actor_id"] == player_id)
+    cancelled_roll = False
     spend = state.reactions_available.pop(player_id, {})
     for head in state.held_actions:
         if continuation := head.get("counter_settlement"):
-            packets = continuation["packets"]
-            if packets and packets[0]["actor_id"] == player_id:
-                cancelled_roll |= continuation.pop("counter", None) is not None
-            continuation["packets"] = [packet for packet in packets if packet["actor_id"] != player_id]
+            continuation["packets"] = [packet for packet in continuation["packets"] if packet["actor_id"] != player_id]
         elif reaction_spend.intercepts_damage(spend) and spend["held_seq"] == head["seq"]:
             head["departed_damage_recipient"] = player_id
         if entries := head.get("disruptions"):
@@ -152,17 +141,12 @@ def _drop_reactions(state: "CombatState", player_id: str) -> bool:
         if packets is not None:
             head["pending_reaction_packets"] = [packet for packet in packets if packet["actor_id"] != player_id]
     state.held_actions = [head for head in state.held_actions if head["actor_id"] != player_id]
-    if state.open_window is not None and state.open_window["actor_id"] == player_id:
-        state.open_window = None
     return cancelled_roll
 
 
 def cancel_held_strike(state: "CombatState", head: dict, target_id: str) -> dict:
     from combat_multiattack import strike_summary
 
-    for actor_id, spend in state.reactions_available.items():
-        if spend.get("held_seq") == head["seq"]:
-            state.reactions_available[actor_id] = {**reaction_spend.unspent(), "spent": True}
     state.held_actions.pop(0)
     receipt = strike_summary(head, target_left_receipt(head["actor_id"], target_id))
     receipt["target_id"] = target_id
