@@ -94,6 +94,7 @@ def prepare_save(
 
 def owner_ids(state: "CombatState", session: "SessionData | None" = None) -> set[str]:
     ids = {p.id for p in state.participants if p.type in ("player", "temporary_hollowed")}
+    ids.update(state.departed_player_ids)
     for checkpoint in state.round_checkpoints:
         ids.update(checkpoint["players"])
     if session is not None:

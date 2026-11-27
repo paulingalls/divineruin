@@ -6,8 +6,9 @@ from livekit.agents.llm import ToolError
 
 import combat_field_medic
 import combat_spatial_declarations
+from combat_departure import departed_target, target_left_receipt
 from combat_fate import continue_attack
-from combat_fate_rolls import PacketRolls
+from combat_fate_rolls import PacketRolls, PhaseRolls
 from combat_player_movement import PlayerMovement
 from condition_consume import expire_guiding_light
 from declarations import resolve_declaration
@@ -66,7 +67,7 @@ async def lock_remaining_players(cursor, queries, conn):
     return players
 
 
-async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_packet, packet_deps):
+async def run_ally_pass(session, state, cursor, players, *, fate_rolls: PhaseRolls, resolve_packet, packet_deps):
     from combat_deescalation import resume_deescalation
     from combat_hold import hold_enemy_packets
     from combat_phase import PhaseBeat, _resolve_packets
@@ -80,6 +81,10 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
     while cursor["turns"]:
         actor_id, packet_id = cursor["turns"][0]
         actor = state.get_participant(actor_id) if actor_id is not None else None
+        if packet_id is not None and (target := departed_target(state, packets[packet_id].declaration)):
+            summaries.append(target_left_receipt(packet_id, target))
+            cursor["turns"].pop(0)
+            continue
         attack = cursor["attack"]
         steps = cursor.setdefault("steps", {})
         movement = PlayerMovement(session, state, steps, packet_deps, fate_rolls, summaries)
@@ -106,6 +111,7 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
                 sink=packet_deps["sink"],
             )
         elif attack:
+            assert packet_id is not None
             packet = packets[packet_id]
             attacker = state.get_participant(packet_id)
             target = state.get_participant(attack["target_id"])
@@ -188,6 +194,7 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
             state.ally_continuation = cursor
             return summaries
         if summary.get("outcome") != "cancelled":
+            assert packet_id is not None
             await combat_field_medic.settle(
                 session,
                 state,

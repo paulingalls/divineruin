@@ -231,7 +231,9 @@ def _validate_continuation(state: CombatState, head: dict) -> None:
     action = next((a for a in actor.action_pool if a["name"] == declaration.action), None)
     if action is None or not replay_valid(state, head, actor, action, declaration):
         raise ValueError(invalid)
-    if declaration.target_id is None or state.get_participant(declaration.target_id) is None:
+    if declaration.target_id is None or (
+        declaration.target_id not in state.departed_player_ids and state.get_participant(declaration.target_id) is None
+    ):
         raise ValueError(invalid)
     receipt = head.get("architect_attack")
     if not isinstance(receipt, dict) or type(receipt.get("damage")) is not int or receipt["damage"] < 0:

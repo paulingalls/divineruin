@@ -192,7 +192,7 @@ def validate(state: CombatState) -> None:
             or decl.action != action["id"]
             or decl.reshape
             or decl.target_id is None
-            or state.get_participant(decl.target_id) is None
+            or (decl.target_id not in state.departed_player_ids and state.get_participant(decl.target_id) is None)
         ):
             raise ValueError(invalid)
     elif (

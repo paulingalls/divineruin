@@ -211,6 +211,7 @@ def _check_section(section: dict) -> None:
 
 
 def _validate_receipts(state: CombatState, record: dict, areas: dict) -> None:
+    from combat_departure import target_left_receipt
     from declarations import resolve_declaration
 
     for head in state.held_actions:
@@ -260,14 +261,24 @@ def _validate_receipts(state: CombatState, record: dict, areas: dict) -> None:
                 if (
                     not isinstance(targets, list)
                     or not isinstance(results, list)
-                    or any(not isinstance(target, str) or state.get_participant(target) is None for target in targets)
+                    or any(
+                        not isinstance(target, str)
+                        or (target not in state.departed_player_ids and state.get_participant(target) is None)
+                        for target in targets
+                    )
                     or len(set(targets)) != len(targets)
                     or len(results) > len(targets)
                     or (index < len(receipts) - 1 and len(results) != len(targets))
                     or any(
                         not isinstance(result, dict)
                         or result.get("target_id") != target
-                        or type(result.get("save_success")) is not bool
+                        or (
+                            type(result.get("save_success")) is not bool
+                            and (
+                                target not in state.departed_player_ids
+                                or result != target_left_receipt(head["actor_id"], target)
+                            )
+                        )
                         for target, result in zip(targets[: len(results)], results, strict=True)
                     )
                 ):
