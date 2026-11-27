@@ -9,6 +9,7 @@ from livekit.agents.voice import RunContext
 
 import abilities
 import spells
+import wild_shape
 from combat_phase import advance_combat_phase
 from combat_spatial import add_smoke, position, require_spatial
 from query_tools import _query_abilities_impl
@@ -138,6 +139,8 @@ class TestQueryAbilities:
                     # alone certifies nothing: a row naming no real spell would pass here and blow up
                     # at resolution instead. Pin the id on the spell catalog the cast path reads.
                     declaration = {"type": "ability", "action": action, **order_targets.get(action, {})}
+                    if action == wild_shape.DRUID_ABILITY:
+                        declaration["argument_type"] = wild_shape.druid_profile()["forms"][0]["creature_id"]
                     if row["id"] == "warrior_rallying_shout":
                         declaration["target_id"] = "ally"
                     if row["id"] in (

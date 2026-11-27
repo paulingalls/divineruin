@@ -3,11 +3,8 @@
 import logging
 from functools import partial
 
-import architect_zero_hp
 import check_resolution_attack
 import combat_damage_affinity
-import combat_grapple
-import combat_hollow_death
 import combat_melee_approach
 import combat_order_riders
 import combat_resolution
@@ -20,6 +17,7 @@ import db_queries
 import encounter_facts
 import event_types as E
 import temp_hp
+import wild_shape
 from combat_attack_roll import build_attack_dice_roll_payload
 from combat_damage_events import record_damage_event
 from combat_damage_results import AutomaticDamageResult, SaveDamageResult, attack_fields
@@ -28,150 +26,23 @@ from combat_durability import _accrue_durability, _find_equipped
 from combat_enemy_active import apply_critical_save, apply_prepared_hit, heal
 from combat_events import emit_or_publish
 from combat_fate_rolls import packet_save
-from combat_fortitude import roll_fortitude, try_fortitude
+from combat_fortitude import roll_fortitude
 from combat_reaction_defense import halve_psychic
 from combat_sound_events import publish_combat_sounds as _publish_sounds
+from combat_ui_update import build_combat_ui_update
+from combat_zero_hp import _after_hp_change, _handle_hp_zero
 from patron_combat_edges import reward_worthy_foe
 from patron_zero_hp import trigger_damage_gifts
-from session_data import CombatParticipant, CombatState, SessionData
+from session_data import CombatParticipant, SessionData
 from tool_support import (
     SOUND_ATTACK_CRITICAL,
     SOUND_ATTACK_HIT,
     SOUND_ATTACK_MISS,
     SOUND_HEARTBEAT,
-    SOUND_HOLLOW_RISE,
-    SOUND_PLAYER_FALLEN,
     SOUND_SAVE_DAMAGE,
 )
 
 logger = logging.getLogger("divineruin.tools")
-
-
-def _handle_hp_zero(
-    session: SessionData,
-    combat_state: CombatState | None,
-    target: CombatParticipant,
-    *,
-    overkill: int,
-    was_fallen: bool,
-    hp_status: str,
-    sounds: list[str],
-    outcome: dict | None = None,
-    fortitude_save=None,
-    destroy: bool = False,
-) -> tuple[str, bool, list[str]]:
-    """Resolve a target dropped to 0 HP — Hollowed rise, instant death, fall, or companion KO.
-
-    The ONE door for every zero-HP transition, whether the damage came from a blow or from the
-    caster's own fire; a caller that drives HP to 0 without knocking leaves the flags behind
-    (bug 16c5f8a0). The census that keeps it the only door is
-    ``tests/combat/test_handle_hp_zero.py::TestTheDoorIsTheOnlyDoor``.
-    Returns the HP status, whether a Hollowed rose, and ids released from this target's grapples."""
-    if destroy:
-        target.hp_current = 0
-    elif (
-        not was_fallen
-        and target.unholy_fortitude is not None
-        and not target.hollow_death_resolved
-        and try_fortitude(target, outcome, fortitude_save)
-    ):
-        return combat_resolution.hp_threshold_status(target.hp_current, target.hp_max), False, []
-    if not destroy and not was_fallen and target.type == "player" and conditions.hollowed_stage(target.conditions) >= 2:
-        # Temporary Hollowed rise: a Stage-2+ Hollowed player at 0 HP does NOT
-        # fall — their corpse rises as a hostile Temporary Hollowed combatant (HP=50% of max,
-        # hits add 1d6 necrotic, immune to Charmed/Frightened/Poisoned) that blocks combat-end
-        # until destroyed (combat_phase._wrap). Transform in place: flipping `type` makes the
-        # engine's player-defeat gate go dormant (no player participant) and the echo block
-        # victory, AND it deliberately suppresses the player-HP write + concentration-break +
-        # armor-durability accrual below — the echo's HP is the monster's, not the player's.
-        # The persisted Hollowed condition is left intact; trigger_character_death reads it at
-        # the echo's destruction to mark hollow_killed and clear it.
-        target.type = "temporary_hollowed"
-        target.hp_current = max(1, target.hp_max // 2)
-        target.conditions = conditions.apply_condition(target.conditions, "temporary_hollowed")
-        hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
-        sounds.append(SOUND_HOLLOW_RISE)
-        return hp_status, True, []
-
-    if architect_zero_hp.collapse_structure(combat_state, target):
-        return hp_status, False, []
-    target.is_fallen = True
-    combat_hollow_death.mark_destroyed(target)
-    released = combat_grapple.release_from_grappler(combat_state, target.id) if combat_state is not None else []
-    # Instant death: overkill (excess damage past 0) >= max HP kills
-    # outright — no Fallen grace, no death saves. is_dead is the stronger state; the pure
-    # _wrap reads it to end combat without a death-save beat. This is the one site with both
-    # overkill + hp_max. Gated on `not was_fallen` so it fires only on the live -> 0
-    # transition the spec scopes it to; a hit on an already-downed target is the separate
-    # "damage while Fallen" failure mechanic.
-    if destroy or (not was_fallen and overkill >= target.hp_max):
-        target.is_dead = True
-    sounds.append(SOUND_PLAYER_FALLEN)
-    if target.type == "companion" and session.companion and target.id == session.companion.id:
-        session.companion.is_conscious = False
-        session.record_companion_memory(f"{target.name} was knocked unconscious in combat")
-    return hp_status, False, released
-
-
-async def _after_hp_change(
-    session: SessionData,
-    combat_state: CombatState | None,
-    target: CombatParticipant,
-    hp_before: int,
-    was_fallen: bool,
-    death_resolved_before: bool,
-    counted_before: bool,
-    *,
-    queries,
-    conn,
-) -> list[dict]:
-    import choir_encounter
-    import still_encounter
-
-    if combat_hollow_death.new_destruction(target, death_resolved_before, was_fallen, hp_before):
-        await combat_hollow_death.accrue_death(session, combat_state, target, conn=conn, queries=queries)
-        if combat_state is not None and combat_state.choir_encounter is not None:
-            choir_encounter.destroyed(combat_state)
-        architect_zero_hp.collapse_owned_walls(combat_state, target.id)
-
-    renewals = await encounter_facts.renew_on_death(combat_state, target, counted_before, queries=queries, conn=conn)
-    renewals.extend(
-        await still_encounter.after_damage(
-            session, combat_state, target, conn=conn, queries=queries, was_fallen=was_fallen
-        )
-    )
-    return renewals
-
-
-async def destroy_creature(
-    session: SessionData, state: CombatState, target: CombatParticipant, *, queries, conn, sink
-) -> dict:
-    hp_before = target.hp_current
-    counted_before = encounter_facts.counted_death(target)
-    death_resolved_before = target.hollow_death_resolved
-    sounds: list[str] = []
-    hp_status, _, released = _handle_hp_zero(
-        session,
-        state,
-        target,
-        destroy=True,
-        overkill=0,
-        was_fallen=False,
-        hp_status=combat_resolution.hp_threshold_status(0, target.hp_max),
-        sounds=sounds,
-    )
-    await reward_worthy_foe(state, target, queries=queries, conn=conn)
-    renewals = await _after_hp_change(
-        session, state, target, hp_before, False, death_resolved_before, counted_before, queries=queries, conn=conn
-    )
-    await _publish_sounds(session, sounds, sink=sink)
-    return {
-        "target_hp_status": hp_status,
-        "target_fallen": target.is_fallen,
-        "target_dead": target.is_dead,
-        **({"focus_renewals": renewals} if renewals else {}),
-        **({"released_from_grapple": released} if released else {}),
-    }
 
 
 async def _apply_damage(
@@ -251,13 +122,19 @@ async def _apply_damage(
     counted_before = encounter_facts.counted_death(target)
     death_resolved_before = target.hollow_death_resolved
     hp_before, pool_before = target.hp_current, temp_hp.player_pool(target)
+    beast_before = temp_hp.beast_pool(target)
     impact = temp_hp.absorb(
-        attack_result.damage, hp_before, pool_before, hp_floor=conditions.damage_hp_floor(target.conditions)
+        attack_result.damage,
+        hp_before,
+        pool_before,
+        beast=beast_before,
+        hp_floor=conditions.damage_hp_floor(target.conditions),
     )
     if save_damage:
         encounter_facts.record_party_attack(combat_state, attacker, target)
     target.hp_current = impact.hp
     target.temp_hp = impact.temporary
+    ended_forms = wild_shape.land_damage(target, impact)
     if (
         was_fallen
         and attack_result.damage > 0
@@ -279,7 +156,13 @@ async def _apply_damage(
         if target.type == "player":
             target.death_save_failures = min(3, target.death_save_failures)
     gift, drain_basis = await trigger_damage_gifts(
-        session, combat_state, target, hp_before, absorbed=impact.absorbed, queries=queries, conn=conn
+        session,
+        combat_state,
+        target,
+        hp_before,
+        absorbed=impact.absorbed + impact.beast_absorbed,
+        queries=queries,
+        conn=conn,
     )
     gift_owner = gift.get("gift_owner")
     if gift_owner:
@@ -383,7 +266,12 @@ async def _apply_damage(
 
     if gift_owner and isinstance(attack_result, check_resolution_attack.AttackResult):
         attack_result = combat_damage_affinity.with_landed_damage(
-            attack_result, attack_result.damage, hp_before, temporary=pool_before, hp_floor=target.hp_current
+            attack_result,
+            attack_result.damage,
+            hp_before,
+            temporary=pool_before,
+            beast=beast_before,
+            hp_floor=target.hp_current,
         )
 
     # Publish events (buffered into ``sink`` during the phase tx; released post-commit)
@@ -462,6 +350,16 @@ async def _apply_damage(
         apply_critical_save(combat_state, attacker, rider_target, action, response)
     if released_from_grapple:
         response["released_from_grapple"] = released_from_grapple
+    if ended_forms:
+        response["wild_shape_ended"] = ended_forms
+        assert combat_state is not None
+        await emit_or_publish(
+            sink,
+            session.room,
+            E.COMBAT_UI_UPDATE,
+            build_combat_ui_update(combat_state, wild_shape_ended=ended_forms),
+            event_bus=session.event_bus,
+        )
     logger.info(
         "resolve_attack_packet result: %s → %s, %s, damage=%d, hp_status=%s",
         attacker.name,

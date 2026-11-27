@@ -176,13 +176,16 @@ async def provisional_ward_verdict(
     if result.target_killed:
         player = None
         temporary = temp_hp.player_pool(target)
+        beast = temp_hp.beast_pool(target)
         if _drops_to_zero(target, target.hp_current, result.target_hp_remaining):
             # The phase transaction sees a ward an earlier packet spent before commit.
             player = await queries.get_player(target.id, conn=conn)
             if not isinstance(player, dict):
                 raise ValueError(f"Missing authoritative player {target.id!r}")
             if death_ward_ready(player):
-                return with_landed_damage(result, result.damage, target.hp_current, temporary=temporary, hp_floor=1)
+                return with_landed_damage(
+                    result, result.damage, target.hp_current, temporary=temporary, beast=beast, hp_floor=1
+                )
         if _embrace_transition(target, target.hp_current, result.target_hp_remaining) and await _embrace_donor(
             session, state, target, players=None, queries=queries, conn=conn
         ):
@@ -191,6 +194,7 @@ async def provisional_ward_verdict(
                 result.damage,
                 target.hp_current,
                 temporary=temporary,
+                beast=beast,
                 hp_floor=await _embrace_hp(target, player, conn=conn),
             )
     return result

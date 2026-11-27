@@ -16,6 +16,7 @@ import combat_shadow_step
 import combat_spatial_declarations
 import combat_voice_rules
 import still_encounter
+import wild_shape
 from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _find_action
 from combat_ability_gate import (
@@ -208,6 +209,13 @@ def validate_declaration(
             spell = spells.get_spell(declaration.action)
         except ValueError:
             spell = None
+        profile = (
+            wild_shape.druid_profile()
+            if declaration.action == wild_shape.DRUID_ABILITY
+            else (spell.wild_shape if spell is not None else None)
+        )
+        if profile is not None:
+            wild_shape.require_selection(actor, declaration, profile, level=actor.level)
         if spell is not None:
             combat_spell_profile.validate_target(next_state, actor, declaration, spell)
             if spell.id == GREATER_RESTORATION:
@@ -252,6 +260,8 @@ def validate_declaration(
                 f"cast abilities, and an enemy only its condition actions; declare an attack from {available}"
             )
 
+    if declaration.type is DeclarationType.INTERACT and declaration.action == wild_shape.DISMISS_ACTION:
+        wild_shape.require_dismissal(actor)
     if declaration.type not in (DeclarationType.ATTACK, DeclarationType.ABILITY, DeclarationType.MANEUVER):
         return
     if pool_action is not None and not action_has_direct_line(pool_action):

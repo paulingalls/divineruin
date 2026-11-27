@@ -363,7 +363,7 @@ async def after_damage(session, state, target, *, conn, queries, was_fallen) -> 
             if action.get("kind") == "final_stillness" and destroyed == action["minimum_destroyed_anchors"]:
                 owner.action_ledger[action_key(action)]["remaining"] = 1
     if before > 0 and owner.hp_current == 0:
-        from combat_damage import _handle_hp_zero
+        from combat_zero_hp import _handle_hp_zero
 
         was_fallen, resolved_before = owner.is_fallen, owner.hollow_death_resolved
         _handle_hp_zero(session, state, owner, overkill=0, was_fallen=was_fallen, hp_status="fallen", sounds=[])

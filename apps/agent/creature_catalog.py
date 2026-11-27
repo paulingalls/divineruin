@@ -4,6 +4,8 @@ import json
 import re
 from collections.abc import Iterable, Iterator
 
+import asyncpg
+
 import db
 from world_regions import REGION_IDS
 
@@ -12,9 +14,9 @@ class CreatureNotFoundError(LookupError):
     """A requested creature id has no catalog row."""
 
 
-async def query_creature_by_id(creature_id: str) -> dict:
-    pool = await db.get_pool()
-    row = await pool.fetchrow("SELECT data FROM creatures WHERE id = $1", creature_id)
+async def query_creature_by_id(creature_id: str, *, conn: asyncpg.Connection | None = None) -> dict:
+    connection = conn if conn is not None else await db.get_pool()
+    row = await connection.fetchrow("SELECT data FROM creatures WHERE id = $1", creature_id)
     if row is None:
         raise CreatureNotFoundError(creature_id)
     return json.loads(row["data"])

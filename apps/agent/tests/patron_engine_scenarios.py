@@ -51,6 +51,7 @@ from test_patron_passives import SCENARIOS as passives
 from test_patron_senses import SCENARIOS as senses
 from test_syrath_two_round_veil import SCENARIOS as two_round_veil
 from test_syrath_veiled_strike import SCENARIOS as veiled_strikes
+from test_thyra_wild_shape import SCENARIOS as thyra_wild_shape
 from test_veythar_cleric_arcana import SCENARIOS as arcane_revelation
 from test_zhael_fate import SCENARIOS as lucky
 from test_zhael_fate_callers import SCENARIOS as zhael
@@ -110,6 +111,7 @@ ENGINE_SCENARIOS = {
     **two_round_veil,
     **veiled_strikes,
     **thyra,
+    **thyra_wild_shape,
     **thyra_seasons,
     **thyra_wrath,
     **thyra_thornwall,
