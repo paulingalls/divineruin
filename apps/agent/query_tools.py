@@ -23,6 +23,7 @@ import db_queries
 import elective_choices
 import infusion
 import lost_scout_scene
+import oath_choice
 import patron_synergy_heal
 import query_patron
 import recipe_tools
@@ -76,6 +77,8 @@ async def query_info(
     """Look up world info in one call. Set kind and (for most kinds) target_id:
     - kind="creature": catalog summary by target_id; omit it for regional creatures and party-fit encounter_templates ids for enter_mode.
     - kind="combat": current actor/location/zone IDs and distances; target_id selects the origin.
+    Combat and abilities list an oath_choice for the speaking player when eligible. Read its terms
+    aloud, wait for confirmation and pass its offered IDs to select.
     For an exposed Choir core, engine_damage_spell_exceptions lists blocked spells by player ID.
     - kind="location", target_id=<location id>: scene details, atmosphere, exits.
     - kind="npc", target_id=<npc id>: personality, speech style, relationship-filtered knowledge.
@@ -114,22 +117,28 @@ async def _query_info_impl(
     recipe_mod=recipe_tools,
     training_mod=training_tools,
     crafting_mod=crafting_tools,
+    queries=db_queries,
 ) -> str:
     if kind == "creature":
         return await creature_catalog.creature_summary(context.userdata, target_id)
     if kind == "combat":
+        session = context.userdata
+        actor = session.acting_player_id
+        player = await queries.get_player(actor)
+        state = session.combat_state
+        current_oath_choice = oath_choice.offer(session, actor, player)
         try:
-            state = context.userdata.combat_state
-            facts = combat_spatial.facts(state, target_id or context.userdata.acting_player_id)
+            facts = combat_spatial.facts(state, target_id or actor)
             if state is not None and state.architect_encounter is not None:
                 facts["architect"] = architect_encounter.facts(state)
             if state is not None and state.still_encounter is not None:
                 facts["still"] = still_encounter.facts(state)
             if state is not None and state.choir_encounter is not None:
                 facts["choir"] = await choir_encounter.facts(state)
-            return json.dumps(facts)
         except ValueError as error:
             raise ToolError(str(error)) from error
+        facts["oath_choice"] = current_oath_choice
+        return json.dumps(facts)
     if kind == "inventory":
         return await _query_inventory_impl(context, target_id) if target_id else await _query_inventory_impl(context)
     if kind == "training_programs":
@@ -169,7 +178,7 @@ async def _query_abilities_impl(
     player_id = session.acting_player_id
     player = await queries.get_player(player_id)
     player_class = player.get("class") if player else None
-    if not isinstance(player_class, str) or not player_class:
+    if player is None or not isinstance(player_class, str) or not player_class:
         raise ToolError("Cannot query abilities: current player has no class.")
 
     known_rows = await persistence.get_character_abilities(player_id)
@@ -239,6 +248,7 @@ async def _query_abilities_impl(
         {
             "abilities": results,
             "spells": spell_rows,
+            "oath_choice": oath_choice.offer(session, player_id, player),
             "attribute_increases": attribute_increases.offers(player_id, player),
             "elective_choices": elective_choices.offers(
                 player_id, elective_choices.pools(catalog, player["level"]), known_ids

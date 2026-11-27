@@ -34,6 +34,7 @@ import declaration_payloads
 from activity_tools import begin_activity
 from base_agent import BaseGameAgent
 from check_tools import check
+from choice_tools import select
 from combat_turn import declare_phase
 from mode_tools import enter_mode
 from session_data import SessionData
@@ -204,3 +205,50 @@ def test_vendor_boundary_refuses_malformed_hearing_metadata(kind, defect):
         raw.update(skill="athletics", hearing_only=True)
     with pytest.raises(ToolError):
         _bind(check, {"roll": raw})
+
+
+_TIMED_OATH = {
+    "choice_id": "oath_player_1_timed_combat_1_0",
+    "option": "timed",
+    "objective_kind": "defeat_target",
+    "target_id": "raider",
+    "last_round": 3,
+}
+
+
+def test_select_binds_timed_and_legacy_payloads():
+    assert {k: v for k, v in _bind(select, _TIMED_OATH).items() if k != "context"} == _TIMED_OATH
+    legacy = {"choice_id": "elective_level_4", "option": "technique"}
+    assert {k: v for k, v in _bind(select, legacy).items() if k != "context"} == {
+        **legacy,
+        "objective_kind": "none",
+        "target_id": "",
+        "last_round": 0,
+    }
+
+
+@pytest.mark.parametrize(
+    "override",
+    [{"objective_kind": "survive"}, *({"last_round": value} for value in (True, 1.5, "3", None))],
+)
+def test_select_rejects_values_outside_wire_schema(override):
+    with pytest.raises(ToolError):
+        _bind(select, {**_TIMED_OATH, **override})
+
+
+@pytest.mark.parametrize(
+    "override, omitted, reason",
+    [
+        ({}, "objective_kind", "objective"),
+        ({}, "target_id", "target_id"),
+        ({}, "last_round", "last_round"),
+        ({"target_id": " "}, "", "target_id"),
+        ({"option": "justice", "target_id": "", "last_round": 0}, "", "non-timed"),
+        ({"option": "justice", "objective_kind": "none", "last_round": 0}, "", "non-timed"),
+        ({"option": "justice", "objective_kind": "none", "target_id": ""}, "", "non-timed"),
+    ],
+)
+async def test_prepared_select_refuses_incomplete_or_inapplicable_timed_fields(override, omitted, reason):
+    raw = {k: v for k, v in {**_TIMED_OATH, **override}.items() if k != omitted}
+    with pytest.raises(ToolError, match=reason):
+        await select(**_bind(select, raw))

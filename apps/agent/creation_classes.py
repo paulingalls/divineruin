@@ -209,8 +209,8 @@ CLASSES: dict[str, ClassData] = {
         name="Paladin",
         category="divine",
         description=(
-            "The sworn champion. Martial prowess meets divine mandate. Your oath is spoken aloud "
-            "and binds you — power for a price. Break the oath, and there are consequences."
+            "The sworn champion. Martial prowess meets divine mandate. If you follow Valdris or Zhael, "
+            "ask what oath you can swear during play."
         ),
         card_description="Sworn champion. Combines martial skill with a divine oath.",
         primary_attribute="strength",

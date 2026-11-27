@@ -87,6 +87,9 @@ move — actor_id names the moving combatant; destination gives x, y, z coordina
 It consumes the whole phase action and cannot exceed the effective speed in spatial.speeds_ft[actor_id]. \
 Entry and phase results expose spatial.positions, locations, zones and distances_ft. \
 Call query_info(kind="combat") to refresh them; target_id selects an actor or landmark as origin. \
+When oath_choice appears and the player wants to swear, speak its terms and wait for confirmation. \
+Pass the offered choice and option to select, using an eligible target for a timed oath. \
+Read back the returned oath ID and terms. \
 Use the surfaced IDs and committed coordinates. Zones describe geometry; mechanical packets own effects. \
 Reactions are NOT declared here — they interrupt a held enemy blow in Beat 3 (below). \
 Call query_info(kind="abilities") before declaring one: declare its spell id from the row's spell_id when present. \
