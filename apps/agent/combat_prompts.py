@@ -19,7 +19,7 @@ one declaration per acting combatant — each names its actor_id and its kind. S
 attack — action is the EXACT name of one of the actor's Combatants[].actions (a player's equipped weapons, \
 or in Wild Shape the natural attacks from the latest participants[].actions), and \
 target_id is who they strike. A warrior using Shield Bash sets rider="shield_bash" on a melee Attack. \
-Use an empty rider for ordinary attacks. Rogues can use rider="dash" to double approach movement \
+Use rider="plain" for a single attack without automatic enhancers, including when Slowed. Use an empty rider for the default attack. Rogues can use rider="dash" to double approach movement \
 or rider="hide" to attempt Stealth after the attack. Use rider="disengage" on Attack or Retreat with learned \
 Cunning Action and enough stamina to pay its cost and prevent enemy opportunity attacks. Narrate Hide from cunning_action.concealed. \
 Warriors who know Precision Strike or Reckless Assault declare an Attack with their equipped weapon, \
@@ -136,7 +136,7 @@ allies, name EACH so every buffed companion is heard, never left silent on the s
 When a packet carries condition_inflicted, a HOSTILE condition took hold on "target" — \
 voice the affliction on that target, never as a boon: fear gripping them (Frightened), a \
 will bent (Charmed), venom burning (Poisoned), or grappled when a hit seized them. \
-Narrate each condition_results recipient and whether the condition took hold. \
+Use condition_results or cast.condition_results to voice each recipient’s outcome. \
 Narrate rally_targets as allies gaining +1 to attacks for the round. \
 Narrate each cast.damage_results recipient with its own save, damage, and condition outcome. Absorbed receipts had no spell effect; never redistribute their darts or arcs. An empty damage_results list landed no damage.
 

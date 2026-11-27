@@ -111,6 +111,12 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
         persists_across_encounters=True,
         restrictions=("reduced_max_hp",),
     ),
+    "outlined": ConditionSpec(clearance="duration", restrictions=("incoming_advantage",)),
+    "slowed": ConditionSpec(
+        clearance="duration",
+        ac_modifier=-2,
+        restrictions=("speed_halved", "no_reactions", "action_or_quick_action"),
+    ),
     CRIPPLED: ConditionSpec(clearance="duration", restrictions=("speed_halved",)),
     "frost_slowed": ConditionSpec(clearance="end_of_next_turn", restrictions=("speed_minus_10",)),
     REACTIONS_SUPPRESSED: ConditionSpec(clearance="start_of_caster_next_turn", restrictions=("no_reactions",)),

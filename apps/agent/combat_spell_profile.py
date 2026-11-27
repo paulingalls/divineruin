@@ -1,10 +1,15 @@
 """Catalog-owned spell formulas and combat recipient preflight."""
 
 import re
-from typing import Literal, NotRequired, TypedDict, cast
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, Literal, NotRequired, TypedDict, cast
 
 from condition_catalog import CONDITION_CATALOG, REACTIONS_SUPPRESSED
 from creature_schema import CATEGORIES
+
+if TYPE_CHECKING:
+    from abilities import Ability
+    from spells import Spell
 
 ATTRIBUTES = frozenset({"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"})
 DAMAGE_TYPES = frozenset(
@@ -27,10 +32,16 @@ DAMAGE_TYPES = frozenset(
 DICE = re.compile(r"([1-9][0-9]*)d([1-9][0-9]*)(?:\+([0-9]+))?")
 
 
+class CubeRecipients(TypedDict):
+    shape: Literal["cube"]
+    side_ft: float
+
+
 class SaveConditionProfile(TypedDict):
     save: str | None
     condition: str
-    resave: str
+    resave: str | None
+    recipients: NotRequired[CubeRecipients]
     attribute: NotRequired[str]
     target_category: NotRequired[str]
     hp_ceiling: NotRequired[int]
@@ -41,6 +52,7 @@ def parse_save_condition(raw: object) -> SaveConditionProfile:
         "save",
         "condition",
         "resave",
+        "recipients",
         "attribute",
         "target_category",
         "hp_ceiling",
@@ -53,7 +65,18 @@ def parse_save_condition(raw: object) -> SaveConditionProfile:
             raise ValueError(f"save_condition.{field} must name a known value")
 
     validate("condition", CONDITION_CATALOG)
-    validate("resave", ATTRIBUTES)
+    if "resave" not in raw or raw["resave"] is not None:
+        validate("resave", ATTRIBUTES)
+    if "recipients" in raw:
+        from combat_spell_recipients import validate_spec
+
+        spec = raw["recipients"]
+        if not isinstance(spec, dict) or spec.get("shape") != "cube":
+            raise ValueError("save_condition.recipients must specify a cube")
+        try:
+            validate_spec(spec)
+        except ValueError as error:
+            raise ValueError(f"save_condition.recipients: {error}") from error
     if "save" not in raw or raw["save"] is not None:
         validate("save", ATTRIBUTES)
         validate("attribute", ATTRIBUTES)
@@ -236,6 +259,13 @@ def scaled(profile, key, base, level):
     return next((count for threshold, count in reversed(profile.get(key, [])) if level >= threshold), base)
 
 
+def recipient_spec(spell: "Spell | Ability") -> Mapping[str, Any] | None:
+    for profile in (getattr(spell, "save_condition", None), getattr(spell, "combat_damage", None)):
+        if profile and "recipients" in profile:
+            return profile["recipients"]
+    return None
+
+
 def validate_target(state, caster, declaration, spell):
     from spell_condition_cleanse import GREATER_RESTORATION, combat_target
 
@@ -248,9 +278,9 @@ def validate_target(state, caster, declaration, spell):
         combat_recipients(state, caster, declaration, spell, heal)
         return
     if spell.save_condition is not None:
-        from combat_spell_condition import validate_target as validate_condition_target
+        from combat_spell_condition import validate_targets as validate_condition_targets
 
-        validate_condition_target(state, caster, declaration, spell)
+        validate_condition_targets(state, caster, declaration, spell)
         return
     profile = getattr(spell, "combat_damage", None)
     if profile is None or profile["resolution"] == "deferred":

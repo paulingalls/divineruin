@@ -444,3 +444,19 @@ def test_hostile_condition_spell_rejects_invalid_fields(field, value):
     profile = dict(save="wisdom", condition="paralyzed", resave="wisdom", attribute="intelligence")
     with pytest.raises(ValueError, match=rf"arcane_hold_person.*save_condition.*{field}"):
         parse_spell_row(row["id"], {**row, "save_condition": {**profile, field: value}})
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        {"shape": "radius", "radius_ft": 20, "placements": 1},
+        {"shape": "cube", "side_ft": 0},
+        {"shape": "cube", "side_ft": False},
+        {"shape": "cube", "side_ft": float("inf")},
+        {"shape": "cube", "side_ft": 20, "placements": 2},
+    ],
+)
+def test_save_condition_refuses_malformed_cube(spec):
+    row = next(row for row in json.loads(CONTENT_PATH.read_text()) if row["id"] == "primal_faerie_fire")
+    with pytest.raises(ValueError, match=r"primal_faerie_fire.*save_condition.recipients"):
+        parse_spell_row(row["id"], {**row, "save_condition": {**row["save_condition"], "recipients": spec}})

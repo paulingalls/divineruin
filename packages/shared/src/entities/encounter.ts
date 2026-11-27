@@ -37,6 +37,8 @@ const pythonRepr = (value: unknown): string => {
 };
 export const CONDITION_NAMES = [
   "wounded",
+  "outlined",
+  "slowed",
   "stunned",
   "prone",
   "grappled",

@@ -508,6 +508,13 @@
   },
   {
     "id": "arcane_slow",
+    "max_targets": 3,
+    "save_condition": {
+      "save": "wisdom",
+      "attribute": "intelligence",
+      "condition": "slowed",
+      "resave": "wisdom"
+    },
     "name": "Slow",
     "source": "arcane",
     "spell_tier": "major",
@@ -1552,6 +1559,13 @@
   },
   {
     "id": "primal_faerie_fire",
+    "save_condition": {
+      "save": "dexterity",
+      "attribute": "wisdom",
+      "condition": "outlined",
+      "resave": null,
+      "recipients": { "shape": "cube", "side_ft": 20 }
+    },
     "name": "Faerie Fire",
     "source": "primal",
     "spell_tier": "minor",

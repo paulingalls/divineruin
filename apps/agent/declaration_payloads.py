@@ -73,7 +73,8 @@ class AttackDecl(DeclarationPayload):
         "advantage against that warrior until their next declaration. "
         'Use "crippling_strike" to halve a foe\'s speed on hit until the round ends. '
         'Use "quick_fingers" to steal, plant or swap before a melee attack. '
-        "Use an empty string for an ordinary attack."
+        'Use "plain" to make a single ordinary attack without automatic enhancers, including under Slow. '
+        "Use an empty string for the default attack."
     )
     quick_fingers_mode: str = Field(description='Quick Fingers mode: "steal", "plant", or "swap". Empty otherwise.')
     quick_fingers_item: str = Field(

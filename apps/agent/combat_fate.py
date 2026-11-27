@@ -52,7 +52,7 @@ async def attack_sequence(
     # below. attack_sequence is [action] when the actor has no mechanical enhancer (AC3: no
     # phantom expansion → the summary stays the flat single-attack shape).
     martial = combat_martial.attack_ability(packet.declaration)
-    enhancers = attacker.enhancers
+    enhancers = combat_enhancers.attack_enhancers(attacker.enhancers, packet.declaration)
     if martial == SHIELD_BASH:
         enhancers = [enhancer for enhancer in enhancers if enhancer != combat_enhancers.SHIELD_BASH]
     if attack_cursor is None:

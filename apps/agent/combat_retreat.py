@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 import combat_cunning_action
 import combat_spatial_declarations as moves
+import combat_voice_rules
 import thyra_thornwall
 from combat_martial import standing_foe
 from combat_melee_approach import leg_declaration
@@ -14,6 +15,7 @@ from combat_movement_cost import reachable_point
 from combat_spatial import distance, position, require_spatial
 from combat_structures import stop_before_wall
 from condition_restrictions import effective_speed
+from condition_sources import DeliveryRefused
 from declarations import Declaration
 from session_data import CombatParticipant, CombatState, SessionData
 
@@ -64,6 +66,10 @@ async def resolve(
     progress: PacketRolls | None,
     queries: Any,
 ) -> dict:
+    try:
+        combat_voice_rules.guard_declaration(state, actor, declaration)
+    except DeliveryRefused as exc:
+        return {"actor_id": actor.id, "resolved": False, "declaration_type": "retreat", "reason": str(exc)}
     spatial = require_spatial(state)
     origin = position(spatial, actor.id)
     route = movement.route if movement is not None else None

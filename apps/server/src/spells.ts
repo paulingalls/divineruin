@@ -102,15 +102,44 @@ function knownValue<T extends string>(raw: unknown, values: readonly T[], ctx: s
   return value;
 }
 
+function parseConditionRecipients(
+  raw: unknown,
+  ctx: string,
+): NonNullable<SaveConditionProfile["recipients"]> {
+  const { shape, side_ft, ...extra } = asRecord(raw, ctx);
+  if (
+    shape !== "cube" ||
+    Object.keys(extra).length ||
+    typeof side_ft !== "number" ||
+    !Number.isFinite(side_ft) ||
+    side_ft <= 0
+  ) {
+    throw new Error(`${ctx} must specify a cube with a positive finite side_ft`);
+  }
+  return { shape, side_ft };
+}
+
 function parseSaveCondition(raw: unknown, ctx: string): SaveConditionProfile {
   const profile = asRecord(raw, ctx);
-  const fields = ["save", "condition", "resave", "attribute", "target_category", "hp_ceiling"];
+  const fields = [
+    "save",
+    "condition",
+    "resave",
+    "attribute",
+    "target_category",
+    "hp_ceiling",
+    "recipients",
+  ];
   if (Object.keys(profile).some((field) => !fields.includes(field))) {
     throw new Error(`${ctx} must contain only supported fields`);
   }
   const effect = {
     condition: knownValue(profile.condition, CONDITION_NAMES, `${ctx}.condition`),
-    resave: knownValue(profile.resave, SAVE_ATTRIBUTES, `${ctx}.resave`),
+    resave:
+      profile.resave === null ? null : knownValue(profile.resave, SAVE_ATTRIBUTES, `${ctx}.resave`),
+    ...("recipients" in profile
+      ? { recipients: parseConditionRecipients(profile.recipients, `${ctx}.recipients`) }
+      : {}),
     ...("target_category" in profile
       ? {
           target_category: knownValue(
@@ -165,6 +194,9 @@ export function parseSpellRow(id: string, raw: unknown): Spell {
     narration_cue: data.narration_cue,
     verbal: data.verbal as boolean,
     hostile: data.hostile as boolean,
+    ...(data.max_targets != null
+      ? { max_targets: positiveInteger(data.max_targets, `${ctx}.max_targets`) }
+      : {}),
     ...("save_condition" in data
       ? { save_condition: parseSaveCondition(data.save_condition, `${ctx}.save_condition`) }
       : {}),

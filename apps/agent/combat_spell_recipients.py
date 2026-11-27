@@ -1,7 +1,7 @@
 """Freeze catalog spell deliveries from participant-anchored combat placement."""
 
 import combat_spatial as spatial
-from combat_spell_profile import scaled
+from combat_spell_profile import recipient_spec, scaled
 from combat_structures import blocked_reason, blocking_wall, chamber_line_blocker, require_line
 from condition_sources import DeliveryRefused
 
@@ -35,9 +35,9 @@ def caster_radius_refusal(
 
 
 def select(state, caster, declaration, spell, *, require_live=False):
-    profile = spell.combat_damage
+    profile = spell.combat_damage or {}
     ids = list(declaration.target_ids or ([declaration.target_id] if declaration.target_id else []))
-    spec = profile.get("recipients")
+    spec = recipient_spec(spell)
     if spec is None:
         return [{"target_id": target_id} for target_id in ids]
     # The seed CLI imports validate_spec without gameplay dependencies.
@@ -123,12 +123,19 @@ def select(state, caster, declaration, spell, *, require_live=False):
     origin = pos(caster.id)
     selected = []
     for target in live:
+        if shape == "cube" and target.is_structure:
+            continue
         point = pos(target.id)
         if profile.get("restriction") == "undead_hollow" and not (target.hollow or target.category == "undead"):
             continue
         if shape == "line":
             covered = spatial.in_line(origin, pos(ids[0]), point, spec["length_ft"], spec["width_ft"]) and clear(
                 caster.id, target.id
+            )
+        elif shape == "cube":
+            center = pos(ids[0])
+            covered = all(abs(point[axis] - center[axis]) <= spec["side_ft"] / 2 for axis in ("x", "y", "z")) and clear(
+                ids[0], target.id
             )
         elif shape == "cylinder":
             covered = any(
@@ -149,13 +156,14 @@ def select(state, caster, declaration, spell, *, require_live=False):
 def validate_spec(spec):
     fields = {
         "radius": {"radius_ft", "placements"},
+        "cube": {"side_ft"},
         "caster_radius": {"radius_ft"},
         "line": {"length_ft", "width_ft"},
         "cylinder": {"radius_ft", "height_ft", "placements"},
         "chain": {"cap", "range_ft", "secondary_dice"},
         "projectiles": set(),
     }
-    if not isinstance(spec, dict) or spec.get("shape") not in fields:
+    if not isinstance(spec, dict) or not isinstance(spec.get("shape"), str) or spec["shape"] not in fields:
         raise ValueError("invalid spell recipient shape")
     required = fields[spec["shape"]]
     if set(spec) != required | {"shape"}:
