@@ -167,6 +167,23 @@ async def renewing_spark(_world: SimpleNamespace) -> None:
     await exercise_shield("orenthel", 0, 17, False)
 
 
+@pytest.mark.parametrize("spell", [FLY, HASTE, INVISIBILITY, LIBRARY_SHIELD])
+async def test_direct_combat_cast_is_refused(mage_party, spell):
+    ctx, mage, ally, control = mage_party
+    assert ctx.userdata.in_combat
+    with pytest.raises(ToolError, match="is cast in combat with declare_phase"):
+        await activate(ctx, spell, target_id=ally)
+    await check_pools({mage: 0, ally: 0, control: 0})
+
+
+async def test_exploration_ward_follows_applied_condition_targets(mage_party):
+    ctx, mage, ally, control = mage_party
+    ctx.userdata.combat_state = None
+    cast = json.loads(await activate(ctx, INVISIBILITY, target_ids=[ally]))
+    await check_pools({mage: 0, ally: 1, control: 0})
+    ward(cast, ally, 0)
+
+
 SCENARIOS = {CLAUSE: ("patron_synergy_heal:grant_mage_warding", renewing_spark, [()])}
 
 

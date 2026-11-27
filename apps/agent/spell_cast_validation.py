@@ -98,6 +98,10 @@ async def _prepare_cast(
         or (condition_kind is not None and CONDITION_CATALOG[condition_kind].clearance == "start_of_caster_next_turn")
     ):
         raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")
+    # A direct cast has no working combat participants, so an aid spell's recipients would miss
+    # in-combat effects such as Renewing Spark's temp HP; combat settles them through declare_phase.
+    if combat_state is None and session.in_combat and voice_spell.combat_aid and not voice_spell.hostile:
+        raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")
 
     if combat_state is None and session.combat_state is not None:
         spell_invisibility.guard_direct_cast(session.combat_state, voice_spell, player_id, target_id, target_ids)
