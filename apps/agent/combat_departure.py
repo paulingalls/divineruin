@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 import reaction_spend
-from condition_catalog import CONDITION_CATALOG, GUIDING_LIGHT_MARK
+from condition_catalog import CONDITION_CATALOG, GUIDING_LIGHT_MARK, TAUNTED
 
 if TYPE_CHECKING:
     from combat_state import CombatState
@@ -32,6 +32,10 @@ def target_left_receipt(actor_id: str, target_id: str) -> dict:
 
 
 def forget_participant(state: "CombatState", player_id: str) -> bool:
+    if state.hearthfire_zones and (source := state.get_participant(player_id)) is not None:
+        from aelora_hearthfire import freeze_source
+
+        freeze_source(state, source)
     if state.architect_encounter is not None:
         from architect_entomb import source
         from combat_structures import collapse_wall
@@ -76,8 +80,8 @@ def forget_participant(state: "CombatState", player_id: str) -> bool:
 
 def _needs_departed_source(condition: dict, player_id: str) -> bool:
     kind = condition["type"]
-    if kind == "charmed":
-        return condition["source"] == player_id
+    if kind in ("charmed", "grappled", TAUNTED) or (kind == "frightened" and "turn_undead" in condition):
+        return condition.get("source") == player_id
     return condition.get("originating_participant_id") == player_id and (
         kind == GUIDING_LIGHT_MARK or CONDITION_CATALOG[kind].clearance == "start_of_caster_next_turn"
     )

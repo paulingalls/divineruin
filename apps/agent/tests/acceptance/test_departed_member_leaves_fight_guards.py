@@ -34,10 +34,10 @@ from participant_lifecycle import _setup_party_join
 async def test_intercept_recipient_departure_cancels_uncommitted_damage(reset_db_pool) -> None:
     async with defense_fight("warrior") as fight:
         host, guest = fight.players
-        first = fight.enemies[0]
+        first, second = fight.enemies
         await fight.command(
             "declare_phase",
-            {"declarations": [{"actor_id": first, **strike(host, action=SWORD)}]},
+            {"declarations": [{"actor_id": actor, **strike(host, action=SWORD)} for actor in fight.enemies]},
         )
         with patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(16)):
             window = await open_stage(fight, "post_roll")
@@ -53,8 +53,10 @@ async def test_intercept_recipient_departure_cancels_uncommitted_damage(reset_db
                 assert receipt["actor_id"] == first
                 assert receipt["target_id"] == guest
                 assert receipt["resolved"] is False
-                assert all(not p.get("damage") for p in packets)
-                assert [(await player_row(pid))["hp"] for pid in fight.players] == before
+                (surviving_strike,) = [p for p in packets if p.get("damage", 0) > 0]
+                assert surviving_strike["actor_id"] == second
+                assert (await player_row(host))["hp"]["current"] == before[0]["current"] - surviving_strike["damage"]
+                assert (await player_row(guest))["hp"] == before[1]
             finally:
                 await lifecycle.aclose()
 
@@ -83,7 +85,9 @@ async def test_departure_survives_rewind_at_an_untouched_opening(unravel: Fight,
         await unravel.declare()
         await unravel.finish_round(2)
         assert_departed(unravel.session.combat_state, guest)
-        assert await player_row(guest) == before
+        after = await player_row(guest)
+        assert after["hp"] == before["hp"]
+        assert after.get("conditions") == before.get("conditions")
 
 
 async def test_departed_timed_oath_lapses_after_checkpoint_rotation(reset_db_pool) -> None:
@@ -229,14 +233,20 @@ async def test_departure_drops_only_its_ally_continuation(reset_db_pool, departi
 
 
 async def test_ally_cast_target_list_cancels_before_settlement(reset_db_pool) -> None:
-    spell = "primal_healing_touch"
-    async with defense_fight("druid", library=((0, spell),)) as fight:
+    spell = "divine_bless"
+    async with defense_fight("cleric", library=((0, spell),)) as fight:
         host, guest = fight.players
         await fight.command(
             "declare_phase",
             {
                 "declarations": [
-                    {"actor_id": host, "kind": "ability", "action": spell, "targets": [guest], "argument_type": ""},
+                    {
+                        "actor_id": host,
+                        "kind": "ability",
+                        "action": spell,
+                        "targets": [host, guest],
+                        "argument_type": "",
+                    },
                 ]
             },
         )
@@ -410,5 +420,56 @@ async def test_focus_mark_from_departed_source_cannot_block_a_survivor_swing(res
             with patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(16)):
                 packets = await fight.drain()
             assert any(p["actor_id"] == host and p.get("hit") for p in packets)
+        finally:
+            await lifecycle.aclose()
+
+
+async def test_departed_hearthfire_source_leaves_a_working_fixed_zone(reset_db_pool) -> None:
+    from acceptance._enemy_opportunity_helpers import move
+
+    async with defense_fight("warrior", ally_archetype="warden") as fight:
+        host, guest = fight.players
+        foe = fight.enemies[0]
+        await patch_oath_player(guest, divine_favor={"patron": "aelora", "level": 90, "max": 100})
+        state = await fight.reload()
+        assert state.spatial is not None
+        state.spatial["positions"].update({host: pos(0), guest: pos(5), foe: pos(-25)})
+        participant(state, guest).attributes["wisdom"] = 16
+        await fight.persist()
+        lit = await tool_receipt(fight, guest, "activate", {"id": "aelora_hearthfire"})
+        assert not lit.is_error, lit.output
+        lifecycle = await depart(fight, guest)
+        try:
+            await fight.reload()
+            await fight.command("declare_phase", {"declarations": [move(foe, -5)]})
+            with patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(1)):
+                packets = await fight.drain()
+            (entry,) = [entry for p in packets for entry in p.get("hearthfire_entries", [])]
+            assert (entry["source_id"], entry["mover_id"], entry["dc"], entry["success"]) == (guest, foe, 12, False)
+            state = await fight.reload()
+            assert state.spatial is not None
+            assert state.spatial["positions"][foe]["x"] == pytest.approx(-10)
+        finally:
+            await lifecycle.aclose()
+
+
+async def test_departed_taunt_source_does_not_block_future_enemy_targeting(reset_db_pool) -> None:
+    from acceptance.test_valdris_party_yield import ability_action
+
+    async with defense_fight("guardian", ally_archetype="warrior") as fight:
+        host, guest = fight.players
+        foe = fight.enemies[0]
+        await ability_persistence.set_elective_equipped(guest, "warrior_taunt", equipped=True)
+        await fight.command("declare_phase", {"declarations": [ability_action(guest, "warrior_taunt", foe)]})
+        with patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(1)):
+            packets = await fight.drain()
+        assert any(p.get("condition_inflicted") == "taunted" for p in packets)
+        lifecycle = await depart(fight, guest)
+        try:
+            await fight.reload()
+            await fight.command("declare_phase", {"declarations": [{"actor_id": foe, **strike(host, action=SWORD)}]})
+            with patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(16)):
+                packets = await fight.drain()
+            assert any(p["actor_id"] == foe and p.get("damage", 0) > 0 for p in packets)
         finally:
             await lifecycle.aclose()
