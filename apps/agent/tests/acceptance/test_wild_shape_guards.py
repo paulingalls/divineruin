@@ -61,7 +61,13 @@ async def test_invalid_selection(walk: MawlingHarness, level: int, form: str, ta
 @pytest.mark.parametrize("archetype", ["druid", "warden"])
 @pytest.mark.parametrize("reason", ["focus", "stamina", "already in"])
 async def test_ineligible_caster(walk: MawlingHarness, archetype: str, reason: str) -> None:
-    pid = await prepare(walk, archetype, focus=3 if reason == "focus" else 4, stamina=2 if reason == "stamina" else 3)
+    pid = await prepare(
+        walk,
+        archetype,
+        level=20 if archetype == "warden" and reason == "already in" else 5,
+        focus=3 if reason == "focus" else 4,
+        stamina=2 if reason == "stamina" else 3,
+    )
     await enter(walk)
     action = ABILITY if archetype == "druid" else SPELL
     form = "grey_wolf" if archetype == "druid" else "steppe_bison"
@@ -103,3 +109,6 @@ async def test_failed_save_rolls_back_form_and_costs(
     saved = (await walk.reload()).get_participant(pid)
     assert saved is not None and saved.wild_shape is not None
     assert saved.wild_shape["form_id"] == "grey_wolf"
+    original = next(p for p in before[0]["participants"] if p["id"] == pid)
+    assert saved.wild_shape["original_action_pool"] == original["action_pool"]
+    assert [action["name"] for action in saved.action_pool] == ["Bite"]

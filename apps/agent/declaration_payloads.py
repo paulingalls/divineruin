@@ -53,11 +53,14 @@ class DeclarationPayload(BaseModel):
 
 
 class AttackDecl(DeclarationPayload):
-    """Strike a target with an equipped weapon."""
+    """Strike a target with a weapon or a Wild Shape natural attack."""
 
     kind: Literal["attack"]
     actor_id: str = Field(description="The participant declaring this action.")
-    action: str = Field(description='The EXACT name of one of the actor\'s equipped weapons, e.g. "Longsword".')
+    action: str = Field(
+        description="Exact attack name from the latest participants[].actions or executable_actions. "
+        'In Wild Shape, choose a natural attack or use "" for the first one. Equipped weapons are unavailable in form.'
+    )
     target_id: str = Field(description="The participant being struck.")
     held_item_id: str = Field(
         description="Selected target inventory ID for a durability rider; empty when none applies."

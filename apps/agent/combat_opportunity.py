@@ -88,10 +88,13 @@ async def _find_exits(state: CombatState, mover: CombatParticipant, route: dict,
             melee.is_melee(action) and separation <= melee.melee_reach(action) for action in reactor.action_pool
         ):
             continue
-        player = await deps["queries"].get_player(reactor.id, conn=deps["conn"])
-        if player is None:
-            raise ValueError(f"Missing player for reactor {reactor.id!r}")
-        action = player.get("equipment", {}).get("main_hand")
+        if reactor.wild_shape is not None:
+            action = reactor.action_pool[0]
+        else:
+            player = await deps["queries"].get_player(reactor.id, conn=deps["conn"])
+            if player is None:
+                raise ValueError(f"Missing player for reactor {reactor.id!r}")
+            action = player.get("equipment", {}).get("main_hand")
         if isinstance(action, dict) and melee.is_melee(action):
             reach = melee.melee_reach(action)
             reaches[reactor.id] = (center, reach)
@@ -136,6 +139,8 @@ async def _strike(
         progress=progress,
         **{key: deps[key] for key in ("queries", "mutations", "resolver", "concentration_break_mod", "conn", "sink")},
     )
+    if action.get("attack_source") == "catalog":
+        receipt.update(to_hit=action["to_hit"], damage_dice=action["damage"])
     return {**receipt, "reaction": STRIKE, "window_id": window["id"], "target_id": mover.id}
 
 

@@ -153,11 +153,12 @@ class TestCombatBeatContract:
         # line; anchor on the unique Beat-3 phrase so deleting it actually fails.
         assert "pause for the dramatic dice" in COMBAT_SYSTEM_PROMPT.lower()
 
-    def test_player_action_must_be_equipped_weapon_name(self):
+    def test_attack_names_come_from_the_combat_rosters(self):
         low = COMBAT_SYSTEM_PROMPT.lower()
         attack_kind = low[low.index("attack — action is") : low.index("ability — action is")]
         assert "exact name" in attack_kind and "equipped weapon" in attack_kind
         assert "combatants[].actions" in attack_kind
+        assert "in wild shape the natural attacks from the latest participants[].actions" in attack_kind
         assert low.index("combatants[].actions") < low.index("call declare_phase")
         # start_combat's tool output never reaches CombatAgent (the handoff drops it).
         assert "start_combat's participants" not in low and "from their action_pool" not in low

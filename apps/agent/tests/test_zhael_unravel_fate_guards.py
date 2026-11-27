@@ -416,6 +416,8 @@ async def test_rewind_restores_wild_shape_and_its_resources(unravel: Fight) -> N
     second = await durable(fight)
     shifted = next(p for p in second["combat"]["participants"] if p["id"] == pid)
     assert shifted["wild_shape"]["form_id"] == "grey_wolf" and shifted["ac"] != original["ac"]
+    assert [action["name"] for action in shifted["action_pool"]] == ["Bite"]
+    assert shifted["deferred_effects"][0]["name"] == "Bite"
     before = checkpoint["players"][pid]["data"]
     after = second["players"][pid]["data"]
     assert after["focus"]["current"] == before["focus"]["current"] - 4
