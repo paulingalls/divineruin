@@ -12,6 +12,7 @@ import ability_voice_rules
 import combat_grapple
 import condition_voice_rules
 import spells
+import wild_shape
 from combat_ability_gate import MARSHAL_ORDERS, WAR_CRIES, declared_ability, war_cry_targets
 from combat_ability_save import BENEFICIAL_CONDITIONS
 from condition_sources import charm_sources, require_hostile_targets
@@ -41,6 +42,7 @@ def guard_spell(
     actor = state.get_participant(actor_id)
     if actor is None:
         raise ValueError(f"Unknown spell caster {actor_id!r}")
+    wild_shape.require_casting(actor, spell)
     sources = charm_sources(actor.conditions, {p.id for p in state.participants})
     if spell.hostile and sources:
         targets = spells.normalize_target_list(spell, target_id, target_ids) if target_ids else [target_id or actor_id]

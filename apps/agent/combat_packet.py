@@ -29,6 +29,7 @@ import combat_yield
 import item_heal
 import spell_casting
 import thyra_thornwall
+import wild_shape
 from combat_ability import _attach_riders, _find_action
 from combat_ability_gate import MULTI_TARGET_WEAPON_ABILITIES, SINGLE_TARGET_WEAPON_ABILITIES, WAR_CRIES
 from combat_action_availability import begin_execution, replay_valid
@@ -206,6 +207,13 @@ async def _resolve_action_packet(
         combat_voice_rules.guard_declaration(
             state, attacker, decl, war_cry_started=bool(progress and WAR_CRIES & progress.steps.keys())
         )
+        if decl.type is DeclarationType.INTERACT and decl.action == wild_shape.DISMISS_ACTION:
+            return {
+                "actor_id": attacker.id,
+                "resolved": True,
+                "declaration_type": str(decl.type),
+                "wild_shape_ended": [wild_shape.dismiss(attacker)],
+            }
     except DeliveryRefused as e:
         return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
 

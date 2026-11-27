@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field, model_validator
 from combat_ability_gate import QUICK_FINGERS_RIDER, REPOSITION
 from item_effects import CONSUME_PREFIX
 from reshape_payloads import Destination, ReshapeSelection
+from wild_shape import DISMISS_ACTION
 
 RESHAPE_DESCRIPTION = (
     "Architect only, before the action. Select create_wall, move_wall, destroy_wall, open_floor, or lower_ceiling. "
@@ -135,7 +136,18 @@ class InteractDecl(DeclarationPayload):
 
     kind: Literal["interact"]
     actor_id: str = Field(description="The participant declaring this action.")
-    action: str = Field(description="What they interact with.")
+    action: str = Field(description=f"What they interact with. Use {DISMISS_ACTION} to return to their own shape.")
+
+    @model_validator(mode="before")
+    @classmethod
+    def require_untargeted_dismissal(cls, value: object) -> object:
+        if (
+            isinstance(value, dict)
+            and value.get("action") == DISMISS_ACTION
+            and {"target_id", "target_ids", "targets"} & value.keys()
+        ):
+            raise ValueError("Wild Shape dismissal takes no target selectors.")
+        return value
 
 
 class ConsumeDecl(DeclarationPayload):

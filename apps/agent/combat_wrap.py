@@ -132,6 +132,7 @@ async def wrap_phase(
     queries,
     save_resolver,
     resonance_mutations,
+    dismissed_forms: list[dict[str, str]] | None = None,
     fate_rolls=None,
 ) -> tuple:
     """Advance to wrap once, then drain clearing saves before round finalization.
@@ -246,7 +247,7 @@ async def wrap_phase(
             sink,
             session.room,
             E.COMBAT_UI_UPDATE,
-            build_combat_ui_update(state),
+            build_combat_ui_update(state, wild_shape_ended=dismissed_forms),
             event_bus=session.event_bus,
         )
     else:
@@ -257,6 +258,13 @@ async def wrap_phase(
         # Its COMBAT_ENDED + stinger buffer into the shared sink; the in-memory teardown + handoff
         # run post-commit via _end_combat_finish below.
         end_data = await _end_combat_db(
-            session, state, ended_outcome, mutations=mutations, queries=queries, conn=conn, sink=sink
+            session,
+            state,
+            ended_outcome,
+            mutations=mutations,
+            queries=queries,
+            conn=conn,
+            sink=sink,
+            dismissed_forms=dismissed_forms,
         )
     return state, wrap, wrap_adv, exhaustion_narration, ended_outcome, end_data, pending_by_member, shadow_veils

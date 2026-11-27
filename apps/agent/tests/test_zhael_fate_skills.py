@@ -365,6 +365,44 @@ async def test_two_diplomats_share_a_scene_round_and_terminal_choice_hands_off(w
     assert event_types(session).count("combat_ended") == 1
 
 
+async def test_terminal_parley_preserves_a_dismissal_from_the_same_commit(world, party, argument_scene):
+    call, _ = party
+    host, guest = world.ids
+    session = world.ctx.userdata
+    await configure(
+        world, "zhael", "druid", level=5, focus={"current": 10, "max": 10}, stamina={"current": 6, "max": 6}
+    )
+    await configure(world, "veythar", "diplomat", index=1, attributes={"charisma": 28})
+    druid = participant(argument_scene, host)
+    druid.level = 5
+    druid.initiative = participant(argument_scene, guest).initiative - 1
+    shift = {
+        "kind": "ability",
+        "actor_id": host,
+        "action": "druid_wild_shape",
+        "targets": [],
+        "argument_type": "grey_wolf",
+        "reshape": [],
+    }
+    await call(0, "declare_phase", declarations=declarations(argument_scene, shift, defend(guest)))
+    await call(0, "resolve_phase")
+    await call(0, "resolve_phase")
+    state = session.combat_state
+    form = participant(state, host).wild_shape
+    assert form is not None and form["form_id"] == "grey_wolf"
+    state.deescalation_scene.cumulative_shift["pragmatist"] = 3
+    dismiss = {"kind": "interact", "actor_id": host, "action": "dismiss_wild_shape"}
+    await call(0, "declare_phase", declarations=declarations(state, argument(guest, "evidence"), dismiss))
+    with patch("check_resolution.dice_roll", return_value=_d20(20)):
+        offer = (await call(0, "resolve_phase"))["fate_offer"]
+        assert offer["roller_id"] == guest
+        _, receipt = await call(0, "query_info", kind="npc")
+    event = next(e for e in published_payloads(session.room) if e["type"] == "combat_ended")
+    assert receipt["outcome"] == "deescalated"
+    fact = {"actor_id": host, "form_id": "grey_wolf", "reason": "dismissed"}
+    assert receipt["wild_shape_ended"] == event["wild_shape_ended"] == [fact]
+
+
 @pytest.mark.parametrize("producer", ["skill", "insight", "discover", "insight_discover", "social", "gather", "travel"])
 async def test_departed_roller_cancels_the_held_operation(world, party, producer):
     call, _ = party

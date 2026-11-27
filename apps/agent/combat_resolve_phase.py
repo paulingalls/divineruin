@@ -187,6 +187,7 @@ async def _resolve_phase_locked(
             if legendary is not None and state.open_window is None and fate_rolls.pending is None:
                 state.legendary_continuation = None
 
+        dismissed_forms = [fact for packet in packet_summaries for fact in packet.get("wild_shape_ended", [])]
         residue = await lost_scout_combat.residue(session, state, queries=queries, mutations=mutations, conn=conn)
         # A held argument that ends combat must hand off before the incoming tool can run.
         ended_on_argument = state.deescalated and combat_ally_pass.held_argument(cs.ally_continuation) is not None
@@ -214,6 +215,7 @@ async def _resolve_phase_locked(
                 queries=queries,
                 save_resolver=save_resolver,
                 resonance_mutations=resonance_mutations,
+                dismissed_forms=dismissed_forms,
                 fate_rolls=fate_rolls,
             )
 
@@ -239,7 +241,7 @@ async def _resolve_phase_locked(
                 sink,
                 session.room,
                 E.COMBAT_UI_UPDATE,
-                build_combat_ui_update(state),
+                build_combat_ui_update(state, wild_shape_ended=dismissed_forms),
                 event_bus=session.event_bus,
             )
             await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
