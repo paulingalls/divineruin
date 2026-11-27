@@ -2,17 +2,16 @@
 
 Reconciled against the codebase on **2026-11-26**. Counts come from the phase-doc checkboxes. The phase docs record current evidence and open design work.
 
-First Share counts its full 36-item checklist; Session 1 is 9/9 after the
+First Share Session 1 is 9/9 after the
 walk from creation to a queued whisper (2026-11-15). Session 2 has seven checked
-criteria; the full phase is 32/36, with 4 criteria open. Fresh recap re-entry
+criteria. Fresh recap re-entry
 (2026-11-16) exercises takeover, failed/timed-out predecessors and guest saves.
 Finding the journal grants it and completes the search atomically.
 Artifact choices persist once with their effects.
 Leave now requests a recap before disconnect, with a 15-second home fallback.
 
 **Position: 455 / 717 acceptance criteria — 63%** (the sum of the per-phase
-counts in `README.md`). **262 criteria remain unchecked.** Phases 2, 5, 6 and 10 have all recorded
-criteria checked. Phase 3 remains Partial at 34/34. The
+counts in `README.md`). **262 criteria remain unchecked.** The
 [spell ledger](03_spell_ledger.md) records 25 engine, 4 narrated, 58 unwired
 and 0 uncertified spells. The 58 effect gaps have owners in
 [M14.1](14_engine_completeness.md#milestone-141--narrated-only-mechanics-and-voice-certification).
@@ -44,7 +43,7 @@ establish native capture or paid speech-recognition quality.
 
 ## 1. Shipped substrate relevant to the remaining work
 
-- **Phase 1 is 43/44.** Voice assignment of the standard array at creation remains open. The real HTTP/DB Artificer-slot acceptance exercised
+- **Core systems.** Voice assignment of the standard array at creation remains open. The real HTTP/DB Artificer-slot acceptance exercised
   borrowing the training slot with a Portable Lab and refusing follow-on
   training. ADR 0005 records the exception as fulfilled and debt
   `95de7fa141df` as discharged.
@@ -56,17 +55,16 @@ establish native capture or paid speech-recognition quality.
   encounter lifetime, round expiry, real-time anchor expiry and removal of
   legacy player ward state pass. README's dagger distinguishes this shipped
   substrate and Phase 10 terrain gates from Phase 11 world wards.
-- **Phase 9 is 8/83.** Voice sales settle player items and gold at the engine price. Four authored merchants have validated pool bindings. Finished crafting decisions settle through the app or the DM’s voice. Merchant gold pools, buyback limits and consignment remain open.
+- **Economy.** Voice sales settle player items and gold at the engine price. Four authored merchants have validated pool bindings. Finished crafting decisions settle through the app or the DM’s voice. Merchant gold pools, buyback limits and consignment remain open.
 
-## 2. Residual inside the documentation phase (1 AC)
+## 2. Residual inside the documentation phase
 
 | Phase | Residual | Status |
 |---|---|---|
 | 0 | `game_mechanics/` in CLAUDE.md's Key docs / Knowledge System listing | Open decision: CLAUDE.md points to INDEX.md rather than providing the criterion's explicit listing. The criterion is unchanged. |
 
 M0.2's accurate-index-ranges box is closed by regenerating INDEX.md and running
-the real `scripts/doc_index.py` CLI. That certifies the current snapshot;
-automatic enforcement remains absent.
+the real `scripts/doc_index.py` CLI. The commit hook validates the index.
 
 **Reaction mechanics are exercised:** an activation is an INTERRUPT against an
 open reaction window; the reaction-window census and activation boundary check
@@ -122,8 +120,8 @@ tables versus JSONB backfills. Existing implementations do not authorize
 rewriting those criteria.
 
 The M4.7/M4.8 capstones exercise encounter roles and beneficial conditions;
-Phase 4 records 83/83. Beat-3 natural narration pauses remain unverified here.
-Phase 7 M7.4 is reconciled on 2026-11-06 (`mbp-generated-combat`): generated entry and creature queries use player-derived tiers, active companion profile factors and difficulty-specific HP/DPR windows. Phase 7 has 43/43 checked criteria. Native Choir audio certification remains separate.
+Beat-3 natural narration pauses remain unverified here.
+Phase 7 M7.4 is reconciled on 2026-11-06 (`mbp-generated-combat`): generated entry and creature queries use player-derived tiers, active companion profile factors and difficulty-specific HP/DPR windows. Native Choir audio certification remains separate.
 
 The story-111 retired-tool-name guard was deleted in `cb5dd18e`; it no longer
 protects milestone prose. Historical repair narratives are omitted from this
@@ -136,15 +134,15 @@ not schedules or measured implementation costs.
 
 | Phase | Milestones | Open ACs | Dependencies / decisions | Size estimate | Exercised or inventoried substrate |
 |---|---|---|---|---|---|
-| **8 · Patrons** | 8.3 AC11 | 1 | M8.2 is complete. M8.3 circumstance producers; Thyra’s “reduced” needs a number. Full patron playability depends on the remaining patron effects and Phase 2 detail. | ~2 sprints | 20-minute persisted deed-journal judgment exercised through real sessions; M8.1 is complete. All ten Layer 1 gifts are live, including Orenthel's Dawn's Resilience on ally healing from spells and items. All ten Layer 2 effects apply on the production cast path. Tier-drop loss whispers; Unbound Veil Clarity, Raw Channeling and Veil Mastery. Favor persists in players.data JSONB (no separate tables). Valdris's Mark of Justice applies source-specific saves through the encounter. M8.2 standing, durable recharge and recipient-scoped, revision-ordered character-sheet snapshots pass Python/TypeScript contracts and the strict native patron-abilities flow; 33/34 ACs are checked (M8.2 complete). Thyra’s Seasonal Attunement reads the shared world season and applies healing, elemental damage and skill bonuses. Aelora’s Craft Blessing reduces both duration bounds to 75% through voice and HTTP, and the saved blessing gives a normal Success a 25% chance of a narrated Exceptional-table property. Aelora’s Community Shield grants another present party player temporary HP through activate in and out of combat and recharges on a long rest. Mortaen’s Death Ward resolves lethal damage automatically and recharges on a long rest. Orenthel’s Dawn’s Embrace catches the first eligible ally’s fall each session. Veythar’s Wellspring Echo waives Focus and doubles modified Resonance for the next completed Focus-costing spell, including casts resumed after a Fate hold. Valdris’s Scale’s Verdict judges a combat foe by its recorded attacks on the party, then damages and stuns a surviving unjust foe or damages the follower on a just ruling. Nythera’s Tidewalker removes the extra movement cost of water, mud and the Architect’s shifting ground through combat moves, approaches, resumed routes and retreats. Low ceilings still slow walking and block flight. Aelora’s Hearthfire creates a fixed sanctuary that heals and protects allies and stops hostile movement on a failed Wisdom save. Zhael’s Unravel Fate rewinds the previous combat round and charges its user 8 Resonance. M8.3 has 180 loaded rows, 114 active engine clauses, 85 active narrated clauses and 1 pending engine clause. Nythera grants +1 for coastal shelter, peaceful port passage and vessel repair during a journey. Landfall Orders gives Nythera marshals and allies who hear the opening call +1 initiative on the marshal’s first stay (`test_nythera_first_order.py`). Deckborn Balance gives Nythera warriors +1 on melee attacks aboard a moving vessel. Harbor Watch gives Nythera guardians +1 AC with a standing ally within 5 feet during boarding or disembarking (`test_nythera_vessel.py`). Orenthel grants +1 for sanctuary equipment repair, restoring a blighted grove and negotiating care for wounded enemies. Veythar’s paladins gain +1 Religion for ancient oaths and his oracles gain +1 Arcana for remembered visions. Veythar’s Hidden Knowledge gives rogues and spies +1 on Investigation discovery rolls, including Still illusions and Lorekeeper’s Insight discovery rerolls. Skill-mode Investigation uses its usual modifier. Kaelen’s clerics gain +1 Religion for fallen soldiers’ rites and his oracles gain +1 History for martial omens. Syrath’s clerics gain +1 Religion for concealed devotional symbols and paladins gain +1 History for oaths whose patron’s name was erased. Mortaen’s diplomats gain +1 Persuasion on skill and social checks to negotiate the return of a body for burial. Zhael’s artificers gain +1 to any skill check to repair clocks or timing mechanisms, and seekers gain +1 Investigation to compare accounts of the same foretold event. The patron query lists all five tags. Valdris grants +1 in six situations across seven archetypes, including social Deception for rogues and spies. Valdris clerics and oracles increase the Turn Undead/Hollow save DC by 1. Measured Reprisal adds 1 damage when a Valdris warrior hits a foe that attacked a yielded ally in the encounter. Mortaen’s mage spell-attack bonus is dormant until undead creature content exists. Lookup, type, stacking and Unbound null-query criteria are closed. Magnitude is human-approved; Unbound visibility, action/reaction-free Raw Channeling, Sovereign Mastery, patron exclusion and combined-test criteria are closed. Persisted autonomy/deeds and all three Self-Reliance rewards ship; Divine Immunity resolves by narration. |
+| **8 · Patrons** | 8.3 AC11 | 1 | M8.2 is complete. M8.3 circumstance producers; Thyra’s “reduced” needs a number. Full patron playability depends on the remaining patron effects and Phase 2 detail. | ~2 sprints | 20-minute persisted deed-journal judgment exercised through real sessions; M8.1 is complete. All ten Layer 1 gifts are live, including Orenthel's Dawn's Resilience on ally healing from spells and items. All ten Layer 2 effects apply on the production cast path. Tier-drop loss whispers; Unbound Veil Clarity, Raw Channeling and Veil Mastery. Favor persists in players.data JSONB (no separate tables). Valdris's Mark of Justice applies source-specific saves through the encounter. M8.2 standing, durable recharge and recipient-scoped, revision-ordered character-sheet snapshots pass Python/TypeScript contracts and the strict native patron-abilities flow (M8.2 complete). Thyra’s Seasonal Attunement reads the shared world season and applies healing, elemental damage and skill bonuses. Aelora’s Craft Blessing reduces both duration bounds to 75% through voice and HTTP, and the saved blessing gives a normal Success a 25% chance of a narrated Exceptional-table property. Aelora’s Community Shield grants another present party player temporary HP through activate in and out of combat and recharges on a long rest. Mortaen’s Death Ward resolves lethal damage automatically and recharges on a long rest. Orenthel’s Dawn’s Embrace catches the first eligible ally’s fall each session. Veythar’s Wellspring Echo waives Focus and doubles modified Resonance for the next completed Focus-costing spell, including casts resumed after a Fate hold. Valdris’s Scale’s Verdict judges a combat foe by its recorded attacks on the party, then damages and stuns a surviving unjust foe or damages the follower on a just ruling. Nythera’s Tidewalker removes the extra movement cost of water, mud and the Architect’s shifting ground through combat moves, approaches, resumed routes and retreats. Low ceilings still slow walking and block flight. Aelora’s Hearthfire creates a fixed sanctuary that heals and protects allies and stops hostile movement on a failed Wisdom save. Zhael’s Unravel Fate rewinds the previous combat round and charges its user 8 Resonance. M8.3 has 180 loaded rows, 114 active engine clauses, 85 active narrated clauses and 1 pending engine clause. Nythera grants +1 for coastal shelter, peaceful port passage and vessel repair during a journey. Landfall Orders gives Nythera marshals and allies who hear the opening call +1 initiative on the marshal’s first stay (`test_nythera_first_order.py`). Deckborn Balance gives Nythera warriors +1 on melee attacks aboard a moving vessel. Harbor Watch gives Nythera guardians +1 AC with a standing ally within 5 feet during boarding or disembarking (`test_nythera_vessel.py`). Orenthel grants +1 for sanctuary equipment repair, restoring a blighted grove and negotiating care for wounded enemies. Veythar’s paladins gain +1 Religion for ancient oaths and his oracles gain +1 Arcana for remembered visions. Veythar’s Hidden Knowledge gives rogues and spies +1 on Investigation discovery rolls, including Still illusions and Lorekeeper’s Insight discovery rerolls. Skill-mode Investigation uses its usual modifier. Kaelen’s clerics gain +1 Religion for fallen soldiers’ rites and his oracles gain +1 History for martial omens. Syrath’s clerics gain +1 Religion for concealed devotional symbols and paladins gain +1 History for oaths whose patron’s name was erased. Mortaen’s diplomats gain +1 Persuasion on skill and social checks to negotiate the return of a body for burial. Zhael’s artificers gain +1 to any skill check to repair clocks or timing mechanisms, and seekers gain +1 Investigation to compare accounts of the same foretold event. The patron query lists all five tags. Valdris grants +1 in six situations across seven archetypes, including social Deception for rogues and spies. Valdris clerics and oracles increase the Turn Undead/Hollow save DC by 1. Measured Reprisal adds 1 damage when a Valdris warrior hits a foe that attacked a yielded ally in the encounter. Mortaen’s mage spell-attack bonus is dormant until undead creature content exists. Lookup, type, stacking and Unbound null-query criteria are closed. Magnitude is human-approved; Unbound visibility, action/reaction-free Raw Channeling, Sovereign Mastery, patron exclusion and combined-test criteria are closed. Persisted autonomy/deeds and all three Self-Reliance rewards ship; Divine Immunity resolves by narration. |
 | **9 · Economy** | 9.1–9.10 | 75 | Phase 7 material/creature integration; Phase 5/6 inputs | large | Shared pricing getters/repair costs, reputation-to-stance and committed material inventory boundaries pass. Merchant pools declare buying rules and the four authored merchants have validated bindings. Async crafting sales settle once and share pricing with the agent. |
 | **11 · World Loop** | 11.1–11.6 | 46 | D-A–D-E; M11.4 needs Phase 9, M11.6 needs Phase 8 | ~4–6 sprints | Migrated `region_state`, `npc_state`, `world_events_log`, `god_agent_state`, `world_flags`; direct quest world effects; activity-worker reset harness. These do not establish a world scheduler or cascade. |
 | **12 · Story Content** | 12.1–12.7 | 34 | Phase 11 and blocking decisions D-F–D-L | ~5–7 sprints | Migrated `scenes` (013) and `story_moments` (012); scene-tool and settlement-generation boundaries. `gods.json` has authored secret-agenda text for Veythar and Syrath; a season director is not certified. |
-| **13 · First Share** | Sessions 1–3, session edges, cost, deployment and playtest | 4 | Remaining First Share checklist | Later work unsized | Session 1: 9/9; full phase: 32/36, including seven Session 2 criteria. The walk from creation to a queued whisper and persisted rider re-entry run through real room transport; caster pools and no repeat after consumption and worker restart at favor zero pass; both silence hints, engine settlement on all offered outcomes, replay and rollback are exercised. The first fight pays 25 XP and the shared balance harness scores 20/19/19/20 wins. |
+| **13 · First Share** | Sessions 1–3, session edges, cost, deployment and playtest | 4 | Remaining First Share checklist | Later work unsized | Session 1: 9/9. Session 2 has seven checked criteria. The walk from creation to a queued whisper and persisted rider re-entry run through real room transport; caster pools and no repeat after consumption and worker restart at favor zero pass; both silence hints, engine settlement on all offered outcomes, replay and rollback are exercised. The first fight pays 25 XP and the shared balance harness scores 20/19/19/20 wins. |
 | **14 · Engine Completeness** | [14.1–14.5](14_engine_completeness.md) | 89 | Earlier game systems, Phase 9 denominations, Phase 11 state and Phase 15 content | Unsized | Existing activation, audio, room and HUD paths are inputs. M14.1 tracks the 58 spell effect gaps, native Choir, spoken reaction timing, Thought Shield's mind-read block and Implant Doubt's design for enemy abilities without an attack roll. |
 | **15 · Content Coverage** | [15.1](15_content_coverage.md) | 11 | Phase 9 prices, Phase 11 events, Phase 12 story and Phase 14 gameplay | Unsized | The per-target census in M15.1 records existing authored data. |
 
-The table sums to 263. The other 2 open criteria are Phase 0's documentation box (§2) and Phase 1's voice standard-array box (§1), which the Core residuals goal measures.
+The table sums to 260. The other 2 open criteria are in phases outside this table. The Core residuals goal covers the work in §1 and §2 for Phases 0 and 1.
 
 The table counts by phase file. The [area goal Measures](../../.xp/milestones.md)
 assign Phase 11 criteria beginning with `[P12]` to the Story machinery and
@@ -179,16 +177,12 @@ budget govern any implementation.
 
 **Recorded disagreement:** the earlier Phase-10/11/12 audit recommended Phase
 10 first to repair live terrain defects. This recommendation keeps Phase 7
-first on Economy-unblocking grounds. Phase 10 is now 17/17 with terrain magic
-and combat caching exercised, so that earlier repair premise is superseded.
+first on Economy-unblocking grounds. Phase 10 exercises terrain magic and
+combat caching, superseding that earlier repair premise.
 This is planning judgment, not a newly scheduled phase.
 
 ## 7. Standing documentation risks
 
-- **INDEX ranges drift silently:** no hook, CI job or package script runs
-  `doc_index.py`. Story-157's `8929fcdf` changed the bootstrap brief and left
-  the index stale. Run the real CLI after documentation edits; no generator
-  meta-test is retained.
 - **Checkboxes need reconciliation:** CLAUDE.md Dev Flow step 7 calls for
   milestone updates, but checking a box still requires the complete original
   criterion and executed evidence.
