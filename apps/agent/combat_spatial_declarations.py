@@ -220,5 +220,8 @@ def preflight_state(state):
                 try:
                     preflight(state, [(head["actor_id"], declaration)])
                 except MovementSpeedRefused:
-                    # Earlier actions can lower speed after declaration. The held move reports the refusal.
+                    # Earlier actions can lower speed after declaration. The held move reports the refusal,
+                    # but a route beyond the actor's unconditioned speed was never valid.
+                    base = require_spatial(state)["speeds"][head["actor_id"]]
+                    movement_geometry(state, head["actor_id"], declaration, allowance=base)
                     continue
