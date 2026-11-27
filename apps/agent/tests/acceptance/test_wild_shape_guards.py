@@ -1,7 +1,9 @@
 """Refusals and atomic commit of Wild Shape."""
 
+import json
 from unittest.mock import AsyncMock
 
+import asyncpg
 import pytest
 from acceptance.mawling_harness import MawlingHarness
 from acceptance.test_wild_shape import (
@@ -20,6 +22,14 @@ from acceptance.test_wild_shape import (
 import ability_persistence
 import db_mutations
 import db_queries
+
+
+async def follow_thyra(walk: MawlingHarness, pid: str) -> None:
+    await walk.pool.execute(
+        "UPDATE players SET data=data || $2::jsonb WHERE player_id=$1",
+        pid,
+        json.dumps({"divine_favor": {"patron": "thyra", "level": 40, "max": 100}, "temp_hp": 0}),
+    )
 
 
 @pytest.mark.parametrize(
@@ -68,6 +78,7 @@ async def test_ineligible_caster(walk: MawlingHarness, archetype: str, reason: s
         focus=3 if reason == "focus" else 4,
         stamina=2 if reason == "stamina" else 3,
     )
+    await follow_thyra(walk, pid)
     await enter(walk)
     action = ABILITY if archetype == "druid" else SPELL
     form = "grey_wolf" if archetype == "druid" else "steppe_bison"
@@ -88,18 +99,29 @@ async def test_ineligible_caster(walk: MawlingHarness, archetype: str, reason: s
 
 
 @pytest.mark.parametrize("archetype", ["druid", "warden"])
-async def test_failed_save_rolls_back_form_and_costs(
+async def test_failed_save_rolls_back_form_costs_and_thyras_grant(
     walk: MawlingHarness, monkeypatch: pytest.MonkeyPatch, archetype: str
 ) -> None:
     pid = await prepare(walk, archetype)
+    await follow_thyra(walk, pid)
     await enter(walk)
     await declare(walk, ABILITY if archetype == "druid" else SPELL, "grey_wolf")
     before, events = await walk.snapshot(), updates(walk)
-    failure = AsyncMock(side_effect=RuntimeError("wild shape save fault"))
+    pools_at_save = []
+
+    async def fail_save(_combat_id: str, row: dict, *, conn: asyncpg.Connection) -> None:
+        actor = next(p for p in row["participants"] if p["id"] == pid)
+        player = await db_queries.get_player(pid, conn=conn)
+        assert player is not None
+        pools_at_save.append((actor["temp_hp"], player["temp_hp"]))
+        raise RuntimeError("wild shape save fault")
+
+    failure = AsyncMock(side_effect=fail_save)
     with monkeypatch.context() as patch:
         patch.setattr(db_mutations, "save_combat_state", failure)
         assert "internal error" in await walk.command("resolve_phase", {}, error=True)
     failure.assert_awaited_once()
+    assert pools_at_save == [(5, 5)]
     assert await walk.snapshot() == before
     assert updates(walk) == events
     await walk.drain()
@@ -109,6 +131,7 @@ async def test_failed_save_rolls_back_form_and_costs(
     saved = (await walk.reload()).get_participant(pid)
     assert saved is not None and saved.wild_shape is not None
     assert saved.wild_shape["form_id"] == "grey_wolf"
+    assert row["temp_hp"] == saved.temp_hp == 5
     original = next(p for p in before[0]["participants"] if p["id"] == pid)
     assert saved.wild_shape["original_action_pool"] == original["action_pool"]
     assert [action["name"] for action in saved.action_pool] == ["Bite"]

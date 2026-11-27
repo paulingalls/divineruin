@@ -160,7 +160,7 @@ async def _resolve_ability_packet(
             form_id, _, stamina = wild_shape.gate(
                 attacker, declared, locked, spell.wild_shape, stamina_cost=spell.wild_shape["stamina_cost"]
             )
-            form = (form_id, await wild_shape.prepare_form(form_id, conn), stamina)
+            form = (form_id, await wild_shape.prepare_form(form_id, conn), locked, stamina)
         try:
             result = await cast_resolver._resolve_cast(
                 session,
@@ -184,9 +184,9 @@ async def _resolve_ability_packet(
             caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
         cast_packet = result.packet
         if form is not None:
-            form_id, beast, stamina = form
-            steps["wild_shape"] = await wild_shape.transform(
-                attacker, form_id, beast, focus=None, stamina=stamina, conn=conn
+            form_id, beast, locked, stamina = form
+            steps["transformation"] = await wild_shape.transform(
+                attacker, form_id, beast, player=locked, focus=None, stamina=stamina, conn=conn
             )
         if spell.hostile:
             steps["yield_receipt"] = combat_yield.end(attacker)
@@ -294,9 +294,8 @@ async def _resolve_ability_packet(
         "action": decl.action,
         "cast": cast_packet,
         **steps.get("yield_receipt", {}),
+        **steps.get("transformation", {}),
     }
-    if "wild_shape" in steps:
-        summary["wild_shape"] = steps["wild_shape"]
     if interception is not None:
         summary["reactive_architecture"] = interception
     return _attach_riders(summary, attacker, decl)

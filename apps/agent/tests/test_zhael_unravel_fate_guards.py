@@ -394,13 +394,14 @@ async def test_persisted_checkpoint_rewinds_and_new_session_recharges(unravel) -
 
 async def test_rewind_restores_wild_shape_and_its_resources(unravel: Fight) -> None:
     fight = unravel
-    pid = fight.ids[0]
+    restorer, pid = fight.ids
+    await favor(fight, pid, "thyra")
     await patch_player(fight, pid, **{"class": "druid", "level": 5, "focus": {"current": 10, "max": 10}})
     await fight.start()
     initial = await fight.row()
     checkpoint = initial["round_checkpoints"][0]
     original = next(p for p in initial["participants"] if p["id"] == pid)
-    assert original["wild_shape"] is None
+    assert original["wild_shape"] is None and original["temp_hp"] == 2
     await fight.declare(
         {
             "kind": "ability",
@@ -423,9 +424,13 @@ async def test_rewind_restores_wild_shape_and_its_resources(unravel: Fight) -> N
     assert after["focus"]["current"] == before["focus"]["current"] - 4
     assert after["stamina"]["current"] == before["stamina"]["current"] - 3
 
+    assert (shifted["temp_hp"], after["temp_hp"]) == (5, 5)
+
     receipt = await activate(fight)
     assert receipt["round"] == 1 and "wild_shape_ended" not in receipt
-    assert_restored(fight, await durable(fight), checkpoint, pid)
+    restored = await durable(fight)
+    assert restored["players"][pid]["data"]["temp_hp"] == 2
+    assert_restored(fight, restored, checkpoint, restorer)
     events = published_payloads(fight.session.room)
     update = next(event for event in reversed(events) if event["type"] == E.COMBAT_UI_UPDATE)
     assert "wildShape" not in next(p for p in update["combatants"] if p["id"] == pid)
