@@ -196,9 +196,10 @@ async def _resolve_cast(
                     combat_state, prior_spell_id, player_id, applied=prior.applies_condition
                 )
         concentration_update = ConcentrationState(spell_id)
-        if combat_state is not None:
-            concentration_update.combat_id = combat_state.combat_id
-            concentration_update.started_round = combat_state.round_number
+        active_combat = combat_state or session.combat_state
+        if active_combat is not None:
+            concentration_update.combat_id = active_combat.combat_id
+            concentration_update.started_round = active_combat.round_number
         await concentration_mutations_mod.update_player_concentration(player_id, concentration_update, conn=conn)
 
     result = await _finish_cast(

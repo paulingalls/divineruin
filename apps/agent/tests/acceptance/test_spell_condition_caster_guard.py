@@ -124,7 +124,13 @@ async def test_activate_cannot_replace_a_live_combat_hold(spell_fight):
     await set_foe(ctx)
     # The same activation in combat is legal when the mage holds no hostile condition.
     await _activate_impl(ctx, DETECT)
-    assert (await saved_player(player))["concentration"]["spell_id"] == DETECT
+    state = ctx.userdata.combat_state
+    assert (await saved_player(player))["concentration"] == {
+        "spell_id": DETECT,
+        "combat_id": state.combat_id,
+        "started_round": state.round_number,
+        "elapsed_seconds": 0,
+    }
     await _activate_impl(ctx, DETECT)
     await play(ctx, cast_spell(player, HOLD))
     await _activate_impl(ctx, "arcane_prestidigitation")
@@ -135,10 +141,9 @@ async def test_activate_cannot_replace_a_live_combat_hold(spell_fight):
     assert participant(saved, "foe").conditions == [instance("paralyzed", HOLD, player, "wis")]
     assert await saved_player(player) == before
 
-    # Ending combat drops the combat row while concentration remains on the character.
     await combat_end.end_combat(ctx, "fled")
     assert not ctx.userdata.in_combat
-    assert (await saved_player(player))["concentration"]["spell_id"] == HOLD
+    assert (await saved_player(player))["concentration"]["spell_id"] is None
     await _activate_impl(ctx, DETECT)
     assert (await saved_player(player))["concentration"]["spell_id"] == DETECT
 
