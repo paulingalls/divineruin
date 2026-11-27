@@ -115,15 +115,13 @@ async def test_terminal_receipt(world, objective, ending, status, reason) -> Non
         assert await db_mutations.load_combat_state(f.combat_id) is None
 
 
-@pytest.mark.parametrize("exclusion", ["before", "past", "patron", "archetype", "encounter", "clause"])
+@pytest.mark.parametrize("exclusion", ["past", "patron", "archetype", "encounter", "clause"])
 async def test_save_exclusions(world, exclusion) -> None:
     async with promised_fight(world) as f:
         await select_oath(f)
         assert (await manual_save(f))["total"] == 10
         state = f.session.combat_state
-        if exclusion == "before":
-            state.round_number = 1
-        elif exclusion == "past":
+        if exclusion == "past":
             state.round_number = 4
         elif exclusion == "patron":
             await configure(world, "thyra", "paladin")

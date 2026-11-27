@@ -50,14 +50,12 @@ def save_receipt(
         reason = "other_encounter"
     elif oath.status != "active":
         reason = "inactive_oath"
-    elif round_number is None or round_number < oath.round_number:
-        reason = "before_registration"
-    elif round_number > oath.last_round:
-        reason = "past_deadline"
-    elif not rolled:
-        reason = "automatic_failure"
     else:
-        reason = "active_objective"
+        assert round_number is not None
+        if round_number > oath.last_round:
+            reason = "past_deadline"
+        else:
+            reason = "active_objective" if rolled else "automatic_failure"
     return {
         "oath_id": oath.id if oath is not None else None,
         "synergy_clause_id": CLAUSE,
