@@ -12,6 +12,7 @@ import unbound_tools
 from game_events import publish_game_event
 from party_state import PartyMember
 from patron_location import is_coastal_location
+from patron_passives import effective_hp
 from patron_synergy_combat import (
     NYTHERA_SALTWIND_CASTING,
     VALDRIS_ABSOLUTE_AUTHORITY,
@@ -252,8 +253,7 @@ async def _finish_cast(
             packet["mage_warding"] = ward
             for result in ward["recipients"]:
                 pid = result["recipient_id"]
-                hp = locked_rows[pid]["hp"]
-                health = {"current": hp["current"], "max": hp["max"], "temp_hp": result["temp_hp"]}
+                health = {**effective_hp(locked_rows[pid]), "temp_hp": result["temp_hp"]}
                 events.append(
                     lambda pid=pid, payload=health: publish_game_event(
                         session.room, E.HP_CHANGED, payload, event_bus=session.event_bus, destination_identities=[pid]

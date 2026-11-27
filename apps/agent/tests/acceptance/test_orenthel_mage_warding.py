@@ -33,6 +33,7 @@ import temp_hp
 from activate_tools import activate
 from check_resolution import D20Roll
 from combat_agent import create_combat_agent
+from patron_passives import effective_hp
 from session_data import CombatParticipant, CompanionState
 
 CLAUSE = "orenthel_mage_warding"
@@ -92,11 +93,16 @@ async def test_wards_the_applied_ally(mage_party, spell, combat, before):
         cast = receipt(packets, mage)
     else:
         ctx.userdata.combat_state = None
+        await update_player(ally, maxhp_override=-3)
         cast = json.loads(await activate(ctx, spell, target_id=ally))
         events = ctx.userdata.room.local_participant.publish_data.call_args_list
         (health_event,) = [call for call in events if json.loads(call.args[0])["type"] == E.HP_CHANGED]
         assert health_event.kwargs["destination_identities"] == [ally]
-        assert json.loads(health_event.args[0])["temp_hp"] == 1
+        health = json.loads(health_event.args[0])
+        assert {key: health[key] for key in ("current", "max", "temp_hp")} == {
+            **effective_hp(await player_row(ally)),
+            "temp_hp": 1,
+        }
         state = None
     await check_pools({mage: 0, ally: max(before, 1), control: 0}, state)
     ward(cast, ally, before)
