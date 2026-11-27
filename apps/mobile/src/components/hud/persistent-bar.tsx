@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useMemo, type ComponentProps } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Animated, {
   useSharedValue,
@@ -156,11 +156,7 @@ function PlayerConditionRow() {
         const display = getConditionDisplay(condition.type);
         return (
           <View key={`${condition.type}-${condition.source}`} style={styles.conditionChip}>
-            <MaterialCommunityIcons
-              name={display.icon as ComponentProps<typeof MaterialCommunityIcons>["name"]}
-              size={12}
-              color={display.color}
-            />
+            <MaterialCommunityIcons name={display.icon} size={12} color={display.color} />
             <ThemedText style={[styles.conditionLabel, { color: display.color }]} numberOfLines={1}>
               {formatConditionLabel(condition.type, condition.stacks)}
             </ThemedText>
