@@ -70,6 +70,6 @@ def speaker_line(sd: SessionData, *, combat: bool = False) -> str:
         participant = sd.combat_state.get_participant(speaker_id)
         if participant is not None:
             return summary.render(
-                hp=_format_hp(participant.hp_current, participant.hp_max, temp_hp.player_pool(participant))
+                hp=_format_hp(participant.hp_current, participant.hp_max, temp_hp.combat_pool(participant))
             )
     return summary.render()

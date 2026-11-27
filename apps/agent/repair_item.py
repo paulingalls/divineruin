@@ -22,15 +22,18 @@ from livekit.agents.voice import RunContext
 
 import db
 import db_content_queries
-import db_mutations
 import db_mutations_inventory
 import db_queries
 import durability
+import event_types as E
 import pricing_queries
 import rules_engine
 import workspace
 from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
+from combat_events import isolated_publish
+from db_mutations_inventory import InsufficientGold
 from disposition import resolve_disposition
+from game_events import publish_game_event
 from rules_engine import SKILL_TIER_ORDER, SkillTier
 from session_data import SessionData
 from tool_preconditions import require_npc_present
@@ -67,7 +70,6 @@ async def _repair_item_impl(
     *,
     db_mod=db,
     queries_mod=db_queries,
-    mutations_mod=db_mutations,
     inv_mutations_mod=db_mutations_inventory,
     content_mod=db_content_queries,
     durability_mod=durability,
@@ -86,7 +88,6 @@ async def _repair_item_impl(
     # doesn't belong inside the FOR-UPDATE block below).
     await require_npc_present(location_id, npc_id, queries=queries_mod, suffix=" to repair your gear")
 
-    # Single FOR-UPDATE txn; all stateful gates before any write (decision repair-gate-order).
     async with db_mod.transaction() as conn:
         player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
         if not player:
@@ -137,17 +138,28 @@ async def _repair_item_impl(
         if not _can_repair_tier(crafting_tier, required_tier):
             raise ToolError(f"Repairing {name} needs Crafting {required_tier}; you are {crafting_tier}.")
 
-        # gold gate (quote.price_sp already disposition-adjusted — divide once)
         price_gp = quote.price_sp / pricing["silver_per_gold"]
-        gold = player.get("gold", 0)
-        if gold < price_gp:
-            raise ToolError(f"Not enough gold: repairing {name} costs {price_gp:.1f}gp and you have {gold}gp.")
-
-        # restore + debit
         await inv_mutations_mod.update_item_durability(player_id, item_id, max_h, conn=conn)
         context.userdata.validate_acting_player(player_id)
-        await mutations_mod.update_player_gold(player_id, gold - price_gp, conn=conn)
+        try:
+            balance = await inv_mutations_mod.debit_player_gold(player_id, price_gp, conn=conn)
+        except InsufficientGold as exc:
+            gold = player.get("gold", 0)
+            raise ToolError(f"Not enough gold: repairing {name} costs {price_gp:.1f}gp and you have {gold}gp.") from exc
 
+    with isolated_publish("repair balance"):
+        await publish_game_event(
+            context.userdata.room,
+            E.CURRENCY_SPENT,
+            {
+                "player_id": player_id,
+                "amount": price_gp,
+                "currency": "gold",
+                "source": "repair",
+                "new_balance": balance,
+            },
+            event_bus=context.userdata.event_bus,
+        )
     logger.info("repair_item: player=%s npc=%s item=%s restored_to=%d", player_id, npc_id, item_id, max_h)
     await publish_action_sound(context.userdata, ACTION_SOUND_EXPORTS["ACTION_REPAIR_ITEM"])
     return json.dumps({"item_id": item_id, "restored_to": max_h, "price_sp": quote.price_sp})

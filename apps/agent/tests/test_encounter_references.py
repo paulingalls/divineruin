@@ -43,7 +43,7 @@ def test_recommended_party_size_accepts_positive_integers(size):
 
 def test_all_reference_templates():
     templates = json.loads((ROOT / "content/encounter_templates.json").read_text())
-    assert len(templates) == 19
+    assert len(templates) == 21
     assert {row["id"] for row in templates} == {
         "fragment_shadeling",
         "shadeling_cluster",
@@ -64,6 +64,8 @@ def test_all_reference_templates():
         "hollow_mawling_pack",
         "hollow_knight_boss",
         "hollow_veilrender_boss",
+        "sunward_ship_deck",
+        "sunward_dock_boarding",
     }
     for template in templates:
         assert template["enemies"]

@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from types import ModuleType
 from typing import TYPE_CHECKING, TypedDict
 
+import asyncpg
+
+import db_queries
 import dice
+import temp_hp
 from condition_catalog import CONDITION_CATALOG
 from healing_dice import shared_roll
 from patron_synergy import has_engine_synergy
@@ -13,9 +18,11 @@ from rules_engine import attribute_modifier
 from terrain import is_natural
 
 if TYPE_CHECKING:
+    from combat_participant import CombatParticipant
     from combat_spell_profile import HealProfile
     from encounter_facts import EncounterFacts
     from session_data import CombatState
+    from spells import Spell
 
 DAWNS_MERCY = "orenthel_dawns_mercy"
 THRESHOLD_HEALING = "mortaen_threshold_healing"
@@ -26,6 +33,41 @@ APPOINTED_MERCY = "zhael_appointed_mercy"
 CLEANSING_TOUCH = "orenthel_cleansing_touch"
 INSPIRE_HEAL = "orenthel_inspire_heal"
 INSPIRE = "bard_inspire"
+MAGE_WARDING = "orenthel_mage_warding"
+
+
+def mage_warding_spell(spell: Spell) -> bool:
+    return not spell.hostile and spell.combat_aid
+
+
+async def grant_mage_warding(
+    caster: dict,
+    recipient_ids: list[str],
+    *,
+    conn: asyncpg.Connection,
+    rows: dict[str, dict] | None = None,
+    participants: dict[str, CombatParticipant] | None = None,
+    queries: ModuleType = db_queries,
+) -> dict | None:
+    if not recipient_ids or not has_engine_synergy(caster, MAGE_WARDING):
+        return None
+    if rows is None:
+        assert participants is not None
+        recipient_rows: dict[str, dict] = await queries.get_players_for_update(
+            [pid for pid in recipient_ids if participants[pid].type == "player"], conn=conn
+        )
+    else:
+        recipient_rows = rows
+    recipients = []
+    for pid in recipient_ids:
+        participant = participants[pid] if participants is not None else None
+        if participant is not None and participant.type != "player":
+            before = participant.temp_hp
+            participant.temp_hp = after = max(before, 1)
+        else:
+            before, after = await temp_hp.grant(pid, recipient_rows[pid], 1, participant=participant, conn=conn)
+        recipients.append({"recipient_id": pid, "granted": after - before, "temp_hp": after})
+    return {"id": MAGE_WARDING, "name": "Renewing Spark", "recipients": recipients}
 
 
 def require_inspire_heal(player: dict) -> None:

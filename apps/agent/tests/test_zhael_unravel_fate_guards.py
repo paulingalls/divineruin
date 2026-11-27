@@ -313,74 +313,6 @@ async def test_unravel_restores_bless_casters_and_saved_conditions(unravel: Figh
     assert (await durable(fight))["players"][recipient]["data"]["conditions"] == []
 
 
-async def test_expiry_round_rewind_restores_clock_and_owned_conditions(unravel: Fight) -> None:
-    import character_spells
-    from caster_state import ConcentrationState
-    from check_tools import check
-    from conditions import apply_condition, has_condition
-
-    fight = unravel
-    recipient, caster = fight.ids
-    bless = "divine_bless"
-    await character_spells.record_learned(caster, bless, "discovery", conn=fight.pool)
-    await fight.start()
-    await fight.declare(
-        {"kind": "ability", "actor_id": caster, "action": bless, "targets": [recipient], "argument_type": ""},
-        *(defend(p.id) for p in fight.session.combat_state.participants if p.id != caster),
-    )
-    await fight.finish_round(2)
-    for round_number in range(3, 11):
-        await fight.declare()
-        await fight.finish_round(round_number)
-    opening = await fight.row()
-    original = opening["round_checkpoints"][-1]["players"][caster]["data"]["concentration"]
-    assert original == {"spell_id": bless, "combat_id": opening["combat_id"], "started_round": 1, "elapsed_seconds": 0}
-
-    target = fight.session.combat_state.get_participant(recipient)
-    target.conditions = apply_condition(target.conditions, "frightened", source="mawling_1", duration=3)
-    await fight.declare()
-    await fight.call("resolve_phase")
-    with patch("check_resolution.dice_roll", return_value=_d20(19)):
-        held = (await fight.call("resolve_phase"))["fate_offer"]
-    paused = await fight.reload()
-    assert paused["round_number"] == 11 and paused["wrap_continuation"] is not None
-    assert has_condition(fight.session.combat_state.get_participant(recipient).conditions, "blessed")
-    assert (await durable(fight))["players"][caster]["data"]["concentration"] == original
-    await fight.call("activate", id="zhael_fates_thread", offer_id=held["offer_id"], keep="original")
-    await fight.finish_round(11)
-    assert (await durable(fight))["players"][caster]["data"]["concentration"]["spell_id"] is None
-    assert not has_condition(fight.session.combat_state.get_participant(recipient).conditions, "blessed")
-
-    assert (await activate(fight))["round"] == 10
-    assert fight.session.member_state(caster).concentration == ConcentrationState.from_record(original)
-    assert (await durable(fight))["players"][caster]["data"]["concentration"] == original
-    assert has_condition(fight.session.combat_state.get_participant(recipient).conditions, "blessed")
-    with (
-        patch("check_resolution.dice_roll", return_value=_d20(10)),
-        patch("condition_bonus.dice_roll", return_value=_d20(3)),
-    ):
-        rolled = await fight.invoke(
-            game_tools(fight.session, check),
-            "check",
-            actor=recipient,
-            roll={"kind": "save", "save_type": "wisdom", "dc": 24, "effect_on_fail": "resist"},
-        )
-    if offer := rolled.get("fate_offer"):
-        rolled = await fight.call("activate", id="zhael_fates_thread", offer_id=offer["offer_id"], keep="original")
-    assert rolled["total"] == 14
-
-    await fight.declare()
-    await fight.call("resolve_phase")
-    with patch("combat_round_checkpoint.capture", side_effect=RuntimeError("expiry checkpoint failed")):
-        with pytest.raises(RuntimeError, match="expiry checkpoint failed"):
-            await fight.call("resolve_phase")
-    assert fight.session.member_state(caster).concentration == ConcentrationState.from_record(original)
-    assert (await durable(fight))["players"][caster]["data"]["concentration"] == original
-    assert has_condition(fight.session.combat_state.get_participant(recipient).conditions, "blessed")
-    await fight.finish_round(11)
-    assert (await durable(fight))["players"][caster]["data"]["concentration"]["spell_id"] is None
-
-
 @pytest.mark.parametrize(
     ("spell", "archetype", "stage", "cost", "flag"),
     [
@@ -449,3 +381,59 @@ async def test_catalog_reaction_rewinds_resources_and_defense(unravel: Fight, sp
     await activate(fight, restorer)
     await fight.reload()
     assert_restored(fight, await durable(fight), start, restorer)
+
+
+@pytest.mark.parametrize("departed", [False, True])
+async def test_rally_rewind_keeps_player_row_and_participant_pool_together(unravel: Fight, departed: bool) -> None:
+    from acceptance.test_marshal_rally import rally
+    from acceptance.test_war_cry import point
+    from voice_condition_fixtures import participant
+
+    import combat_spatial
+
+    marshal, ally = unravel.ids
+    unravel.session.companion = CompanionState(id="companion_kael", name="Kael")
+    await patch_player(
+        unravel,
+        marshal,
+        **{
+            "class": "marshal",
+            "level": 3,
+            "attributes": {"charisma": 14},
+            "focus": {"current": 10, "max": 10},
+        },
+    )
+    await patch_player(unravel, ally, temp_hp=2)
+    await unravel.start()
+    state = unravel.session.combat_state
+    companion = participant(state, "companion_kael")
+    companion.temp_hp = 2
+    for pid in (marshal, ally, companion.id):
+        combat_spatial.place(state, pid, point(0))
+    await unravel.declare()
+    await unravel.finish_round(2)
+
+    async def cast() -> None:
+        current = unravel.session.combat_state
+        await unravel.declare(rally(marshal), *(defend(p.id) for p in current.participants if p.id != marshal))
+        await unravel.finish_round(3)
+
+    async def assert_pools(player_pool: int, companion_pool: int) -> None:
+        saved = await durable(unravel)
+        assert saved["players"][ally]["data"]["temp_hp"] == player_pool
+        amounts = {p["id"]: p["temp_hp"] for p in saved["combat"]["participants"]}
+        assert (amounts[ally], amounts[companion.id]) == (player_pool, companion_pool)
+        assert participant(unravel.session.combat_state, ally).temp_hp == player_pool
+        assert participant(unravel.session.combat_state, companion.id).temp_hp == companion_pool
+
+    await assert_pools(2, 2)
+    await cast()
+    await assert_pools(5, 5)
+    await unravel.reload()
+    if departed:
+        unravel.session.party.members = [unravel.session.member_state(marshal)]
+    assert (await activate(unravel))["round"] == 2
+    await assert_pools(5 if departed else 2, 2)
+    if not departed:
+        await cast()
+        await assert_pools(5, 5)

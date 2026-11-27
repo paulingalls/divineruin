@@ -8,6 +8,7 @@ training rows that the scenarios drive against.
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 
 import asyncpg
 
@@ -66,6 +67,15 @@ async def seed_player(
     )
     await seed_known_spells(conn, player_id, known_spells)
     return player_id
+
+
+async def seed_gold(conn: asyncpg.Connection | asyncpg.Pool, player_id: str, gold: Decimal | int | float) -> None:
+    result = await conn.execute(
+        "UPDATE players SET data = jsonb_set(data, '{gold}', to_jsonb($2::numeric)) WHERE player_id = $1",
+        player_id,
+        Decimal(str(gold)),
+    )
+    assert result == "UPDATE 1", f"Missing fixture player {player_id}"
 
 
 async def seed_known_spells(

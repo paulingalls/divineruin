@@ -17,6 +17,7 @@ import infusion
 import mentor_variants
 import reaction_windows
 import wild_shape
+from combat_ability_gate import MARSHAL_RALLY
 from combat_ability_save import requires_hostile_target
 from conditions import apply_condition
 from creation_classes import CLASSES
@@ -24,11 +25,13 @@ from creation_classes import CLASSES
 CONTENT = Path(__file__).resolve().parents[3] / "content"
 ROWS = json.loads((CONTENT / "archetype_abilities.json").read_text())
 APPROVED = json.loads((Path(__file__).parent / "fixtures/approved_ability_delivery.json").read_text())
-REST_ONLY = {"bard_song_of_rest"}
+SEPARATE_ENTRY_POINTS = {"bard_song_of_rest", MARSHAL_RALLY, wild_shape.DRUID_ABILITY}
 SPEAKERS = sorted(
-    key for key in APPROVED.keys() - REST_ONLY if APPROVED[key] in {"both", "source", "preparation", "spell"}
+    key
+    for key in APPROVED.keys() - SEPARATE_ENTRY_POINTS
+    if APPROVED[key] in {"both", "source", "preparation", "spell"}
 )
-LISTENERS = sorted(key for key in APPROVED.keys() - REST_ONLY if APPROVED[key] in {"both", "hearing"})
+LISTENERS = sorted(key for key in APPROVED.keys() - SEPARATE_ENTRY_POINTS if APPROVED[key] in {"both", "hearing"})
 
 
 async def activate(
@@ -120,7 +123,7 @@ async def test_actual_ooc_packets_require_target_hearing_and_lock_target(ability
         await activate(ability_id, target_deaf=True)
 
 
-@pytest.mark.parametrize("ability_id", sorted(voice.POLICIES.keys() - REST_ONLY - {wild_shape.DRUID_ABILITY}))
+@pytest.mark.parametrize("ability_id", sorted(voice.POLICIES.keys() - SEPARATE_ENTRY_POINTS))
 @pytest.mark.asyncio
 async def test_existing_eligible_packets_preserve_authored_effect(ability_id):
     if requires_hostile_target(abilities.get_ability(ability_id)):

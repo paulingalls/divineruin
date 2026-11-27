@@ -59,6 +59,30 @@
           "role": "named"
         }
       ]
+    },
+    {
+      "id": "fixture",
+      "recommended_party_level": 1,
+      "enemies": [
+        {
+          "id": "one",
+          "creature_id": "hollow_shadeling",
+          "role": "standard"
+        }
+      ],
+      "vessel": "aboard_moving"
+    },
+    {
+      "id": "fixture",
+      "recommended_party_level": 1,
+      "enemies": [
+        {
+          "id": "one",
+          "creature_id": "hollow_shadeling",
+          "role": "standard"
+        }
+      ],
+      "vessel": "boarding"
     }
   ],
   "invalid": [
@@ -923,6 +947,38 @@
             "role": "named"
           }
         ]
+      }
+    },
+    {
+      "name": "vessel_unknown",
+      "field": "vessel must be",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard"
+          }
+        ],
+        "vessel": "sailing"
+      }
+    },
+    {
+      "name": "vessel_null",
+      "field": "vessel must be",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 1,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_shadeling",
+            "role": "standard"
+          }
+        ],
+        "vessel": null
       }
     }
   ],

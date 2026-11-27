@@ -67,6 +67,7 @@ export const QUEST_UPDATED = "quest_updated" as const;
 // Packet: {player_id, amount, currency, source, new_balance} in gold crowns; the HUD renders a
 // glanceable "+N gp" chip from {amount, currency} (see components/hud/currency-display.ts).
 export const CURRENCY_GAINED = "currency_gained" as const;
+export const CURRENCY_SPENT = "currency_spent" as const;
 
 // Magic (M3.1) — mirrors apps/agent/event_types.py RESONANCE_CHANGED.
 // Packet: {state, caster_id} — the qualitative state only; the raw number never crosses to the

@@ -1,22 +1,17 @@
 import { sql } from "./db.ts";
 import { asRecord } from "./parse-helpers.ts";
 
-// DB-loaded economic pricing (M5.4 close-prep, story-011). content/pricing.json ->
-// pricing table, loaded at startup, parsed fail-loud, exposed via sync getters.
-// This is the source of truth for the cross-language economic constants (repair
-// cost by rarity, disposition price multipliers, silver/gold) that were hand-
-// mirrored in repair.ts <-> durability.py/workspace.py. This increment moves the
-// TS side onto the DB-loaded row; story-011's Python increment migrates the agent
-// (repair_item / workspace) to query the same `economy` row, after which the code
-// consts (durability.REPAIR_COST_SP / workspace.SILVER_PER_GOLD) are deleted.
-// Shape validation is owned here at the TS load boundary (constraint 8508fdb1abc3).
-// Disposition *order/vocab* (refuse-below-neutral) is NOT pricing — it stays code.
-
 export interface EconomyPricing {
   repairCostSp: Record<string, number>;
   dispositionMultipliers: Record<string, number>;
   silverPerGold: number;
+  saleRate: number;
+  saleDispositionMultipliers: Record<SaleDisposition, number>;
+  craftedSaleRate: number;
 }
+
+export const SALE_DISPOSITIONS = ["unfriendly", "neutral", "friendly", "trusted"] as const;
+type SaleDisposition = (typeof SALE_DISPOSITIONS)[number];
 
 export const MAX_DISPOSITION_MULTIPLIER = 1e304;
 export const DISPOSITION_MULTIPLIER_CAP_RULE = `must be <= ${MAX_DISPOSITION_MULTIPLIER}`;
@@ -61,19 +56,22 @@ function repairCostRecord(raw: unknown, ctx: string): Record<string, number> {
   return obj as Record<string, number>;
 }
 
+function parseMultiplier(v: unknown, ctx: string, positive = false): number {
+  if (typeof v !== "number") throw new Error(`${ctx} must be a number`);
+  if (!Number.isFinite(v)) throw new Error(`${ctx} must be finite`);
+  if (v < 0) throw new Error(`${ctx} must be >= 0`);
+  if (positive && v === 0) throw new Error(`${ctx} must be > 0`);
+  if (v > MAX_DISPOSITION_MULTIPLIER) throw new Error(`${ctx} ${DISPOSITION_MULTIPLIER_CAP_RULE}`);
+  const scaled = v * 10_000;
+  if ((positive && scaled < 0.5) || Math.abs(scaled - Math.round(scaled)) >= 1e-9) {
+    throw new Error(`${ctx} must have at most 4 decimal places`);
+  }
+  return v;
+}
+
 function multiplierRecord(raw: unknown, ctx: string): Record<string, number> {
   const obj = asRecord(raw, ctx);
-  for (const [k, v] of Object.entries(obj)) {
-    if (typeof v !== "number") throw new Error(`${ctx}.${k} must be a number`);
-    if (!Number.isFinite(v)) throw new Error(`${ctx}.${k} must be finite`);
-    if (v < 0) throw new Error(`${ctx}.${k} must be >= 0`);
-    if (v > MAX_DISPOSITION_MULTIPLIER) {
-      throw new Error(`${ctx}.${k} ${DISPOSITION_MULTIPLIER_CAP_RULE}`);
-    }
-    if (Math.abs(v * 10_000 - Math.round(v * 10_000)) >= 1e-9) {
-      throw new Error(`${ctx}.${k} must have at most 4 decimal places`);
-    }
-  }
+  for (const [key, value] of Object.entries(obj)) parseMultiplier(value, `${ctx}.${key}`);
   return obj as Record<string, number>;
 }
 
@@ -95,17 +93,35 @@ export function wholeSilver(baseSp: number, multiplier: number): number {
 /** Fail-loud parse of the `economy` pricing row's JSONB (snake_case) into EconomyPricing. */
 export function parsePricingRow(raw: unknown): EconomyPricing {
   const d = asRecord(raw, "pricing[economy]");
-  if (typeof d.silver_per_gold !== "number") {
-    throw new Error("pricing[economy].silver_per_gold is not a number");
-  }
   return {
     repairCostSp: repairCostRecord(d.repair_cost_sp, "pricing[economy].repair_cost_sp"),
     dispositionMultipliers: multiplierRecord(
       d.disposition_multipliers,
       "pricing[economy].disposition_multipliers",
     ),
-    silverPerGold: d.silver_per_gold,
+    silverPerGold: parseMultiplier(d.silver_per_gold, "pricing[economy].silver_per_gold", true),
+    ...parseSaleRates(d),
   };
+}
+
+function parseSaleRates(data: Record<string, unknown>) {
+  const saleRate = parseMultiplier(data.sale_rate, "pricing[economy].sale_rate", true);
+  const craftedSaleRate = parseMultiplier(
+    data.crafted_sale_rate,
+    "pricing[economy].crafted_sale_rate",
+    true,
+  );
+  const ctx = "pricing[economy].sale_disposition_multipliers";
+  const raw = asRecord(data.sale_disposition_multipliers, ctx);
+  const entries = SALE_DISPOSITIONS.map((disposition) => {
+    const field = `${ctx}.${disposition}`;
+    const multiplier = parseMultiplier(raw[disposition], field, true);
+    // Keep the composed rate on a whole basis point for both rounding implementations.
+    parseMultiplier(saleRate * multiplier, `${field} * sale_rate`, true);
+    return [disposition, multiplier];
+  });
+  const saleDispositionMultipliers = Object.fromEntries(entries) as Record<SaleDisposition, number>;
+  return { saleRate, saleDispositionMultipliers, craftedSaleRate };
 }
 
 export async function loadPricing(): Promise<void> {

@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.91.1
+
+The commit hook checks milestone totals and documentation index ranges. Run `python3 scripts/doc_index.py --write` to refresh both after editing the documentation.
+
+Release steps: none.
+
+## 0.91.0
+
+Marshals can call Rally in combat. Every other ally within 30 ft who can hear the call gains temporary HP equal to the marshal's Charisma modifier plus level. A larger pool already held is kept. Players keep Rally's temporary HP until it is spent or they take a long rest, and companions keep it for the fight. An Orenthel marshal's Rally at Dawn adds 1 more temporary HP to each recipient. Rally cannot be called outside combat, and is refused before any Focus is spent.
+
+Renewing Spark rewrites the Orenthel mage synergy. When an Orenthel mage casts Shield, Fly, Invisibility or Haste on themself or a willing ally, the recipient gains 1 temporary HP. This works in combat and out, including a spell cast directly during combat.
+
+Landfall Orders: when combat starts somewhere a Nythera marshal has never been, the marshal and every ally who hears the opening call gain +1 initiative. A silenced marshal gives no call. The initiative receipt and the DM's combat summary now list every initiative award per player. A Valdris marshal's Lawful Command and Landfall Orders stack when both apply.
+
+Two new coastal encounters, a fight on a moving ship deck and a dock boarding, carry a vessel fact the engine reads. On the deck, a Nythera warrior's melee attacks gain +1 (Deck Footing). In the boarding, a Nythera guardian within 5 ft of an ally gains +1 AC (Gangway Guard).
+
+Release steps:
+
+- After merge, run `bun run seed` from the repository root against the local stack. This reseeds abilities, gods, the engine catalog and encounter templates, is unpaid, and writes only to the local stack.
+- Before deploying the release, run `SEED_PRODUCTION=1 uv run --project scripts --frozen python scripts/seed_content.py` from the release checkout with the production database environment. This writes authored content to production and makes no paid provider calls.
+
+## 0.90.1
+
+Combat rewards, equipment repairs, and workspace rentals now settle fractional gold exactly. Party reward shares round down to whole copper. The character purse updates after a repair or rental commits.
+
+Release steps: none.
+
+## 0.90.0
+
+You can sell to the shops now. Tell the DM you want to trade, and the shop door creaks open. Then tell the shopkeeper what you're selling. A sale pays half the item's value in silver. Friendly shopkeepers pay more, unfriendly ones pay less, and hostile ones won't buy at all. Each shop buys only its own trade. Grimjaw takes weapons and armour, the temple takes potions and remedies, and the general stores take common goods. If a shop doesn't deal in what you're carrying, the shopkeeper tells you who might.
+
+Finished crafts can be kept or sold by voice. Tell the DM which you choose, or use the button in the app. Selling a craft pays 80% of its value, once.
+
+Release steps:
+- Before the agent starts after deploy, reseed content: `bun run seed` against the production database. This writes production. It isn't paid. It loads the new sale prices, the shops' buying rules, the four shopkeepers' stock lists and the two new trade sounds.
+- The trade sounds also need a mobile build that includes `content/action_sounds.json`. Older builds stay silent on the two new cues.
+
+## 0.89.1
+
+LiveKit acceptance tests now use explicit signing credentials that meet the JWT key length requirement.
+
+Release steps: none.
+
 ## 0.89.0
 
 Spells that inflict conditions now apply them in the engine instead of leaving them to narration. Hold Person paralyzes one humanoid, Power Word Stun stuns a foe at 75 HP or less (and fails quietly above it), Slow takes away an affected creature's quick actions, and Faerie Fire outlines creatures in its cube so attacks against them have advantage. Spark's shock stops its target's reactions until its next turn. Each condition that allows a save repeats it each turn, and two casters cannot share one hold.

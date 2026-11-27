@@ -3,6 +3,14 @@
     "id": "economy",
     "repair_cost_sp": { "common": 2, "uncommon": 10, "rare": 50, "legendary": 200 },
     "disposition_multipliers": { "friendly": 0.8, "trusted": 0.6 },
-    "silver_per_gold": 10
+    "silver_per_gold": 10,
+    "sale_rate": 0.5,
+    "sale_disposition_multipliers": {
+      "unfriendly": 0.9,
+      "neutral": 1.0,
+      "friendly": 1.1,
+      "trusted": 1.2
+    },
+    "crafted_sale_rate": 0.8
   }
 ]

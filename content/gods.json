@@ -2724,8 +2724,9 @@
         "clauses": [
           {
             "effect": "Gain +1 to melee attack rolls while aboard a moving vessel.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_deck_footing"
           }
         ]
       },
@@ -2735,8 +2736,9 @@
         "clauses": [
           {
             "effect": "Gain +1 AC while defending an ally boarding or leaving a vessel.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_gangway_guard"
           }
         ]
       },
@@ -2862,8 +2864,9 @@
         "clauses": [
           {
             "effect": "Allies who hear your first order in an unexplored location gain +1 initiative.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_first_order"
           }
         ]
       },
@@ -3124,9 +3127,10 @@
         "name": "Renewing Spark",
         "clauses": [
           {
-            "effect": "Your healing spells restore 1 additional HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "When you cast a spell on yourself or a willing ally, they gain 1 temporary HP.",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_mage_warding"
           }
         ]
       },
@@ -3238,9 +3242,10 @@
         "name": "Rally at Dawn",
         "clauses": [
           {
-            "effect": "An ally healed by your rallying ability regains 1 additional HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Rally grants each recipient 1 additional temporary HP.",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_marshal_rally"
           }
         ]
       },

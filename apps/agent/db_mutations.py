@@ -433,19 +433,6 @@ async def consume_player_materials(
     await consume(conn or await db.get_pool(), player_id, allocation, allow_tainted=allow_tainted)
 
 
-async def update_player_gold(
-    player_id: str, new_gold: float, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
-) -> None:
-    """Set a player's gold balance (mirrors update_player_xp). The caller computes
-    new_gold and enforces sufficiency — e.g. rent_workspace debits the rental price."""
-    _conn = conn or await db.get_pool()
-    await _conn.execute(
-        "UPDATE players SET data = jsonb_set(data, '{gold}', $2::jsonb) WHERE player_id = $1",
-        player_id,
-        json.dumps(new_gold),
-    )
-
-
 async def update_activity(
     activity_id: str, updates: dict, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
 ) -> None:

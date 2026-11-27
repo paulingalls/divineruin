@@ -67,6 +67,8 @@ async def test_hot_context_tracks_authenticated_speaker_on_each_turn():
         return quests[pid]
 
     async def get_activities(pid, status):
+        if status == "resolved":
+            return []
         assert status == "in_progress"
         return activities[pid]
 

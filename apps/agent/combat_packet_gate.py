@@ -24,6 +24,7 @@ from combat_ability_gate import (
     ELECTIVE_RIDER_ABILITIES,
     EXPLOIT_WEAKNESS,
     MARSHAL_ORDERS,
+    MARSHAL_RALLY,
     MULTI_TARGET_WEAPON_ABILITIES,
     SECOND_WIND,
     SHADOW_STEP,
@@ -140,6 +141,7 @@ async def _prevalidate_ability_focus(
             *ELECTIVE_RIDER_ABILITIES,
             *SINGLE_TARGET_WEAPON_ABILITIES,
             *MULTI_TARGET_WEAPON_ABILITIES,
+            MARSHAL_RALLY,
             *MARSHAL_ORDERS,
         ):
             ability, variant = resolved_ability

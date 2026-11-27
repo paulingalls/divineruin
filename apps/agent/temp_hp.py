@@ -18,8 +18,8 @@ def from_player(player: dict) -> int:
     return validate(player.get("temp_hp", 0))
 
 
-def player_pool(participant: "CombatParticipant") -> int:
-    return participant.temp_hp if participant.type == "player" else 0
+def combat_pool(participant: "CombatParticipant") -> int:
+    return participant.temp_hp if participant.type in ("player", "companion") else 0
 
 
 def beast_pool(participant: "CombatParticipant") -> int:

@@ -205,7 +205,11 @@ def _apply(
         if attack_action is None:
             return {"reason": "Shield Spell only protects against attack rolls."}
         state.get_participant(spend["actor_id"]).shield_spell_active = True
-        return {"mechanical_effect": "target_ac_bonus", "ac_bonus": SHIELD_SPELL_AC_BONUS}
+        return {
+            "mechanical_effect": "target_ac_bonus",
+            "ac_bonus": SHIELD_SPELL_AC_BONUS,
+            "shield_spell_applied": True,
+        }
 
     if hesitated:
         return None

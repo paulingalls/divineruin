@@ -18,11 +18,16 @@ from docker.errors import APIError, DockerException, NotFound
 _OWNER_HELPER = Path(__file__).resolve().parents[4] / "scripts" / "worktree-common.sh"
 IMAGE = "livekit/livekit-server:v1.11.0"
 PORT = 7880
-_COMMAND = "--dev --bind 0.0.0.0"
+_COMMAND = "--bind 0.0.0.0"
+_API_KEY = "acceptance"
+_API_SECRET = "divineruin-livekit-acceptance-tests-only"
 
 
 def _config(udp_port: int) -> str:
-    return f"rtc:\n  udp_port: {udp_port}\n  node_ip: 127.0.0.1\n  use_external_ip: false\n"
+    return (
+        f"keys:\n  {_API_KEY}: {_API_SECRET}\n"
+        f"rtc:\n  udp_port: {udp_port}\n  node_ip: 127.0.0.1\n  use_external_ip: false\n"
+    )
 
 
 def _digest(image: str, udp_port: int) -> str:
@@ -84,8 +89,8 @@ def ensure_livekit_server(*, require_docker: bool = True) -> LiveKitServer:
                 return LiveKitServer(
                     ws_url=f"ws://127.0.0.1:{host_port}",
                     http_url=http_url,
-                    api_key="devkey",
-                    api_secret="secret",
+                    api_key=_API_KEY,
+                    api_secret=_API_SECRET,
                     container=container,
                 )
             last_error = f"HTTP {response.status_code}"

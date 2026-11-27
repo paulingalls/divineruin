@@ -28,6 +28,7 @@ def test_every_agent_module_registers_its_tool_list():
         "creation",
         "onboarding",
         "blacksmith",
+        "merchant",
     } == AGENT_PROFILE_NAMES
     for name, tools in AGENT_TOOL_LISTS:
         assert tools, f"{name} registers an empty tool list"
@@ -86,6 +87,7 @@ EXPECTED_UNION_SPEND = {
     "creation": 0,
     "onboarding": 2,  # check 1, query_info 1
     "blacksmith": 1,  # query_info 1
+    "merchant": 1,  # query_info 1
 }
 
 

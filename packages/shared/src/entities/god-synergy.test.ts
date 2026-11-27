@@ -80,6 +80,20 @@ test("Zhael's paladin has the registered Promised Hour clause", () => {
   expect<unknown>(paladin).toEqual(corpus.promised_hour);
 });
 
+test("Nythera's marshal has the registered Landfall Orders clause", () => {
+  const marshal = validateGods(catalog).find((god) => god.god_id === "nythera")
+    ?.layer_4_synergy_matrix.marshal;
+  expect<unknown>(marshal).toEqual(corpus.first_order);
+});
+
+test("Nythera's warrior and guardian have the registered vessel clauses", () => {
+  const matrix = validateGods(catalog).find(
+    (god) => god.god_id === "nythera",
+  )?.layer_4_synergy_matrix;
+  expect<unknown>(matrix?.warrior).toEqual(corpus.deck_footing);
+  expect<unknown>(matrix?.guardian).toEqual(corpus.gangway_guard);
+});
+
 test("Valdris's marshal has the registered Lawful Command clause", () => {
   const marshal = validateGods(catalog).find((god) => god.god_id === "valdris")
     ?.layer_4_synergy_matrix.marshal;
@@ -371,4 +385,16 @@ test("Valdris's guardian has the registered Witness Shield clause", () => {
   const guardian = validateGods(catalog).find((god) => god.god_id === "valdris")
     ?.layer_4_synergy_matrix.guardian;
   expect<unknown>(guardian).toEqual(corpus.witness_shield);
+});
+
+test("Orenthel's Rally at Dawn grants additional temporary HP", () => {
+  const marshal = validateGods(catalog).find((god) => god.god_id === "orenthel")
+    ?.layer_4_synergy_matrix.marshal;
+  expect<unknown>(marshal).toEqual(corpus.rally_at_dawn);
+});
+
+test("Orenthel's Renewing Spark wards recipients of a mage's spell", () => {
+  const mage = validateGods(catalog).find((god) => god.god_id === "orenthel")
+    ?.layer_4_synergy_matrix.mage;
+  expect<unknown>(mage).toEqual(corpus.renewing_spark);
 });

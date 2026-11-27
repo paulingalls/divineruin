@@ -1,6 +1,10 @@
 from acceptance.test_common_bond_crafting import SCENARIOS as common_bond_crafting
+from acceptance.test_marshal_rally import SCENARIOS as rally_at_dawn
+from acceptance.test_nythera_first_order import SCENARIOS as landfall_orders
 from acceptance.test_nythera_unseen_coast import SCENARIOS as saltwind_casting
+from acceptance.test_nythera_vessel import SCENARIOS as nythera_vessel
 from acceptance.test_orenthel_guardian_ward import SCENARIOS as guardian_ward
+from acceptance.test_orenthel_mage_warding import SCENARIOS as mage_warding
 from acceptance.test_orenthel_undead_wrath import SCENARIOS as dawnward_strike
 from acceptance.test_restoring_guard import SCENARIOS as restoring_guard
 from acceptance.test_synergy_context import SCENARIOS as context_checks
@@ -95,6 +99,8 @@ ENGINE_SCENARIOS = {
     **promised_hour,
     **marshal_death_save,
     **rally,
+    **rally_at_dawn,
+    **mage_warding,
     **foretold_words,
     **war_songs,
     **appointed_mercy,
@@ -108,6 +114,8 @@ ENGINE_SCENARIOS = {
     **nythera,
     **tidewalker,
     **tidal_step,
+    **landfall_orders,
+    **nythera_vessel,
     **saltwind_casting,
     **orenthel,
     **inspire_heal,

@@ -1,5 +1,7 @@
 """Translate catalog references and party rows into initialized combat participants."""
 
+from typing import TypedDict
+
 from livekit.agents.llm import ToolError
 
 import abilities
@@ -17,6 +19,7 @@ import still_scene
 import temp_hp
 from combat_init_validation import _validate_enemy_tiers, validate_enemy_action_shapes, validate_enemy_resistance_tags
 from combat_spatial_entry import build_spatial
+from communication_voice_rules import can_hear
 from companion_profiles import get_companion_profile
 from companion_scaling import companion_attacks_to_action_pool, scale_companion_stats_to_player_level
 from db_errors import validated_player_conditions
@@ -24,8 +27,15 @@ from encounter_actions import validate_encounter_actions
 from encounter_references import validate_encounter_references
 from patron_location import is_sanctuary_location
 from patron_passives import effective_hp, orenthel_beacon, scholars_ward, tidewalker
-from patron_synergy_combat import LAWFUL_COMMAND_NAME, VALDRIS_LAWFUL_COMMAND, sanctuary_initiative_bonus
-from session_data import CombatParticipant
+from patron_synergy_combat import (
+    LANDFALL_ORDERS_NAME,
+    LAWFUL_COMMAND_NAME,
+    NYTHERA_FIRST_ORDER,
+    VALDRIS_LAWFUL_COMMAND,
+    first_order_initiative_bonus,
+    sanctuary_initiative_bonus,
+)
+from session_data import CombatParticipant, CombatState
 
 
 def class_reaction_ids(player_class: str, player_level: int) -> list[str]:
@@ -39,30 +49,75 @@ def class_reaction_ids(player_class: str, player_level: int) -> list[str]:
     ]
 
 
-async def assemble_participants(
-    session,
-    encounter,
-    encounter_id,
-    member_players,
-    *,
-    content,
-    queries,
-    initiated_by,
-    character_spells_mod=character_spells,
-):
-    initiative_bonuses = {
-        mid: bonus
+class InitiativeAward(TypedDict):
+    id: str
+    name: str
+    bonus: int
+
+
+async def collect_initiative_awards(
+    state: CombatState, member_players: list[tuple[str, dict]], *, initiated_by: str | None
+) -> dict[str, list[InitiativeAward]]:
+    awards: dict[str, list[InitiativeAward]] = {
+        mid: [{"id": VALDRIS_LAWFUL_COMMAND, "name": LAWFUL_COMMAND_NAME, "bonus": bonus}]
         for mid, row in member_players
         if (bonus := sanctuary_initiative_bonus(row, initiated_by=initiated_by))
     }
-    if initiative_bonuses and not await is_sanctuary_location(session.location_id):
-        initiative_bonuses.clear()
+    if awards and not await is_sanctuary_location(state.location_id):
+        awards.clear()
+
+    participants = {participant.id: participant for participant in state.participants}
+    speakers = {
+        mid: bonus
+        for mid, row in member_players
+        if (bonus := await first_order_initiative_bonus(row, participants[mid], state))
+    }
+    if speakers:
+        order: InitiativeAward = {
+            "id": NYTHERA_FIRST_ORDER,
+            "name": LANDFALL_ORDERS_NAME,
+            "bonus": max(speakers.values()),
+        }
+        for participant in state.participants:
+            if participant.is_ally and (participant.id in speakers or can_hear(state, participant.id)):
+                awards.setdefault(participant.id, []).append(order)
+    return awards
+
+
+def finalize_initiative(
+    state: CombatState,
+    entries: list[combat_resolution.InitiativeEntry],
+    awards: dict[str, list[InitiativeAward]],
+) -> list[dict[str, object]]:
+    entries_by_id = {entry.participant_id: entry for entry in entries}
+    for participant in state.participants:
+        participant.initiative += sum(award["bonus"] for award in awards.get(participant.id, ()))
+
+    ordered = sorted(state.participants, key=lambda participant: participant.initiative, reverse=True)
+    state.initiative_order = [participant.id for participant in ordered]
+    summary = []
+    for participant in ordered:
+        entry = entries_by_id[participant.id]
+        receipt: dict[str, object] = {
+            "id": participant.id,
+            "name": entry.name,
+            "roll": entry.roll,
+            "total": participant.initiative,
+        }
+        if participant.id in awards:
+            receipt["initiative_bonus"] = awards[participant.id]
+        summary.append(receipt)
+    return summary
+
+
+async def assemble_participants(
+    session, encounter, encounter_id, member_players, *, content, queries, character_spells_mod=character_spells
+):
     initiative_inputs: list[dict] = [
         {
             "id": mid,
             "name": row.get("name", mid),
             "attributes": row.get("attributes", {}),
-            "initiative_bonus": initiative_bonuses.get(mid, 0),
         }
         for mid, row in member_players
     ]
@@ -133,7 +188,6 @@ async def assemble_participants(
     retained_still = await still_scene.preflight(session, encounter, queries=queries)
 
     initiative_entries = combat_resolution.roll_initiative(initiative_inputs)
-    initiative_order = [e.participant_id for e in initiative_entries]
     initiative_by_id = {e.participant_id: e.total for e in initiative_entries}
 
     participants: list[CombatParticipant] = []
@@ -257,29 +311,4 @@ async def assemble_participants(
             )
         )
 
-    initiative_awards = {
-        mid: {"id": VALDRIS_LAWFUL_COMMAND, "name": LAWFUL_COMMAND_NAME, "bonus": bonus}
-        for mid, bonus in initiative_bonuses.items()
-    }
-    initiative_summary = []
-    for entry in initiative_entries:
-        receipt: dict[str, object] = {
-            "id": entry.participant_id,
-            "name": entry.name,
-            "roll": entry.roll,
-            "total": entry.total,
-        }
-        if entry.participant_id in initiative_awards:
-            receipt["initiative_bonus"] = initiative_awards[entry.participant_id]
-        initiative_summary.append(receipt)
-
-    return (
-        participants,
-        spatial,
-        initiative_summary,
-        initiative_awards,
-        initiative_order,
-        retained_choir,
-        retained_still,
-        retained_architect,
-    )
+    return participants, spatial, initiative_entries, retained_choir, retained_still, retained_architect

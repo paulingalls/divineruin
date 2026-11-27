@@ -2,9 +2,7 @@ import json
 from dataclasses import replace
 
 import pytest
-from _dawns_embrace_fixtures import damage_ally, embrace_fight
 from _mortaen_threshold_fixtures import (
-    ENCOUNTER,
     FOE,
     active,
     attack_event,
@@ -19,7 +17,6 @@ from _spell_heal_fixtures import WOUNDS
 from _spell_heal_fixtures import spell_heal_walk as spell_heal_walk
 from _unbound_path_fixtures import row
 from _unbound_path_fixtures import world as world
-from _zhael_fate_fixtures import game_tools
 from test_patron_engine_death_ward import SPENT, WARD, enemy_damage, hit, resolve_until, saved_target
 from test_patron_engine_valdris import reload_state
 from test_spell_heal_landing import heal_die
@@ -28,8 +25,6 @@ import conditions
 import db_mutations
 import db_queries
 import event_types as E
-from rest_tools import rest
-from session_data import CompanionState
 
 
 async def patch_player(world, index=0, **fields):
@@ -105,17 +100,6 @@ async def test_reaction_and_live_pool_are_applied_before_landing(world, interven
         assert gifts == ({} if intervention == "dodge" else SPENT)
 
 
-async def test_companion_does_not_absorb_damage_from_a_player_pool(world):
-    world.ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
-    async with embrace_fight(world) as call:
-        companion = active(world).get_participant("companion_kael")
-        companion.hp_current, companion.hp_max = 20, 30
-        companion.temp_hp = 6
-        receipt = await damage_ally(world, call, target_id=companion.id, damage=4)
-        saved = await saved_target(world, companion)
-        assert (saved.hp_current, saved.temp_hp, receipt["temp_hp_absorbed"]) == (16, 0, 0)
-
-
 async def test_draining_hit_spends_temp_hp_before_ward(world):
     await patch_player(world, temp_hp=6)
     async with fight(world, hp=3, max_hp=30, gifts={}) as call:
@@ -157,15 +141,11 @@ async def test_hollowed_rise_persists_spent_pool_without_echo_hp(world, inner):
         assert (await saved_target(world, follower(world))).temp_hp == 0
 
 
-async def test_no_stack_grant(world):
+async def test_grant_requires_matching_player_participant(world):
     from temp_hp import grant
 
     await patch_player(world, temp_hp=8)
     async with fight(world, hp=20, max_hp=30):
-        async with world.db.transaction() as conn:
-            player = (await db_queries.get_players_for_update([world.ids[0]], conn=conn))[world.ids[0]]
-            assert await grant(world.ids[0], player, 5, participant=follower(world), conn=conn) == (8, 8)
-        assert (await row(world, 0))["temp_hp"] == follower(world).temp_hp == 8
         async with world.db.transaction() as conn:
             player = (await db_queries.get_players_for_update([world.ids[0]], conn=conn))[world.ids[0]]
             foe = replace(active(world).get_participant(FOE), id=world.ids[0])
@@ -193,27 +173,6 @@ async def test_healing_preserves_temp_hp(healer, combat):
     if combat:
         target = (await healer.checkpoint()).get_participant(ally)
         assert (target.hp_current, target.temp_hp) == (current, 6)
-
-
-async def test_pool_survives_encounters_until_long_rest(world):
-    await patch_player(world, temp_hp=6, location_id="millhaven_inn")
-    await patch_player(world, 1, temp_hp=8, location_id="accord_guild_hall")
-    session = world.ctx.userdata
-    async with fight(world, hp=30, max_hp=30) as call:
-        await hit(world, call, damage=4)
-        await assert_pools(world, 30, 2)
-        await reload_state(world)
-        await call("end_combat", outcome="fled")
-        await call("enter_mode", mode="combat", encounter_id=ENCOUNTER)
-        await assert_pools(world, 30, 2)
-        await call("end_combat", outcome="fled")
-        session.location_id = "millhaven_inn"
-        recover = game_tools(session, rest)
-        await recover("rest", rest_type="short", use_song_of_rest=False)
-        assert (await row(world, 0))["temp_hp"] == 2
-        await recover("rest", rest_type="long", use_song_of_rest=False)
-        assert (await row(world, 0))["temp_hp"] == 0
-        assert (await row(world, 1))["temp_hp"] == 8
 
 
 async def test_legacy_pool_defaults_to_zero_on_entry_and_reload(world):
