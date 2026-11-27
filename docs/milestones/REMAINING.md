@@ -10,8 +10,8 @@ Finding the journal grants it and completes the search atomically.
 Artifact choices persist once with their effects.
 Leave now requests a recap before disconnect, with a 15-second home fallback.
 
-**Position: 425 / 645 acceptance criteria — 66%** (the sum of the per-phase
-counts in `README.md`). **220 criteria remain unchecked.** Phases 2, 5, 6 and 10 have all recorded
+**Position: 427 / 645 acceptance criteria — 66%** (the sum of the per-phase
+counts in `README.md`). **218 criteria remain unchecked.** Phases 2, 5, 6 and 10 have all recorded
 criteria checked. Phase 3 is still Partial at 34/34:
 casting infrastructure is exercised, but complete deterministic spell-effect
 coverage is **unverified**. All 87 spell rows carry textual `mechanics`; this
@@ -140,10 +140,10 @@ not schedules or measured implementation costs.
 | **11 · World Loop** | 11.1–11.6 | 46 | D-A–D-E; M11.4 needs Phase 9, M11.6 needs Phase 8 | ~4–6 sprints | Migrated `region_state`, `npc_state`, `world_events_log`, `god_agent_state`, `world_flags`; direct quest world effects; activity-worker reset harness. These do not establish a world scheduler or cascade. |
 | **12 · Story Content** | 12.1–12.7 | 34 | Phase 11 and blocking decisions D-F–D-L | ~5–7 sprints | Migrated `scenes` (013) and `story_moments` (012); scene-tool and settlement-generation boundaries. `gods.json` has authored secret-agenda text for Veythar and Syrath; a season director is not certified. |
 | **13 · First Share** | Sessions 1–3, session edges, cost, deployment and playtest | 4 | Remaining First Share checklist | Later work unsized | Session 1: 9/9; full phase: 32/36, including seven Session 2 criteria. The walk from creation to a queued whisper and persisted rider re-entry run through real room transport; caster pools and no repeat after consumption and worker restart at favor zero pass; both silence hints, engine settlement on all offered outcomes, replay and rollback are exercised. The first fight pays 25 XP and the shared balance harness scores 20/19/19/20 wins. |
-| **14 · Engine Completeness** | [14.1–14.5](14_engine_completeness.md) | 44 | Earlier game systems, Phase 9 denominations, Phase 11 state and Phase 15 content | Unsized | Existing activation, audio, room and HUD paths are inputs. M14.1 tracks native Choir and spoken reaction timing. |
+| **14 · Engine Completeness** | [14.1–14.5](14_engine_completeness.md) | 42 | Earlier game systems, Phase 9 denominations, Phase 11 state and Phase 15 content | Unsized | Existing activation, audio, room and HUD paths are inputs. M14.1 tracks native Choir and spoken reaction timing. |
 | **15 · Content Coverage** | [15.1](15_content_coverage.md) | 11 | Phase 9 prices, Phase 11 events, Phase 12 story and Phase 14 gameplay | Unsized | The per-target census in M15.1 records existing authored data. |
 
-The table sums to 218. The other 2 open criteria are Phase 0's documentation box (§2) and Phase 1's voice standard-array box (§1), which the Core residuals goal measures.
+The table sums to 216. The other 2 open criteria are Phase 0's documentation box (§2) and Phase 1's voice standard-array box (§1), which the Core residuals goal measures.
 
 The table counts by phase file. The [area goal Measures](../../.xp/milestones.md)
 assign Phase 11 criteria beginning with `[P12]` to the Story machinery and
