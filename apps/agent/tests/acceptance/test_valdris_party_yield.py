@@ -123,7 +123,7 @@ SCENARIOS = {CLAUSE: ("patron_synergy_combat:encounter_damage_clause", measured_
         "warrior_whirlwind",
         "rogue_exploit_weakness",
         "arcane_bolt",
-        "arcane_hold_person",
+        "arcane_power_word_stun",
     ],
 )
 async def test_hostile_actions_end_yield(world: SimpleNamespace, action: str) -> None:
@@ -187,6 +187,7 @@ async def test_legacy_combat_records_new_attempts(world: SimpleNamespace, versio
             del data["encounter_facts"]
         else:
             facts = data["encounter_facts"]
+            del facts["opening_actors"]
             del facts[FACT]
             if version < 7:
                 del facts["rally_pending"]

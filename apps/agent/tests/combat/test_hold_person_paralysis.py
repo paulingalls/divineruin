@@ -58,7 +58,9 @@ async def test_declared_hold_person_resolves_through_the_save_never_an_attack(sa
             state,
             packet,
             mutations=MagicMock(update_player_hp=AsyncMock()),
-            queries=MagicMock(get_player_inventory=AsyncMock(return_value=[])),
+            queries=MagicMock(
+                get_player=AsyncMock(return_value={"class": "warrior"}), get_player_inventory=AsyncMock(return_value=[])
+            ),
             resolver=check_resolution_attack,
             concentration_break_mod=break_mod,
         )
@@ -77,7 +79,7 @@ async def test_hold_person_breaks_a_concentrating_players_spell():
     assert enemy is not None and player is not None
     enemy.action_pool = [_hold_person()]
     session = make_context().userdata
-    session.concentration.spell_id = "divine_bless"
+    session.concentration.spell_id = "arcane_haste"
     persist = AsyncMock()
     packet = ResolutionPacket(
         actor_id=enemy.id,
@@ -94,14 +96,16 @@ async def test_hold_person_breaks_a_concentrating_players_spell():
             state,
             packet,
             mutations=MagicMock(update_player_hp=AsyncMock()),
-            queries=MagicMock(get_player_inventory=AsyncMock(return_value=[])),
+            queries=MagicMock(
+                get_player=AsyncMock(return_value={"class": "warrior"}), get_player_inventory=AsyncMock(return_value=[])
+            ),
             resolver=check_resolution_attack,
             concentration_break_mod=concentration_break,
             conn="phase-conn",
         )
 
     assert summary["condition_inflicted"] == "paralyzed"
-    assert summary["concentration_broken"] == "divine_bless"
+    assert summary["concentration_broken"] == "arcane_haste"
     assert session.concentration.spell_id is None
     persist.assert_awaited_once_with("player_1", None, conn="phase-conn")
 

@@ -113,7 +113,7 @@ async def test_second_player_join_appends_and_hydrates_all_five_substates():
     mods = _make_mods(
         row2,
         resonance={"current": 6, "flickering_bonus": 1, "state": "flickering"},
-        concentration={"spell_id": "spell_y"},
+        concentration={"spell_id": "spell_y", "elapsed_seconds": 90},
     )
     room, handlers = _recording_room()
     sd = SessionData(player_id="player_1", location_id="loc")

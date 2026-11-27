@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 import temp_hp
 from encounter_roles import EncounterRole
@@ -11,6 +11,11 @@ if TYPE_CHECKING:
 
 BARK_SKIN_AC_BONUS = 2
 SHIELD_SPELL_AC_BONUS = 3
+
+
+class DueDeathSave(TypedDict):
+    round_number: int
+    oath_timed: dict | None
 
 
 @dataclass
@@ -37,6 +42,7 @@ class CombatParticipant:
     is_dead: bool = False
     death_save_successes: int = 0
     death_save_failures: int = 0
+    due_death_save: DueDeathSave | None = None
     action_pool: list[dict] = field(default_factory=list)
     multiattack_sequence: dict | None = None
     corruption_field: dict | None = None

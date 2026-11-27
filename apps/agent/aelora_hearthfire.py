@@ -16,6 +16,7 @@ from combat_down import is_terminally_down
 from combat_movement_cost import AXES
 from combat_participant import CombatParticipant
 from combat_state import CombatState
+from healing_dice import maximum_healing, shared_roll
 from rules_engine import attribute_modifier, proficiency_bonus
 
 if TYPE_CHECKING:
@@ -157,7 +158,14 @@ async def settle_entry(
     else:
         zone["failed_rounds"][mover.id] = state.round_number
         cue = f"Hearthfire stops {mover.name} at its edge."
-    return {**receipt, "roll": result.roll, "total": result.total, "success": result.success, "dm_cue": cue}
+    return {
+        **receipt,
+        **result.oath_fields(),
+        "roll": result.roll,
+        "total": result.total,
+        "success": result.success,
+        "dm_cue": cue,
+    }
 
 
 async def heal_round(
@@ -169,10 +177,11 @@ async def heal_round(
     spatial = combat_spatial.require_spatial(state)
     heals = []
     for zone in state.hearthfire_zones:
-        rolled = dice.roll("1d6").total
+        roll = shared_roll("1d6", dice.roll)
         for target in _occupants(state, spatial, zone):
             if not target.is_ally or is_terminally_down(target):
                 continue
+            rolled = roll(maximum_healing(target.conditions))
             was_fallen = target.is_fallen
             restored = await combat_spell_heal.restore(target, rolled, conn=conn, mutations=mutations, queries=queries)
             heals.append(

@@ -1,5 +1,6 @@
 from copy import deepcopy
-from unittest.mock import AsyncMock, MagicMock
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from combat._helpers import _make_combat_state, _resolve_deps
@@ -108,7 +109,7 @@ def test_charm_spell_declaration_paths(spell_id):
     "spell_id,selectors",
     [
         ("arcane_bolt", {"target_id": "other"}),
-        ("divine_bless", {"target_id": "goblin_scout_1"}),
+        ("divine_bless", {"target_id": "player_1"}),
         ("divine_mass_heal", {}),
     ],
 )
@@ -178,7 +179,9 @@ async def test_public_hearing_and_sight_routes(kind, candidate, monkeypatch, moc
             hearing_only=True,
         )
         if kind == "skill"
-        else DiscoverCheck(kind="discover", skill="perception", target="wall", hearing_only=True)
+        else DiscoverCheck(
+            kind="discover", skill="perception", target="wall", hearing_only=True, synergy_context="none"
+        )
     )
     result = json.loads(await check_tools.check(ctx, payload))
     assert result["roll"] == 0
@@ -372,16 +375,20 @@ def test_deafened_cannot_spend_inspired_but_blessed_stays_usable(kind):
     import check_resolution_save
 
     player = {"conditions": [{"type": "deafened"}, {"type": "inspired"}, {"type": "blessed"}]}
-    if kind == "attack":
-        result = check_resolution_attack.resolve_attack(
-            player, {"damage": "1d1", "damage_type": "force"}, 10, 30, rng=FixedRng(10)
-        )
-    elif kind == "save":
-        result = check_resolution_save.resolve_saving_throw(player, "wisdom", 8, "stunned", rng=FixedRng(10))
-    else:
-        result = check_resolution.resolve_skill_check_dc(
-            player, "athletics", 8, rng=FixedRng(10), natural_terrain=False, ally_present=False, hearing_only=False
-        )
-    assert "inspired" not in result.consumed_conditions
-    assert ("blessed" in result.consumed_conditions) is (kind != "skill")
+    with patch("condition_bonus.dice_roll", return_value=SimpleNamespace(total=3)):
+        if kind == "attack":
+            result = check_resolution_attack.resolve_attack(
+                player, {"damage": "1d1", "damage_type": "force"}, 10, 30, rng=FixedRng(10)
+            )
+            total = result.attack_total
+        elif kind == "save":
+            result = check_resolution_save.resolve_saving_throw(player, "wisdom", 8, "stunned", rng=FixedRng(10))
+            total = result.total
+        else:
+            result = check_resolution.resolve_skill_check_dc(
+                player, "athletics", 8, rng=FixedRng(10), natural_terrain=False, ally_present=False, hearing_only=False
+            )
+            total = result.total
+    assert total == {"attack": 14, "save": 13, "skill": 11}[kind]
+    assert result.consumed_conditions == ()
     assert any(c["type"] == "inspired" for c in player["conditions"])

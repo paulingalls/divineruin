@@ -21,9 +21,16 @@ INDIRECT = {
     "divine_banishment",
     "divine_miracle",
 }
+CONDITION_SPELLS = {
+    "arcane_hold_person",
+    "arcane_power_word_stun",
+    "arcane_slow",
+    "primal_faerie_fire",
+    "divine_guiding_light",
+}
+
 UTILITY = {
     "arcane_teleport",
-    "arcane_hold_person",
     "arcane_detect_magic",
     "arcane_prestidigitation",
     "arcane_wall_of_force",
@@ -31,9 +38,7 @@ UTILITY = {
     "primal_gust",
     "arcane_time_stop",
     "divine_shield_of_faith",
-    "arcane_power_word_stun",
     "primal_feeblemind",
-    "primal_faerie_fire",
     "arcane_arcane_eye",
     "primal_druidcraft",
     "arcane_haste",
@@ -50,7 +55,6 @@ UTILITY = {
     "primal_commune_with_nature",
     "primal_protection_from_hollow",
     "arcane_mist_step",
-    "arcane_slow",
     "divine_resurrection",
     "divine_holy_aura",
     "arcane_shield_spell",
@@ -66,7 +70,6 @@ UTILITY = {
     "divine_sanctuary",
     "divine_dispel_corruption",
     "divine_heal_wounds",
-    "divine_guiding_light",
     "divine_bless",
     "primal_plant_growth",
     "divine_zone_of_truth",
@@ -85,9 +88,10 @@ def test_all_catalog_rows_are_accounted_for_and_damage_profiles_exist():
     assert len(rows) == len({r["id"] for r in rows}) == 87
     direct = {row[0] for row in DAMAGE_CASES} | {"arcane_bolt"}
     assert len(direct) == 20 and len(DEFERRED) == 4 and len(INDIRECT) == 8
-    assert {r["id"] for r in rows} == direct | DEFERRED | INDIRECT | UTILITY
+    assert {r["id"] for r in rows} == direct | DEFERRED | INDIRECT | UTILITY | CONDITION_SPELLS
     for row in rows:
         spell = parse_spell_row(row["id"], row)
+        assert (spell.save_condition is not None) == (spell.id in CONDITION_SPELLS)
         if row["id"] in direct:
             assert spell.combat_damage and spell.combat_damage["resolution"] in {"attack", "save", "automatic"}
         elif row["id"] in DEFERRED:

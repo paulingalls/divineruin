@@ -5,9 +5,12 @@ from acceptance.test_orenthel_undead_wrath import SCENARIOS as dawnward_strike
 from acceptance.test_restoring_guard import SCENARIOS as restoring_guard
 from acceptance.test_synergy_context import SCENARIOS as context_checks
 from acceptance.test_turn_undead_hollow import SCENARIOS as absolute_authority
+from acceptance.test_valdris_justice_at_stake import SCENARIOS as justice_at_stake
+from acceptance.test_valdris_oath_breach import SCENARIOS as oath_breach
 from acceptance.test_valdris_party_yield import SCENARIOS as measured_reprisal
 from acceptance.test_valdris_sanctuary import SCENARIOS as lawful_command
 from acceptance.test_valdris_witness import SCENARIOS as witness_shield
+from acceptance.test_zhael_promised_hour import SCENARIOS as promised_hour
 from combat.test_nythera_tidal_step import SCENARIOS as tidal_step
 from combat.test_synergy_crit_edges import SCENARIOS as crit_edges
 from combat.test_synergy_spell_edges import SCENARIOS as spell_edges
@@ -87,6 +90,9 @@ ENGINE_SCENARIOS = {
     **lawful_command,
     **witness_shield,
     **measured_reprisal,
+    **oath_breach,
+    **justice_at_stake,
+    **promised_hour,
     **marshal_death_save,
     **rally,
     **foretold_words,

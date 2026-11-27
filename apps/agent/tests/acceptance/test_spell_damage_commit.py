@@ -157,9 +157,12 @@ async def test_redirected_spell_damage_breaks_real_concentration(started, spell_
     prior = "divine_bless" if spell_id == "arcane_bolt" else None
     ctx.userdata.concentration.spell_id = prior
     await db_mutations_concentration.update_player_concentration(pid, prior)
-    participant(ctx.userdata.combat_state, pid).conditions = (
-        [{"type": "blessed", "source": "divine_bless"}] if prior else []
-    )
+    if prior:
+        from conditions import apply_condition
+
+        participant(ctx.userdata.combat_state, pid).conditions = apply_condition(
+            [], "blessed", source=prior, sustaining_caster_id=pid
+        )
     await combat_turn.declare_phase(
         ctx,
         [
@@ -179,7 +182,9 @@ async def test_redirected_spell_damage_breaks_real_concentration(started, spell_
         return attack(*args, **{**kwargs, "rng": random.Random(0)})
 
     def fixed_save(*args, **kwargs):
-        return save(*args, **{**kwargs, "rng": random.Random(5 if args[3] == "Aura of Lost Voices" else 31)})
+        face = 20 if args[3] == "Aura of Lost Voices" else 1
+        with patch("check_resolution.dice_roll", return_value=_d20(face)):
+            return save(*args, **kwargs)
 
     with (
         patch("check_resolution_attack.resolve_attack", side_effect=fixed_attack),

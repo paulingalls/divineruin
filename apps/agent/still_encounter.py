@@ -371,5 +371,7 @@ async def after_damage(session, state, target, *, conn, queries, was_fallen) -> 
         await still_charm.end_instance(state, owner.id, session.party.member_ids, queries=queries, conn=conn)
         if combat_hollow_death.new_destruction(owner, resolved_before, was_fallen, before):
             await combat_hollow_death.accrue_death(session, state, owner, conn=conn, queries=queries)
-        return await encounter_facts.renew_on_death(state, owner, counted_before, queries=queries, conn=conn)
+        return await encounter_facts.renew_on_death(
+            state, owner, counted_before, queries=queries, conn=conn, session=session
+        )
     return []

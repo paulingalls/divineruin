@@ -21,6 +21,10 @@ class MovementRefused(ValueError):
     """A well-formed move whose route is unavailable on the current battlefield."""
 
 
+class MovementSpeedRefused(MovementRefused):
+    """A move exceeds the actor's current speed."""
+
+
 class ThornwallMoveRefused(MovementRefused):
     """A Thornwall raised after declaration can stop a previously valid move."""
 
@@ -47,7 +51,7 @@ def movement_geometry(state, actor_id, declaration, *, allowance: float | None =
         c["type"] == "charmed" and c.get("choir_melody") is True for c in actor.conditions
     )
     if spent > speed and (hard_limit or not melody):
-        raise MovementRefused(f"{actor_id} move exceeds speed {speed:g} feet")
+        raise MovementSpeedRefused(f"{actor_id} move exceeds speed {speed:g} feet")
     wall = movement_blocker(state, spatial, actor, origin, destination)
     if wall is not None:
         reason = f"{actor_id} move is blocked by {wall.name} ({wall.id})"
@@ -213,4 +217,11 @@ def preflight_state(state):
             if not is_move(declaration) or declaration.target_id != head["actor_id"]:
                 raise ValueError("held move must target its own actor")
             if state.architect_encounter is None:
-                preflight(state, [(head["actor_id"], declaration)])
+                try:
+                    preflight(state, [(head["actor_id"], declaration)])
+                except MovementSpeedRefused:
+                    # Earlier actions can lower speed after declaration. The held move reports the refusal,
+                    # but a route beyond the actor's unconditioned speed was never valid.
+                    base = require_spatial(state)["speeds"][head["actor_id"]]
+                    movement_geometry(state, head["actor_id"], declaration, allowance=base)
+                    continue

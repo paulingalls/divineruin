@@ -114,7 +114,7 @@ async def test_ally_save_repeats_disadvantage_and_keeps_one_bonus(world, keep, k
         "aelora",
         "mage",
         index=1,
-        conditions=apply_condition(apply_condition([], "hollowed"), "blessed"),
+        conditions=apply_condition(apply_condition([], "hollowed"), "inspired"),
     )
     session = world.ctx.userdata
     host, guest = world.ids
@@ -132,7 +132,7 @@ async def test_ally_save_repeats_disadvantage_and_keeps_one_bonus(world, keep, k
             with session._bind_authenticated_actor(host, 1, lifecycle.require_authorized):
                 shown = await call("activate", **args)
                 assert shown["reroll"] == {"die": 14, "total": 17}
-                assert {c["type"] for c in (await row(world, 1))["conditions"]} == {"hollowed", "blessed"}
+                assert {c["type"] for c in (await row(world, 1))["conditions"]} == {"hollowed", "inspired"}
                 chosen = await call("activate", **args, keep=keep)
             assert dice.call_count == 4 and bonus.call_count == 1
         assert chosen["roll"] == kept_die and chosen["effect_applied"] == applied
@@ -159,7 +159,7 @@ async def lucky_save_setup(world, gifts=None):
         "mage",
         location_id="millhaven_inn",
         divine_favor={"patron": "zhael", "level": 0, "max": 100},
-        conditions=apply_condition(apply_condition([], "hollowed"), "blessed"),
+        conditions=apply_condition(apply_condition([], "hollowed"), "inspired"),
         patron_gifts=gifts or {},
     )
     session = world.ctx.userdata

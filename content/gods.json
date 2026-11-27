@@ -2511,14 +2511,20 @@
         "name": "Oath of Justice",
         "clauses": [
           {
-            "effect": "Oath of Justice: oath-breaking loses all favor abilities for a session.",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Breaking the Oath of Justice suppresses Valdris tier abilities for the rest of the current gameplay session.",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_oath_breach"
           },
           {
-            "effect": "Oath-keeping grants +2 to all d20 rolls when justice is at stake",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Gain +2 on attacks and saves against wrongdoers in combat, and on checks when justice is at stake.",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_justice_at_stake",
+            "kind": "context_check",
+            "synergy_context": "justice_at_stake",
+            "skill": null,
+            "bonus": 2
           }
         ]
       },
@@ -3557,8 +3563,9 @@
         "clauses": [
           {
             "effect": "Gain +1 to saving throws while fulfilling an oath at its promised time.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_promised_hour"
           }
         ]
       },

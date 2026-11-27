@@ -334,17 +334,17 @@ async def test_still_save_owners_spend_rally(still, action) -> None:
     assert (await still.reload()).encounter_facts["rally_pending"] == {}
 
 
-async def test_manual_fate_save_consumes_rally_and_blessed_together(world) -> None:
+async def test_manual_fate_save_consumes_rally_and_inspired_together(world) -> None:
     from _unbound_path_fixtures import row
     from test_zhael_fate_sprint_saves import _reroll
 
     from activate_tools import activate
 
     async with fight(world, "zhael", ally_hp=20) as f:
-        blessed = apply_condition([], "blessed", source="divine_bless")
-        await configure(world, "zhael", "warrior", conditions=blessed, patron_gifts={"zhael_lucky": {"spent": True}})
+        inspired = apply_condition([], "inspired")
+        await configure(world, "zhael", "warrior", conditions=inspired, patron_gifts={"zhael_lucky": {"spent": True}})
         state = f.session.combat_state
-        participant(state, f.hero).conditions = blessed
+        participant(state, f.hero).conditions = inspired
         pending(state, f.hero, f.ally)
         await persist(f)
         call = game_tools(f.session, check, activate)

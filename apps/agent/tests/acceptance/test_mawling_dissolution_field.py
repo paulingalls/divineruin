@@ -323,27 +323,33 @@ async def test_concentration_tick_and_queued_cast(maw, field_dice, holds):
     member.concentration.spell_id = "divine_bless"
     await db_mutations_concentration.update_player_concentration(victim.id, "divine_bless")
     state = await maw.reload()
-    state.get_participant(victim.id).conditions.append({"type": "blessed", "duration": None, "source": "divine_bless"})
-    await maw.persist()
-    field_dice[1].return_value = SimpleNamespace(total=20 if holds else 1)
-    packets = await next_round(
-        maw,
-        {
-            "kind": "ability",
-            "actor_id": victim.id,
-            "action": "arcane_bolt",
-            "targets": [maw.enemies[1]],
-            "argument_type": "",
-        },
+    player = state.get_participant(victim.id)
+    player.conditions.append(
+        {"type": "blessed", "duration": None, "source": "divine_bless", "sustaining_caster_ids": [victim.id]}
     )
+    await maw.persist()
+    field_dice[1].side_effect = [SimpleNamespace(total=20 if holds else 1), SimpleNamespace(total=14)]
+    with patch("condition_bonus.dice_roll", return_value=SimpleNamespace(total=3)):
+        packets = await next_round(
+            maw,
+            {
+                "kind": "ability",
+                "actor_id": victim.id,
+                "action": "arcane_bolt",
+                "targets": [maw.enemies[1]],
+                "argument_type": "",
+            },
+        )
     tick = next(p for p in packets if p.get("automatic"))
     assert tick["concentration_broken"] == (None if holds else "divine_bless")
     row = await db_queries.get_player(victim.id)
     assert row is not None
     assert row.get("concentration", {}).get("spell_id") == ("divine_bless" if holds else None)
     cast = next(p for p in packets if p.get("actor_id") == victim.id and not p.get("automatic"))
-    assert ("blessed" in cast["cast"]["damage_result"].get("consumed_conditions", [])) is holds
-    assert not any(c["type"] == "blessed" for c in maw.sd.combat_state.get_participant(victim.id).conditions)
+    damage = cast["cast"]["damage_result"]
+    assert "blessed" not in damage.get("consumed_conditions", [])
+    assert damage["attack_total"] == 16 + (3 if holds else 0)
+    assert any(c["type"] == "blessed" for c in maw.sd.combat_state.get_participant(victim.id).conditions) is holds
 
 
 async def test_stunned_declaration_refused_but_boundary_runs(maw, field_dice):

@@ -37,7 +37,13 @@ RECEIPT = {
 
 
 def discover(skill: str = "investigation") -> dict:
-    return {"kind": "discover", "skill": skill, "target": "research station", "hearing_only": False}
+    return {
+        "kind": "discover",
+        "synergy_context": "none",
+        "skill": skill,
+        "target": "research station",
+        "hearing_only": False,
+    }
 
 
 SKILL = {

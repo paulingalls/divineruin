@@ -13,12 +13,14 @@ import db_mutations
 import db_queries
 import encounter_facts
 import event_types as E
+import oath_timed
 import zhael_fate
 from combat_down import revive, sync_companion_consciousness
 from combat_participant import CombatParticipant
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_support import _require_combat
 from condition_restrictions import saving_throw_advantage
+from conditions import get_condition_effects
 from db_errors import db_tool
 from game_events import publish_game_event
 from patron_synergy_combat import MORTAEN_HOLD_THE_CROSSING, marshal_death_save_bonus
@@ -115,9 +117,23 @@ async def _roll_death_save(
     personal_bonus = creation_deities.patron_death_save_bonus(member.patron_id if member is not None else "none")
     synergy_bonus = await marshal_death_save_bonus(cs, queries=queries)
     rally_sources = encounter_facts.pending_rally(cs, faller.id)
-    bonus = personal_bonus + synergy_bonus + len(rally_sources)
+    round_number = cs.round_number
+    timed = None
+    due = faller.due_death_save
+    if due is not None:
+        round_number = due["round_number"]
+        timed = due["oath_timed"]
+    elif faller.type == "player":
+        player = await queries.get_player(faller.id)
+        if player is None:
+            raise ToolError(f"Player '{faller.id}' not found")
+        timed = oath_timed.save_receipt(cs, faller.id, player, round_number)
+    bonus = personal_bonus + synergy_bonus + len(rally_sources) + (timed["modifier"] if timed else 0)
     bonus_receipt = {
         "bonus": bonus,
+        "combat_id": cs.combat_id,
+        "round_number": round_number,
+        **({"oath_timed": timed} if timed is not None else {}),
         **encounter_facts.rally_receipt(faller.id, rally_sources),
         "synergy_bonus": synergy_bonus,
         "synergy_clause_id": MORTAEN_HOLD_THE_CROSSING if synergy_bonus else None,
@@ -125,9 +141,13 @@ async def _roll_death_save(
     successes, failures = faller.death_save_successes, faller.death_save_failures
     faller_id = faller.id
 
+    advantage = saving_throw_advantage(faller.conditions) or (
+        "death_save" in get_condition_effects(faller.conditions).advantage_scopes
+    )
+
     def roll(face: int | None = None) -> combat_resolution.DeathSaveResult:
         result = combat_resolution.resolve_death_save(successes, failures, bonus=bonus, face=face)
-        if face is None and saving_throw_advantage(faller.conditions):
+        if face is None and advantage:
             other = combat_resolution.resolve_death_save(successes, failures, bonus=bonus)
             return max(result, other, key=lambda candidate: candidate.roll)
         return result
@@ -208,6 +228,7 @@ async def _request_death_save_locked(
     working = state.get_participant(faller_id)
     assert working is not None  # copied from the state we just resolved against
     counted_before = encounter_facts.counted_death(working)
+    working.due_death_save = None
     working.death_save_successes = result.total_successes
     working.death_save_failures = result.total_failures
     if result.success:
@@ -254,6 +275,8 @@ async def _request_death_save_locked(
         E.DICE_ROLL,
         {
             "roll_type": "death_save",
+            **bonus_receipt,
+            "total": result.roll + bonus_receipt["bonus"],
             **encounter_facts.rally_receipt(faller_id, rally_sources),
             "roll": result.roll,
             "success": result.success,
@@ -275,6 +298,7 @@ async def _request_death_save_locked(
 
     response = {
         **bonus_receipt,
+        "total": result.roll + bonus_receipt["bonus"],
         "roll": result.roll,
         "success": result.success,
         "critical_success": result.critical_success,

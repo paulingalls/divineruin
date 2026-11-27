@@ -19,6 +19,7 @@ import dice
 import encounter_facts
 import enemy_pockets
 import event_types as E
+import oath_timed
 import racial_resonance
 import resonance
 import resonance_events
@@ -75,6 +76,7 @@ async def _inner_fire_locked(
     state = deepcopy(session.combat_state)
     fate_rolls = PhaseRolls()
     async with scratch_guard(session), db_mod.transaction() as conn:
+        oath_before = await oath_timed.snapshot(conn, state, session)
         players = await lock_damage_players(session, player_id, queries=queries_mod, conn=conn)
         player = players.get(player_id)
         if player is None:
@@ -153,14 +155,16 @@ async def _inner_fire_locked(
         if ended_forms:
             facts["wild_shape_ended"] = ended_forms
         renewals = await encounter_facts.renew_on_death(
-            state, participant, counted_before, queries=queries_mod, conn=conn
+            state, participant, counted_before, queries=queries_mod, conn=conn, session=session
         )
         if renewals:
             facts["focus_renewals"] = renewals
         steps: dict = {}
         if participant.type == "player":
             kwargs = (
-                {"progress": PacketRolls(fate_rolls, steps, queries_mod, conn)} if session.fate_lock.locked() else {}
+                {"progress": PacketRolls(fate_rolls, steps, queries_mod, conn).with_origin(player_id)}
+                if session.fate_lock.locked()
+                else {}
             )
             facts["concentration_broken"] = await concentration_break_mod.break_concentration_on_damage(
                 session,
@@ -176,6 +180,10 @@ async def _inner_fire_locked(
         if fate_rolls.pending is not None:
             state.inner_fire_continuation = {"player_id": player_id, "facts": facts, "steps": steps}
         await hp_mutations_mod.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
+        oath_changes = await oath_timed.changes(conn, state, session, oath_before)
+
+    if oath_changes:
+        facts = {**facts, "oath_changes": oath_changes}
 
     session.combat_state = state
     member.resonance.current = new_resonance
@@ -234,7 +242,7 @@ async def resume_inner_fire(session, *, db_mod, queries, mutations, concentratio
             damaged_player_id=player_id,
             combat_state=state,
             conn=conn,
-            progress=PacketRolls(fate_rolls, cursor["steps"], queries, conn),
+            progress=PacketRolls(fate_rolls, cursor["steps"], queries, conn).with_origin(player_id),
             receipt=facts,
         )
         assert fate_rolls.pending is None and fate_rolls.kept is None

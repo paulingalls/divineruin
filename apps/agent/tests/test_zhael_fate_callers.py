@@ -33,6 +33,7 @@ async def attack_choice(world):
         with (
             patch("check_resolution.dice_roll", side_effect=[_d20(1), _d20(20)]),
             patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)) as damage,
+            patch("condition_bonus.dice_roll", return_value=_damage_die(1)),
         ):
             offered = await call("resolve_phase")
             assert offered["next"] == {"phase": "resolution", "verbs": ["activate"], "waiting_on": None}
@@ -262,7 +263,7 @@ async def test_wrap_holds_clearing_saves_and_recovers_next_original(world):
     state.veil_ward = {"source": "paladin", "rounds_remaining": 3}
     player = required_player(state, pid)
     player.conditions = apply_condition([], "frightened", source=foe.id, duration=3)
-    player.conditions = apply_condition(player.conditions, "blessed", source="divine_bless")
+    player.conditions = apply_condition(player.conditions, "blessed", source="divine_bless", sustaining_caster_id=pid)
     player.saving_throw_proficiencies = ["wisdom"]
     foe.conditions = apply_condition([], "frightened", source=pid, duration=3)
     session = world.ctx.userdata
@@ -271,7 +272,10 @@ async def test_wrap_holds_clearing_saves_and_recovers_next_original(world):
     try:
         await call("declare_phase", declarations=[defend(pid), defend(foe.id)])
         await call("resolve_phase")
-        with patch("check_resolution.dice_roll", side_effect=[_d20(9), _d20(18)]) as dice:
+        with (
+            patch("check_resolution.dice_roll", side_effect=[_d20(7), _d20(18)]) as dice,
+            patch("condition_bonus.dice_roll", return_value=_damage_die(1)),
+        ):
             held = (await call("resolve_phase"))["fate_offer"]
             assert held["roll_kind"] == "save" and held["roller_id"] == pid
             assert has_condition(required_player(session.combat_state, pid).conditions, "frightened")
@@ -321,7 +325,9 @@ async def test_combined_attack_pauses_concentration_before_condition_save(world)
         }
     ]
     state = _build_state(pid, pid, [foe])
-    required_player(state, pid).conditions = apply_condition([], "blessed", source="divine_bless")
+    required_player(state, pid).conditions = apply_condition(
+        [], "blessed", source="divine_bless", sustaining_caster_id=pid
+    )
     session = world.ctx.userdata
     session.combat_state = state
     session.concentration.spell_id = "divine_bless"
@@ -337,6 +343,7 @@ async def test_combined_attack_pauses_concentration_before_condition_save(world)
         with (
             patch("check_resolution.dice_roll", side_effect=[_d20(19), _d20(7), _d20(11)]) as dice,
             patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)) as damage,
+            patch("condition_bonus.dice_roll", return_value=_damage_die(1)),
         ):
             strike = (await call("resolve_phase"))["fate_offer"]
             held_concentration = (await keep(strike))["fate_offer"]

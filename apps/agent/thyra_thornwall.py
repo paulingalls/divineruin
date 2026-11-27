@@ -87,7 +87,7 @@ async def apply_contact(
     wall = state.get_participant(wall_id)
     if wall is None or wall.structure_kind != GIFT:
         raise ValueError(f"Unknown Thornwall {wall_id!r}")
-    contact = progress.scope("thornwall_damage") if progress is not None else None
+    contact = progress.scope("thornwall_damage").with_origin(wall.id) if progress is not None else None
     damage = (
         None
         if contact is not None and "damage_receipt" in contact.steps

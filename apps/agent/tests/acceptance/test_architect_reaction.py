@@ -13,6 +13,7 @@ from acceptance.test_architect_fight import isolated_content_cache as isolated_c
 from acceptance.test_architect_fight import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_architect_terrain import set_favor
 from acceptance.test_still_anchors import fresh_session
+from acceptance.test_valdris_oath_breach import swear
 from sample_fixtures import published_payloads
 from voice_condition_fixtures import participant
 
@@ -27,7 +28,7 @@ from db_mutations_resonance import read_player_resonance
 
 
 @pytest.fixture
-async def archers(reset_db_pool):
+async def archers(reset_db_pool, request):
     harness = MawlingHarness()
     try:
         await harness.prepare((20, 20, 20), companion=None, location=WORKS)
@@ -35,6 +36,8 @@ async def archers(reset_db_pool):
         for actor in harness.players:
             player = await db_queries.get_player(actor)
             assert player is not None
+            if actor == harness.players[0] and getattr(request, "param", False):
+                player["class"] = "paladin"
             player["equipment"]["main_hand"] = {
                 "name": item["name"],
                 "damage": item["damage_dice"],
@@ -310,18 +313,15 @@ async def test_area_spell_keeps_other_recipients(archers, attack_profile, monkey
 
 
 @pytest.mark.parametrize("case", ["save", "automatic", "condition", "condition_clear"])
-async def test_spell_without_attack_roll_is_blocked(archers, case, monkeypatch):
-    spell_id = {"save": "divine_sacred_flame", "automatic": "arcane_magic_missile"}.get(case, "arcane_hold_person")
-    if case.startswith("condition"):
-        row = json.loads(await archers.pool.fetchval("SELECT data FROM spells WHERE id=$1", spell_id))
-        monkeypatch.setitem(
-            spells._spells, spell_id, spells.parse_spell_row(spell_id, {**row, "applies_condition": "restrained"})
-        )
+async def test_spell_without_attack_roll_is_blocked(archers, case):
+    spell_id = {"save": "divine_sacred_flame", "automatic": "arcane_magic_missile"}.get(case, "arcane_power_word_stun")
     spell = await teach(archers, spell_id)
     actor = archers.players[0]
     pools = await caster_pools(actor)
     state = await archers.reload()
     owner = state.architect_encounter["owner_id"]
+    if case.startswith("condition"):
+        participant(state, owner).hp_current = 75
     if case == "condition_clear":
         state.architect_encounter["reaction_round"] = state.round_number
     before = await archers.persist()
@@ -337,12 +337,13 @@ async def test_spell_without_attack_roll_is_blocked(archers, case, monkeypatch):
     assert_cost(pools, await caster_pools(actor), spell)
     packet = result["cast"]
     if case == "condition_clear":
-        assert packet["condition_targets"] == [owner] and packet["condition_applied"] == "restrained"
+        assert packet["condition_targets"] == [owner] and packet["condition_inflicted"] == "stunned"
+        assert [c["type"] for c in participant(after, owner).conditions] == ["stunned"]
         assert after.architect_encounter == before.architect_encounter
         return
     wall = wall_raised(before, after, actor)
     assert wall.hp_current == 30
-    assert not packet.get("damage_results") and "condition_applied" not in packet and "damage_result" not in packet
+    assert not packet.get("damage_results") and "condition_inflicted" not in packet and "damage_result" not in packet
     assert after.get_participant(owner).conditions == before.get_participant(owner).conditions
     interception = result["reactive_architecture"]
     assert (interception["target_id"], interception["wall_id"], interception["redirected"]) == (owner, wall.id, False)
@@ -431,11 +432,15 @@ async def test_destroyed_architect_cannot_intercept_a_later_cast(archers):
     assert "reactive_architecture" not in result and not result["cast"]["damage_result"]["resolved"]
 
 
-async def test_extra_attack_can_reach_architect_after_wall_collapses(archers):
+@pytest.mark.parametrize(("archers", "sworn"), [(False, False), (True, True)], indirect=["archers"])
+async def test_extra_attack_can_reach_architect_after_wall_collapses(archers, sworn):
     actor = archers.players[0]
     state = await archers.reload()
     owner = state.architect_encounter["owner_id"]
     participant(state, actor).enhancers.append("extra_attack")
+    if sworn:
+        await set_favor(archers, "valdris", 90)
+        await swear(archers.sd)
     before = await archers.persist()
     await declare(archers, bow(actor, owner))
     with forced_rolls(face=19, damage=40):
@@ -451,3 +456,7 @@ async def test_extra_attack_can_reach_architect_after_wall_collapses(archers):
         first["target_hp_status"],
         first["damage"],
     )
+    if sworn:
+        breach = result["oath_breach"]
+        assert "oath_breach" not in first and second["oath_breach"] == breach
+        assert breach["terms"] == ["strike_first"]

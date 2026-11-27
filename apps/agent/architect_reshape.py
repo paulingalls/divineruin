@@ -172,9 +172,17 @@ async def _floor_target(
             target_id,
             "Reshape floor",
             partial(
-                check_resolution_save.roll_participant_save, target, "DEX", 15, "Reshape floor", combat_state=state
+                check_resolution_save.roll_participant_save,
+                target,
+                "DEX",
+                15,
+                "Reshape floor",
+                combat_state=state,
+                originating_participant_id=actor.id,
             ),
             state=state,
+            queries=deps["queries"],
+            conn=deps["conn"],
         )
         if save is None:
             return None
@@ -184,15 +192,31 @@ async def _floor_target(
             save = finalize_save(state, target, save, failed_conditions=("prone",), failed_damage=adjusted.damage)
         steps.update(
             save_success=save.success,
+            save_roll=save.roll,
+            save_total=save.total,
             **override_fields(save),
+            **save.oath_fields(),
             **encounter_facts.rally_receipt(target.id, save.rally_sources),
         )
     encounter_facts.record_party_attack(state, actor, target)
     effect = {"target_id": target_id, "save_success": steps["save_success"], "save_dc": 15}
     if "success_override" in steps:
         effect["success_override"] = steps["success_override"]
-    if "rally_bonuses" in steps:
-        effect["rally_bonuses"] = steps["rally_bonuses"]
+    effect.update(
+        {
+            key: steps[key]
+            for key in (
+                "rally_bonuses",
+                "oath_justice",
+                "oath_timed",
+                "combat_id",
+                "round_number",
+                "save_roll",
+                "save_total",
+            )
+            if key in steps
+        }
+    )
     if effect["save_success"]:
         return effect
     landed = await apply_attack_result(
@@ -204,7 +228,7 @@ async def _floor_target(
         target.ac,
         combat_state=state,
         publish_roll=False,
-        progress=progress,
+        progress=progress.with_origin(actor.id) if progress is not None else None,
         **deps,
     )
     if progress is not None and progress.paused:

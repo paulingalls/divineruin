@@ -25,7 +25,13 @@ ORIGIN = "millhaven"
 DESTINATION = "greyvale_ruins_exterior"
 INSPIRED = apply_condition([], "inspired")
 JOURNAL = "ruins_journal_fragment"
-DISCOVER = {"kind": "discover", "skill": "investigation", "target": "research station", "hearing_only": False}
+DISCOVER = {
+    "kind": "discover",
+    "synergy_context": "none",
+    "skill": "investigation",
+    "target": "research station",
+    "hearing_only": False,
+}
 SOCIAL = {
     "kind": "social",
     "synergy_context": "none",

@@ -61,6 +61,7 @@ async def apply_song_of_rest(
             skipped.append({"player_id": pid, "reason": "cannot_hear"})
             continue
         stamina, focus, before = recovery[pid]
+        # The rest's hour has already ended any Beacon of Hope, so these dice are never maximized.
         rolled = roll("1d8").total
         bonus = roll("1d6").total if restoring_song else 0
         after = min(max_hp[pid], before + rolled + bonus)

@@ -66,7 +66,7 @@ async def test_racial_table_loads_every_race_from_db(reset_db_pool: str) -> None
 async def test_draethar_inner_fire_after_overreach_cast_composes(reset_db_pool: str) -> None:
     pool = await db.get_pool()
     player_id = "cap_m34_draethar"
-    await seed_player_with_pools(pool, player_id=player_id, focus_current=18, known_spells=("arcane_invisibility",))
+    await seed_player_with_pools(pool, player_id=player_id, focus_current=18, known_spells=("arcane_fly",))
     await _set_race(pool, player_id, "draethar")
     await spells.load_spells()
     await racial_resonance.load_racial_resonance()
@@ -92,12 +92,12 @@ async def test_draethar_inner_fire_after_overreach_cast_composes(reset_db_pool: 
         )
     )
 
-    # Cast arcane_invisibility (concentration, +2): 7 + 2 = 9 = Overreach (no in-combat shed; echo auto-rolls).
-    cast = json.loads(await _cast_spell_impl(ctx, "arcane_invisibility"))
+    # Cast arcane_fly (concentration, +2): 7 + 2 = 9 = Overreach (no in-combat shed; echo auto-rolls).
+    cast = json.loads(await _cast_spell_impl(ctx, "arcane_fly"))
     assert cast["state"] == "overreach"
     assert (await db_mutations_resonance.read_player_resonance(player_id, conn=pool))["current"] == 9
     assert (await db_mutations_concentration.read_player_concentration(player_id, conn=pool))["spell_id"] == (
-        "arcane_invisibility"
+        "arcane_fly"
     )
 
     # inner_fire (real dice): drop Resonance by 3 (9 -> 6) and take 1d6 self fire damage.
@@ -113,7 +113,7 @@ async def test_draethar_inner_fire_after_overreach_cast_composes(reset_db_pool: 
     # persisted DB: held -> packet None + spell_id retained; broken -> packet names the spell + DB null.
     persisted_conc = (await db_mutations_concentration.read_player_concentration(player_id, conn=pool))["spell_id"]
     if fire["concentration_broken"] is None:
-        assert persisted_conc == "arcane_invisibility"  # the save held — still concentrating
+        assert persisted_conc == "arcane_fly"  # the save held — still concentrating
     else:
-        assert fire["concentration_broken"] == "arcane_invisibility"
+        assert fire["concentration_broken"] == "arcane_fly"
         assert persisted_conc is None  # the save failed — concentration cleanly ended, persisted

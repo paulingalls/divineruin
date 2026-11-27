@@ -62,15 +62,15 @@ async def ally_cast(ctx):
 
 
 @pytest.mark.parametrize(
-    "spell_id,hp,expected",
+    "spell_id,hp,expected,generated",
     [
-        ("arcane_magic_missile", 70, 76),
-        ("arcane_magic_missile", 119, 120),
-        ("arcane_bolt", 70, 70),
-        ("divine_bless", 70, 76),
+        ("arcane_magic_missile", 70, 76, 2),
+        ("arcane_magic_missile", 119, 120, 2),
+        ("arcane_bolt", 70, 70, 0),
+        ("arcane_slow", 70, 85, 4),
     ],
 )
-async def test_absorbed_cast_heals_charges_and_reports(spell_fight, spell_id, hp, expected):
+async def test_absorbed_cast_heals_charges_and_reports(spell_fight, spell_id, hp, expected, generated):
     ctx = spell_fight
     spell = await prepare_absorb(ctx, spell_id, hp)
     before = await saved_player(ctx.userdata.player_id)
@@ -89,22 +89,9 @@ async def test_absorbed_cast_heals_charges_and_reports(spell_fight, spell_id, hp
     assert "no effect" in cast["narration_cue"] and "foe" in cast["narration_cue"]
     after = await saved_player(ctx.userdata.player_id)
     assert after["focus"]["current"] == before["focus"]["current"] - spell.focus_cost
-    generated = 0 if spell_id == "arcane_bolt" else 2
     assert cast["resonance_generated"] == generated
     assert after.get("resonance", {}).get("current", 0) == ctx.userdata.resonance.current == generated
     assert ctx.userdata.concentration.spell_id == (spell.id if spell.concentration else None)
-
-
-async def test_bless_keeps_other_recipient_once(spell_fight):
-    ctx = spell_fight
-    pid = ctx.userdata.player_id
-    await prepare_absorb(ctx, "divine_bless", targets=["foe", pid])
-    cast = await ally_cast(ctx)
-    state = await load_combat(ctx.userdata.combat_state.combat_id)
-    assert participant(state, "foe").hp_current == 76
-    assert participant(state, "foe").conditions == []
-    assert any(c["type"] == "blessed" for c in participant(state, pid).conditions)
-    assert cast["condition_targets"] == [pid] and len(cast["absorbed"]) == 1
 
 
 @pytest.mark.parametrize("spell_id", ["divine_sacred_flame", "divine_flame_strike"])

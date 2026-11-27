@@ -20,6 +20,7 @@ from livekit.agents.voice import RunContext
 
 import check_payloads
 import check_resolution_save
+import combat_fate_rolls
 import condition_voice_rules
 import db
 import db_content_queries
@@ -70,7 +71,7 @@ async def check(
     Stealth check when a watcher might notice, using that watcher's difficulty;
     failure reveals the player. Casting or attacking also ends concealment.
 
-    For skill and social checks, get active synergy_context tags from the patron query.
+    For skill, social and discovery checks, get active synergy_context tags from the patron query.
     Pass a held tag when its clause matches the narrated moment. Otherwise pass "none".
 
     Narrate the result from narrative_hint / narrative_cue. Follow dm_cue for Fate's Thread
@@ -125,7 +126,14 @@ async def _check_impl(
         return await foretell(context, npc_id, skill, difficulty, queries=queries, content=content)
     if mode == "discover":
         return await _check_discover_impl(
-            context, skill, target, hearing_only=hearing_only, content=content, queries=queries, mutations=mutations
+            context,
+            skill,
+            target,
+            hearing_only=hearing_only,
+            synergy_context=synergy_context,
+            content=content,
+            queries=queries,
+            mutations=mutations,
         )
     if mode == "save":
         return await _check_save_impl(context, save_type, dc, effect_on_fail, queries=queries)
@@ -208,11 +216,15 @@ async def _check_save_impl(
             effect_on_fail,
             advantage=encounter_facts.hearth_save_advantage(state, player_id),
             scholars_ward=scholars_ward(player),
+            hollow_source=effect_on_fail.strip().lower() == "hollowed",
             rally_sources=encounter_facts.pending_rally(state, player_id),
         )
     except ValueError as e:
         raise ToolError(str(e)) from e
 
+    result = await combat_fate_rolls._prepare_save(
+        session, state, player_id, effect_on_fail, lambda: result, queries=queries, conn=None, player=player
+    )
     d20 = result.d20
     if d20 is not None:
         candidates = await zhael_fate.candidates(session, queries=queries, roller=(player_id, player))
@@ -283,6 +295,7 @@ async def _finish_save(session, player_id, result, conditions_mutations, db_mod,
         E.DICE_ROLL,
         {
             "roll_type": "saving_throw",
+            **result.oath_fields(),
             **encounter_facts.rally_receipt(player_id, result.rally_sources),
             "save_type": result.save_type,
             "roll": result.roll,
@@ -299,6 +312,7 @@ async def _finish_save(session, player_id, result, conditions_mutations, db_mod,
 
     response = {
         "outcome": outcome,
+        **result.oath_fields(),
         **encounter_facts.rally_receipt(player_id, result.rally_sources),
         "save_type": result.save_type,
         "roll": result.roll,

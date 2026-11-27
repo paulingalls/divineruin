@@ -7,7 +7,6 @@ from sample_fixtures import make_context, make_db_mod
 
 import concentration_break
 import reaction_spend
-from conditions import apply_condition
 from session_data import CombatParticipant, CombatState
 
 
@@ -61,13 +60,8 @@ async def _run_round(
     companion=False,
     save_face=1,
     spells_by_player=None,
-    blessed_ids=(),
 ):
     state = _condition_state(condition, target_id=target_id, extra_players=extra_players, companion=companion)
-    for participant_id in blessed_ids:
-        participant = state.get_participant(participant_id)
-        assert participant is not None
-        participant.conditions = apply_condition([], "blessed", source="divine_bless")
     ctx = make_context(party_member_ids=list(extra_players))
     state.reactions_available = {
         participant.id: reaction_spend.unspent() for participant in state.participants if participant.type == "player"
@@ -93,33 +87,33 @@ async def _run_round(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("condition", ["stunned", "incapacitated", "paralyzed", "petrified"])
 async def test_landed_cannot_act_condition_ends_concentration(condition):
-    session, packet, persist, conn = await _run_round(condition, spells_by_player={"player_1": "divine_bless"})
+    session, packet, persist, conn = await _run_round(condition, spells_by_player={"player_1": "arcane_haste"})
 
     assert packet["condition_inflicted"] == condition
-    assert packet["concentration_broken"] == "divine_bless"
+    assert packet["concentration_broken"] == "arcane_haste"
     assert session.concentration.spell_id is None
     persist.assert_awaited_once_with("player_1", None, conn=conn)
 
 
 @pytest.mark.asyncio
 async def test_frightened_keeps_concentration():
-    session, packet, persist, _ = await _run_round("frightened", spells_by_player={"player_1": "divine_bless"})
+    session, packet, persist, _ = await _run_round("frightened", spells_by_player={"player_1": "arcane_haste"})
 
     assert packet["condition_inflicted"] == "frightened"
     assert "concentration_broken" not in packet
-    assert session.concentration.spell_id == "divine_bless"
+    assert session.concentration.spell_id == "arcane_haste"
     persist.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_resisted_cannot_act_condition_keeps_concentration():
     session, packet, persist, _ = await _run_round(
-        "stunned", save_face=20, spells_by_player={"player_1": "divine_bless"}
+        "stunned", save_face=20, spells_by_player={"player_1": "arcane_haste"}
     )
 
     assert packet["condition_resisted"] == "stunned"
     assert "concentration_broken" not in packet
-    assert session.concentration.spell_id == "divine_bless"
+    assert session.concentration.spell_id == "arcane_haste"
     persist.assert_not_awaited()
 
 
@@ -142,33 +136,15 @@ async def test_non_concentrating_player_emits_no_break():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("second_caster", [False, True])
-async def test_linked_bless_condition_tracks_remaining_casters(second_caster):
-    spells = {"player_1": "divine_bless"}
-    if second_caster:
-        spells["player_2"] = "divine_bless"
-    session, _, _, _ = await _run_round(
-        "stunned",
-        extra_players=("player_2",),
-        spells_by_player=spells,
-        blessed_ids=("player_2",),
-    )
-    ally = session.combat_state.get_participant("player_2")
-    assert ally is not None
-
-    assert any(c["type"] == "blessed" for c in ally.conditions) is second_caster
-
-
-@pytest.mark.asyncio
 async def test_stunned_non_primary_breaks_only_their_spell():
     session, packet, persist, conn = await _run_round(
         "stunned",
         target_id="player_2",
         extra_players=("player_2",),
-        spells_by_player={"player_1": "arcane_fly", "player_2": "divine_bless"},
+        spells_by_player={"player_1": "arcane_fly", "player_2": "arcane_haste"},
     )
 
-    assert packet["concentration_broken"] == "divine_bless"
+    assert packet["concentration_broken"] == "arcane_haste"
     assert session.member_state("player_1").concentration.spell_id == "arcane_fly"
     assert session.member_state("player_2").concentration.spell_id is None
     persist.assert_awaited_once_with("player_2", None, conn=conn)

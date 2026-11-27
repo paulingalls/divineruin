@@ -157,10 +157,10 @@ async def test_end_combat_drops_ooc_buff_consumed_in_combat(monkeypatch):
     cs = _make_combat_state(enemy_fallen=True)
     player = cs.get_participant("player_1")
     assert player is not None
-    player.conditions = []  # blessed was consumed during the fight -> gone from the participant
+    player.conditions = []  # inspired was consumed during the fight -> gone from the participant
 
     monkeypatch.setattr(
-        db_mutations_conditions, "read_player_conditions", AsyncMock(return_value=apply_condition([], "blessed"))
+        db_mutations_conditions, "read_player_conditions", AsyncMock(return_value=apply_condition([], "inspired"))
     )
     captured = _capture_save(monkeypatch)
 
@@ -169,17 +169,17 @@ async def test_end_combat_drops_ooc_buff_consumed_in_combat(monkeypatch):
         session, cs, "victory", mutations=mutations, queries=queries, conn=MagicMock(), sink=EventSink()
     )
 
-    assert captured["conditions"] == []  # the spent blessed no longer rides players.data
+    assert captured["conditions"] == []  # the spent die no longer rides players.data
 
 
 async def test_end_combat_keeps_unconsumed_ooc_buff_without_spurious_write(monkeypatch):
     cs = _make_combat_state(enemy_fallen=True)
     player = cs.get_participant("player_1")
     assert player is not None
-    player.conditions = apply_condition([], "blessed")  # still Blessed at combat end (unspent)
+    player.conditions = apply_condition([], "inspired")  # still Inspired at combat end (unspent)
 
     monkeypatch.setattr(
-        db_mutations_conditions, "read_player_conditions", AsyncMock(return_value=apply_condition([], "blessed"))
+        db_mutations_conditions, "read_player_conditions", AsyncMock(return_value=apply_condition([], "inspired"))
     )
     save_spy = AsyncMock()
     monkeypatch.setattr(db_mutations_conditions, "save_player_conditions", save_spy)
@@ -216,7 +216,7 @@ async def test_end_combat_drops_consumed_buff_but_keeps_acquired_persistent(monk
     player.conditions = apply_condition([], "wounded")  # gained Wounded; Blessed was spent (absent)
 
     monkeypatch.setattr(
-        db_mutations_conditions, "read_player_conditions", AsyncMock(return_value=apply_condition([], "blessed"))
+        db_mutations_conditions, "read_player_conditions", AsyncMock(return_value=apply_condition([], "inspired"))
     )
     captured = _capture_save(monkeypatch)
 

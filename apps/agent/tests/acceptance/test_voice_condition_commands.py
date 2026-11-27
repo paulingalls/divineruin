@@ -219,19 +219,22 @@ async def test_public_save_commits_spoken_die_eligibility_once(silenced, reset_d
     from sample_fixtures import make_context
 
     from check_tools import _check_save_impl
+    from conditions import apply_condition
 
     pid = "spoken-save-" + uuid.uuid4().hex
     pool = await db.get_pool()
     await seed_player_with_pools(pool, player_id=pid, class_="mage")
     state = scene(pid, "other", "silenced_legal" if silenced else "outside_cast")
     actor = state.participants[0]
-    actor.conditions = [{"type": "inspired"}, {"type": "blessed"}]
+    # Ruled lasting Bless: the sustained die stays through every save while its caster concentrates.
+    bless = apply_condition([], "blessed", source="divine_bless", sustaining_caster_id="other")
+    actor.conditions = [{"type": "inspired"}, *bless]
     await db_mutations.save_combat_state(state.combat_id, state.to_dict())
     ctx = make_context(player_id=pid)
     ctx.userdata.combat_state = state
     monkeypatch.setattr("check_tools.publish_game_event", AsyncMock())
     await _check_save_impl(ctx, "wisdom", 8, "stunned")
-    expected = [{"type": "inspired"}] if silenced else []
+    expected = [{"type": "inspired"}, *bless] if silenced else bless
     assert ctx.userdata.combat_state.participants[0].conditions == expected
     loaded = await db_mutations.load_combat_state(state.combat_id)
     assert loaded is not None and loaded.participants[0].conditions == expected
@@ -241,6 +244,6 @@ async def test_public_save_commits_spoken_die_eligibility_once(silenced, reset_d
         await db_mutations.save_combat_state(loaded.combat_id, loaded.to_dict())
         ctx.userdata.combat_state = loaded
         await _check_save_impl(ctx, "wisdom", 8, "stunned")
-        assert ctx.userdata.combat_state.participants[0].conditions == []
+        assert ctx.userdata.combat_state.participants[0].conditions == bless
     await _check_save_impl(ctx, "wisdom", 8, "stunned")
-    assert ctx.userdata.combat_state.participants[0].conditions == []
+    assert ctx.userdata.combat_state.participants[0].conditions == bless

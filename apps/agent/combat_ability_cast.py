@@ -1,11 +1,12 @@
 """Resolve in-combat ability declarations backed by spells."""
 
 from dataclasses import dataclass, field, replace
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import architect_reaction
 import combat_enhancers
 import combat_hollow_resonance
+import combat_spell_condition
 import combat_spell_damage
 import combat_spell_heal
 import combat_turn_undead
@@ -14,13 +15,15 @@ import combat_voice_rules
 import combat_yield
 import concealment
 import db_queries
-import spell_casting
 import wild_shape
 from combat_condition_landing import land_condition_on_participants
+from combat_spell_profile import recipient_spec
 from combat_structures import blocked_reason, line_blocker
+from condition_catalog import CONDITION_CATALOG
 from condition_sources import DeliveryRefused
 from session_data import CombatParticipant, SessionData
 from spell_condition_cleanse import GREATER_RESTORATION, CleanseRefused
+from spell_invisibility import InvisibilityRefused, reveal_invisible
 
 if TYPE_CHECKING:
     from spell_casting import CastResult
@@ -84,20 +87,21 @@ async def _resolve_ability_packet(
     cleanses = spell.id == GREATER_RESTORATION
     turns_undead = spell.id == combat_turn_undead.TURN_UNDEAD
     steps = progress.steps if progress is not None else {}
+    queries = (damage_deps or {}).get("queries", db_queries)
     shield_receipts = steps.setdefault("harmonic_shield_saves", [])
     shield = progress.scope("shield") if progress is not None else None
     deliveries = None
     selected = None
-    recipient_profile = spell.combat_damage and spell.combat_damage.get("recipients")
+    multi_condition = combat_spell_condition.multiple_recipients(spell)
+    has_deliveries = bool(recipient_spec(spell) or turns_undead or multi_condition)
     if (
         not cleanses
-        and not recipient_profile
-        and not turns_undead
+        and not has_deliveries
         and "cast_packet" not in steps
         and (wall := line_blocker(state, attacker.id, decl.target_id))
     ):
         return {"actor_id": attacker.id, "resolved": False, "reason": blocked_reason(wall)}
-    if recipient_profile or turns_undead:
+    if has_deliveries:
         # Area recipients are frozen once, then each distinct recipient may redirect the spell (the
         # Choir's shield). A Zhael-held redirect save resumes here without re-selecting or re-rolling.
         selected = steps.get("selected")
@@ -105,6 +109,8 @@ async def _resolve_ability_packet(
             try:
                 if turns_undead:
                     selected, steps["turn_refusals"] = combat_turn_undead.select(state, attacker)
+                elif multi_condition:
+                    selected = combat_spell_condition.select_deliveries(state, attacker, decl, spell)
                 else:
                     selected = select(state, attacker, decl, spell)
             except DeliveryRefused as e:
@@ -122,6 +128,8 @@ async def _resolve_ability_packet(
                 replace(decl, target_id=target_id, target_ids=None),
                 progress=shield.scope(target_id) if shield is not None else None,
                 receipts=shield_receipts,
+                queries=queries,
+                conn=conn,
             )
             if redirected is None:
                 return {}
@@ -132,7 +140,9 @@ async def _resolve_ability_packet(
             if not turns_undead or redirects[d["target_id"]] == d["target_id"]
         ]
     elif spell.heal is None and not cleanses:
-        decl = await effective_declaration(session, state, attacker, decl, progress=shield, receipts=shield_receipts)
+        decl = await effective_declaration(
+            session, state, attacker, decl, progress=shield, receipts=shield_receipts, queries=queries, conn=conn
+        )
         if decl is None:
             return {}
     landing_intent, deliveries, interception = (
@@ -153,7 +163,6 @@ async def _resolve_ability_packet(
         if spell.wild_shape is not None:
             if player is None:
                 raise RuntimeError(f"Missing locked player row for Wild Shape: {attacker.id}")
-            queries = (damage_deps or {}).get("queries", db_queries)
             locked = await queries.get_player(attacker.id, conn=conn, for_update=True)
             if locked is None:
                 raise RuntimeError(f"Missing locked player row for Wild Shape: {attacker.id}")
@@ -174,14 +183,14 @@ async def _resolve_ability_packet(
                 suppress_resonance_changed=True,
                 **({"condition": decl.argument_type} if cleanses and decl.argument_type else {}),
             )
-        except CleanseRefused as e:
+        except (CleanseRefused, InvisibilityRefused) as e:
             return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
         cast_outcome.results[attacker.id] = result
         if result.new_resonance is not None:
             combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)
         # Later damage in this transaction must check the spell the caster just started concentrating on.
-        if result.concentration_spell_id is not spell_casting._UNCHANGED:
-            caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
+        if result.concentration_update is not None:
+            caster.concentration = result.concentration_update
         cast_packet = result.packet
         if form is not None:
             form_id, beast, locked, stamina = form
@@ -252,6 +261,27 @@ async def _resolve_ability_packet(
         )
         if progress is not None and progress.paused:
             return {}
+    elif spell.save_condition is not None:
+        cast_packet.pop("damage_dice", None)
+        condition_progress = progress.scope("spell_condition") if progress is not None else None
+        if multi_condition:
+            assert deliveries is not None
+            await combat_spell_condition.land_deliveries(
+                session, state, attacker, decl, spell, cast_packet, deliveries, progress=condition_progress, conn=conn
+            )
+        elif landing is not None:
+            await combat_spell_condition.land(
+                session,
+                state,
+                attacker,
+                landing,
+                spell,
+                cast_packet,
+                progress=condition_progress,
+                conn=conn,
+            )
+        if progress is not None and progress.paused:
+            return {}
     elif deliveries is not None or landing is not None:
         await combat_spell_damage.land(
             session,
@@ -272,16 +302,26 @@ async def _resolve_ability_packet(
             )
     if (spell.combat_damage or {}).get("resolution") == "attack" and "hit" not in cast_packet.get("damage_result", {}):
         cast_packet.pop("spell_attack_bonus", None)
-        if "concealment" not in cast_packet:
-            queries = (damage_deps or {}).get("queries", db_queries)
-            if reveal := await concealment.reveal_attacker(attacker.id, conn=conn, queries=queries, ended_by="cast"):
-                cast_packet["concealment"] = reveal
+        cast_packet.update(reveal_invisible(attacker))
+        if "concealment" not in cast_packet and (
+            reveal := await concealment.reveal_attacker(attacker.id, conn=conn, queries=queries, ended_by="cast")
+        ):
+            cast_packet["concealment"] = reveal
     # Beneficial-condition PRODUCER (M4.8 story-004), in-combat half: land the produced condition on the
     # recipients that remain after Absorb Magic. The mutation rides this phase's save_combat_state.
     cond_type = cast_packet.get("condition_applied")
     if cond_type and landing is not None:
         voiced = land_condition_on_participants(
-            state, attacker, landing, cond_type, source=landing.action, packet=cast_packet
+            state,
+            attacker,
+            landing,
+            cond_type,
+            source=landing.action,
+            packet=cast_packet,
+            sustaining_caster_id=attacker.id if spell.concentration else None,
+            originating_participant_id=(
+                attacker.id if CONDITION_CATALOG[cond_type].clearance == "start_of_caster_next_turn" else None
+            ),
         )
         if voiced:
             cast_packet["condition_targets"] = voiced

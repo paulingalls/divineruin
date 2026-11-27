@@ -81,6 +81,7 @@ class AttackResult:
     pincer_dice: str | None = None
     pincer_raw_damage: int = 0
     sacrifice_rider: SacrificePlayRider | None = None
+    oath_justice: dict | None = None
 
 
 def _is_ranged(weapon: dict) -> bool:
@@ -127,6 +128,7 @@ def attack_modes(attacker_data: dict, weapon: dict, target_conditions=()) -> tup
     )
     advantage = (
         attacker_data.get("quick_fingers_advantage") is True
+        or attacker_data.get("guiding_light_advantage") is True
         or weapon.get("advantage") is True
         or "attack" in effects.advantage_scopes
         or incoming_advantage(target_conditions)
@@ -146,6 +148,8 @@ class PreparedAttack:
     war_songs_bonus: int = 0
     war_songs_clause_id: str | None = None
 
+    oath_justice: dict | None = None
+
     @classmethod
     def from_dict(cls, data: dict) -> "PreparedAttack":
         return cls(
@@ -155,6 +159,7 @@ class PreparedAttack:
             data.get("attack_disadvantage_source"),
             war_songs_bonus=data.get("war_songs_bonus", 0),
             war_songs_clause_id=data.get("war_songs_clause_id"),
+            oath_justice=data.get("oath_justice"),
         )
 
 
@@ -223,12 +228,15 @@ def prepare_attack(
             )
         )
     )
-    d20 = D20Roll(atk_mod + bonus.total, target_ac, attack_advantage, attack_disadvantage)
+    justice = attacker_data.get("oath_justice")
+    justice_bonus = justice["modifier"] if justice is not None else 0
+    d20 = D20Roll(atk_mod + bonus.total + justice_bonus, target_ac, attack_advantage, attack_disadvantage)
     return PreparedAttack(
         d20,
         d20.roll(rng) if faces is None else d20.evaluate_pair(*faces),
         consumed,
         attacker_data.get("attack_disadvantage_source"),
+        oath_justice=justice,
         war_songs_bonus=bonus.war_songs_bonus,
         war_songs_clause_id=patron_synergy_combat.KAELEN_WAR_SONGS if bonus.war_songs_bonus else None,
     )
@@ -379,6 +387,7 @@ def finish_attack(
     )
 
     return AttackResult(
+        oath_justice=prepared.oath_justice,
         hit=hit,
         roll=d20,
         attack_modifier=prepared.d20.modifier,

@@ -51,7 +51,13 @@ def generate(state):
         "round": state.round_number,
         "seen_through": False,
         "narration": f"Voice a familiar sound or treasured memory for {state.get_participant(target_id).name} based on what they have shared.",
-        "check": {"kind": "discover", "skill": action["check_skill"], "target": illusion_id, "hearing_only": False},
+        "check": {
+            "kind": "discover",
+            "skill": action["check_skill"],
+            "target": illusion_id,
+            "hearing_only": False,
+            "synergy_context": "none",
+        },
         "dc": action["dc"],
     }
 
@@ -72,13 +78,22 @@ def validate(state, illusion):
         or not illusion["narration"]
         or type(illusion.get("dc")) is not int
         or illusion["dc"] <= 0
-        or illusion.get("check")
-        != {"kind": "discover", "skill": "investigation", "target": illusion["id"], "hearing_only": False}
+        or not isinstance(illusion.get("check"), dict)
+        or {"synergy_context": "none", **illusion["check"]}
+        != {
+            "kind": "discover",
+            "skill": "investigation",
+            "target": illusion["id"],
+            "hearing_only": False,
+            "synergy_context": "none",
+        }
     ):
         raise ValueError("Invalid Still illusion")
 
 
-async def investigate(session, skill, target, *, queries, mutations, conditions_mutations, db_mod, publish_roll):
+async def investigate(
+    session, skill, target, *, synergy_context="none", queries, mutations, conditions_mutations, db_mod, publish_roll
+):
     state = session.combat_state
     illusion = state.still_encounter.get("illusion")
     if illusion is None or target != illusion["id"]:
@@ -107,6 +122,9 @@ async def investigate(session, skill, target, *, queries, mutations, conditions_
             skill,
             illusion["dc"],
             discovery=True,
+            synergy_context=synergy_context if not companion else "none",
+            player_id=player_id,
+            in_combat=True,
             ally_present=session.allies_present_for(player_id),
             natural_terrain=await skill_natural_terrain(session, player, skill, combat_state=working),
             hearing_only=False,

@@ -476,7 +476,7 @@ class TestRollThenApply:
         cs = _make_combat_state(player_hp=25)
         attacker, target, action = _attacker_target_action(cs)
         resolver = _fixed_resolver(damage=3, hp_remaining=22)
-        rolled = replace(resolver.resolve_attack.return_value, consumed_conditions=("blessed",))
+        rolled = replace(resolver.resolve_attack.return_value, consumed_conditions=("inspired",))
         resolver.resolve_attack = MagicMock(return_value=rolled)
         result, effective_ac = roll_attack(attacker, action, target, valdris_ac_bonus=0, resolver=resolver)
 
@@ -484,5 +484,5 @@ class TestRollThenApply:
 
         assert restored == result
         assert restored_ac == effective_ac
-        assert restored.consumed_conditions == ("blessed",)
+        assert restored.consumed_conditions == ("inspired",)
         assert isinstance(restored.consumed_conditions, tuple)

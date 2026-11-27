@@ -15,7 +15,9 @@ import spells
 import wild_shape
 from combat_ability_gate import MARSHAL_ORDERS, WAR_CRIES, declared_ability, war_cry_targets
 from combat_ability_save import BENEFICIAL_CONDITIONS
-from condition_sources import charm_sources, require_hostile_targets
+from combat_enhancers import carries_quick_action
+from condition_restrictions import action_or_quick_action
+from condition_sources import DeliveryRefused, charm_sources, require_hostile_targets
 from declarations import DeclarationType, ManeuverIntent
 from encounter_actions import action_kind
 from spell_voice_rules import is_area_spell, require_speech
@@ -52,9 +54,12 @@ def guard_spell(
 def guard_declaration(
     state: CombatState, actor: CombatParticipant, decl: Declaration, *, war_cry_started: bool = False
 ) -> None:
+    if action_or_quick_action(actor.conditions) and carries_quick_action(actor.enhancers, decl):
+        raise DeliveryRefused(
+            "Slow allows a main action or a quick action, but not both. Declare the main action alone."
+        )
     if actor.creature_id == "hollow_choir" and decl.type in (DeclarationType.ATTACK, DeclarationType.ABILITY):
         from choir_effects import suppressed
-        from condition_sources import DeliveryRefused
 
         if suppressed(actor):
             raise DeliveryRefused("Choir abilities are suppressed")

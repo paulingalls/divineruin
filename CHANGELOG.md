@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.89.0
+
+Spells that inflict conditions now apply them in the engine instead of leaving them to narration. Hold Person paralyzes one humanoid, Power Word Stun stuns a foe at 75 HP or less (and fails quietly above it), Slow takes away an affected creature's quick actions, and Faerie Fire outlines creatures in its cube so attacks against them have advantage. Spark's shock stops its target's reactions until its next turn. Each condition that allows a save repeats it each turn, and two casters cannot share one hold.
+
+Guiding Light marks one foe, giving the next attack against it advantage. Invisibility helps an ally sneak and makes them harder to hit until they attack or cast a hostile spell. Faerie Fire reveals the invisible and stops an outlined creature from vanishing again.
+
+Bless adds one d4 to each attack and rolled saving throw while a caster sustains it for that ally. Overlapping casts keep it active until the ally's last sustaining caster stops. Beacon of Hope maximizes every healing the ally receives, Second Wind included. Warding and Protection from the Hollow now affect damage, saves and attacks as written.
+
+A concentration spell now ends when its duration runs out. In combat it counts rounds. Outside combat, travel and rests advance the clock. Spells of a minute or less end when combat ends, a short rest ends spells of up to an hour, and a long rest ends them all. Previously saved Bless effects with no recorded caster need a recast.
+
+Release steps:
+
+- Before deploying, run `bun run migrate` against production. Migration 069 removes saved Bless effects with no recorded caster, and migration 070 adds a duration to active concentration records.
+- Then run `SEED_PRODUCTION=1 bun run seed` to write the updated spell catalog, and restart the agent and worker so they load it.
+
+## 0.88.1
+
+Zhael paladins can swear one Promised Hour per encounter. A new encounter lets them swear again.
+
+Release steps: none.
+
+## 0.88.0
+
+Paladins of Valdris and Zhael can swear an oath aloud, and the engine holds them to it. A Valdris paladin swears the Oath of Justice. Striking first, striking a surrendered enemy or striking a yielded ally breaks it, and a broken oath locks Valdris's three tier abilities for the rest of that gameplay session, for hosts and guests alike. While the oath is kept, the paladin gains +2 on combat attacks and saves involving recorded wrongdoers, and on skill, social and discovery checks outside combat when the Dungeon Master says justice is at stake. A Zhael paladin swears a timed oath in combat, to defeat a foe or to keep an ally standing by a named round. Until the deadline the paladin gains +1 on every saving throw, death saves included. The DM announces when the oath is fulfilled or lapses.
+
+Concentration saves now follow the natural 1 and natural 20 rule for every caster: a natural 1 breaks concentration even when the total meets the DC, and a natural 20 holds it. Discovery checks now accept the patron query's context tags, so investigation clauses apply on discovery as they already did on skill checks.
+
+Release steps:
+
+- Before deploying the release, run `SEED_PRODUCTION=1 uv run --project scripts --frozen python scripts/seed_content.py` from the release checkout with the production database environment. This writes authored content to production and makes no paid provider calls.
+
 ## 0.87.1
 
 Process only: the team's working rules drop a per-card check for session-start files. The land run every card already does before handback covers the same suites.

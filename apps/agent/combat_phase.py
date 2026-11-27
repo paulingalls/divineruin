@@ -97,8 +97,10 @@ class WrapOutcome:
     # returned state's participant.conditions; this carries only what needs a roll.
     tick_conditions_due: list[dict] = field(default_factory=list)
     rally_saves: list[dict] = field(default_factory=list)
+    oath_saves: list[dict] = field(default_factory=list)
     threshold_walk_returns: list[dict[str, str]] = field(default_factory=list)
     hearthfire_heals: list[dict] = field(default_factory=list)
+    concentration_expired: list[dict[str, str]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

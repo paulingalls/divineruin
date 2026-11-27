@@ -397,7 +397,7 @@ Detect Magic, Detect Hollow, Commune with Nature and Arcane Eye reveal facts abo
 | Spell | Target | Range | Duration | Mechanic | Narration Cue | Audio |
 |---|---|---|---|---|---|---|
 | **Sacred Flame** | Single | 60 ft | Instant | WIS save (ignores armor). 1d6 radiant + WIS mod. Scales: 2d6/L5, 3d6/L11, 4d6/L17. | A pillar of golden light descends — not from the sky, but from somewhere beyond it. | CMB-009 variant (offensive radiance) |
-| **Guiding Light** | Single ally | 30 ft | 1 round | Next attack roll against the target has advantage. No damage. | A faint halo settles over your ally's target — subtle, warm, marking them. | Soft radiant chime |
+| **Guiding Light** | Single foe | 30 ft | 1 round | Next attack roll against the target has advantage. No damage. | A faint halo settles over your ally's target — subtle, warm, marking them. | Soft radiant chime |
 | **Mend** | Object/construct | Touch | Instant | Repair a single break or tear in an object. No combat application. | Your fingers trace the crack and the material remembers what it was. | Quiet crystalline tone |
 | **Sacred Word** | Self (area) | 10 ft radius | Instant | Undead and Hollow within 10 ft take 1d4 radiant. Scales: 2d4/L5, 3d4/L11, 4d4/L17. Living unaffected. | You speak a word that has weight. The Hollow things recoil — not from sound, but from meaning. | Resonant spoken tone + radiant pulse |
 
@@ -407,7 +407,7 @@ Detect Magic, Detect Hollow, Commune with Nature and Arcane Eye reveal facts abo
 |---|---|---|---|---|---|---|---|---|---|
 | **Heal Wounds** | 2 | 1 | 1 | Single | Touch | Instant | Restore 1d8 + WIS mod HP. The fundamental healing spell. | Warmth flows from your hands into the wound. Flesh knits. Color returns. | CMB-009 (healing) |
 | **Shield of Faith** | 2 | 1 | 1 | Single ally | 30 ft | Next turn | Reaction: +2 AC to an ally when attacked. May cause miss retroactively. | A shimmer of golden force interposes itself — not your shield, but your god's. | CMB-009 variant + deflection |
-| **Bless** | 2 | 1 | 1 | Up to 3 allies | 30 ft | Encounter | Up to 3 allies gain +1d4 on attack rolls and saving throws. Concentration. | You speak their names and your patron hears. Each feels subtle warmth — certainty settling into bones. | Ascending choral tone |
+| **Bless** | 2 | 1 | 1 | Up to 3 allies | 30 ft | Conc, 1 min | Up to 3 allies gain +1d4 on attack rolls and saving throws. Concentration. | You speak their names and your patron hears. Each feels subtle warmth — certainty settling into bones. | Ascending choral tone |
 | **Sanctuary** | 1 | 1 | 1 | Single | 30 ft | 1 minute | Enemies must WIS save before attacking target. Fail: must choose different target. Breaks if protected creature attacks. | A quiet falls around them. Something about them makes violence feel wrong. | Soft bell tone |
 | **Detect Hollow** | 1 | 0 | 1 | Self (60 ft) | Self | Conc, 10 min | Sense presence, direction, intensity of Hollow corruption. Reveals hidden Hollow creatures, corrupted objects, Veil stress. 0 Resonance — divine sensing stabilizes the Veil. | Your perception shifts. Clean light where reality is whole, darkness where it frays. | Low harmonic drone |
 | **Command** | 2 | 1 | 2 | Single | 60 ft | 1 round | One-word command (Halt, Flee, Drop, Kneel, Approach). WIS save. Fail: obeys next turn. Won't obey directly harmful commands. | You speak one word with divine authority. The target's body obeys before their mind can object. | Resonant authoritative tone |

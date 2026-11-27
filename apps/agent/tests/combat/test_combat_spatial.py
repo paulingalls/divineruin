@@ -190,6 +190,8 @@ def test_move_fallen_unknown_missing_and_corrupt_refuse():
 
 
 async def test_spatial_ids_and_spoken_distances_are_advertised():
+    from unittest.mock import AsyncMock
+
     from livekit.agents.llm import ToolError
     from sample_fixtures import make_context
 
@@ -198,8 +200,10 @@ async def test_spatial_ids_and_spoken_distances_are_advertised():
 
     ctx = make_context("a")
     ctx.userdata.combat_state = spatial_state()
-    result = json.loads(await _query_info_impl(ctx, "combat"))
-    assert result == facts(ctx.userdata.combat_state, "a")
+    queries = AsyncMock()
+    queries.get_player.return_value = {"class": "fighter"}
+    result = json.loads(await _query_info_impl(ctx, "combat", queries=queries))
+    assert result == {**facts(ctx.userdata.combat_state, "a"), "oath_choice": None}
     assert result["distances_ft"]["b"] == 40
     assert "b is 40 feet from a" in result["spoken"]
     assert set(result["positions"]) == {"a", "b"}
@@ -208,11 +212,11 @@ async def test_spatial_ids_and_spoken_distances_are_advertised():
     assert result["zones"]["silence"]["members"] == ["a"]
     assert ctx.userdata.combat_state.spatial is not None
     ctx.userdata.combat_state.spatial["positions"]["a"] = pos(30)
-    refreshed = json.loads(await _query_info_impl(ctx, "combat", "core"))
+    refreshed = json.loads(await _query_info_impl(ctx, "combat", "core", queries=queries))
     assert refreshed["origin_id"] == "core" and refreshed["distances_ft"]["a"] == 0
     assert refreshed["zones"]["silence"]["members"] == ["a", "b"]
     with pytest.raises(ToolError):
-        await _query_info_impl(ctx, "combat", "unknown")
+        await _query_info_impl(ctx, "combat", "unknown", queries=queries)
 
 
 def test_actual_speed_sources():

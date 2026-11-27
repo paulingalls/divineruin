@@ -9,6 +9,7 @@ from combat._helpers import (
     _resolution_state,
     _resolve_deps,
     _resolve_round,
+    save_result,
 )
 from combat._reaction_helpers import _guarded_ally_state, _pause_at
 
@@ -32,7 +33,7 @@ def _saves_always_resolver():
     """A check_resolution_save mock whose every roll succeeds — so any save-to-clear
     condition at the Beat-4 tick gets removed. Used to drive the post-tick assertion."""
     mock = MagicMock()
-    mock.roll_participant_save.return_value = MagicMock(success=True, rally_sources=())
+    mock.roll_participant_save.return_value = save_result(True)
     return mock
 
 

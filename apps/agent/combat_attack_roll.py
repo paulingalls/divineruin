@@ -13,9 +13,10 @@ import thyra_seasons
 from archetypes import get_archetype_chassis
 from architect_encounter import cathedral_bonus
 from combat_participant import BARK_SKIN_AC_BONUS, SHIELD_SPELL_AC_BONUS
-from condition_catalog import INCORPOREAL, STUDIED_WEAKNESS, WAR_CRY_RALLY
+from condition_catalog import GUIDING_LIGHT_MARK, INCORPOREAL, PROTECTION_FROM_HOLLOW, STUDIED_WEAKNESS, WAR_CRY_RALLY
 from dramatic import DramaticContext, evaluate_dramatic_context
 from equipment_rules import needs_weapon_profile, resolve_weapon_profile, with_weapon_magic
+from oath_justice import attack_receipt
 from patron_synergy_combat import VeiledStrike, attack_player
 from weapon_proficiency import has_weapon_proficiency
 from world_season import Season
@@ -42,6 +43,7 @@ def roll_attack(
     orenthel_ac_override: int | None = None,
     veiled_strike: VeiledStrike | None = None,
     season: Season | None = None,
+    oath_justice: dict | None = None,
     attack_disadvantage_source: str | None = None,
 ) -> tuple:
     """Roll without applying HP changes; held reactions pause before impact."""
@@ -62,6 +64,8 @@ def roll_attack(
         season=season,
         attack_disadvantage_source=attack_disadvantage_source,
     )
+    if oath_justice is not None:
+        attacker_data["oath_justice"] = oath_justice
     attack_result = resolver.resolve_attack(
         attacker_data,
         action,
@@ -109,6 +113,9 @@ def attack_roll_inputs(
 
         if take_advantage(combat_state, attacker, target):
             attacker_data["quick_fingers_advantage"] = True
+    if conditions.has_condition(target.conditions, GUIDING_LIGHT_MARK):
+        target.conditions = conditions.remove_condition(target.conditions, GUIDING_LIGHT_MARK)
+        attacker_data["guiding_light_advantage"] = True
     if attacker.is_ally:
         if (rider := combat_order_riders.select(combat_state, attacker.id, target.id)) is not None:
             attacker_data["order_rider"] = rider
@@ -225,8 +232,11 @@ def attack_roll_inputs(
             attack_mod += patron_synergy_combat.spell_attack_bonus(player, target)
     if combat_state is not None:
         attack_mod += combat_marks.attack_bonus(combat_state, attacker, target)
-        if (
-            attacker.hollow is not None
+    if attacker.hollow is not None:
+        if conditions.has_condition(target.conditions, PROTECTION_FROM_HOLLOW):
+            attacker_data["attack_disadvantage_source"] = PROTECTION_FROM_HOLLOW
+        elif (
+            combat_state is not None
             and target.orenthel_beacon
             and target.id not in combat_state.beacon_attacks.get(attacker.id, ())
         ):
@@ -293,6 +303,8 @@ def build_attack_dice_roll_payload(attacker, attack_result) -> dict:
         "dramatic": attack_result.dramatic,
         "context": attack_result.context,
     }
+    if attack_result.oath_justice is not None:
+        payload["oath_justice"] = attack_result.oath_justice
     if attack_result.sneak_attack_dice is not None:
         payload.update(
             damage_type=attack_result.damage_type,
@@ -318,7 +330,7 @@ def held_reaction_ac(head: dict) -> int:
 
 
 async def prepare_player_swing(
-    state, attacker, target, act, reaction_ac_bonus, *, player, queries, conn, strike_mode, faces
+    session, state, attacker, target, act, reaction_ac_bonus, *, player, queries, conn, strike_mode, faces
 ) -> tuple[dict, check_resolution_attack.PreparedAttack]:
     if player is None:
         player = await attack_player(attacker, queries=queries, conn=conn)
@@ -337,6 +349,10 @@ async def prepare_player_swing(
         season=await thyra_seasons.season_for(player, conn=conn),
         veiled_strike=strike_mode,
     )
+    if (
+        justice := await attack_receipt(session, state, attacker, target, player, queries=queries, conn=conn)
+    ) is not None:
+        attacker_data["oath_justice"] = justice
     return attacker_data, check_resolution_attack.prepare_attack(
         attacker_data, act, target_ac, attack_mod=attack_mod, target_conditions=target.conditions, faces=faces
     )

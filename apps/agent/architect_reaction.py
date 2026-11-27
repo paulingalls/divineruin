@@ -10,6 +10,7 @@ import combat_structures
 from check_resolution_attack import _is_ranged
 from combat_participant import CombatParticipant
 from combat_state import CombatState
+from condition_restrictions import cannot_act, no_reactions
 from declarations import Declaration
 from spells import Spell
 
@@ -47,6 +48,10 @@ def _raise_wall(
         return None
 
     owner_id: str = record["owner_id"]
+    owner = state.get_participant(owner_id)
+    assert owner is not None
+    if cannot_act(owner.conditions) or no_reactions(owner.conditions):
+        return None
     spatial = combat_spatial.require_spatial(state)
     origin = combat_spatial.position(spatial, attacker.id)
     target = combat_spatial.position(spatial, owner_id)

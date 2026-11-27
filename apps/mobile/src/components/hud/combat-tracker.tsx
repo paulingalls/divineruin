@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ComponentProps } from "react";
+import { useEffect, useRef } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import Animated, {
   useSharedValue,
@@ -92,7 +92,7 @@ function CombatantRow({ combatant, compact = false }: { combatant: Combatant; co
               return (
                 <MaterialCommunityIcons
                   key={`${condition.type}-${condition.source}`}
-                  name={display.icon as ComponentProps<typeof MaterialCommunityIcons>["name"]}
+                  name={display.icon}
                   accessible
                   accessibilityLabel={display.label}
                   size={12}

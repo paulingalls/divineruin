@@ -9,6 +9,7 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
 import spells
+from caster_state import ConcentrationState
 
 
 class TestResolvePhaseAbility:
@@ -27,14 +28,14 @@ class TestResolvePhaseAbility:
 
     @pytest.mark.asyncio
     async def test_player_ability_resolves_in_initiative_order(self):
-        from spell_casting import _UNCHANGED, CastResult
+        from spell_casting import CastResult
 
         ctx = make_context()
         ctx.userdata.combat_state = self._ability_state()
         result = CastResult(
             packet={"effect": "A bolt of force.", "state": "flickering", "resonance_generated": 6},
             new_resonance=6,
-            concentration_spell_id=_UNCHANGED,
+            concentration_update=None,
             generated=6,
             events=[],
         )
@@ -59,12 +60,12 @@ class TestResolvePhaseAbilityResonance:
         return state
 
     def _cast_resolver(self, *, new_resonance, generated=5, concentration=None, events=None):
-        from spell_casting import _UNCHANGED, CastResult
+        from spell_casting import CastResult
 
         result = CastResult(
             packet={"effect": "A bolt of force.", "state": "flickering"},
             new_resonance=new_resonance,
-            concentration_spell_id=concentration if concentration is not None else _UNCHANGED,
+            concentration_update=ConcentrationState(concentration) if concentration is not None else None,
             generated=generated,
             events=events or [],
         )
@@ -221,7 +222,7 @@ class TestResolvePhaseAbilityFocusGate:
 
     @pytest.mark.asyncio
     async def test_player_row_is_passed_through_to_the_cast(self):
-        from spell_casting import _UNCHANGED, CastResult
+        from spell_casting import CastResult
 
         ctx = make_context()
         ctx.userdata.combat_state = self._ability_state()
@@ -233,7 +234,7 @@ class TestResolvePhaseAbilityFocusGate:
         cast_resolver._gate_spell = MagicMock(return_value=spells.get_spell("arcane_detect_magic"))
         cast_resolver._resolve_cast = AsyncMock(
             return_value=CastResult(
-                packet={"effect": "ward"}, new_resonance=None, concentration_spell_id=_UNCHANGED, generated=0, events=[]
+                packet={"effect": "ward"}, new_resonance=None, concentration_update=None, generated=0, events=[]
             )
         )
 

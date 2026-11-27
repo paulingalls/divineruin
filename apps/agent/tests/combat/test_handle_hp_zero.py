@@ -67,7 +67,7 @@ class TestResolveAbilityPacket:
     async def test_player_ability_resolves_and_stashes_castresult(self):
         from combat_ability import AbilityCastOutcome, _resolve_ability_packet
         from declarations import Declaration, DeclarationType
-        from spell_casting import _UNCHANGED, CastResult
+        from spell_casting import CastResult
 
         session = make_context().userdata
         attacker = self._player()
@@ -75,7 +75,7 @@ class TestResolveAbilityPacket:
         result = CastResult(
             packet={"effect": "zap", "state": "stable"},
             new_resonance=6,
-            concentration_spell_id=_UNCHANGED,
+            concentration_update=None,
             generated=6,
             events=[],
         )

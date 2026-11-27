@@ -5,19 +5,19 @@ from __future__ import annotations
 import json
 from unittest.mock import patch
 
-from acceptance._capstone_helpers import _build_state, _d20, _declare_attacks, _enemy, _resolve_round, _start_combat
+from acceptance._capstone_helpers import _d20
+from acceptance._spell_hostile_condition_helpers import add_player, cast_spell, defend, play, reload, set_foe
+from acceptance._spell_hostile_condition_helpers import dev_db_pool as dev_db_pool
 from acceptance.seeds import seed_player
+from acceptance.test_spell_bless_lifecycle import BLESS, context, save_total
+from combat.test_spell_damage_lands import spell_fight as spell_fight
 from sample_fixtures import make_context, make_mock_room
+from voice_condition_fixtures import participant
 
-import check_resolution_save
-import concentration_break
 import condition_produce
-import conditions
 import db
-import db_mutations
 import db_mutations_conditions
 import db_queries
-import spells
 from check_tools import _check_save_impl
 from combat_prompts import COMBAT_PROMPT
 
@@ -65,29 +65,6 @@ async def _produce(
     )
 
 
-async def test_bless_save_folds_consumes_and_persists_removal(reset_db_pool: str) -> None:
-    pool = await db.get_pool()
-    caster_id, ally_id, base_id = "cap_m48_caster", "cap_m48_bless_ally", "cap_m48_bless_base"
-    for pid in (caster_id, ally_id, base_id):
-        await seed_player(pool, player_id=pid, location_id="accord_guild_hall")
-    try:
-        voiced = await _produce(pool, caster_id, "blessed", "divine_bless", target_id=ally_id)
-        assert ally_id in voiced
-        assert "blessed" in await _read_types(pool, ally_id)
-
-        ctx = make_context(ally_id, room=make_mock_room())
-        ctx_base = make_context(base_id, room=make_mock_room())
-        with patch("check_resolution.dice_roll", return_value=_d20(10)):
-            blessed = json.loads(await _check_save_impl(ctx, "wisdom", 12, "resist"))
-            baseline = json.loads(await _check_save_impl(ctx_base, "wisdom", 12, "resist"))
-
-        assert blessed["total"] > baseline["total"]  # +1d4 folded into the save
-        assert "blessed" not in await _read_types(pool, ally_id)  # consumed + persisted as removed
-    finally:
-        for pid in (caster_id, ally_id, base_id):
-            await pool.execute("DELETE FROM players WHERE player_id = $1", pid)
-
-
 async def test_inspire_folds_once_then_expires(reset_db_pool: str) -> None:
     pool = await db.get_pool()
     caster_id, ally_id, base_id = "cap_m48_bard", "cap_m48_insp_ally", "cap_m48_insp_base"
@@ -112,38 +89,30 @@ async def test_inspire_folds_once_then_expires(reset_db_pool: str) -> None:
             await pool.execute("DELETE FROM players WHERE player_id = $1", pid)
 
 
-async def test_bless_in_combat_attack_consumes_once(reset_db_pool: str) -> None:
-    pool = await db.get_pool()
-    player_id = "cap_m48_combat_bless"
-    state = _build_state("combat_cap_m48_bless", player_id, [_enemy("goblin_a", hp=100)])
-    attacker = state.get_participant(player_id)
-    assert attacker is not None
-    attacker.conditions = conditions.apply_condition(attacker.conditions, "blessed", source="divine_bless")
-    ctx = make_context(player_id, room=make_mock_room())
-    try:
-        await _start_combat(pool, player_id, state, ctx)
-        await _declare_attacks(ctx, player_id, "goblin_a", ["goblin_a"])
-        with patch("check_resolution.dice_roll", return_value=_d20(10)):
-            await _resolve_round(ctx)
-        # Consume-once rides the working state's participant (in-combat SSOT).
-        live = ctx.userdata.combat_state.get_participant(player_id)
-        assert live is not None
-        assert not conditions.has_condition(live.conditions, "blessed")
-    finally:
-        await db_mutations.delete_combat_state(state.combat_id, conn=pool)
+async def test_engine_auto_save_never_consumes(spell_fight):
+    ctx = spell_fight
+    recipient = ctx.userdata.player_id
+    bard = await add_player(ctx, "bard")
+    foe = await set_foe(ctx, "cult_leader")
+    await play(
+        ctx, cast_spell(recipient, BLESS, recipient), cast_spell(bard, "bard_inspire", recipient), defend(foe.id)
+    )
 
+    with patch("condition_bonus.dice_roll", return_value=_d20(3)):
+        packets, state = await play(
+            ctx, defend(recipient), defend(bard), cast_spell(foe.id, "Hold Person", recipient), face=12
+        )
+    enemy = next(packet for packet in packets if packet["actor_id"] == foe.id)
+    assert (enemy["save_roll"], enemy["save_total"], enemy["save_success"]) == (12, 19, True)
+    assert set(_types(participant(state, recipient).conditions)) == {"blessed", "inspired"}
 
-async def test_engine_auto_save_never_consumes(reset_db_pool: str) -> None:
-    """Engine-auto saves must leave the player's single-use bonus die for their next chosen roll."""
-    blessed_player = {
-        "attributes": {"wisdom": 14, "constitution": 14},
-        "level": 3,
-        "conditions": conditions.apply_condition([], "blessed"),
-    }
-    auto = check_resolution_save.resolve_saving_throw(blessed_player, "wisdom", 12, "tick", bonus_dice_eligible=False)
-    player_initiated = check_resolution_save.resolve_saving_throw(dict(blessed_player), "wisdom", 12, "x")
-    assert auto.consumed_conditions == ()  # engine-auto: die untouched
-    assert player_initiated.consumed_conditions == ("blessed",)  # player-initiated: die spent
+    chosen = context(recipient)
+    chosen.userdata.combat_state = state
+    assert await save_total(recipient, ctx=chosen) == 17
+    state = await reload(ctx)
+    assert _types(participant(state, recipient).conditions) == ["blessed"]
+    chosen.userdata.combat_state = state
+    assert await save_total(recipient, ctx=chosen) == 14
 
 
 async def test_multitarget_bless_voices_every_ally(reset_db_pool: str) -> None:
@@ -163,30 +132,3 @@ async def test_multitarget_bless_voices_every_ally(reset_db_pool: str) -> None:
     finally:
         for pid in (caster_id, ally_a, ally_b):
             await pool.execute("DELETE FROM players WHERE player_id = $1", pid)
-
-
-async def test_breaking_bless_concentration_drops_blessed(reset_db_pool: str) -> None:
-    pool = await db.get_pool()
-    await spells.load_spells()  # populate the catalog from the seeded spells table
-    assert spells.get_spell("divine_bless").applies_condition == "blessed"
-
-    player_id = "cap_m48_conc"
-    await seed_player(pool, player_id=player_id, location_id="accord_guild_hall")
-    state = _build_state("combat_cap_m48_conc", player_id, [_enemy("goblin_a", hp=100)])
-    ally = state.get_participant(player_id)
-    assert ally is not None
-    ally.conditions = conditions.apply_condition(ally.conditions, "blessed", source="divine_bless")
-    try:
-        session = make_context(player_id, room=make_mock_room()).userdata
-        session.combat_state = state
-        session.concentration.spell_id = "divine_bless"
-        with patch("check_resolution.dice_roll", return_value=_d20(1)):  # CON save fails -> breaks
-            broken = await concentration_break.break_concentration_on_damage(
-                session, 20, incapacitated=False, damaged_player_id=player_id, conn=pool
-            )
-        assert broken == "divine_bless"
-        live = state.get_participant(player_id)
-        assert live is not None
-        assert not conditions.has_condition(live.conditions, "blessed")  # buff dropped on break
-    finally:
-        await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)

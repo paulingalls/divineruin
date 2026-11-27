@@ -276,7 +276,7 @@ Applied by mechanics tools, tracked in character state, automatically factored i
 | **Incapacitated** | Cannot declare or react. Aware but unable to act. Umbrella condition (Stunned, Paralyzed include this) | Depends on source |
 | **Paralyzed** | Incapacitated. Auto-fail STR/DEX saves. Attacks against have advantage. Melee hits auto-crit. Most dangerous condition | Duration expires, Greater Restoration, source removed |
 | **Poisoned** | Disadvantage on physical checks (STR, DEX, CON) | Short rest, Medicine check, or antidote |
-| **Blessed** | Advantage on next roll | Consumed on use |
+| **Blessed** | +1d4 on each attack roll and saving throw | Ends when the last caster sustaining it stops |
 | **Shielded** | Damage reduction (amount varies by source) | Duration expires |
 | **Enraged** | +2 bonus damage, -2 AC | End of combat or dismissed |
 

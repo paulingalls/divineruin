@@ -12,6 +12,7 @@ import combat_end_wild_shape
 import combat_regeneration
 import combat_resolution
 import combat_rewards
+import concentration_lifetime
 import db
 import db_content_queries
 import db_mutations
@@ -21,6 +22,7 @@ import db_queries
 import enemy_pockets
 import event_types as E
 import first_episode
+import oath_timed
 import patron_deeds
 import pricing_queries
 import quest_progress
@@ -116,9 +118,11 @@ async def _end_combat_locked(
     cs = deepcopy(cs)
     sink = EventSink()
     async with db_mod.transaction() as conn:
+        oath_before = await oath_timed.snapshot(conn, cs, session)
         end_data = await _end_combat_db(
             session, cs, outcome, mutations=mutations, queries=queries, conn=conn, sink=sink
         )
+        end_data["oath_changes"] = await oath_timed.changes(conn, cs, session, oath_before)
     # The COMMIT is what makes the party's XP/loot/coin durable, so the guard against a second end
     # (session.combat_state, which _require_combat reads) must be released with it — story-010.
     # Anything fallible left between the commit and the teardown is a window where the rewards are
@@ -243,6 +247,9 @@ async def _end_combat_db(
             weapon_durability = member_durability
 
     regenerated = await combat_regeneration.settle(cs, conn=conn, mutations=mutations)
+    concentration_updates, concentration_expired = await concentration_lifetime.settle_combat(
+        session, cs, conn=conn, ended=True
+    )
 
     # Persist cross-encounter conditions (M4.3, story-004; per-member M18 story-003): reconcile
     # EVERY player member's persistent conditions + surviving beneficial dice into their OWN
@@ -255,6 +262,7 @@ async def _end_combat_db(
 
     await concealment.expire_combat(cs, conn=conn, queries=queries)
     ended_forms = [*(dismissed_forms or ()), *combat_end_wild_shape.ended_forms(cs)]
+    await oath_timed.settle(cs, conn=conn, reason="encounter_ended", round_number=cs.round_number, session=session)
     await mutations.delete_combat_state(cs.combat_id, conn=conn)
 
     # Deleting the combat row IS the encounter ward's expiry (scope_model.md §2), so the HUD must be
@@ -369,6 +377,8 @@ async def _end_combat_db(
         "ward_light_synced": ward_light_synced,
         "resolved_location_ward": resolved_location_ward,
         "wild_shape_ended": ended_forms,
+        "concentration_updates": concentration_updates,
+        "concentration_expired": concentration_expired,
     }
 
 

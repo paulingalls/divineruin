@@ -52,7 +52,15 @@ class JournalWalk(ArcWalk):
     async def discover(self, *, actor=None, error=False, skill="investigation", target="research station"):
         return await self.command(
             "check",
-            {"roll": {"kind": "discover", "skill": skill, "target": target, "hearing_only": False}},
+            {
+                "roll": {
+                    "kind": "discover",
+                    "synergy_context": "none",
+                    "skill": skill,
+                    "target": target,
+                    "hearing_only": False,
+                }
+            },
             actor=actor,
             error=error,
         )

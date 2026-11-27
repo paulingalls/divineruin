@@ -9,6 +9,7 @@ import combat_grapple
 import combat_phase
 import combat_regeneration
 from combat_down import is_terminally_down
+from condition_catalog import CONDITION_CATALOG
 from condition_restrictions import cannot_act
 from dice import roll as dice_roll
 
@@ -26,7 +27,7 @@ def _finish_packet_start(state, actor) -> dict | None:
 
 
 async def start_choir_packet(
-    session, state, actor, *, conn, concentration_break_mod, sink, progress, effects: list[dict]
+    session, state, actor, *, conn, queries, concentration_break_mod, sink, progress, effects: list[dict]
 ) -> dict | None:
     import choir_encounter
 
@@ -35,6 +36,7 @@ async def start_choir_packet(
         state,
         actor,
         conn=conn,
+        queries=queries,
         concentration_break_mod=concentration_break_mod,
         sink=sink,
         progress=progress.scope("choir_aura") if progress is not None else None,
@@ -65,6 +67,7 @@ async def start_held_packet(session, state, head: dict, fate_rolls, deps: dict) 
         state,
         actor,
         conn=deps.get("conn"),
+        queries=deps["queries"],
         concentration_break_mod=deps["concentration_break_mod"],
         progress=aura,
         sink=deps.get("sink"),
@@ -105,6 +108,15 @@ def ally_turns(state, packets):
 async def turn_start(
     session, state, victim, *, conn, sink, mutations, queries, concentration_break_mod, progress=None, **unused
 ):
+    for participant in state.participants:
+        participant.conditions = [
+            condition
+            for condition in participant.conditions
+            if not (
+                CONDITION_CATALOG[condition["type"]].clearance == "start_of_caster_next_turn"
+                and condition.get("originating_participant_id") == victim.id
+            )
+        ]
     victim.shield_spell_active = False
     packet = await _damage(
         session,
@@ -210,7 +222,7 @@ async def _apply(
         conn=conn,
         sink=sink,
         publish_roll=False,
-        progress=progress,
+        progress=progress.with_origin(owner.id) if progress is not None else None,
     )
     if progress is not None and progress.paused:
         return None

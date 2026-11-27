@@ -7,6 +7,7 @@ from collections.abc import Callable
 from livekit.agents.llm import ChatContext
 from livekit.agents.voice import Agent
 
+import concentration_lifetime
 import first_episode
 import quest_progress
 from combat_down import sync_companion_consciousness
@@ -39,6 +40,7 @@ def finish(
         member.draethar_inner_fire_used = False
         member.unbound_raw_channeling_used = False
     sync_companion_consciousness(session, cs)
+    concentration_lifetime.adopt(session, end_data.get("concentration_updates", {}))
     session.combat_state = None
 
     # Post-commit sync of the location-ward mirror: only when the dying encounter ward changed
@@ -95,6 +97,10 @@ def finish(
         "loot": loot,
         "currency_gold": currency_gold,
     }
+    if oath_changes := end_data.get("oath_changes"):
+        response["oath_changes"] = oath_changes
+    if expired := end_data.get("concentration_expired"):
+        response["concentration_expired"] = expired
     if ended_forms := end_data.get("wild_shape_ended"):
         response["wild_shape_ended"] = ended_forms
     if judgment_rewards := end_data.get("judgment_rewards"):

@@ -290,7 +290,7 @@ Conditions that modify a character's capabilities. Applied by mechanics tools, t
 
 **Common effects:**
 
-*Combat conditions:* Wounded (reduced max HP until rest), Stunned (skip next action), Poisoned (disadvantage on physical checks), Blessed (advantage on next roll), Shielded (damage reduction), Enraged (bonus damage, penalty to defense).
+*Combat conditions:* Wounded (reduced max HP until rest), Stunned (skip next action), Poisoned (disadvantage on physical checks), Blessed (+1d4 on attack rolls and saving throws while sustained by concentration), Shielded (damage reduction), Enraged (bonus damage, penalty to defense).
 
 *Environmental conditions:* Exhausted (penalties accumulate with lack of rest), Blinded (disadvantage on attacks and perception), Frightened (disadvantage against the fear source, can't willingly move closer), Charmed (treats the source as a friendly ally, disadvantage on checks against them).
 

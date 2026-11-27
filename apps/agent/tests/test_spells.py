@@ -61,6 +61,7 @@ _BLESS_ROW = {
     "resonance_by_source": {"divine": 1},
     "audio_cue": "",
     "concentration": True,
+    "concentration_duration_seconds": 60,
     "sound_id": "spell_radiant",
 }
 
@@ -403,3 +404,60 @@ def test_spell_speech_and_hostility_survive_loading(verbal, hostile):
 def test_malformed_rows_are_refused(row, message):
     with pytest.raises(ValueError, match=message):
         parse_spell_row(row["id"], row)
+
+
+@pytest.mark.parametrize(
+    "spell_id,expected",
+    [
+        (
+            "arcane_hold_person",
+            dict(
+                save="wisdom",
+                condition="paralyzed",
+                resave="wisdom",
+                attribute="intelligence",
+                target_category="humanoid",
+            ),
+        ),
+        ("arcane_power_word_stun", dict(save=None, condition="stunned", resave="constitution", hp_ceiling=75)),
+    ],
+)
+def test_hostile_condition_spell_profiles(spell_id, expected):
+    _seed_from_content()
+    assert get_spell(spell_id).save_condition == expected
+    assert get_spell("arcane_fireball").save_condition is None
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("condition", "?"),
+        ("save", "?"),
+        ("resave", []),
+        ("attribute", "?"),
+        ("target_category", "?"),
+        ("hp_ceiling", True),
+        ("hp_ceiling", 0),
+    ],
+)
+def test_hostile_condition_spell_rejects_invalid_fields(field, value):
+    row = next(row for row in json.loads(CONTENT_PATH.read_text()) if row["id"] == "arcane_hold_person")
+    profile = dict(save="wisdom", condition="paralyzed", resave="wisdom", attribute="intelligence")
+    with pytest.raises(ValueError, match=rf"arcane_hold_person.*save_condition.*{field}"):
+        parse_spell_row(row["id"], {**row, "save_condition": {**profile, field: value}})
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        {"shape": "radius", "radius_ft": 20, "placements": 1},
+        {"shape": "cube", "side_ft": 0},
+        {"shape": "cube", "side_ft": False},
+        {"shape": "cube", "side_ft": float("inf")},
+        {"shape": "cube", "side_ft": 20, "placements": 2},
+    ],
+)
+def test_save_condition_refuses_malformed_cube(spec):
+    row = next(row for row in json.loads(CONTENT_PATH.read_text()) if row["id"] == "primal_faerie_fire")
+    with pytest.raises(ValueError, match=r"primal_faerie_fire.*save_condition.recipients"):
+        parse_spell_row(row["id"], {**row, "save_condition": {**row["save_condition"], "recipients": spec}})

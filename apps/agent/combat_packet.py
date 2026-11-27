@@ -24,6 +24,7 @@ import combat_recharge
 import combat_retreat
 import combat_spatial_declarations
 import combat_turn_flight
+import combat_turn_start
 import combat_voice_rules
 import combat_yield
 import item_heal
@@ -37,12 +38,12 @@ from combat_down import target_unavailable
 from combat_enemy_action import resolve_enemy_strike
 from combat_packet_gate import _prevalidate_ability_focus as _prevalidate_ability_focus
 from combat_structures import action_has_direct_line, blocked_reason, line_blocker
-from concealment import reveal_attacker
 from condition_restrictions import cannot_act
 from condition_sources import DeliveryRefused
 from declarations import DeclarationType
 from encounter_actions import action_kind
 from session_data import CombatParticipant, SessionData
+from spell_invisibility import reveal_attack
 
 
 async def _resolve_one_packet(session, state, packet, *, _reshape_prepared=False, **deps) -> dict:
@@ -74,6 +75,8 @@ async def _resolve_one_packet(session, state, packet, *, _reshape_prepared=False
                 return {}
         except ReshapeRefused as error:
             return {"actor_id": packet.actor_id, "resolved": False, "reason": str(error)}
+    if progress is not None:
+        deps["progress"] = progress.with_origin(packet.actor_id)
     result = await _resolve_action_packet(session, state, packet, turn_effects=effects, **deps)
     if "reshape_receipts" in steps:
         result["reshape"] = steps["reshape_receipts"]
@@ -156,13 +159,12 @@ async def _resolve_action_packet(
     opportunity_attack = held_head.get("opportunity_attack", False)
     resuming_movement = player_movement is not None and player_movement.route is not None
     if not (resuming_movement or opportunity_attack or "legendary_kind" in held_head):
-        from combat_turn_start import start_choir_packet
-
-        forced_move = await start_choir_packet(
+        forced_move = await combat_turn_start.start_choir_packet(
             session,
             state,
             attacker,
             conn=conn,
+            queries=queries,
             concentration_break_mod=concentration_break_mod,
             sink=sink,
             progress=progress,
@@ -461,13 +463,8 @@ async def _resolve_action_packet(
     if target is None or target_unavailable(target, action):
         reason = f"target '{decl.target_id}' not found" if target is None else f"{target.name} already fell"
         summary: dict = {"actor_id": packet.actor_id, "resolved": False, "reason": reason}
-        if (
-            attacker.type == "player"
-            and action is not None
-            and (decl.type is DeclarationType.ATTACK or single_target)
-            and (reveal := await reveal_attacker(attacker.id, conn=conn, queries=queries))
-        ):
-            summary["concealment"] = reveal
+        if action is not None and (decl.type is DeclarationType.ATTACK or single_target):
+            summary.update(await reveal_attack(attacker, conn=conn, queries=queries))
         return summary
     if action is None:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": f"action '{decl.action}' not found"}

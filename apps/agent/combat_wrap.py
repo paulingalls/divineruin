@@ -15,10 +15,12 @@ import combat_phase
 import combat_recharge
 import combat_round_checkpoint
 import concealment
+import concentration_lifetime
 import conditions
 import encounter_facts
 import event_types as E
 import fatigue_narration
+import oath_timed
 import reaction_gate
 from combat_ability import _find_action
 from combat_end import _end_combat_db
@@ -144,6 +146,7 @@ async def wrap_phase(
     end_data: dict | None = None
     cursor = state.wrap_continuation
     if cursor is None:
+        outgoing_round = state.round_number
         state, _ = combat_phase.advance_combat_phase(state)
         # Read exhaustion narration here, before the pure wrap tick, so a save-to-clear tick
         # cannot erase a participant's narration mid-beat.
@@ -158,7 +161,12 @@ async def wrap_phase(
         state, wrap_adv = combat_phase.advance_combat_phase(state, defer_legendary=True)
         assert wrap_adv.wrap is not None
         wrap = replace(wrap_adv.wrap, hearthfire_heals=hearthfire_heals)
-        cursor = {"wrap": asdict(wrap), "exhaustion": exhaustion_narration, "index": 0}
+        cursor = {
+            "wrap": asdict(wrap),
+            "exhaustion": exhaustion_narration,
+            "index": 0,
+            "outgoing_round": outgoing_round,
+        }
     else:
         wrap = combat_phase.WrapOutcome(**cursor["wrap"])
         exhaustion_narration = cursor["exhaustion"]
@@ -176,13 +184,15 @@ async def wrap_phase(
                 partial(_roll_tick_save, state, actor, event, save_resolver),
                 queries=queries,
                 conn=conn,
+                state=state,
+                round_number=cursor["outgoing_round"],
             )
             if result is None:
                 state.wrap_continuation = cursor
                 state.beat = combat_phase.PhaseBeat.NARRATION
                 return state, None, combat_phase.PhaseAdvance(beat_completed=state.beat), {}, None, None, {}, []
             encounter_facts.consume_rally(state, actor.id, result.rally_sources)
-            if result.rally_sources:
+            if result.rally_sources or (result.oath_justice is not None or result.oath_timed is not None):
                 receipt = {
                     "actor_id": actor.id,
                     "condition": event["type"],
@@ -190,10 +200,15 @@ async def wrap_phase(
                     "total": result.total,
                     "dc": result.dc,
                     "success": result.success,
+                    **result.oath_fields(),
                     **encounter_facts.rally_receipt(actor.id, result.rally_sources),
                 }
-                wrap.rally_saves.append(receipt)
-                cursor["wrap"]["rally_saves"] = wrap.rally_saves
+                if result.rally_sources:
+                    wrap.rally_saves.append(receipt)
+                    cursor["wrap"]["rally_saves"] = wrap.rally_saves
+                if result.oath_justice is not None or result.oath_timed is not None:
+                    wrap.oath_saves.append(receipt)
+                    cursor["wrap"]["oath_saves"] = wrap.oath_saves
             if result.success:
                 actor.conditions = conditions.remove_condition(actor.conditions, event["type"])
             cursor["index"] += 1
@@ -201,6 +216,21 @@ async def wrap_phase(
         state.hearthfire_zones = aelora_hearthfire.tick(state.hearthfire_zones)
         state.beat = combat_phase.PhaseBeat.DECLARATION
         combat_phase._reset_legendary_actions(state)
+        # The DM rolls these after wrap, when the outgoing round's oath can already be closed.
+        for actor_id in wrap.death_saves_due:
+            actor = state.get_participant(actor_id)
+            assert actor is not None
+            round_number = cursor["outgoing_round"]
+            timed = None
+            if actor.type == "player":
+                player = await queries.get_player(actor_id, conn=conn)
+                if player is None:
+                    raise ValueError(f"Missing authoritative player {actor_id!r}")
+                timed = oath_timed.save_receipt(state, actor_id, player, round_number)
+            actor.due_death_save = {"round_number": round_number, "oath_timed": timed}
+    await oath_timed.close_round(
+        state, conn=conn, round_number=cursor["outgoing_round"], session=session, terminal=wrap.combat_ended
+    )
     state.wrap_continuation = None
     wrap_adv = combat_phase.PhaseAdvance(
         beat_completed=combat_phase.PhaseBeat.WRAP,
@@ -232,6 +262,9 @@ async def wrap_phase(
                 if decayed != base:
                     pending_by_member[m.player_id] = decayed
                     await resonance_mutations.update_player_resonance(m.player_id, decayed, conn=conn)
+        updates, expired = await concentration_lifetime.settle_combat(session, state, conn=conn)
+        concentration_lifetime.adopt(session, updates)
+        wrap.concentration_expired.extend(expired)
         await combat_round_checkpoint.capture(
             session,
             state,

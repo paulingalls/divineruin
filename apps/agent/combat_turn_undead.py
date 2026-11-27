@@ -13,8 +13,8 @@ from architect_reaction import Interception
 from combat_condition_landing import _land_condition_on_one
 from combat_fate_rolls import PacketRolls, packet_save
 from combat_legendary_resistance import finalize_save, override_fields
-from combat_spell_damage import spell_save_dc
 from combat_spell_recipients import caster_radius_refusal
+from combat_spell_save import spell_save_dc
 from session_data import CombatParticipant, CombatState, SessionData
 from spells import Spell
 
@@ -98,6 +98,7 @@ async def _resolve_target(
             "dc": save.dc,
             "success": save.success,
             **override_fields(save),
+            **save.oath_fields(),
             **encounter_facts.rally_receipt(target.id, save.rally_sources),
         }
     }

@@ -1,10 +1,9 @@
 import json
 from dataclasses import replace
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from combat._helpers import _make_combat_state, _resolve_deps, _resolve_round
+from combat._helpers import _make_combat_state, _resolve_deps, _resolve_round, save_result
 from sample_fixtures import make_context
 from voice_condition_fixtures import place_actors
 
@@ -78,7 +77,7 @@ async def _resolve_disabled_target(*, grappled: bool):
         patch("abilities.get_ability", side_effect=get_ability),
         patch("ability_persistence.owns_elective", AsyncMock(return_value=True)),
         patch("ability_persistence.update_player_resources", AsyncMock()),
-        patch("check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=False)),
+        patch("check_resolution_save.roll_participant_save", return_value=save_result(False)),
         patch("random.randint", side_effect=[20, 1]) as maneuver_roll,
     ):
         await combat_turn._declare_phase_impl(context, declarations, mutations=deps["mutations"])

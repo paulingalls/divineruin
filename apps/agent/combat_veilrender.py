@@ -12,6 +12,7 @@ import ward_resolution
 from combat_enemy_active import heal
 from combat_fate_rolls import packet_save
 from condition_produce import resolve_effective_targets
+from condition_restrictions import cannot_act
 
 
 def mark_radiant(target, action, result):
@@ -53,6 +54,9 @@ def absorb_spell(state, caster, declaration, packet):
     for target_id in targets:
         target = state.get_participant(target_id)
         if target is None or target.creature_id != "hollow_veilrender" or not living(target):
+            remaining.append(target_id)
+            continue
+        if cannot_act(target.conditions):
             remaining.append(target_id)
             continue
         absorbed.append(
@@ -114,7 +118,7 @@ async def turn_start(
         ):
             continue
         spec = source.corruption_field
-        scope = progress.scope(source.id) if progress is not None else None
+        scope = progress.scope(source.id).with_origin(source.id) if progress is not None else None
         effect = scope.steps.get("effect") if scope is not None else None
         if effect is None:
             save = await packet_save(
@@ -130,8 +134,11 @@ async def turn_start(
                     "Corruption Field",
                     bonus_dice_eligible=False,
                     combat_state=state,
+                    originating_participant_id=source.id,
                 ),
                 state=state,
+                queries=queries,
+                conn=conn,
             )
             if save is None:
                 return None
@@ -142,6 +149,7 @@ async def turn_start(
                 "effect": "corruption_field",
                 "save_success": save.success,
                 "save_dc": spec["dc"],
+                **save.oath_fields(),
                 **encounter_facts.rally_receipt(actor.id, save.rally_sources),
             }
             if scope is not None:

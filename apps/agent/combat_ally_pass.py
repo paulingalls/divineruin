@@ -9,6 +9,7 @@ import combat_spatial_declarations
 from combat_fate import continue_attack
 from combat_fate_rolls import PacketRolls
 from combat_player_movement import PlayerMovement
+from condition_consume import expire_guiding_light
 from declarations import resolve_declaration
 
 if TYPE_CHECKING:
@@ -164,6 +165,7 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
                 if actor is not None:
                     actor.conditions = remove_condition(actor.conditions, IRON_STANCE)
                 cursor.pop("steps", None)
+                expire_guiding_light(state, actor_id)
                 cursor["turns"].pop(0)
                 continue
             if actor is not None and not actor.is_ally:
@@ -198,6 +200,7 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
         summaries.append(summary)
         cursor["attack"] = {}
         cursor.pop("steps", None)
+        expire_guiding_light(state, actor_id)
         cursor["turns"].pop(0)
 
     state.held_actions = hold_enemy_packets(state, [packets[pid] for pid in cursor["hostiles"]])
@@ -233,6 +236,7 @@ async def _packetless_turn_start(
         state,
         actor,
         conn=packet_deps["conn"],
+        queries=packet_deps["queries"],
         concentration_break_mod=packet_deps["concentration_break_mod"],
         sink=packet_deps["sink"],
         progress=progress.scope("choir_aura") if progress is not None else None,
