@@ -116,17 +116,22 @@ async def _roll_death_save(
     personal_bonus = creation_deities.patron_death_save_bonus(member.patron_id if member is not None else "none")
     synergy_bonus = await marshal_death_save_bonus(cs, queries=queries)
     rally_sources = encounter_facts.pending_rally(cs, faller.id)
+    round_number = cs.round_number
     timed = None
-    if faller.type == "player":
+    due = faller.due_death_save
+    if due is not None:
+        round_number = due["round_number"]
+        timed = due["oath_timed"]
+    elif faller.type == "player":
         player = await queries.get_player(faller.id)
         if player is None:
             raise ToolError(f"Player '{faller.id}' not found")
-        timed = oath_timed.save_receipt(cs, faller.id, player, cs.round_number)
+        timed = oath_timed.save_receipt(cs, faller.id, player, round_number)
     bonus = personal_bonus + synergy_bonus + len(rally_sources) + (timed["modifier"] if timed else 0)
     bonus_receipt = {
         "bonus": bonus,
         "combat_id": cs.combat_id,
-        "round_number": cs.round_number,
+        "round_number": round_number,
         **({"oath_timed": timed} if timed is not None else {}),
         **encounter_facts.rally_receipt(faller.id, rally_sources),
         "synergy_bonus": synergy_bonus,
@@ -218,6 +223,7 @@ async def _request_death_save_locked(
     working = state.get_participant(faller_id)
     assert working is not None  # copied from the state we just resolved against
     counted_before = encounter_facts.counted_death(working)
+    working.due_death_save = None
     working.death_save_successes = result.total_successes
     working.death_save_failures = result.total_failures
     if result.success:

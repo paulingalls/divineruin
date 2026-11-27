@@ -78,6 +78,7 @@ PARTICIPANT_SUMMARY_INTERNAL_FIELDS: dict[str, str] = {
     "damage_mult": "Role-derived damage arithmetic.",
     "dc_mod": "Role-derived save DC arithmetic.",
     "death_save_successes": "Death-save settlement counter. Receipts report outcomes.",
+    "due_death_save": "Wrap lists who must roll. The save receipt carries the round and oath bonus.",
     "enhancers": "Declaration resolution configuration.",
     "fly_speed": "Movement resolver budget.",
     "flyby": "Opportunity-attack exemption.",

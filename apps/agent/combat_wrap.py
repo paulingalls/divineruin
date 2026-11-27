@@ -215,6 +215,18 @@ async def wrap_phase(
         state.hearthfire_zones = aelora_hearthfire.tick(state.hearthfire_zones)
         state.beat = combat_phase.PhaseBeat.DECLARATION
         combat_phase._reset_legendary_actions(state)
+        # The DM rolls these after wrap, when the outgoing round's oath can already be closed.
+        for actor_id in wrap.death_saves_due:
+            actor = state.get_participant(actor_id)
+            assert actor is not None
+            round_number = cursor["outgoing_round"]
+            timed = None
+            if actor.type == "player":
+                player = await queries.get_player(actor_id, conn=conn)
+                if player is None:
+                    raise ValueError(f"Missing authoritative player {actor_id!r}")
+                timed = oath_timed.save_receipt(state, actor_id, player, round_number)
+            actor.due_death_save = {"round_number": round_number, "oath_timed": timed}
     await oath_timed.close_round(
         state, conn=conn, round_number=cursor["outgoing_round"], session=session, terminal=wrap.combat_ended
     )

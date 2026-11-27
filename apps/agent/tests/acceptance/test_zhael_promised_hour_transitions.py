@@ -73,6 +73,28 @@ async def test_missed_deadline_has_no_penalty(world) -> None:
         assert await oath_record(f) == lapsed
 
 
+async def test_death_save_due_at_deadline_uses_outgoing_round_once(world) -> None:
+    async with promised_fight(world) as f:
+        oath = await select_oath(f)
+        await f.round(faces=())
+        participant(f.session.combat_state, f.hero).hp_current = 4
+        await f.declare(goblin_strike(GOBLIN, f.hero))
+        result = await wrap(f, 19)
+        assert result["round"] == 4 and result["death_saves_due"] == [f.hero]
+        await assert_change(f, result, oath, "lapsed", "deadline", 3)
+
+        await f.reload()
+        with patch("combat_resolution.dice_roll", return_value=_d20(9)):
+            save = await f.call("request_death_save", player_id=f.hero)
+            assert (save["round_number"], save["total"], save["success"]) == (3, 10, True)
+            assert (save["oath_timed"]["oath_id"], save["oath_timed"]["modifier"]) == (oath["oath_id"], 1)
+
+            await f.reload()
+            save = await f.call("request_death_save", player_id=f.hero)
+            assert (save["round_number"], save["total"], save["success"]) == (4, 9, False)
+            assert save["oath_timed"]["modifier"] == 0
+
+
 @pytest.mark.parametrize(
     ("objective", "ending", "status", "reason"),
     [
