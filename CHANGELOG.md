@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.91.1
+
+The commit hook checks milestone totals and documentation index ranges. Run `python3 scripts/doc_index.py --write` to refresh both after editing the documentation.
+
+Release steps: none.
+
 ## 0.91.0
 
 Marshals can call Rally in combat. Every other ally within 30 ft who can hear the call gains temporary HP equal to the marshal's Charisma modifier plus level. A larger pool already held is kept. Players keep Rally's temporary HP until it is spent or they take a long rest, and companions keep it for the fight. An Orenthel marshal's Rally at Dawn adds 1 more temporary HP to each recipient. Rally cannot be called outside combat, and is refused before any Focus is spent.
