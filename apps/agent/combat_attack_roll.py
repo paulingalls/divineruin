@@ -42,6 +42,7 @@ def roll_attack(
     orenthel_ac_override: int | None = None,
     veiled_strike: VeiledStrike | None = None,
     season: Season | None = None,
+    attack_disadvantage_source: str | None = None,
 ) -> tuple:
     """Roll without applying HP changes; held reactions pause before impact."""
     attacker_data, effective_ac, attack_mod = attack_roll_inputs(
@@ -59,6 +60,7 @@ def roll_attack(
         valdris_ac_bonus=valdris_ac_bonus,
         veiled_strike=veiled_strike,
         season=season,
+        attack_disadvantage_source=attack_disadvantage_source,
     )
     attack_result = resolver.resolve_attack(
         attacker_data,
@@ -90,6 +92,7 @@ def attack_roll_inputs(
     orenthel_ac_override: int | None = None,
     veiled_strike: VeiledStrike | None = None,
     season: Season | None = None,
+    attack_disadvantage_source: str | None = None,
 ):
     """The attacker data, effective AC and to-hit bonus a d20 attack is prepared from.
 
@@ -228,6 +231,8 @@ def attack_roll_inputs(
             and target.id not in combat_state.beacon_attacks.get(attacker.id, ())
         ):
             attacker_data["attack_disadvantage_source"] = BEACON
+    if attack_disadvantage_source is not None:
+        attacker_data.setdefault("attack_disadvantage_source", attack_disadvantage_source)
     return attacker_data, effective_ac, attack_mod
 
 

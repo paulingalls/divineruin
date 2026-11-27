@@ -17,6 +17,7 @@ import combat_reaction_effect
 import event_types as E
 import reaction_spend
 import reaction_windows
+from ability_voice_rules import DISSONANT_WHISPER, IMPLANT_DOUBT
 
 UNCANNY_DODGE = "rogue_uncanny_dodge"
 
@@ -129,11 +130,12 @@ def test_the_wired_sets_name_real_catalog_rows_at_the_right_window():
     wired_on_targeted = {
         combat_reaction_effect.SHIELD_SPELL,
         combat_reaction_effect.THOUGHT_SHIELD,
+        DISSONANT_WHISPER,
         reaction_spend.SIDESTEP,
     }
     wired = (
         wired_on_hit
-        | {reaction_spend.RIPOSTE}
+        | {reaction_spend.RIPOSTE, IMPLANT_DOUBT}
         | wired_on_targeted
         | set(combat_reaction_effect.AC_BONUS)
         | set(combat_reaction_effect.SAVE_ADVANTAGE)
@@ -143,6 +145,7 @@ def test_the_wired_sets_name_real_catalog_rows_at_the_right_window():
 
     assert {catalog[i].window for i in wired_on_hit} == {"on_hit"}
     assert {catalog[i].window for i in wired_on_targeted} == {"on_targeted"}
+    assert catalog[IMPLANT_DOUBT].window == "on_enemy_action"
     assert {catalog[i].window for i in combat_reaction_effect.AC_BONUS} == {"on_ally_targeted"}
     assert {catalog[i].window for i in combat_reaction_effect.SAVE_ADVANTAGE} == {"on_ally_targeted"}
     assert set(combat_reaction_effect.SAVE_ADVANTAGE) == COUNTERCHARMS
