@@ -45,7 +45,7 @@ def forget_participant(state: "CombatState", player_id: str) -> bool:
             collapse_wall(state, chamber)
         state.architect_encounter["pits"].pop(player_id, None)
     state.participants = [actor for actor in state.participants if actor.id != player_id]
-    state.initiative_order = [actor for actor in state.initiative_order if actor != player_id]
+    state.initiative_order = _without(state.initiative_order, player_id)
     state.pending_declarations.pop(player_id, None)
     for declaration in state.pending_declarations.values():
         # Partial landing, as at resolve time.
@@ -73,11 +73,7 @@ def _drop_orders(state: "CombatState", player_id: str) -> None:
             item = state.pending_declarations.get(target, {}).get("healing_item")
             if item is not None and item["target_id"] != player_id:
                 del state.pending_declarations[target]["healing_item"]
-        remaining = [
-            rider
-            for rider in riders
-            if player_id not in (rider["source_id"], rider.get("partner_id"), rider.get("target_id"))
-        ]
+        remaining = [rider for rider in riders if player_id not in (rider["source_id"], rider.get("partner_id"))]
         if remaining:
             state.order_riders[target] = remaining
         else:
@@ -116,8 +112,8 @@ def _drop_turn(state: "CombatState", player_id: str) -> bool:
             cancelled_turn = True
             wrap.pop("save", None)
         wrap["index"] = sum(event["actor_id"] != player_id for event in events[:index])
-        wrap["wrap"]["tick_conditions_due"] = [event for event in events if event["actor_id"] != player_id]
-        wrap["wrap"]["death_saves_due"] = [actor for actor in wrap["wrap"]["death_saves_due"] if actor != player_id]
+        wrap["wrap"]["tick_conditions_due"] = _without(events, player_id, "actor_id")
+        wrap["wrap"]["death_saves_due"] = _without(wrap["wrap"]["death_saves_due"], player_id)
 
     return cancelled_turn
 
@@ -127,7 +123,7 @@ def _drop_reactions(state: "CombatState", player_id: str) -> bool:
     spend = state.reactions_available.pop(player_id, {})
     for head in state.held_actions:
         if continuation := head.get("counter_settlement"):
-            continuation["packets"] = [packet for packet in continuation["packets"] if packet["actor_id"] != player_id]
+            continuation["packets"] = _without(continuation["packets"], player_id, "actor_id")
         elif reaction_spend.intercepts_damage(spend) and spend["held_seq"] == head["seq"]:
             head["departed_damage_recipient"] = player_id
         if entries := head.get("disruptions"):
@@ -137,11 +133,14 @@ def _drop_reactions(state: "CombatState", player_id: str) -> bool:
                 head["disruptions"] = kept
             else:
                 del head["disruptions"]
-        packets = head.get("pending_reaction_packets")
-        if packets is not None:
-            head["pending_reaction_packets"] = [packet for packet in packets if packet["actor_id"] != player_id]
-    state.held_actions = [head for head in state.held_actions if head["actor_id"] != player_id]
+        if (packets := head.get("pending_reaction_packets")) is not None:
+            head["pending_reaction_packets"] = _without(packets, player_id, "actor_id")
+    state.held_actions = _without(state.held_actions, player_id, "actor_id")
     return cancelled_roll
+
+
+def _without(items: list, player_id: str, key: str | None = None) -> list:
+    return [item for item in items if (item[key] if key else item) != player_id]
 
 
 def cancel_held_strike(state: "CombatState", head: dict, target_id: str) -> dict:
