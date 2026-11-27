@@ -1,4 +1,12 @@
-import type { Spell, SpellSource, SpellTier } from "@divineruin/shared";
+import {
+  CONDITION_NAMES,
+  CREATURE_CATEGORIES,
+  type Attributes,
+  type SaveConditionProfile,
+  type Spell,
+  type SpellSource,
+  type SpellTier,
+} from "@divineruin/shared";
 import { sql } from "./db.ts";
 import { asRecord } from "./parse-helpers.ts";
 
@@ -79,6 +87,54 @@ function parseWildShape(raw: unknown, ctx: string): NonNullable<Spell["wild_shap
   return { stamina_cost, forms };
 }
 
+const SAVE_ATTRIBUTES: readonly (keyof Attributes)[] = [
+  "strength",
+  "dexterity",
+  "constitution",
+  "intelligence",
+  "wisdom",
+  "charisma",
+];
+
+function knownValue<T extends string>(raw: unknown, values: readonly T[], ctx: string): T {
+  const value = values.find((candidate) => candidate === raw);
+  if (value === undefined) throw new Error(`${ctx} must name a known value`);
+  return value;
+}
+
+function parseSaveCondition(raw: unknown, ctx: string): SaveConditionProfile {
+  const profile = asRecord(raw, ctx);
+  const fields = ["save", "condition", "resave", "attribute", "target_category", "hp_ceiling"];
+  if (Object.keys(profile).some((field) => !fields.includes(field))) {
+    throw new Error(`${ctx} must contain only supported fields`);
+  }
+  const effect = {
+    condition: knownValue(profile.condition, CONDITION_NAMES, `${ctx}.condition`),
+    resave: knownValue(profile.resave, SAVE_ATTRIBUTES, `${ctx}.resave`),
+    ...("target_category" in profile
+      ? {
+          target_category: knownValue(
+            profile.target_category,
+            CREATURE_CATEGORIES,
+            `${ctx}.target_category`,
+          ),
+        }
+      : {}),
+    ...("hp_ceiling" in profile
+      ? { hp_ceiling: positiveInteger(profile.hp_ceiling, `${ctx}.hp_ceiling`) }
+      : {}),
+  };
+  if (profile.save === null) {
+    if ("attribute" in profile) throw new Error(`${ctx}.attribute requires an initial save`);
+    return { ...effect, save: null };
+  }
+  return {
+    ...effect,
+    save: knownValue(profile.save, SAVE_ATTRIBUTES, `${ctx}.save`),
+    attribute: knownValue(profile.attribute, SAVE_ATTRIBUTES, `${ctx}.attribute`),
+  };
+}
+
 export function parseSpellRow(id: string, raw: unknown): Spell {
   const data = asRecord(raw, `spells[${id}]`);
   const ctx = `spells[${id}]`;
@@ -109,6 +165,9 @@ export function parseSpellRow(id: string, raw: unknown): Spell {
     narration_cue: data.narration_cue,
     verbal: data.verbal as boolean,
     hostile: data.hostile as boolean,
+    ...("save_condition" in data
+      ? { save_condition: parseSaveCondition(data.save_condition, `${ctx}.save_condition`) }
+      : {}),
     ...(id === "primal_wild_shape" || "wild_shape" in data
       ? { wild_shape: parseWildShape(data.wild_shape, `${ctx}.wild_shape`) }
       : {}),

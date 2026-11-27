@@ -242,3 +242,48 @@ test("complete hostile classification survives the actual TypeScript loader", as
     EXPECTED_HOSTILE,
   );
 });
+
+test("real hostile condition spells retain their typed profiles", async () => {
+  const rows = await loadSpellsJson();
+  const parse = (id: string) =>
+    parseSpellRow(
+      id,
+      rows.find((row) => row.id === id),
+    );
+  expect(parse("arcane_hold_person").save_condition).toEqual({
+    save: "wisdom",
+    condition: "paralyzed",
+    resave: "wisdom",
+    attribute: "intelligence",
+    target_category: "humanoid",
+  });
+  expect(parse("arcane_power_word_stun").save_condition).toEqual({
+    save: null,
+    condition: "stunned",
+    resave: "constitution",
+    hp_ceiling: 75,
+  });
+  expect(parse("arcane_fireball").save_condition).toBeUndefined();
+});
+
+test.each([
+  ["condition", "?"],
+  ["save", "?"],
+  ["resave", []],
+  ["attribute", "?"],
+  ["target_category", "?"],
+  ["hp_ceiling", true],
+  ["hp_ceiling", 0],
+])("hostile condition profiles reject invalid %s", async (field, value) => {
+  const id = "arcane_hold_person";
+  const row = (await loadSpellsJson()).find((entry) => entry.id === id);
+  const profile = {
+    save: "wisdom",
+    condition: "paralyzed",
+    resave: "wisdom",
+    attribute: "intelligence",
+  };
+  expect(() =>
+    parseSpellRow(id, { ...row, save_condition: { ...profile, [String(field)]: value } }),
+  ).toThrow(new RegExp(`${id}.*save_condition.*${field}`));
+});

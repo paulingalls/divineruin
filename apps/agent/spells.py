@@ -35,9 +35,11 @@ from catalog_parse import parse_int, parse_int_dict, parse_str
 from combat_spell_profile import (
     HealProfile,
     ItemCreationProfile,
+    SaveConditionProfile,
     parse_heal_profile,
     parse_item_creation,
     parse_profile,
+    parse_save_condition,
 )
 from wild_shape_profile import WildShapeProfile
 from wild_shape_profile import parse_profile as parse_wild_shape_profile
@@ -103,6 +105,7 @@ class Spell:
     combat_aid: bool = False
     healing: bool = False
     combat_damage: dict | None = None
+    save_condition: SaveConditionProfile | None = None
     heal: HealProfile | None = None
     creates_item: ItemCreationProfile | None = None
     wild_shape: WildShapeProfile | None = None
@@ -157,6 +160,7 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
         try:
             heal = parse_heal_profile(data.get("heal"), max_targets)
             creates_item = parse_item_creation(data.get("creates_item"))
+            save_condition = parse_save_condition(data["save_condition"]) if "save_condition" in data else None
         except ValueError as e:
             raise ValueError(f"Malformed spells row {spell_id!r}: {e}") from e
         if data["healing"] and heal is None:
@@ -184,6 +188,7 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
             sound_id=sound_id,
             combat_damage=parse_profile(data.get("combat_damage")),
             heal=heal,
+            save_condition=save_condition,
             creates_item=creates_item,
             wild_shape=parse_wild_shape_profile(spell_id, data),
         )

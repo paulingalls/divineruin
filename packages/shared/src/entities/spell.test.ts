@@ -24,9 +24,11 @@ const SPELL_FIELDS = {
   verbal: true,
   hostile: true,
   wild_shape: true,
+  save_condition: true,
 } as const satisfies Record<keyof Spell, true>;
 const readerSpell: Required<Spell> = {
   ...arcaneBolt,
+  save_condition: { save: null, condition: "stunned", resave: "constitution" },
   wild_shape: { stamina_cost: 3, forms: [{ creature_id: "grey_wolf", min_level: 5 }] },
 };
 
