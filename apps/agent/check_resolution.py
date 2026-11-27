@@ -76,6 +76,8 @@ class SkillCheckResult:
 
 @dataclass(frozen=True)
 class D20CheckCore:
+    """The one success rule (nat 20 succeeds, nat 1 fails, else total >= DC) so call sites cannot drift."""
+
     roll: int
     total: int
     success: bool
@@ -354,6 +356,7 @@ def _resolve_skill_check_impl(
     )
     flat_mod, advantage, disadvantage, _auto_fail = _apply_condition_modifiers(effects, scopes)
     disadvantage = disadvantage or skill_lower in player_data.get("scene_disadvantage_skills", ())
+    # An auto-failed check rolls nothing, so the bonus die is not spent when it cannot help.
     if auto_fail:
         bonus, consumed = 0, ()
     else:

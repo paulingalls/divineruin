@@ -42,8 +42,8 @@ async def break_concentration_on_damage(
     the primary.
 
     The DC scales with damage (concentration.check_concentration); the save is the canonical
-    proficiency-aware CON save (resolver.resolve_saving_throw); the keep/break decision and the
-    incapacitation auto-fail are the engine's (concentration.concentration_holds). Persists the
+    proficiency-aware CON save (resolver.resolve_saving_throw); the save's own verdict decides
+    keep or break (natural 1 fails, natural 20 holds), and incapacitation auto-fails without a roll. Persists the
     end via concentration_mutations.update_player_concentration(damaged_player_id, None) and clears
     the in-memory member state, mirroring how cast_spell sets/ends concentration.
 
