@@ -372,3 +372,9 @@ test("Valdris's guardian has the registered Witness Shield clause", () => {
     ?.layer_4_synergy_matrix.guardian;
   expect<unknown>(guardian).toEqual(corpus.witness_shield);
 });
+
+test("Orenthel's Rally at Dawn grants additional temporary HP", () => {
+  const marshal = validateGods(catalog).find((god) => god.god_id === "orenthel")
+    ?.layer_4_synergy_matrix.marshal;
+  expect<unknown>(marshal).toEqual(corpus.rally_at_dawn);
+});

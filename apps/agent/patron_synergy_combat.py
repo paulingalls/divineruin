@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 OATH_OF_VALOR = "kaelen_oath_of_valor"
 SECOND_BEFORE = "zhael_second_before"
+ORENTHEL_MARSHAL_RALLY = "orenthel_marshal_rally"
 ORENTHEL_GUARDIAN_WARD = "orenthel_guardian_ward"
 ORENTHEL_UNDEAD_WRATH = "orenthel_undead_wrath"
 MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
@@ -227,6 +228,10 @@ def spend_tidal_step(state: CombatState, actor_id: str) -> dict[str, str | bool]
         "nythera_step_spent": True,
         "dm_cue": "Nythera's Unmoored Step is spent for this encounter.",
     }
+
+
+def marshal_rally_bonus(player: dict) -> int:
+    return int(has_engine_synergy(player, ORENTHEL_MARSHAL_RALLY))
 
 
 async def grant_marshal_rally(

@@ -1,4 +1,5 @@
 from acceptance.test_common_bond_crafting import SCENARIOS as common_bond_crafting
+from acceptance.test_marshal_rally import SCENARIOS as rally_at_dawn
 from acceptance.test_nythera_unseen_coast import SCENARIOS as saltwind_casting
 from acceptance.test_orenthel_guardian_ward import SCENARIOS as guardian_ward
 from acceptance.test_orenthel_undead_wrath import SCENARIOS as dawnward_strike
@@ -95,6 +96,7 @@ ENGINE_SCENARIOS = {
     **promised_hour,
     **marshal_death_save,
     **rally,
+    **rally_at_dawn,
     **foretold_words,
     **war_songs,
     **appointed_mercy,

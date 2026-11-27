@@ -53,6 +53,7 @@ SHADOW_STEP = "rogue_shadow_step"
 SECOND_WIND = "warrior_second_wind"
 RALLYING_SHOUT = "warrior_rallying_shout"
 
+MARSHAL_RALLY = "marshal_rally"
 REPOSITION = "marshal_reposition"
 REPOSITION_FEET = 15
 
@@ -97,6 +98,7 @@ def combat_ability(ability: abilities.Ability) -> bool:
             SMOKE_BOMB,
             SHADOW_STEP,
             EXPLOIT_WEAKNESS,
+            MARSHAL_RALLY,
             *SINGLE_TARGET_WEAPON_ABILITIES,
             *MULTI_TARGET_WEAPON_ABILITIES,
         )

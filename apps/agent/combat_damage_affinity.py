@@ -148,7 +148,7 @@ def apply(target, action, result, *, state=None):
             result,
             changes.pop("damage"),
             target.hp_current,
-            temporary=temp_hp.player_pool(target),
+            temporary=temp_hp.combat_pool(target),
             beast=temp_hp.beast_pool(target),
             hp_floor=damage_hp_floor(target.conditions),
             **changes,
