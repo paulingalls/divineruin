@@ -42,17 +42,25 @@ class ResonanceTrack:
 
 @dataclass
 class ConcentrationState:
-    """Per-caster spell concentration carried in the session (story-002, M3.4).
-
-    A caster sustains at most ONE concentration spell at a time; ``spell_id`` is that spell
-    (None = not concentrating). The cast keystone (story-006) sets it on a concentration cast
-    and ends any prior one (single-concentration enforcement), persisted via
-    db_mutations_concentration. Like ResonanceTrack, only the authoritative id
-    is stored — ``is_active`` is always derived, no cached flag to drift. Defaults to inactive.
-    """
-
     spell_id: str | None = None
+    elapsed_seconds: int = 0
+    combat_id: str | None = None
+    started_round: int | None = None
 
     @property
     def is_active(self) -> bool:
         return self.spell_id is not None
+
+    @classmethod
+    def from_record(cls, record: dict | None) -> ConcentrationState:
+        if record is None or record["spell_id"] is None:
+            return cls()
+        elapsed = record["elapsed_seconds"]
+        if type(elapsed) is not int or elapsed < 0:
+            raise ValueError("Invalid concentration elapsed_seconds")
+        combat_id, started_round = record.get("combat_id"), record.get("started_round")
+        if (combat_id, started_round) != (None, None) and (
+            not isinstance(combat_id, str) or type(started_round) is not int or started_round < 1
+        ):
+            raise ValueError("Invalid concentration combat origin")
+        return cls(record["spell_id"], elapsed, combat_id, started_round)

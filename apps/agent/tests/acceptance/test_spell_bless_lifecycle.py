@@ -207,12 +207,8 @@ async def test_combat_reconcile_keeps_only_the_surviving_caster(unravel):
         assert [c["sustaining_caster_ids"] for c in live.conditions if c["type"] == "blessed"] == [expected]
     assert (await saved_player(first))["conditions"][0]["sustaining_caster_ids"] == [first]
     await fight.invoke(game_tools(fight.session, end_combat), "end_combat", outcome="fled")
-    assert (await saved_player(first))["conditions"][0]["sustaining_caster_ids"] == [second]
+    assert (await saved_player(first))["conditions"] == []
+    assert (await saved_player(second))["concentration"]["spell_id"] is None
 
     control = await ooc_player()
-    plain = await save_total(control)
-    assert await save_total(first) == plain + 3
-    await character_spells.record_learned(second, DETECT, "discovery", conn=fight.pool)
-    await fight.invoke(game_tools(fight.session, activate), "activate", actor=second, id=DETECT)
-    assert (await saved_player(first))["conditions"] == []
-    assert await save_total(first) == plain
+    assert await save_total(first) == await save_total(control)

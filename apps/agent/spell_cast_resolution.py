@@ -31,9 +31,9 @@ import veythar_wellspring
 import ward_resolution
 from combat_terrain import resolve_terrain
 from party_state import PartyMember
-from session_data import CombatState, SessionData
+from session_data import CombatState, ConcentrationState, SessionData
 from spell_cast_effects import _finish_cast
-from spell_cast_result import _UNCHANGED, CastResult
+from spell_cast_result import CastResult
 from spell_cast_validation import _prepare_cast
 
 
@@ -180,7 +180,7 @@ async def _resolve_cast(
         await resonance_mutations_mod.update_player_resonance(player_id, effective_resonance, conn=conn)
         combat_hollow_resonance.stage_total(combat_state, player_id, effective_resonance)
 
-    concentration_spell_id: object = _UNCHANGED
+    concentration_update: ConcentrationState | None = None
     if spell.concentration:
         if revalidate_actor:
             session.validate_acting_player(player_id)
@@ -195,8 +195,12 @@ async def _resolve_cast(
                 concentration_break.remove_owned_spell_conditions(
                     combat_state, prior_spell_id, player_id, applied=prior.applies_condition
                 )
-        await concentration_mutations_mod.update_player_concentration(player_id, spell_id, conn=conn)
-        concentration_spell_id = spell_id
+        concentration_update = ConcentrationState(spell_id)
+        active_combat = combat_state or session.combat_state
+        if active_combat is not None:
+            concentration_update.combat_id = active_combat.combat_id
+            concentration_update.started_round = active_combat.round_number
+        await concentration_mutations_mod.update_player_concentration(player_id, concentration_update, conn=conn)
 
     result = await _finish_cast(
         session=session,
@@ -210,7 +214,7 @@ async def _resolve_cast(
         generated=generated,
         effective_resonance=effective_resonance,
         new_resonance=new_resonance,
-        concentration_spell_id=concentration_spell_id,
+        concentration_update=concentration_update,
         ward_active=ward_active,
         patron=patron,
         race=race,

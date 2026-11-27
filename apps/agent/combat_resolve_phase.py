@@ -371,6 +371,7 @@ async def _resolve_phase_locked(
             else combat_wrap.next_envelope(state)
         ),
         "death_saves_due": wrap.death_saves_due if wrap else [],
+        **({"concentration_expired": wrap.concentration_expired} if wrap and wrap.concentration_expired else {}),
         **({"rally_saves": wrap.rally_saves} if wrap and wrap.rally_saves else {}),
         **({"oath_saves": wrap.oath_saves} if wrap and wrap.oath_saves else {}),
         "threshold_walk_returns": wrap.threshold_walk_returns if wrap else [],

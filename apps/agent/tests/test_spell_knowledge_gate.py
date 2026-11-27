@@ -190,7 +190,7 @@ async def test_combat_unknown_spell_refuses_before_earlier_ally_hp_write():
         return_value=spell_casting.CastResult(
             packet={"effect": "fire"},
             new_resonance=None,
-            concentration_spell_id=spell_casting._UNCHANGED,
+            concentration_update=None,
             generated=0,
             events=[],
         )

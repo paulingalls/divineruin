@@ -38,7 +38,7 @@ import patron_gift_tools
 import player_session
 import racial_resonance
 from favor_rules import apply_favor_delta, neglect_decay
-from session_data import SessionData
+from session_data import ConcentrationState, SessionData
 from veil_ward import WardScope
 
 
@@ -175,5 +175,5 @@ async def hydrate_session_state(
     # The HUD mirror, not an authority: None for an unwarded scope, absence rather than a
     # default-inactive row. The cast path resolves its own ward from the DB (ward_resolution).
     session.location_ward = ward
-    session.concentration.spell_id = conc["spell_id"]
+    session.concentration = ConcentrationState.from_record(conc)
     await apply_session_favor_decay(session, player_id, player, now=now, conn=conn)

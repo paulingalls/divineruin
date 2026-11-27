@@ -18,10 +18,12 @@ import logging
 import random
 from functools import partial
 
+import asyncpg
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import concentration_lifetime
 import condition_voice_rules
 import conditions
 import db
@@ -37,6 +39,7 @@ import still_charm
 import still_scene
 import travel as travel_engine
 from action_sound_content import publish_action_sound
+from caster_state import ConcentrationState
 from combat_terrain import skill_natural_terrain
 from condition_consume import persist_combat_consumption, serialize_combat_check
 from db_errors import db_tool, validated_player_conditions
@@ -175,6 +178,7 @@ async def _travel_impl(
             consumed_state = await write_conditions(
                 scope.party_ids, result, kept.consumed_conditions, conn=conn, players=players
             )
+            concentration_updates, expired = await _settle_travel_time(session, players, result, conn=conn)
             apply_arrival_mirrors = None
             pending = []
             if arrived:
@@ -211,6 +215,7 @@ async def _travel_impl(
                 )
 
             async def flush():
+                concentration_lifetime.adopt(session, concentration_updates)
                 if consumed_state is not None:
                     session.combat_state = consumed_state
                 arrival_events = apply_arrival_mirrors() if apply_arrival_mirrors is not None else None
@@ -236,6 +241,7 @@ async def _travel_impl(
                     kept,
                     result,
                     updates,
+                    concentration_expired=expired,
                     warning=warning,
                     queries=queries,
                 )
@@ -256,6 +262,8 @@ async def _travel_impl(
         for member_id in member_ids:
             await travel_mutations.add_travel_hours(member_id, hours, conn=conn)
         consumed_state = await write_conditions(member_ids, result, consumed, conn=conn)
+        players = await queries.get_players_for_update(list(member_ids), conn=conn)
+        concentration_updates, expired = await _settle_travel_time(session, players, result, conn=conn)
         if arrived:
             apply_arrival_mirrors = await write_arrival(
                 session,
@@ -278,6 +286,7 @@ async def _travel_impl(
                 travel_mutations=travel_mutations,
                 conn=conn,
             )
+    concentration_lifetime.adopt(session, concentration_updates)
     if consumed_state is not None:
         session.combat_state = consumed_state
     quest_updates = []
@@ -300,10 +309,19 @@ async def _travel_impl(
             roll,
             result,
             quest_updates,
+            concentration_expired=expired,
             warning=warning,
             queries=queries,
         )
     )
+
+
+async def _settle_travel_time(
+    session: SessionData, players: dict[str, dict], result: travel_engine.TravelResult, *, conn: asyncpg.Connection
+) -> tuple[dict[str, ConcentrationState], list[dict[str, str]]]:
+    if session.in_combat:
+        return {}, []
+    return await concentration_lifetime.settle_time(session, players, int(result.time_cost * 3600), conn=conn)
 
 
 def resolve_segment(roll, mode, navigation, hours, forced_march):
@@ -362,7 +380,17 @@ async def _write_lost_travel(member_ids, destination_id, mode, result, *, travel
 
 
 async def _publish_travel_result(
-    session, destination, destination_id, mode_lower, roll, result, quest_updates, *, warning, queries
+    session,
+    destination,
+    destination_id,
+    mode_lower,
+    roll,
+    result,
+    quest_updates,
+    *,
+    concentration_expired,
+    warning,
+    queries,
 ):
     arrived = result.success and not result.wrong_area
     if roll is not None:
@@ -396,6 +424,7 @@ async def _publish_travel_result(
         "foraging_available": result.foraging_available,
         "wrong_area": result.wrong_area,
         **warning,
+        **({"concentration_expired": concentration_expired} if concentration_expired else {}),
     }
     if roll is not None:
         payload.update({"roll": roll.roll, "total": roll.total, "dc": result.dc, "margin": result.margin})

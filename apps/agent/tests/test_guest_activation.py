@@ -4,6 +4,7 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
+from caster_state import ConcentrationState
 from combat_participant import CombatParticipant
 from combat_state import CombatState
 from draethar_inner_fire import _inner_fire_impl
@@ -88,7 +89,9 @@ async def test_guest_spell_debits_only_guest_and_syncs_guest_state():
     assert queries.get_players_for_update.call_args.args[0] == ["player_2"]
     persistence.update_player_resources.assert_awaited_once_with("player_2", focus=7, conn=conn)
     assert resonance.update_player_resonance.call_args.args[0] == "player_2"
-    concentration.update_player_concentration.assert_awaited_once_with("player_2", spell.id, conn=conn)
+    concentration.update_player_concentration.assert_awaited_once_with(
+        "player_2", ConcentrationState(spell.id), conn=conn
+    )
     assert guest.resonance.current != 2 and guest.concentration.spell_id == spell.id
     assert host.resonance.current == 11 and host.concentration.spell_id == "host_spell"
     assert packet["effect"] == spell.mechanics
@@ -475,5 +478,7 @@ async def test_in_combat_cast_for_host_on_guest_turn_is_not_speaker_gated():
         )
     persistence.update_player_resources.assert_awaited_once_with("player_1", focus=7, conn=conn)
     assert resonance.update_player_resonance.call_args.args[0] == "player_1"
-    concentration.update_player_concentration.assert_awaited_once_with("player_1", spell.id, conn=conn)
+    concentration.update_player_concentration.assert_awaited_once_with(
+        "player_1", ConcentrationState(spell.id), conn=conn
+    )
     assert result.packet["effect"] == spell.mechanics

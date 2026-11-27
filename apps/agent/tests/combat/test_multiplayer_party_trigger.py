@@ -52,7 +52,7 @@ def _join_mods(row):
     res_mod = MagicMock()
     res_mod.read_player_resonance = AsyncMock(return_value={"current": 6, "flickering_bonus": 1, "state": "flickering"})
     conc_mod = MagicMock()
-    conc_mod.read_player_concentration = AsyncMock(return_value={"spell_id": "spell_y"})
+    conc_mod.read_player_concentration = AsyncMock(return_value={"spell_id": "spell_y", "elapsed_seconds": 90})
     return queries, res_mod, conc_mod
 
 

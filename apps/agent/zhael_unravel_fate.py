@@ -18,6 +18,7 @@ import db_queries
 import event_types as E
 import patron_ability_tools
 import reaction_spend
+from caster_state import ConcentrationState
 from combat_down import sync_companion_consciousness
 from combat_events import isolated_publish
 from combat_phase import combat_outcome
@@ -273,7 +274,8 @@ async def activate(session: SessionData) -> str:
                 for pid, member in members.items()
             }
             concentration = {
-                pid: (player.get("concentration") or {}).get("spell_id") for pid, player in restored_players.items()
+                pid: ConcentrationState.from_record(player.get("concentration"))
+                for pid, player in restored_players.items()
             }
             tracks = {
                 pid: await db_mutations_resonance.read_player_resonance(pid, conn=conn)
@@ -287,7 +289,7 @@ async def activate(session: SessionData) -> str:
             member.resonance.current = track["current"]
             member.resonance.flickering_bonus = track["flickering_bonus"]
             if pid in roster:
-                member.concentration.spell_id = concentration[pid]
+                member.concentration = concentration[pid]
                 for key, value in flags[pid].items():
                     setattr(member, key, value)
         sync_companion_consciousness(session, restored)

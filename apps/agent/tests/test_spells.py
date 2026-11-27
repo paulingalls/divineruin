@@ -61,6 +61,7 @@ _BLESS_ROW = {
     "resonance_by_source": {"divine": 1},
     "audio_cue": "",
     "concentration": True,
+    "concentration_duration_seconds": 60,
     "sound_id": "spell_radiant",
 }
 

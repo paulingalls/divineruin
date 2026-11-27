@@ -113,9 +113,9 @@ async def test_replacement_frees_only_the_old_casters_target(spell_fight, replac
     if replacement == HOLD:
         assert receipt(packets, player)["condition_outcome"] == "resisted"
     after = await saved_player(player)
-    assert after["concentration"] == {"spell_id": replacement}
+    assert after["concentration"]["spell_id"] == replacement
     assert after["focus"]["current"] == before["focus"]["current"] - (3 if replacement == HOLD else 1)
-    assert (await saved_player(other))["concentration"] == {"spell_id": HOLD}
+    assert (await saved_player(other))["concentration"]["spell_id"] == HOLD
 
 
 async def test_activate_cannot_replace_a_live_combat_hold(spell_fight):
@@ -124,7 +124,13 @@ async def test_activate_cannot_replace_a_live_combat_hold(spell_fight):
     await set_foe(ctx)
     # The same activation in combat is legal when the mage holds no hostile condition.
     await _activate_impl(ctx, DETECT)
-    assert (await saved_player(player))["concentration"] == {"spell_id": DETECT}
+    state = ctx.userdata.combat_state
+    assert (await saved_player(player))["concentration"] == {
+        "spell_id": DETECT,
+        "combat_id": state.combat_id,
+        "started_round": state.round_number,
+        "elapsed_seconds": 0,
+    }
     await _activate_impl(ctx, DETECT)
     await play(ctx, cast_spell(player, HOLD))
     await _activate_impl(ctx, "arcane_prestidigitation")
@@ -135,12 +141,11 @@ async def test_activate_cannot_replace_a_live_combat_hold(spell_fight):
     assert participant(saved, "foe").conditions == [instance("paralyzed", HOLD, player, "wis")]
     assert await saved_player(player) == before
 
-    # Ending combat drops the combat row while concentration remains on the character.
     await combat_end.end_combat(ctx, "fled")
     assert not ctx.userdata.in_combat
-    assert (await saved_player(player))["concentration"] == {"spell_id": HOLD}
+    assert (await saved_player(player))["concentration"]["spell_id"] is None
     await _activate_impl(ctx, DETECT)
-    assert (await saved_player(player))["concentration"] == {"spell_id": DETECT}
+    assert (await saved_player(player))["concentration"]["spell_id"] == DETECT
 
 
 @pytest.mark.parametrize("cause", ["damage_fail", "damage_pass", "incapacitation"])
@@ -178,8 +183,8 @@ async def test_break_keeps_other_casters_hold_and_own_independent_stun(spell_fig
     assert participant(saved, "foe").conditions == (ours if keeps else [])
     assert participant(saved, "other_foe").conditions == theirs
     assert participant(saved, "stunned_foe").conditions == stunned
-    assert (await saved_player(player)).get("concentration") == {"spell_id": HOLD if keeps else None}
-    assert (await saved_player(other))["concentration"] == {"spell_id": HOLD}
+    assert (await saved_player(player))["concentration"]["spell_id"] == (HOLD if keeps else None)
+    assert (await saved_player(other))["concentration"]["spell_id"] == HOLD
 
 
 async def test_weapon_stun_refresh_discards_spell_clearing_save(spell_fight):
