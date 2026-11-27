@@ -62,11 +62,33 @@ def require_dismissal(actor: CombatParticipant) -> WildShapeState:
 
 def dismiss(actor: CombatParticipant) -> dict[str, str]:
     form = require_dismissal(actor)
+    _restore(actor, form)
+    return {"actor_id": actor.id, "form_id": form["form_id"], "reason": "dismissed"}
+
+
+def _restore(actor: CombatParticipant, form: WildShapeState) -> None:
     actor.ac = form["original_ac"]
     actor.action_pool = form["original_action_pool"]
     actor.deferred_effects = form["original_deferred_effects"]
     actor.wild_shape = None
-    return {"actor_id": actor.id, "form_id": form["form_id"], "reason": "dismissed"}
+
+
+def land_damage(actor: CombatParticipant, impact: temp_hp.Damage) -> list[dict[str, str | int]]:
+    if not impact.beast_absorbed:
+        return []
+    form = require_dismissal(actor)
+    form["hp_current"] = impact.beast
+    if impact.beast:
+        return []
+    _restore(actor, form)
+    return [
+        {
+            "actor_id": actor.id,
+            "form_id": form["form_id"],
+            "reason": "beast_hp_depleted",
+            "carryover_damage": impact.carryover,
+        }
+    ]
 
 
 def activation_refusal(*, in_combat: bool) -> str:
