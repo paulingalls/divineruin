@@ -85,30 +85,27 @@ class CoverageMap:
             )
 
     def select(self, source, inventory, reaching, required):
-        functions, mapped, fallback = self.family(source, inventory, reaching, required)
-        return greedy_cover(inventory, functions, mapped, required) | ({fallback} if fallback else set())
+        functions, mapped, fallbacks = self.family(source, inventory, reaching, required)
+        return greedy_cover(inventory, functions, mapped, required) | fallbacks
 
     def audit(self, source, family, inventory, reaching, selected, required):
-        functions, _, fallback = self.family(source, inventory, reaching, required)
-        audit_cover(source, family, functions, selected, required, fallback)
+        functions, _, fallbacks = self.family(source, inventory, reaching, required)
+        audit_cover(source, family, functions, selected, required, fallbacks)
 
     def family(self, source, inventory, reaching, required):
-        fallback_candidates = ordinary_candidates(inventory, source, reaching)
         acceptance = {task for task in reaching if task.startswith(TASK_PREFIX)}
-        if not acceptance or source not in self.sources:
-            return (
-                {},
-                set(),
-                first_reader(inventory, fallback_candidates) if not required else None,
-            )
+        if acceptance and source not in self.sources:
+            return {}, set(), acceptance
 
         mapped = acceptance & self.tasks
-        missing = acceptance - self.tasks
-        functions = {name: readers & mapped for name, readers in self.sources[source].items() if readers & mapped}
-        fallback = first_reader(inventory, missing) if missing else None
-        if not functions and not required and fallback is None:
-            fallback = first_reader(inventory, fallback_candidates)
-        return functions, mapped, fallback
+        functions = {
+            name: readers & mapped for name, readers in self.sources.get(source, {}).items() if readers & mapped
+        }
+        fallbacks = acceptance - self.tasks
+        if not functions and not required and not fallbacks:
+            candidates = ordinary_candidates(inventory, source, reaching)
+            fallbacks.add(first_reader(inventory, candidates))
+        return functions, mapped, fallbacks
 
 
 def load_map(path=MAP):
@@ -157,11 +154,11 @@ def greedy_cover(inventory, functions, candidates, required):
     return selected
 
 
-def audit_cover(source, family, functions, selected, required, fallback):
-    if fallback is not None and fallback not in selected:
-        raise ValueError(f"{source}: family {family}: missing fallback representative {fallback}")
+def audit_cover(source, family, functions, selected, required, fallbacks):
+    if missing_fallbacks := fallbacks - selected:
+        raise ValueError(f"{source}: family {family}: missing fallback readers {sorted(missing_fallbacks)}")
     missing = functions.keys() - covers(functions, selected)
-    additions = selected - required - {fallback}
+    additions = selected - required - fallbacks
     if missing or len(additions) > COVER_BUDGET:
         raise ValueError(
             f"{source}: family {family}: coverage cap {COVER_BUDGET}, needs {len(additions)}, "
