@@ -17,7 +17,6 @@ from acceptance.seeds import seed_player_with_pools
 from acceptance.test_spell_new_conditions import equip
 from combat.test_spell_damage_lands import saved_player
 from combat.test_spell_damage_lands import spell_fight as spell_fight
-from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_mock_room
 from test_aelora_gift import _live_party
 from voice_condition_fixtures import participant
@@ -105,10 +104,9 @@ async def leave(sd, caster, room_io=None):
         await run_guest_departure(sd, caster, SimpleNamespace(room_io=room_io))
 
 
-async def test_combat_departure_releases_carried_bless_and_blocks_its_rewind(unravel):
+async def blessed_fight_without_caster(fight):
     import character_spells
 
-    fight = unravel
     ally, caster = fight.ids
     sd = fight.session
     baseline = await save_total(ally)
@@ -119,14 +117,35 @@ async def test_combat_departure_releases_carried_bless_and_blocks_its_rewind(unr
     await fight.finish_round(2)
     assert participant(sd.combat_state, ally).conditions[0]["sustaining_caster_ids"] == [caster]
     assert len(sd.combat_state.round_checkpoints) == 2
-
     await leave(sd, caster)
+    return baseline
+
+
+async def test_combat_departure_releases_carried_bless_and_keeps_checkpoints(unravel):
+    fight = unravel
+    ally, caster = fight.ids
+    sd = fight.session
+    baseline = await blessed_fight_without_caster(fight)
     await fight.reload()
     assert all(c["type"] != "blessed" for c in participant(sd.combat_state, ally).conditions)
     assert (await saved_player(caster))["concentration"]["spell_id"] is None
     assert await save_total(ally) == baseline
-    with pytest.raises(ToolError, match="no restorable checkpoint"):
-        await fight.call("activate", id=GIFT)
+    # Enemy pockets, timed oaths and Unravel Fate still read the round history.
+    assert [c["round_number"] for c in sd.combat_state.round_checkpoints] == [1, 2]
+
+
+async def test_unravel_after_departure_does_not_restore_the_departed_bless(unravel):
+    fight = unravel
+    ally, caster = fight.ids
+    sd = fight.session
+    baseline = await blessed_fight_without_caster(fight)
+    await fight.call("activate", id=GIFT)
+    assert sd.combat_state.round_number == 1
+    assert all(c["type"] != "blessed" for c in participant(sd.combat_state, ally).conditions)
+    assert (await saved_player(caster))["concentration"]["spell_id"] is None
+    await fight.reload()
+    assert all(c["type"] != "blessed" for c in participant(sd.combat_state, ally).conditions)
+    assert await save_total(ally) == baseline
 
 
 def swing(packets, actor):
