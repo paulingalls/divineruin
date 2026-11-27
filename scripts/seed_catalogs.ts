@@ -11,7 +11,11 @@ import { parseMentorVariantRow } from "../apps/server/src/mentor_variants.ts";
 import { parseRoleArchetypeRow } from "../apps/server/src/role_archetypes.ts";
 import { parseMilestoneRow } from "../apps/server/src/milestones.ts";
 import { parsePricingRow } from "../apps/server/src/pricing.ts";
-import { parseInventoryPools, validateNpcPoolBindings } from "../apps/server/src/sale_pricing.ts";
+import {
+  merchantGoldAllocation,
+  parseInventoryPools,
+  validateNpcPoolBindings,
+} from "../apps/server/src/sale_pricing.ts";
 
 import { asRecord } from "../apps/server/src/parse-helpers.ts";
 
@@ -48,7 +52,6 @@ const parsers: [string, (id: string, data: unknown) => unknown][] = [
   ["mentor_variants", parseMentorVariantRow],
   ["role_archetypes", parseRoleArchetypeRow],
   ["archetype_milestones", parseMilestoneRow],
-  ["pricing", (_id, data) => parsePricingRow(data)],
 ];
 for (const [table, parse] of parsers) {
   for (const { id, data } of rows(table)) parse(id, data);
@@ -56,3 +59,15 @@ for (const [table, parse] of parsers) {
 
 const pools = parseInventoryPools(rows("inventory_pools"), rows("items"));
 validateNpcPoolBindings(rows("npcs"), pools);
+
+const economy = rows("pricing").find(({ id }) => id === "economy");
+if (!economy) throw new Error("pricing: no 'economy' row");
+const pricing = parsePricingRow(economy.data);
+const locations = new Map(rows("locations").map(({ id, data }) => [id, data]));
+for (const { id, data } of rows("npcs")) {
+  const binding = asRecord(data, `npcs[${id}]`).inventory_pool;
+  if (typeof binding === "string") {
+    const pool = pools.get(binding)!;
+    merchantGoldAllocation(pool, locations.get(pool.location), pricing);
+  }
+}

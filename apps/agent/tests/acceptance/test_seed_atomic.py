@@ -350,6 +350,7 @@ def test_seed_rejects_unknown_wild_shape_creature(fresh_migrated_db, tmp_path, m
     [
         ("inventory_pools.json", "grimjaw_weapons", "buys", ["unknown_item_type"]),
         ("npcs.json", "grimjaw_blacksmith", "inventory_pool", "missing_pool"),
+        ("pricing.json", "economy", "merchant_gold_sp", "invalid"),
     ],
 )
 def test_production_reseed_rejects_sale_catalog(
