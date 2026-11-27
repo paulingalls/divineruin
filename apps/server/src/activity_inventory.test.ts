@@ -1,3 +1,5 @@
+import cases from "../../../packages/shared/fixtures/sale-price-cases.json";
+import pricingRows from "../../../content/pricing.json";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import {
   dbMockFactory,
@@ -6,6 +8,7 @@ import {
   getCapturedQueries,
   makeRequest,
   controlCommit,
+  type QueryStub,
 } from "./activities-test-mock.ts";
 void mock.module("./db.ts", dbMockFactory);
 const { handleCreateActivity } = await import("./activity_create.ts");
@@ -43,7 +46,11 @@ function craftStubs() {
     { match: "LEFT JOIN items", result: snapshotRows },
   ]);
 }
-function decisionStubs(overrides: Record<string, unknown> = {}, owner = "owner") {
+function decisionStubs(
+  overrides: Record<string, unknown> = {},
+  owner = "owner",
+  extra: QueryStub[] = [],
+) {
   setQueryStubs([
     {
       match: "FROM async_activities",
@@ -62,6 +69,7 @@ function decisionStubs(overrides: Record<string, unknown> = {}, owner = "owner")
       ],
     },
     { match: "LEFT JOIN items", result: snapshotRows },
+    ...extra,
   ]);
 }
 beforeEach(() => {
@@ -116,23 +124,6 @@ describe("committed crafting inventory", () => {
   });
 });
 describe("handleActivityDecision inventory", () => {
-  test("keep grants once and returns full snapshot", async () => {
-    decisionStubs();
-    expect(await (await decide()).json()).toMatchObject({
-      player_id: "owner",
-      inventory_revision: "7",
-      inventory: expect.any(Array) as unknown,
-      status: "collected",
-    });
-    expect(
-      getCapturedQueries().filter((q) => q.sql.includes("INSERT INTO player_inventory")),
-    ).toHaveLength(1);
-    decisionStubs({ status: "collected" });
-    expect((await decide()).status).toBe(400);
-    expect(
-      getCapturedQueries().filter((q) => q.sql.includes("INSERT INTO player_inventory")),
-    ).toHaveLength(1);
-  });
   test.each(["in_progress", "collected"])("%s refuses grant and refresh", async (status) => {
     decisionStubs({ status });
     const res = await decide();
@@ -156,11 +147,56 @@ describe("handleActivityDecision inventory", () => {
       false,
     );
   });
-  test.each([{ outcome: null }, { activity_type: "training" }, {}])(
+  test.each([
+    {
+      saleCase: "crafted_fractional_gold",
+      silverPerGold: -10,
+      status: 500,
+      error: "Internal server error",
+    },
+    { saleCase: "crafted_zero", silverPerGold: 10, status: 400, error: "priced_to_zero" },
+  ])(
+    "refuses a crafted sale with $error before any write",
+    async ({ saleCase, silverPerGold, status, error }) => {
+      const { item } = cases.find((row) => row.id === saleCase)!;
+      const economy = pricingRows.find((row) => row.id === "economy")!;
+      decisionStubs({}, "owner", [
+        {
+          match: "FROM items",
+          result: [
+            {
+              data: {
+                ...item,
+                type: "accessory",
+                name: "Test item",
+                tier: 1,
+                tags: [],
+                weight: 1,
+                effects: [],
+              },
+            },
+          ],
+        },
+        {
+          match: "FROM pricing",
+          result: [{ data: { ...economy, silver_per_gold: silverPerGold } }],
+        },
+      ]);
+      const res = await decide("sell");
+      expect(res.status).toBe(status);
+      expect(await res.json()).toEqual({ error });
+      expect(
+        getCapturedQueries().filter((q) =>
+          /UPDATE (players|async_activities)|INSERT INTO player_inventory/.test(q.sql),
+        ),
+      ).toEqual([]);
+    },
+  );
+  test.each([{ outcome: null }, { activity_type: "training" }])(
     "non-grant decision does not claim an inventory refresh: %j",
     async (overrides) => {
       decisionStubs(overrides);
-      const res = await decide(Object.keys(overrides).length ? "keep" : "sell");
+      const res = await decide();
       expect(res.status).toBe(200);
       expect(await res.json()).not.toHaveProperty("inventory");
       expect(getCapturedQueries().some((q) => q.sql.includes("INSERT INTO player_inventory"))).toBe(

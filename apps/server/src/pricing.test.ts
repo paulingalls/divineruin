@@ -50,11 +50,12 @@ describe("parsePricingRow (fail-loud)", () => {
       (key) => `sale_disposition_multipliers.${key}`,
     ),
   ];
-  test.each(
-    saleFields.flatMap((field) =>
+  test.each([
+    ...saleFields.flatMap((field) =>
       [undefined, 0, -1, true, "0.5", Infinity, 0.12345].map((value) => [field, value] as const),
     ),
-  )("refuses sale field %s = %s", (field, value) => {
+    ...[-10, 0, Infinity, "10"].map((value) => ["silver_per_gold", value] as const),
+  ])("refuses pricing field %s = %s", (field, value) => {
     const [key, disposition] = field.split(".");
     const row = { ...BASE, ...SALE };
     if (disposition) {

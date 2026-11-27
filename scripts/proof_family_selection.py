@@ -17,6 +17,8 @@ SEED_REPRESENTATIVES = {
     "agent-acceptance:test_seed_content_cache",
 }
 
+E2E_PYTHON = ("e2e/fixtures/inventory-snapshot.py", "e2e/fixtures/crafted-sale.py")
+
 ROOTS = ("apps/agent", "apps/agent/tests", "scripts")
 SYNTHETIC = (
     "creation_tools",
@@ -247,28 +249,30 @@ def task_inventory(acceptance, e2e, graph, families):
             roots += [str(p / "conftest.py") for p in Path(entry).parents if (p / "conftest.py").is_file()]
             full = preferred | set().union(*(closure(p) for p in roots))
         elif task == "e2e:chromium":
-            entry = "e2e/fixtures/inventory-snapshot.py"
-            preferred = full = set(closure(entry))
+            entry = E2E_PYTHON[0]
+            preferred = full = set().union(*(closure(path) for path in E2E_PYTHON))
         else:
             entry = paths[0]
             preferred = full = set()
-        if entry in graph:
-            if entry not in behavioral:
-                behavioral[entry] = behavioral_closure(entry, graph, load_roots)
-            for module in behavioral[entry]:
+        entries = set(E2E_PYTHON if task == "e2e:chromium" else (entry,)) & graph.keys()
+        for root in entries:
+            if root not in behavioral:
+                behavioral[root] = behavioral_closure(root, graph, load_roots)
+            for module in behavioral[root]:
                 if module not in literals:
                     literals[module] = content_literals(module, content)
-        modules = behavioral.get(entry, set())
-        helpers = {p for p in modules - {entry} if p.startswith("apps/agent/tests/")}
+        modules = set().union(*(behavioral[root] for root in entries))
+        helpers = {p for p in modules - entries if p.startswith("apps/agent/tests/")}
         inventory[task] = {
             "content_closure": modules,
-            "content_direct": literals.get(entry, set()) | (read_sql(entry) if entry in graph else set()),
+            "content_direct": set().union(*(literals[root] | read_sql(root) for root in entries)),
             "content_helper_reads": set().union(*(literals[p] | read_sql(p) for p in helpers)),
             "content_literals": set().union(*(literals[p] for p in modules)),
             "path": entry,
+            "named_roots": ("e2e/fixtures/crafted-sale.ts",) if task == "e2e:chromium" else (),
             "family": memberships.pop(),
             "preferred": preferred,
-            "direct": (set(graph[entry]["direct"]) - {entry}) | load_roots(entry) if entry in graph else set(),
+            "direct": set().union(*((set(graph[root]["direct"]) - {root}) | load_roots(root) for root in entries)),
             "closure": full,
         }
     if not inventory or not acceptance or any(not inventory[t]["closure"] for t in acceptance):
