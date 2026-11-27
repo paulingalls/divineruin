@@ -208,6 +208,7 @@ async def end_concentration(
     spells_mod=spells,
     updates: dict[str, ConcentrationState] | None = None,
     record: ConcentrationState | None = None,
+    release_combat_rows: bool = False,
 ) -> str | None:
     member = session.member_state(player_id)
     spell_id = (record if record is not None else member.concentration).spell_id
@@ -218,7 +219,9 @@ async def end_concentration(
 
     async def persist(connection) -> None:
         if applied is not None:
-            await release_persisted_spell_conditions(cstate, spell_id, applied, player_id, conn=connection)
+            await release_persisted_spell_conditions(
+                None if release_combat_rows else cstate, spell_id, applied, player_id, conn=connection
+            )
         await concentration_mutations.update_player_concentration(player_id, None, conn=connection)
 
     if applied is not None and (conn is None or isinstance(conn, asyncpg.Pool)):

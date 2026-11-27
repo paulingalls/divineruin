@@ -171,6 +171,7 @@ def test_full_state_save_sites_match_the_inventory():
     expected = Counter(
         {
             ("combat_round_checkpoint.py", "capture", "call"): 1,
+            ("session_end.py", "_end_departing_concentration", "call"): 1,
             ("still_illusions.py", "investigate", "call"): 1,
             ("condition_consume.py", "persist_combat_consumption", "call"): 1,
             ("check_tools.py", "_finish_save", "call"): 1,

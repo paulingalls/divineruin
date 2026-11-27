@@ -2,9 +2,13 @@
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
 
+import pytest
+from _zhael_fate_fixtures import game_tools
+from _zhael_unravel_fixtures import GIFT
 from _zhael_unravel_fixtures import unravel as unravel
 from acceptance._capstone_helpers import _d20, _resolve_round
 from acceptance._spell_hostile_condition_helpers import add_player, attack, cast_spell, defend, play, reload, set_foe
@@ -13,7 +17,9 @@ from acceptance.seeds import seed_player_with_pools
 from acceptance.test_spell_new_conditions import equip
 from combat.test_spell_damage_lands import saved_player
 from combat.test_spell_damage_lands import spell_fight as spell_fight
+from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_mock_room
+from test_aelora_gift import _live_party
 from voice_condition_fixtures import participant
 from weapon_fixtures import DAGGER
 
@@ -24,6 +30,7 @@ import db_mutations_conditions
 from activate_tools import activate
 from check_payloads import SaveCheck
 from check_tools import check
+from session_end import run_guest_departure
 
 BLESS = "divine_bless"
 DETECT = "arcane_detect_magic"
@@ -62,6 +69,64 @@ async def test_bless_survives_reloaded_saves_until_ooc_replacement(dev_db_pool):
     assert player["concentration"]["spell_id"] == DETECT
     assert player["conditions"] == []
     assert await save_total(caster) == baseline
+
+
+@pytest.mark.parametrize("caster_is_host", [False, True])
+async def test_bless_ends_when_its_caster_leaves_the_party(dev_db_pool, caster_is_host):
+    caster, ally = await ooc_player(BLESS), await ooc_player()
+    host, guest = (caster, ally) if caster_is_host else (ally, caster)
+    ctx = make_context(host, room=make_mock_room(), party_member_ids=[guest])
+    sd = ctx.userdata
+    lifecycle = _live_party(sd, host, guest)
+    try:
+        generation = await lifecycle.authorize(caster)
+        assert generation is not None
+        baseline = await save_total(ally)
+        with sd._bind_authenticated_actor(caster, generation, lifecycle.require_authorized):
+            await game_tools(sd, activate)("activate", id=BLESS, target_id=ally)
+        assert await save_total(ally) == baseline + 3
+
+        await leave(sd, caster, ctx.session.room_io)
+        assert sd.party.member_ids == [ally]
+        assert (await saved_player(ally))["conditions"] == []
+        assert (await saved_player(caster))["concentration"]["spell_id"] is None
+        assert await save_total(ally) == baseline
+    finally:
+        await lifecycle.aclose()
+
+
+async def leave(sd, caster, room_io=None):
+    sd.departing_player_id = caster
+    with (
+        patch("session_end.generate_session_summary", return_value={"summary": "Farewell"}),
+        patch("session_end.room_admin.remove_player"),
+        patch("host_handoff.transfer_room"),
+    ):
+        await run_guest_departure(sd, caster, SimpleNamespace(room_io=room_io))
+
+
+async def test_combat_departure_releases_carried_bless_and_blocks_its_rewind(unravel):
+    import character_spells
+
+    fight = unravel
+    ally, caster = fight.ids
+    sd = fight.session
+    baseline = await save_total(ally)
+    await character_spells.record_learned(caster, BLESS, "discovery", conn=fight.pool)
+    await fight.invoke(game_tools(sd, activate), "activate", actor=caster, id=BLESS, target_id=ally)
+    await fight.start()
+    await fight.declare()
+    await fight.finish_round(2)
+    assert participant(sd.combat_state, ally).conditions[0]["sustaining_caster_ids"] == [caster]
+    assert len(sd.combat_state.round_checkpoints) == 2
+
+    await leave(sd, caster)
+    await fight.reload()
+    assert all(c["type"] != "blessed" for c in participant(sd.combat_state, ally).conditions)
+    assert (await saved_player(caster))["concentration"]["spell_id"] is None
+    assert await save_total(ally) == baseline
+    with pytest.raises(ToolError, match="no restorable checkpoint"):
+        await fight.call("activate", id=GIFT)
 
 
 def swing(packets, actor):
@@ -181,7 +246,6 @@ async def test_migration_clears_only_legacy_bless_from_players_and_checkpoints(s
 
 async def test_combat_reconcile_keeps_only_the_surviving_caster(unravel):
     from _zhael_fate_fixtures import defend as defend_packet
-    from _zhael_fate_fixtures import game_tools
     from _zhael_unravel_fixtures import patch_player
 
     import character_spells
