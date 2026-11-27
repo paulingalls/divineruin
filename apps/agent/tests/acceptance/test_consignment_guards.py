@@ -21,6 +21,7 @@ import db
 import db_mutations_merchant
 import dice
 import event_types as E
+from durability import max_hits
 
 
 @pytest.mark.parametrize(
@@ -49,8 +50,9 @@ async def test_ineligible_confirmation(reset_db_pool: str, change: str) -> None:
             )
         elif change == "damaged":
             await pool.execute(
-                """UPDATE player_inventory SET data=data || '{"current_hits":0}' WHERE player_id=$1""",
+                "UPDATE player_inventory SET data=data || jsonb_build_object('current_hits', $2::int) WHERE player_id=$1",
                 sale.player_id,
+                max_hits("standard") - 1,
             )
         else:
             await stack.enter_async_context(catalog_override(SWORD, quest_only=True))
