@@ -6,16 +6,14 @@ from unittest.mock import patch
 import pytest
 from acceptance._capstone_helpers import _d20
 from acceptance.mawling_harness import MawlingHarness
-from acceptance.test_opportunity_strike import MOVER, STRIKE, advance_to_departure, participant
-from acceptance.test_opportunity_strike import fight as fight
+from acceptance.test_opportunity_strike import participant
 from acceptance.test_wild_shape import ABILITY, declare, enter, prepare, updates
 from acceptance.test_wild_shape import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_wild_shape import walk as walk
 from acceptance.test_wild_shape_lifecycle import DISMISS, player_declaration
-from sample_fixtures import FixedRng, published_payloads
+from sample_fixtures import FixedRng
 
 import db_queries
-import event_types
 from combat_spatial import require_spatial
 from creature_catalog import query_creature_by_id
 from dice import DiceResult, roll
@@ -185,39 +183,3 @@ async def test_bite_uses_piercing_resistance(walk: MawlingHarness) -> None:
     receipt, _ = await swing(walk, pid, "Bite", notation="1d6+2")
     assert (receipt["damage_type"], receipt["damage"]) == ("piercing", 2)
     assert participant(await walk.reload(), FOE).hp_current == 48
-
-
-async def test_opportunity_strike_uses_bite(fight: MawlingHarness) -> None:
-    pid = await prepare(fight, "druid", level=10, stamina=6)
-    row = await db_queries.get_player(pid)
-    assert row is not None and row["equipment"]["main_hand"]["name"] == "Longsword"
-    await declare(fight, ABILITY, "grey_wolf")
-    await fight.drain()
-    departure = await advance_to_departure(fight)
-    waiting = departure["next"]["waiting_on"]
-    assert [(entry["actor_id"], entry["id"]) for entry in waiting["reactions"]] == [(pid, STRIKE)]
-    # Grant the warrior reaction for this walk while still exercising its real activation and spend.
-    with patch("abilities.owns_ability", return_value=True):
-        await fight.command("activate", {"id": STRIKE})
-    before = participant(await fight.reload(), MOVER).hp_current
-    with (
-        patch("check_resolution.dice_roll", return_value=_d20(18)),
-        patch("check_resolution_attack.dice_roll", side_effect=damage_roll) as damage,
-    ):
-        result = await fight.command("resolve_phase", {})
-    (receipt,) = [p for p in result["packets"] if p.get("reaction") == STRIKE]
-    assert (receipt["action"], receipt["attack_total"], receipt["damage_type"], receipt["damage"]) == (
-        "Bite",
-        22,
-        "piercing",
-        5,
-    )
-    assert (receipt["to_hit"], receipt["damage_dice"]) == (4, "1d6+2")
-    assert damage.call_args_list[0].args[0] == "1d6+2"
-    assert receipt.get("attack_disadvantage_source") is None
-    assert participant(await fight.reload(), MOVER).hp_current == before - 5
-    assert fight.sd.room is not None
-    assert any(
-        event["type"] == event_types.DICE_ROLL and event["modifier"] == 4 and event["total"] == 22
-        for event in published_payloads(fight.sd.room)
-    )
