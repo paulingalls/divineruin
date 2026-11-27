@@ -207,6 +207,11 @@ without certifying paid speech-recognition accuracy.
 - After editing a milestone checklist, run `python3 scripts/doc_index.py --write`
   to regenerate the README and REMAINING counts and the documentation index.
   The commit hook's Proof selection validates all three files.
+- A card's `Files` is a slate-time estimate. Land never compares it with the
+  diff: "unreviewed" in a merge body means commits after the last review, not
+  files missing from `Files`. Don't extend `Files` in plan review or ask for it
+  at close. Extend it only when the sprint fixer must pick that card's
+  Acceptance (it runs each card whose `Files` it touched).
 - pytest collects only `test_*.py`. A pin module named otherwise (e.g.
   `creature_spec_pins_*.py`) may hold DATA a collected test imports, never test
   functions: sprint-062 story-130's pins ran only through its Verify, so no tier
