@@ -688,17 +688,17 @@ Encounter role system: creature stat/loot/XP modifiers, encounter budget math, n
 
 ---
 
-## game_mechanics/game_mechanics_magic.md (549 lines)
+## game_mechanics/game_mechanics_magic.md (560 lines)
 
 Three magic sources, Resonance system, 87 spells.
 
 | Section | Lines | What's There |
 |---|---|---|
 | Magic System — The Three Sources and Resonance | 9-296 | Arcane/Divine/Primal multipliers, Resonance states, Hollow Echo, Veil Wards, racial interactions |
-| Arcane Spell Catalog | 297-377 | 30 arcane spells with Focus costs and Resonance generation |
-| Divine Spell Catalog | 378-451 | 28 divine spells: healing, protection, anti-Hollow |
-| Primal Spell Catalog | 452-528 | 29 primal spells: terrain manipulation, area denial |
-| Three-Source Catalog Comparison | 529-549 | Side-by-side comparison of spell pools and Resonance profiles |
+| Arcane Spell Catalog | 297-388 | 30 arcane spells with Focus costs and Resonance generation |
+| Divine Spell Catalog | 389-462 | 28 divine spells: healing, protection, anti-Hollow |
+| Primal Spell Catalog | 463-539 | 29 primal spells: terrain manipulation, area denial |
+| Three-Source Catalog Comparison | 540-560 | Side-by-side comparison of spell pools and Resonance profiles |
 
 ---
 
@@ -913,6 +913,10 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
+## milestones/03_spell_ledger.md (109 lines)
+
+---
+
 ## milestones/04_combat.md (316 lines)
 
 ---
@@ -953,7 +957,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/14_engine_completeness.md (99 lines)
+## milestones/14_engine_completeness.md (173 lines)
 
 ---
 
