@@ -16,6 +16,7 @@ import math
 
 import db
 from catalog_parse import parse_dict
+from sale_pricing import SALE_DISPOSITIONS
 
 logger = logging.getLogger("divineruin.db")
 
@@ -34,9 +35,6 @@ def _as_json_number(value: int | float) -> float:
         return float(value)
     except OverflowError:
         return math.inf
-
-
-SALE_DISPOSITIONS = ("unfriendly", "neutral", "friendly", "trusted")
 
 
 def _validate_multiplier(raw: object, ctx: str, *, positive: bool = False) -> float:

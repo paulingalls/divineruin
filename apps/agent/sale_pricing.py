@@ -6,6 +6,9 @@ from typing import Literal, TypedDict
 import asyncpg
 
 from catalog_parse import parse_dict, parse_int, parse_str, parse_str_list
+from workspace import whole_silver
+
+SALE_DISPOSITIONS = ("unfriendly", "neutral", "friendly", "trusted")
 
 
 class InventoryPoolStock(TypedDict):
@@ -147,9 +150,6 @@ def quote_sale(
     pools: dict[str, InventoryPool] | None = None,
 ) -> SaleQuote:
     """Quote a single item. Merchant inputs come from the validated pool catalog."""
-    from pricing_queries import SALE_DISPOSITIONS
-    from workspace import whole_silver
-
     if disposition != "hostile" and disposition not in SALE_DISPOSITIONS:
         raise ValueError(f"unknown sale disposition {disposition!r}")
     merchant = None
