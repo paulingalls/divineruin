@@ -30,10 +30,11 @@ CATCH_ALL = "on_enemy_action"
 # imports combat_reaction_effect (so the constants cannot live in combat_hold without a cycle).
 PRE_ROLL = "pre_roll"
 POST_ROLL = "post_roll"
+POST_REACTION_MISS = "post_reaction_miss"
 
 MOVEMENT = "movement"
 ENEMY_MOVE = "on_enemy_move"
-STAGES = (MOVEMENT, PRE_ROLL, POST_ROLL)
+STAGES = (MOVEMENT, PRE_ROLL, POST_ROLL, POST_REACTION_MISS)
 
 
 def pre_roll_triggers(action: dict) -> tuple[str, ...]:

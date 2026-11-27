@@ -211,7 +211,7 @@
     "ability_type": "reaction",
     "level_requirement": 6,
     "cost": { "stamina": 2, "focus": 0, "scaling": null },
-    "effect": "Reaction when hit by a melee attack: attacker takes 1d6 + STR mod. Requires shield.",
+    "effect": "Reaction when hit by a melee attack: attacker takes 1d6 + STR mod bludgeoning damage. Requires an equipped shield.",
     "narration_cue": "The shield rebounds, and the attacker grunts in pain.",
     "window": "on_hit"
   },
@@ -343,8 +343,8 @@
     "ability_type": "reaction",
     "level_requirement": 1,
     "cost": { "stamina": 2, "focus": 0, "scaling": null },
-    "effect": "Reaction when targeted by a melee attack: move 5 ft. If out of range, the attack auto-misses.",
-    "narration_cue": "A half-step aside, and the blade finds only air.",
+    "effect": "Reaction when targeted by a melee attack: move up to 5 ft without provoking opportunity attacks. If out of reach, the attack auto-misses.",
+    "narration_cue": "You step aside. The attacker may still be able to reach you.",
     "window": "on_targeted"
   },
   {
@@ -355,7 +355,7 @@
     "level_requirement": 6,
     "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "Reaction when an enemy misses a melee attack: make a free melee attack against them.",
-    "narration_cue": "Their swing whiffs; your counter does not.",
+    "narration_cue": "Their swing whiffs, and you strike back.",
     "window": "on_enemy_miss"
   },
   {

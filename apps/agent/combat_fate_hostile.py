@@ -1,6 +1,6 @@
 """Prepare a hostile swing before publishing its post-roll reaction window."""
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 
 import check_resolution_attack
 import combat_wrongdoing
@@ -15,6 +15,7 @@ from combat_attack_roll import (
     serialize_roll,
     spend_sneak_attack,
 )
+from combat_reaction_defense import miss
 from patron_synergy_combat import attack_player, witness_defense
 
 
@@ -38,7 +39,7 @@ async def roll_hostile(session, state, head, declaration, action, contribution, 
         player = await attack_player(attacker, queries=queries, conn=conn)
         defender = await attack_player(target, queries=queries, conn=conn)
         valdris_ac_bonus = await witness_defense(defender, state, attacker, queries=queries, conn=conn)
-        if fate_rolls is not None:
+        if fate_rolls is not None and not head.get("sidestep_escaped"):
             candidates = await zhael_fate.candidates(session, queries=queries, conn=conn)
             if candidates.choices(attacker.id):
                 attacker_data, ac, attack_mod = attack_roll_inputs(
@@ -102,6 +103,8 @@ async def roll_hostile(session, state, head, declaration, action, contribution, 
             defender=defender,
             season=await thyra_seasons.season_for(player, conn=conn),
         )
+    if head.get("sidestep_escaped"):
+        result = miss(replace(result, narrative_hint="The target stepped out of melee reach."), target)
     combat_wrongdoing.record_attack(state, attacker, target)
     record_beacon_attack(state, attacker, target, result)
     head.update(roll=serialize_roll(result, effective_ac), reaction_ac_bonus=contribution)

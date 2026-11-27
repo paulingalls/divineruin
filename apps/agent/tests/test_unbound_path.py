@@ -118,12 +118,17 @@ async def test_raw_channeling_preserves_action_and_reaction(dev_db_pool):
         else:
             pytest.fail(f"No Sidestep offered: {result}")
         assert waiting["target_id"] == w.player
-        await w.use(next(r["id"] for r in waiting["reactions"] if r["id"] == "skirmisher_sidestep"))
+        from combat_spatial import position
+
+        origin = position(w.sd.combat_state.spatial, w.player)
+        destination = {**origin, "y": origin["y"] + 5}
+        await w.command("activate", {"id": "skirmisher_sidestep", "destination": destination})
         assert w.sd.combat_state is not None
         spend = w.sd.combat_state.reactions_available[w.player]
         assert reaction_spend.is_spent(spend)
         assert spend["ability_id"] == "skirmisher_sidestep"
         assert spend["window_id"] == waiting["window_id"]
+        assert spend["destination"] == destination
         saved = await db_mutations.load_combat_state(state.combat_id)
         assert saved is not None
         assert saved.reactions_available[w.player] == spend

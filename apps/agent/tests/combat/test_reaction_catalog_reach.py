@@ -10,6 +10,7 @@ from combat.test_reaction_window_census import movement_state
 from sample_fixtures import make_context
 from voice_condition_fixtures import place_actors
 
+import combat_hold
 import reaction_spend
 import reaction_windows
 from combat_phase import PhaseBeat
@@ -45,6 +46,11 @@ def _paused_state(shape):
         state = _make_combat_state()
         if target_id == "player_2":
             place_actors(state, target_id)
+        state.held_actions = [
+            combat_hold.new_head(
+                state, "goblin_scout_1", 12, {"type": "attack", "action": "Scimitar", "target_id": target_id}
+            )
+        ]
         state.open_window = reaction_windows.open_window_for(
             round_number=1,
             seq=0,

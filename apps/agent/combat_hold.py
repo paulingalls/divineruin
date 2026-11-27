@@ -16,21 +16,19 @@ import logging
 from uuid import uuid4
 
 import architect_actions
+import combat_counter_reactions
 import combat_enhancers
 import combat_hold_conditions
+import combat_hold_windows
 import combat_marks as combat_marks
 import combat_opportunity
 import combat_reaction_contest
 import combat_reaction_effect
-import event_types as E
 import patron_synergy_combat
-import reaction_gate
 import reaction_spend
-import reaction_windows
 import thyra_thornwall
-from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _find_action
-from combat_attack_roll import build_attack_dice_roll_payload, deserialize_roll
+from combat_attack_roll import deserialize_roll
 from combat_fate_hostile import roll_hostile
 from combat_fate_rolls import PacketRolls
 from combat_hold_actions import (
@@ -48,8 +46,7 @@ from combat_packet import _resolve_one_packet
 from combat_reshape_packet import ReshapeRefused, resolve_reshape
 from combat_turn_flight import is_flight_turn
 from encounter_actions import action_kind
-from patron_zero_hp import provisional_ward_verdict
-from reaction_windows import MOVEMENT, POST_ROLL, PRE_ROLL
+from reaction_windows import MOVEMENT, POST_ROLL
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -173,6 +170,7 @@ async def pump(
             state.held_actions.pop(0)
             reacted = None
     if reacted is not None and closed is not None:
+        hit_before_close = closed["stage"] == POST_ROLL and (reacted["roll"] or {}).get("attack_result", {}).get("hit")
         reaction_packets = combat_reaction_effect.close(
             state, reacted, closed, attack_action=_attack_action(state, reacted), contest_rng=contest_rng
         )
@@ -183,9 +181,9 @@ async def pump(
             reaction_packets, queries=packet_deps["queries"], conn=packet_deps["conn"]
         )
         reaction_packets = combat_reaction_effect.defer_thought_shield(reacted, reaction_packets)
-        summaries.extend(reaction_packets)
         hesitation_reason = combat_reaction_contest.hesitation_reason(reacted)
         if hesitation_reason is not None:
+            summaries.extend(reaction_packets)
             summaries.extend(combat_reaction_effect.finish_thought_shield(reacted, {}))
             summaries.append(
                 strike_summary(
@@ -201,11 +199,33 @@ async def pump(
                 )
             )
             state.held_actions.pop(0)
+        else:
+            for packet in list(reaction_packets):
+                if packet["ability_id"] == reaction_spend.SIDESTEP:
+                    spend = state.reactions_available[packet["actor_id"]]
+                    if "destination" in spend:
+                        reacted["sidestep"] = {"packet": packet, "destination": spend["destination"]}
+                        reaction_packets.remove(packet)
+            turned_miss = hit_before_close and not reacted["roll"]["attack_result"]["hit"]
+            if turned_miss or any(packet["ability_id"] in reaction_spend.COUNTERS for packet in reaction_packets):
+                reacted.setdefault("pending_reaction_packets", []).extend(reaction_packets)
+                reaction_packets = []
+            summaries.extend(reaction_packets)
+            if turned_miss and combat_hold_windows.offer_reaction_miss(state, reacted):
+                return summaries
 
     while state.held_actions:
         head = state.held_actions[0]
         if execution_id is not None and head.get("execution_id") != execution_id:
             break
+        if continuation := head.get("counter_settlement"):
+            if not await combat_counter_reactions.settle(session, state, head, summaries, packet_deps, fate_rolls):
+                return summaries
+            summary = continuation["attack"]
+            del head["counter_settlement"]
+            if _finish_strike(state, head, _attack_action(state, head), summary, summaries):
+                return summaries
+            continue
         if "completed_condition" in head:
             summaries.append(strike_summary(head, _with_reshape(head, head["completed_condition"])))
             state.held_actions.pop(0)
@@ -281,22 +301,18 @@ async def pump(
 
         try:
             if window_action is not None:
-                if PRE_ROLL not in head["opened"]:
-                    head["opened"].append(PRE_ROLL)
-                    triggers = (
-                        (reaction_windows.CATCH_ALL,)
-                        if action_kind(window_action) in STILL_ZONE_KINDS
-                        else reaction_windows.pre_roll_triggers(window_action)
+                if combat_hold_windows.offer_pre_roll(state, head, window_action, summaries):
+                    assert_iteration_progress(state, head, summaries, summary_start)
+                    return summaries
+
+                if "sidestep" in head:
+                    receipt = await combat_counter_reactions.sidestep(
+                        session, state, head, window_action, packet_deps, fate_rolls
                     )
-                    candidate = _window(state, head, PRE_ROLL, triggers)
-                    if reaction_gate.offers_for_window(state, candidate):
-                        if head.get("melee_approach", {}).get("closed_distance"):
-                            summaries.append(
-                                {**head["melee_approach"], "attack_resolved": False, "attack_pending": True}
-                            )
-                        _open(state, candidate)
-                        assert_iteration_progress(state, head, summaries, summary_start)
+                    if receipt is None:
                         return summaries
+                    del head["sidestep"]
+                    summaries.append(receipt)
 
                 if action is not None and head["roll"] is None:
                     if reason := architect_actions.slam_refusal(
@@ -311,38 +327,9 @@ async def pump(
                     ):
                         return summaries
 
-                if head["roll"] is not None and POST_ROLL not in head["opened"]:
-                    head["opened"].append(POST_ROLL)
-                    hit = head["roll"]["attack_result"]["hit"]
-                    candidate = _window(
-                        state, head, POST_ROLL, reaction_windows.post_roll_triggers(action or {}, hit=hit)
-                    )
-                    if reaction_gate.offers_for_window(state, candidate):
-                        attack_result, _effective_ac = deserialize_roll(head["roll"])
-                        attacker = state.get_participant(head["actor_id"])
-                        attack_result = await provisional_ward_verdict(
-                            session,
-                            state,
-                            candidate["target_id"],
-                            attack_result,
-                            packet_deps["queries"],
-                            action=action or {},
-                            conn=packet_deps["conn"],
-                        )
-                        await packet_deps["sink"].emit(
-                            session.room,
-                            E.DICE_ROLL,
-                            build_attack_dice_roll_payload(attacker, attack_result),
-                            event_bus=session.event_bus,
-                        )
-                        head["roll_published"] = True
-                        if head.get("melee_approach", {}).get("closed_distance"):
-                            summaries.append(
-                                {**head["melee_approach"], "attack_resolved": False, "attack_pending": True}
-                            )
-                        _open(state, candidate)
-                        assert_iteration_progress(state, head, summaries, summary_start)
-                        return summaries
+                if await combat_hold_windows.offer_post_roll(session, state, head, action, summaries, packet_deps):
+                    assert_iteration_progress(state, head, summaries, summary_start)
+                    return summaries
 
             summary = await _resolve_held(
                 session,
@@ -363,33 +350,40 @@ async def pump(
 
         if fate_rolls is not None and fate_rolls.pending is not None:
             if head is reacted and reaction_packets:
-                head["pending_reaction_packets"] = reaction_packets
+                head.setdefault("pending_reaction_packets", []).extend(reaction_packets)
                 del summaries[: len(reaction_packets)]
             return summaries
 
         deferred_reactions = head.pop("pending_reaction_packets", [])
-        recorded_reactions = reaction_packets if head is reacted else deferred_reactions
+        recorded_reactions = [*deferred_reactions, *(reaction_packets if head is reacted else [])]
         if recorded_reactions:
             combat_reaction_effect.record_settled(recorded_reactions, state, head, summary)
             damage = summary.get("damage", 0)
             await patron_synergy_combat.restore_guard_stamina(
                 recorded_reactions, queries=packet_deps["queries"], conn=packet_deps["conn"], damage=damage
             )
+        if any(packet["ability_id"] in reaction_spend.COUNTERS for packet in deferred_reactions):
+            head["counter_settlement"] = {"attack": summary, "packets": deferred_reactions}
+            continue
         summaries.extend(deferred_reactions)
-        summaries.extend(combat_reaction_effect.finish_thought_shield(head, summary))
-        if window_action is not None and (
-            candidate := combat_hold_conditions.window_for(state, head, window_action, summary)
-        ):
-            head["completed_condition"] = summary
-            head["opened"].append(POST_ROLL)
-            _open(state, candidate)
-            assert_iteration_progress(state, head, summaries, summary_start)
-            return summaries
-        summaries.append(strike_summary(head, _with_reshape(head, summary)))
-        state.held_actions.pop(0)
+        paused = _finish_strike(state, head, window_action, summary, summaries)
         assert_iteration_progress(state, head, summaries, summary_start)
+        if paused:
+            return summaries
 
     return summaries
+
+
+def _finish_strike(state, head: dict, action: dict | None, summary: dict, summaries: list[dict]) -> bool:
+    summaries.extend(combat_reaction_effect.finish_thought_shield(head, summary))
+    if action is not None and (candidate := combat_hold_conditions.window_for(state, head, action, summary)):
+        head["completed_condition"] = summary
+        head["opened"].append(POST_ROLL)
+        combat_hold_windows.open_window(state, candidate)
+        return True
+    summaries.append(strike_summary(head, _with_reshape(head, summary)))
+    state.held_actions.pop(0)
+    return False
 
 
 def _concealed_summary(head: dict, reason: str) -> dict:
@@ -402,34 +396,6 @@ def _with_reshape(head, summary):
     if receipts := head.get("reshape_receipts"):
         return {**summary, "reshape": receipts}
     return summary
-
-
-def _window(state, head: dict, stage: str, triggers: tuple[str, ...]) -> dict:
-    declaration = _held_declaration(head)
-    actor = state.get_participant(head["actor_id"])
-    action = _find_action(actor, declaration.action) if actor is not None else None
-    if action is None:
-        raise ValueError(f"held action {declaration.action!r} for {head['actor_id']!r} is unavailable")
-    return reaction_windows.open_window_for(
-        round_number=state.round_number,
-        seq=head["seq"],
-        stage=stage,
-        actor_id=head["actor_id"],
-        target_id=declaration.target_id,
-        action_kind=action_kind(action),
-        triggers=triggers,
-    )
-
-
-def _open(state, candidate: dict) -> None:
-    state.open_window = candidate
-    logger.info(
-        "beat 3: paused on %s window %s (%s -> %s)",
-        candidate["stage"],
-        candidate["id"],
-        candidate["actor_id"],
-        candidate["target_id"],
-    )
 
 
 async def _resolve_held(

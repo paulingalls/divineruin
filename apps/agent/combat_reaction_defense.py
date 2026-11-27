@@ -103,28 +103,32 @@ def apply_bark_skin(head: dict, target: CombatParticipant) -> None:
     verdict = D20Roll(result.attack_modifier, raised_ac).evaluate(result.roll)
     result = replace(result, target_ac=raised_ac, narrative_hint=verdict.narrative_hint)
     if not verdict.success:
-        result = with_landed_damage(
-            replace(result, hit=False),
-            0,
-            target.hp_current,
-            critical_success=False,
-            bonus_damage=0,
-            bonus_damage_type=None,
-            rider_damage=0,
-            rider_damage_type=None,
-            rider_ignores_resistance=False,
-            sneak_attack_dice=None,
-            sneak_attack_raw_damage=0,
-            synergy_damage=0,
-            synergy_damage_type=None,
-            synergy_clause_id=None,
-            order_rider=None,
-            order_damage_dice=None,
-            order_raw_damage=0,
-            coordinated_rider=None,
-            pincer_dice=None,
-            pincer_raw_damage=0,
-            sacrifice_rider=None,
-        )
+        result = miss(result, target)
     target.bark_skin_active = True
     head["roll"] = serialize_roll(result, raised_ac)
+
+
+def miss(result: AttackResult, target: CombatParticipant) -> AttackResult:
+    return with_landed_damage(
+        replace(result, hit=False, dramatic=False, context=""),
+        0,
+        target.hp_current,
+        critical_success=False,
+        bonus_damage=0,
+        bonus_damage_type=None,
+        rider_damage=0,
+        rider_damage_type=None,
+        rider_ignores_resistance=False,
+        sneak_attack_dice=None,
+        sneak_attack_raw_damage=0,
+        synergy_damage=0,
+        synergy_damage_type=None,
+        synergy_clause_id=None,
+        order_rider=None,
+        order_damage_dice=None,
+        order_raw_damage=0,
+        coordinated_rider=None,
+        pincer_dice=None,
+        pincer_raw_damage=0,
+        sacrifice_rider=None,
+    )

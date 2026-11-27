@@ -26,6 +26,7 @@ from livekit.agents.voice import RunContext
 import abilities
 import ability_persistence
 import ability_voice_rules
+import combat_counter_reactions
 import combat_hold
 import combat_spell_heal
 import condition_produce
@@ -41,6 +42,7 @@ import infusion
 import mentor_variants
 import patron_synergy_heal
 import reaction_gate
+import reaction_spend
 import spells
 import temp_hp
 from combat_ability_gate import (
@@ -69,6 +71,7 @@ async def _request_ability_activation_impl(
     variant_id: str | None = None,
     target_id: str | None = None,
     target_ids: list[str] | None = None,
+    destination: dict | None = None,
     db_mod=db,
     queries_mod=db_queries,
     persistence_mod=ability_persistence,
@@ -151,6 +154,11 @@ async def _request_ability_activation_impl(
         try:
             reaction_gate.validate_reaction_activation(state, player_id, ability_id)
             spend = combat_hold.preflight_spend(state, player_id, ability_id)
+            if ability_id == reaction_spend.SIDESTEP:
+                actor = state.get_participant(player_id)
+                assert actor is not None
+                step = combat_counter_reactions.sidestep_declaration(state, actor, destination)
+                spend["destination"] = step.destination
         except ValueError as e:
             raise ToolError(str(e)) from e
 
@@ -239,6 +247,14 @@ async def _request_ability_activation_unlocked(
             queries_mod=queries_mod,
             conn=conn,
         )
+        if prepared_spend is not None and ability_id in reaction_spend.COUNTERS:
+            assert session.combat_state is not None
+            try:
+                await combat_counter_reactions.prepare_equipment(
+                    session.combat_state, player_id, player, prepared_spend, queries=queries_mod, conn=conn
+                )
+            except ValueError as error:
+                raise ToolError(str(error)) from error
         if heal_mode:
             try:
                 patron_synergy_heal.require_inspire_heal(player)
