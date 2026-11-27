@@ -10,8 +10,8 @@ Finding the journal grants it and completes the search atomically.
 Artifact choices persist once with their effects.
 Leave now requests a recap before disconnect, with a 15-second home fallback.
 
-**Position: 430 / 646 acceptance criteria — 67%** (the sum of the per-phase
-counts in `README.md`). **216 criteria remain unchecked.** Phases 2, 5, 6 and 10 have all recorded
+**Position: 433 / 646 acceptance criteria — 67%** (the sum of the per-phase
+counts in `README.md`). **213 criteria remain unchecked.** Phases 2, 5, 6 and 10 have all recorded
 criteria checked. Phase 3 is still Partial at 34/34:
 casting infrastructure is exercised, but complete deterministic spell-effect
 coverage is **unverified**. All 87 spell rows carry textual `mechanics`; this
@@ -84,8 +84,8 @@ plus the 15-ft Intercept override and once-per-long-rest Last Wall from
 
 **02 · Archetypes — Bark Skin.** The druid and warden reactions raise AC by 2
 against the original roll and through the rest of the round. A natural 20 still
-hits. A hit turned into a miss has already used its post-roll window, so it
-offers no `on_enemy_miss` reaction such as Skirmisher Riposte.
+hits. When Bark Skin turns a melee hit into a miss, an eligible skirmisher
+can Riposte in a separate reaction window for that strike.
 
 - **Primal Bark Skin spell:** `primal_bark_skin` has no registered reaction
   producer. An ordinary cast spends Focus and generates Resonance without

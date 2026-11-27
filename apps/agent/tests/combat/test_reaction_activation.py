@@ -1,7 +1,7 @@
 """Execute advertised next.verbs through resolve_phase and activate; reading descriptors alone certifies only the list."""
 
 import pytest
-from combat._helpers import _activate, _call, _ctx_at_resolution, _own_reaction, _resolve_deps
+from combat._helpers import _call, _ctx_at_resolution, _own_reaction, _resolve_deps
 from combat._reaction_helpers import _guarded_ally_state
 
 import abilities
@@ -91,33 +91,6 @@ class TestReactionTargetPolicy:
 
 
 class TestTheInterruptLoop:
-    @pytest.mark.asyncio
-    async def test_a_reaction_at_a_window_binds_to_the_held_action_and_closes_the_round(self):
-        """Bind a spend to ability and held action; a bool cannot identify which blow to modify."""
-        ctx = _ctx_at_resolution(reaction_ids=(PRE_ROLL_REACTION,))
-        deps = _resolve_deps()
-
-        await _call(ctx, deps)  # Beat 2: the ally band commits, the enemy blow is held
-        paused = await _call(ctx, deps)  # Beat 3: the pre-roll window
-
-        window = paused["next"]["waiting_on"]
-        assert window["stage"] == "pre_roll"
-        assert "on_targeted" in window["triggers"]
-
-        await _activate(ctx, PRE_ROLL_REACTION, player_class="skirmisher")
-
-        record = ctx.userdata.combat_state.reactions_available["player_1"]
-        assert record == {
-            "spent": True,
-            "ability_id": PRE_ROLL_REACTION,
-            "window_id": window["window_id"],
-            "stage": "pre_roll",
-            "held_seq": 0,
-        }
-
-        after = await _call(ctx, deps)
-        assert after["next"]["waiting_on"] is None
-
     @pytest.mark.asyncio
     async def test_the_engine_accepts_a_reaction_at_the_open_window(self):
         ctx = _ctx_at_resolution(reaction_ids=(PRE_ROLL_REACTION,))

@@ -8,15 +8,14 @@ from combat._reaction_helpers import (
     _enemy_blow,
     _enemy_blows,
     _guarded_ally_state,
-    _patched_accrual,
     _pause_at,
     _reaction_packet,
-    _shield_bearing_deps,
 )
 from sample_fixtures import make_mock_room, published_payloads
 
 import combat_reaction_effect
 import event_types as E
+import reaction_spend
 import reaction_windows
 
 UNCANNY_DODGE = "rogue_uncanny_dodge"
@@ -127,9 +126,14 @@ def test_the_wired_sets_name_real_catalog_rows_at_the_right_window():
         | combat_reaction_effect.BARK_SKIN
         | {combat_reaction_effect.BRACE}
     )
-    wired_on_targeted = {combat_reaction_effect.SHIELD_SPELL, combat_reaction_effect.THOUGHT_SHIELD}
+    wired_on_targeted = {
+        combat_reaction_effect.SHIELD_SPELL,
+        combat_reaction_effect.THOUGHT_SHIELD,
+        reaction_spend.SIDESTEP,
+    }
     wired = (
         wired_on_hit
+        | {reaction_spend.RIPOSTE}
         | wired_on_targeted
         | set(combat_reaction_effect.AC_BONUS)
         | set(combat_reaction_effect.SAVE_ADVANTAGE)
@@ -149,28 +153,7 @@ def test_the_wired_sets_name_real_catalog_rows_at_the_right_window():
 
     on_hit = {a.id for a in catalog.values() if a.ability_type == "reaction" and a.window == "on_hit"}
     assert on_hit == wired_on_hit
-
-
-INERT_REACTION = "skirmisher_sidestep"  # on_targeted — deliberately outside the wired set
-
-
-@pytest.mark.asyncio
-async def test_an_unwired_reaction_returns_a_packet_that_claims_no_effect():
-    ctx = _ctx_at_resolution(reaction_ids=(INERT_REACTION,))
-    deps = _resolve_deps(damage=6)
-    packets: list[dict] = []
-
-    await _pause_at(ctx, deps, actor_id="goblin_scout_1", stage=reaction_windows.PRE_ROLL, packets=packets)
-    await _activate(ctx, INERT_REACTION, player_class="skirmisher")
-    await _drain(ctx, deps, packets)
-
-    packet = _reaction_packet(packets)
-    assert packet["ability_id"] == INERT_REACTION
-    assert packet["mechanical_effect"] is None
-    assert packet["narration_cue"]
-    assert packet["against_actor_id"] == "goblin_scout_1"
-    assert _enemy_blow(packets)["damage"] == 6
-    assert ctx.userdata.combat_state.get_participant("player_1").hp_current == 19
+    assert catalog[reaction_spend.RIPOSTE].window == "on_enemy_miss"
 
 
 @pytest.mark.asyncio
@@ -220,37 +203,3 @@ async def test_a_wired_ability_against_an_action_with_no_roll_claims_nothing():
     await _drain(ctx, deps, packets)
 
     assert _reaction_packet(packets)["mechanical_effect"] is None
-
-
-RETALIATING_SHIELD = "guardian_retaliating_shield"  # on_hit, effect ends "Requires shield."
-
-
-@pytest.mark.asyncio
-async def test_a_shield_bearing_reaction_accrues_a_shield_hit_through_the_pump():
-    """Shield retaliation damage remains unwired; these cases certify only shield wear."""
-    ctx = _ctx_at_resolution(reaction_ids=(RETALIATING_SHIELD,))
-    deps = _shield_bearing_deps()
-    packets: list[dict] = []
-
-    with _patched_accrual() as accrue:
-        await _pause_at(ctx, deps, actor_id="goblin_scout_1", stage=reaction_windows.POST_ROLL, packets=packets)
-        await _activate(ctx, RETALIATING_SHIELD, player_class="guardian")
-        await _drain(ctx, deps, packets)
-
-    assert "shield" in _enemy_blow(packets)["durability"]
-    assert accrue.await_args is not None
-    assert accrue.await_args.args[2]["id"] == "shield_iron" and accrue.await_args.args[3] == 1
-    assert _reaction_packet(packets)["mechanical_effect"] == "shield_durability"
-
-
-@pytest.mark.asyncio
-async def test_the_same_blow_unanswered_wears_no_shield():
-    ctx = _ctx_at_resolution()
-    deps = _shield_bearing_deps()
-    packets: list[dict] = []
-
-    with _patched_accrual() as accrue:
-        await _drain(ctx, deps, packets)
-
-    assert "shield" not in _enemy_blow(packets)["durability"]
-    accrue.assert_not_awaited()

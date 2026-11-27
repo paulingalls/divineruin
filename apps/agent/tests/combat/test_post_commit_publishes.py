@@ -21,7 +21,7 @@ from weapon_fixtures import LONGSWORD
 
 import combat_end
 import combat_events
-import combat_hold
+import combat_hold_windows
 import combat_support
 import event_types as E
 import reaction_windows
@@ -138,13 +138,13 @@ async def test_post_roll_pause_publishes_the_attack_once_before_the_hud():
     await _call(ctx, deps)
     ctx.userdata.event_bus.drain()
 
-    original = combat_hold.build_attack_dice_roll_payload
+    original = combat_hold_windows.build_attack_dice_roll_payload
     builder = MagicMock(wraps=original)
-    combat_hold.build_attack_dice_roll_payload = builder
+    combat_hold_windows.build_attack_dice_roll_payload = builder
     try:
         paused = await _call(ctx, deps)
     finally:
-        combat_hold.build_attack_dice_roll_payload = original
+        combat_hold_windows.build_attack_dice_roll_payload = original
 
     assert paused["next"]["waiting_on"]["stage"] == reaction_windows.POST_ROLL
     head = ctx.userdata.combat_state.held_actions[0]

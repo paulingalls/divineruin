@@ -16,6 +16,7 @@ import db_mutations_concentration
 import db_queries
 from caster_state import ConcentrationState, ResonanceTrack
 from db_mutations_resonance import read_player_resonance
+from inventory_tools import transact
 from party_state import PartyMember
 
 BRACE = "warrior_brace_for_impact"
@@ -27,18 +28,30 @@ SPELL = "arcane_fly"
 
 @asynccontextmanager
 async def defense_fight(
-    archetype: str, enemy: str = BANDIT, *, fate: bool = False, constitution: int = 14, ally_archetype: str = "guardian"
+    archetype: str,
+    enemy: str = BANDIT,
+    *,
+    fate: bool = False,
+    constitution: int = 14,
+    ally_archetype: str = "guardian",
+    gear: str | None = None,
 ) -> AsyncIterator[MawlingHarness]:
     fight = MawlingHarness()
     try:
         await fight.prepare(
-            (18, 6), companion=None, location="ashmark_still" if enemy == "still" else "greyvale_wilderness_north"
+            (18, 6),
+            companion=None,
+            tools=(transact,) if gear else (),
+            location="ashmark_still" if enemy == "still" else "greyvale_wilderness_north",
         )
         for actor, class_ in zip(fight.players, (archetype, ally_archetype), strict=True):
             row = await player_row(actor)
             row["class"] = class_
             row["attributes"]["constitution"] = constitution
             await fight.pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", actor, json.dumps(row))
+        if gear:
+            await fight.command("transact", {"action": "exchange", "item_id": gear, "delta": 1})
+            await fight.command("transact", {"action": "equip", "item_id": gear, "delta": 0})
         if enemy == "still":
             state = await reveal_and_wake(fight, count=2)
             owner = state.still_encounter["owner_id"]
@@ -50,14 +63,21 @@ async def defense_fight(
         else:
             fight.encounter_id = f"defense_{uuid4().hex}"
             fight.owns_template = True
-            fight.enemies = [enemy, "lookout"] if enemy in (BANDIT, "hollow_warden") else [enemy]
+            fight.enemies = [enemy, "lookout"] if enemy in (BANDIT, "hollow_warden", "hollow_knight") else [enemy]
             template = {
                 "id": fight.encounter_id,
                 "name": "Roadside ambush",
                 "description": "A boot scrapes gravel.",
                 "difficulty": "hard",
                 "recommended_party_level": 6,
-                "enemies": [{"id": actor, "creature_id": enemy, "role": "standard"} for actor in fight.enemies],
+                "enemies": [
+                    {
+                        "id": actor,
+                        "creature_id": BANDIT if actor == "lookout" and enemy == "hollow_knight" else enemy,
+                        "role": "standard",
+                    }
+                    for actor in fight.enemies
+                ],
                 "scene_placement": {
                     "party_start": pos(0),
                     "companion_start": pos(0),

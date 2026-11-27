@@ -6,9 +6,11 @@ import math
 
 import abilities
 import ability_voice_rules
+import combat_counter_reactions
 import combat_melee_approach
 import reaction_spend
 import reaction_windows
+from combat_ability import _find_action
 from combat_spatial import distance, inside, position, require_spatial
 from combat_structures import blocked_reason, line_blocker
 from communication_voice_rules import DeliveryRefused
@@ -180,6 +182,20 @@ def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, win
     elif catalog_window not in UNBOUND_REACTION_WINDOWS:
         raise ValueError(f"unclassified reaction window {catalog_window!r} has no target-binding policy")
 
+    if ability_id in (*reaction_spend.COUNTERS, reaction_spend.SIDESTEP):
+        attacker = state.get_participant(window["actor_id"])
+        assert attacker is not None
+        head = state.held_actions[0]
+        action = _find_action(attacker, head["declaration"]["action"])
+        if action is None or not combat_melee_approach.is_melee(action):
+            raise ReactionUnavailable(f"{ability_id} requires an incoming melee attack.")
+        if ability_id == reaction_spend.RIPOSTE:
+            weapon = next(iter(actor.action_pool), None)
+            try:
+                combat_counter_reactions.validate_weapon(state, actor_id, attacker.id, weapon)
+            except ValueError as error:
+                raise ReactionUnavailable(str(error)) from error
+
     recipient_ids = []
     if delivery_policy in (
         ability_voice_rules.DeliveryPolicy.BOTH,
@@ -211,5 +227,8 @@ def offers_for_window(state: CombatState, window: dict | None) -> list[dict]:
                 _validate_for_window(state, participant.id, ability_id, window)
             except (ReactionUnavailable, DeliveryRefused):
                 continue
-            offered.append({"actor_id": participant.id, "id": ability_id, "name": ability.name})
+            entry = {"actor_id": participant.id, "id": ability_id, "name": ability.name}
+            if ability_id == reaction_spend.SIDESTEP:
+                entry["destination"] = combat_counter_reactions.SIDESTEP_CUE
+            offered.append(entry)
     return offered
