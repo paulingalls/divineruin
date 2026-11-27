@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.85.6
+
+Proof now reruns every reaching acceptance task when a shared agent source defines a function added since the last coverage refresh.
+
+Release steps: none.
+
 ## 0.85.5
 
 Proof invalidates every affected acceptance check when coverage for a shared agent source or a reaching acceptance task has yet to be measured.
