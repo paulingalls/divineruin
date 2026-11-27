@@ -1,3 +1,6 @@
+import type { MaterialCommunityIcons } from "@expo/vector-icons";
+import type { ComponentProps } from "react";
+
 import { BrandColors } from "@/constants/theme";
 
 // Glanceable condition->icon display map for the combat HUD (M4.3, story-005). Kept in a
@@ -56,7 +59,7 @@ export type ConditionType = (typeof CONDITION_TYPES)[number];
 
 export interface ConditionDisplay {
   label: string;
-  icon: string; // MaterialCommunityIcons glyph name; kept as string to stay RN-free.
+  icon: ComponentProps<typeof MaterialCommunityIcons>["name"];
   color: string;
 }
 
@@ -93,7 +96,7 @@ export const CONDITION_DISPLAY: Record<ConditionType, ConditionDisplay> = {
   frost_slowed: { label: "Frost Slowed", icon: "snowflake", color: BrandColors.ember },
   reactions_suppressed: {
     label: "Reactions Suppressed",
-    icon: "lightning-bolt-off",
+    icon: "flash-off-outline",
     color: BrandColors.ember,
   },
   studied_weakness: { label: "Studied Weakness", icon: "target", color: BrandColors.hollow },

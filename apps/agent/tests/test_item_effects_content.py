@@ -164,6 +164,8 @@ def test_blockable_conditions_partition_the_condition_catalog():
         "incorporeal",
         "regenerating",
         "studied_weakness",
+        "frost_slowed",
+        "reactions_suppressed",
     }
 
 
