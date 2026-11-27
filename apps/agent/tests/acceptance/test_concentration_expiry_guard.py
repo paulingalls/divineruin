@@ -22,7 +22,7 @@ async def test_round_deadlines_release_bless_and_hold(spell_fight) -> None:
     control = await add_player(ctx, "warrior")
     await equip(ctx, ally, dict(DAGGER))
     await equip(ctx, control, dict(DAGGER))
-    await set_foe(ctx, hp=500)
+    foe = await set_foe(ctx, hp=500)
     await prepare_spell(ctx, BLESS)
     bless = cast_spell(caster, BLESS)
     bless.targets = [ally, holder]
@@ -46,6 +46,9 @@ async def test_round_deadlines_release_bless_and_hold(spell_fight) -> None:
             for condition in participant(state, holder).conditions
             if condition["type"] == "blessed"
         ] == ([[second]] if still_held else [])
+    assert state.round_number == 12
+    packets, _ = await play(ctx, attack(foe.id, foe.action_pool[0]["name"], ally), face=13)
+    assert swing(packets, foe.id)["roll"] == 13
 
 
 async def test_tsunami_has_six_rounds_while_a_longer_cast_survives(spell_fight) -> None:
