@@ -1,10 +1,11 @@
 import { authStore } from "@/stores/auth-store";
 import { test, expect, beforeEach } from "bun:test";
-import { handleGameEvent } from "@/audio/game-event-handler";
+import { Participant, ParticipantKind } from "livekit-client";
+import { handleGameEvent, handleGameEventMessage } from "@/audio/game-event-handler";
 import { panelStore } from "@/stores/panel-store";
 import { hudStore } from "@/stores/hud-store";
 import { characterStore } from "@/stores/character-store";
-import { SAMPLE_CHARACTER, resetStores } from "./use-game-events.helpers";
+import { SAMPLE_CHARACTER, encode, resetStores } from "./use-game-events.helpers";
 
 beforeEach(() => {
   resetStores();
@@ -163,6 +164,42 @@ test("session_init populates panelStore characterDetail", () => {
   expect(detail!.ac).toBe(18);
   expect(detail!.proficiencies).toEqual(["athletics"]);
   expect(detail!.gold).toBe(50);
+});
+
+test("currency gained updates only the recipient's initialized purse", () => {
+  authStore.setState({ playerId: "p1" });
+  const agent = new Participant(
+    "agent",
+    "dm",
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    ParticipantKind.AGENT,
+  );
+  const award = (playerId: string, balance: number) =>
+    handleGameEventMessage({
+      from: agent,
+      payload: encode({
+        type: "currency_gained",
+        player_id: playerId,
+        amount: 1.3,
+        currency: "gold",
+        source: "sale",
+        new_balance: balance,
+      }),
+    });
+
+  award("p1", 50);
+  expect(panelStore.getState().characterDetail).toBeNull();
+  handleGameEvent({
+    type: "session_init",
+    character: { player_id: "p1", name: "Kael", class: "warrior", gold: 50 },
+  });
+  award("p2", 18.4);
+  expect(panelStore.getState().characterDetail?.gold).toBe(50);
+  award("p1", 51.3);
+  expect(panelStore.getState().characterDetail?.gold).toBe(51.3);
 });
 
 test("session_init populates panelStore characterDetail spells (top-level sibling)", () => {

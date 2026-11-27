@@ -4,6 +4,8 @@
     "name": "Market Square Vendors",
     "location": "accord_market_square",
     "type": "merchant",
+    "buys": "all",
+    "buys_rarities": ["common"],
     "restock_interval_hours": 24,
     "items": [
       {"item_id": "healing_potion", "quantity": 5, "price": 50},
@@ -20,6 +22,8 @@
     "name": "Grimjaw's Forge",
     "location": "accord_forge",
     "type": "blacksmith",
+    "buys": ["weapon", "armor", "shield", "ammunition"],
+    "buys_rarities": ["common", "uncommon", "rare", "legendary"],
     "restock_interval_hours": 48,
     "items": [
       {"item_id": "longsword_guild", "quantity": 1, "price": 200},
@@ -34,6 +38,8 @@
     "name": "Temple Row Provisions",
     "location": "accord_temple_row",
     "type": "temple",
+    "buys": ["consumable"],
+    "buys_rarities": ["common", "uncommon", "rare", "legendary"],
     "restock_interval_hours": 12,
     "items": [
       {"item_id": "healing_potion", "quantity": 8, "price": 45},
@@ -47,6 +53,8 @@
     "name": "Millhaven General Store",
     "location": "millhaven",
     "type": "general",
+    "buys": "all",
+    "buys_rarities": ["common"],
     "restock_interval_hours": 72,
     "items": [
       {"item_id": "millhaven_provisions", "quantity": 3, "price": 5},

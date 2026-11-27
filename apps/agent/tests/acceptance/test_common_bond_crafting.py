@@ -24,6 +24,7 @@ import experimentation
 from check_tools import check
 from dispatch_agent import DispatchAgent
 from quality_outcomes import get_quality_outcomes
+from recipes import get_recipe
 
 CLAUSE = "aelora_common_bond_crafting"
 RECEIPT = {"id": CLAUSE, "name": "Common Bond", "bonus": 1}
@@ -213,6 +214,10 @@ async def test_async_crafting(
     if not legacy:
         assert activity["parameters"]["common_bond"] == authored_receipt("artificer")
     if seed == 15 and not legacy:
+        saved = await db_activity_queries.get_activity(activity["id"])
+        assert saved is not None
+        assert [option["id"] for option in saved["decision_options"]] == ["keep", "sell"]
+        assert saved["decision_options"] == outcome["decision_options"]
         server = request.getfixturevalue("crafting_server")
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -238,6 +243,33 @@ async def test_async_crafting(
         assert "Craft Blessing" in prompt
     else:
         assert outcome["bonus_property"] is None and "Craft Blessing" not in prompt
+
+
+async def test_async_zero_value_craft_offers_only_keep(world: SimpleNamespace) -> None:
+    await setup(world, "none", "artificer", trained=True)
+    player = world.ids[0]
+    recipe_id = "anti_hollow_blade"
+    recipe = await get_recipe(recipe_id)
+    assert recipe is not None
+    await world.pool.execute(
+        "INSERT INTO skill_advancement (player_id, skill_id, tier) VALUES ($1, 'crafting', 'expert')", player
+    )
+    await db_mutations.create_workspace_rental(
+        player, world.ctx.userdata.location_id, "laboratory", "standing", None, conn=world.pool
+    )
+    await db_mutations.add_player_known_recipe(player, recipe_id, "test", conn=world.pool)
+    for material in recipe["materials"]:
+        material_id = material["material_id"]
+        await db_mutations.add_inventory_item(
+            player, material_id, material["quantity"], tainted=material_id == "wrack_core", conn=world.pool
+        )
+    activity = await create(world, recipe_id)
+    outcome, _, _ = await poll(world, activity, 5)
+    assert (outcome["tier"], outcome["crafted_item_id"]) == ("success", "hollow_edge_blade")
+    saved = await db_activity_queries.get_activity(activity["id"])
+    assert saved is not None
+    assert [option["id"] for option in saved["decision_options"]] == ["keep"]
+    assert saved["decision_options"] == outcome["decision_options"]
 
 
 @pytest.mark.parametrize("via", ["agent", "rest"])

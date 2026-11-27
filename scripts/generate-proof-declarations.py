@@ -9,6 +9,7 @@ from pathlib import Path
 
 from proof_coverage_map import COLLECTOR, OUTPUT_ENV, load_map
 from proof_family_selection import (
+    E2E_PYTHON,
     SHARED_INPUTS,
     SYNTHETIC,
     audit_content,
@@ -210,10 +211,7 @@ def e2e_tasks():
             ]
         if part == "chromium":
             inputs += [
-                {
-                    "imports-of": "e2e/fixtures/inventory-snapshot.py",
-                    "python-path": ["apps/agent"],
-                },
+                *({"imports-of": helper, "python-path": ["apps/agent"]} for helper in E2E_PYTHON),
                 "apps/agent/pyproject.toml",
                 "apps/agent/uv.lock",
                 "apps/agent/.python-version",
@@ -291,7 +289,7 @@ def main():
         check=True,
     )
     paths = tracked("apps/agent", "scripts", suffix=".py")
-    paths.append("e2e/fixtures/inventory-snapshot.py")
+    paths.extend(E2E_PYTHON)
     result = subprocess.run(
         ["bun", "scripts/proof-python-closure.ts"],
         input=json.dumps(
@@ -306,7 +304,7 @@ def main():
     )
     resolved = json.loads(result.stdout)
     graph = resolved["graph"]
-    sources = set(paths) - {"e2e/fixtures/inventory-snapshot.py"}
+    sources = set(paths) - set(E2E_PYTHON)
     data = data_inventory()
     restored = sources | data | NON_PYTHON
     shared_key = sorted(

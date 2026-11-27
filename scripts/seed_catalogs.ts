@@ -11,6 +11,7 @@ import { parseMentorVariantRow } from "../apps/server/src/mentor_variants.ts";
 import { parseRoleArchetypeRow } from "../apps/server/src/role_archetypes.ts";
 import { parseMilestoneRow } from "../apps/server/src/milestones.ts";
 import { parsePricingRow } from "../apps/server/src/pricing.ts";
+import { parseInventoryPools, validateNpcPoolBindings } from "../apps/server/src/sale_pricing.ts";
 
 import { asRecord } from "../apps/server/src/parse-helpers.ts";
 
@@ -52,3 +53,6 @@ const parsers: [string, (id: string, data: unknown) => unknown][] = [
 for (const [table, parse] of parsers) {
   for (const { id, data } of rows(table)) parse(id, data);
 }
+
+const pools = parseInventoryPools(rows("inventory_pools"), rows("items"));
+validateNpcPoolBindings(rows("npcs"), pools);

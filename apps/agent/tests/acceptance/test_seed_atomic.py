@@ -342,3 +342,48 @@ def test_seed_rejects_unknown_wild_shape_creature(fresh_migrated_db, tmp_path, m
     diagnostics = f"{refusal.value}\n{captured.err}"
     assert any("primal_wild_shape" in line and "missing_beast" in line for line in diagnostics.splitlines())
     assert ("TypeScript runtime catalog validation failed" in str(refusal.value)) == (gate == "typescript")
+
+
+@pytest.mark.parametrize("gate", ["python", "typescript"])
+@pytest.mark.parametrize(
+    "file,entity,field,bad_value",
+    [
+        ("inventory_pools.json", "grimjaw_weapons", "buys", ["unknown_item_type"]),
+        ("npcs.json", "grimjaw_blacksmith", "inventory_pool", "missing_pool"),
+    ],
+)
+def test_production_reseed_rejects_sale_catalog(
+    fresh_migrated_db, tmp_path, monkeypatch, capfd, gate, file, entity, field, bad_value
+):
+    monkeypatch.setenv("DATABASE_URL", fresh_migrated_db)
+    monkeypatch.setenv("SEED_PRODUCTION", "1")
+    monkeypatch.setattr(seed_content, "CONTENT_DIR", tmp_path)
+    for name in seed_content.TABLE_MAP:
+        (tmp_path / name).write_bytes((ROOT / "content" / name).read_bytes())
+
+    asyncio.run(seed_content.main())
+    before = asyncio.run(rows(fresh_migrated_db))
+    assert before["inventory_pools"] and before["npcs"]
+    capfd.readouterr()
+    if gate == "python":
+
+        async def accept_typescript(_snapshot: dict) -> None:
+            return None
+
+        monkeypatch.setattr(importlib.import_module("seed_catalogs"), "_validate_typescript", accept_typescript)
+
+    path = tmp_path / file
+    catalog = json.loads(path.read_text())
+    next(row for row in catalog if row["id"] == entity)[field] = bad_value
+    path.write_text(json.dumps(catalog))
+    path = tmp_path / "pricing.json"
+    pricing = json.loads(path.read_text())
+    pricing[0]["repair_cost_sp"]["common"] += 1
+    path.write_text(json.dumps(pricing))
+
+    with pytest.raises(ValueError) as refusal:
+        asyncio.run(seed_content.main())
+    diagnostics = f"{refusal.value}\n{capfd.readouterr().err}"
+    assert any(entity in line and field in line for line in diagnostics.splitlines()), diagnostics
+    assert ("TypeScript runtime catalog validation failed" in str(refusal.value)) == (gate == "typescript")
+    assert asyncio.run(rows(fresh_migrated_db)) == before

@@ -9,6 +9,8 @@ export type {
 
 export type { Npc, NpcKnowledge, NpcQuestKnowledge, NpcSchedule } from "./npc";
 
+export type { InventoryPool, InventoryPoolStock } from "./inventory_pool";
+
 export type { Item, ItemEffect, ItemArtTemplate, ItemAttunement } from "./item";
 
 export type { Recipe, MaterialReq, QualityBand } from "./recipe";
