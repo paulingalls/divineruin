@@ -187,6 +187,11 @@ without certifying paid speech-recognition accuracy.
   Fate-held). For each consumer on each route, name a case whose fixture gives
   the property under test to only one role (aelora-bases
   guardian-intercept review-1 F1 and sprint test-vacuity F3).
+  Likewise, a card that adds an effect or receipt to a shared settlement path
+  lists every exit of that path in its plan: hesitation or early return, miss,
+  concealment, a fallen target, and a second spend of the same reaction by
+  another reactor. It names one case for each exit where the outcome or receipt
+  changes (lesson #813; dead-reactions state-lifecycle F1 and F2).
 - Session start is shared by many suites: a card touching `session_hydration.py`,
   `participant_lifecycle.py` or `agent.py`'s session setup names
   `apps/agent/tests/session_lifecycle` in Verify. Those suites mock player rows,
@@ -356,16 +361,19 @@ item number, not this section.
   Human: efficient tests, harness and tiering keep wall clock down without
   lowering the bar.
 
+**Story review drops each operand** (lessons #812, #776; human 2026-11-26). For
+each operand of a new product guard that Constraint 3 fault-injects in the story
+range, the story reviewer drops
+that operand alone on a scratch copy and runs the card's Acceptance tasks. An
+operand with no committed red, reached through state real setup can build, is
+a finding. An executor's or lead's claim that
+the operand is unreachable does not settle it: dead-reactions sprint test-vacuity
+F1 was such a claim, and a committed fixture disproved it. Restore the sources
+afterwards and leave `git status` clean.
+
 **Handback contract** — what a story owes before it is handed back. Sprint 54
 lost review rounds to both halves of this, five times.
 
-- For each operand of a new product guard that Constraint 3 fault-injects, name
-  the committed test node that goes red when only that operand is dropped, and
-  include the red log from running that node.
-  The case must reach the guard through state real setup can build. Disposable
-  probes cannot supply the red. If no committed node can go red, delete the
-  unreachable operand or add a committed case (aelora-bases sprint test-vacuity F2
-  and restoring-guard review-1 F1).
 - A negative control's red must come from applying the
   real effect at the excluded site and seeing the asserted outcome change.
   Injecting a field or marker, or forcing a roll that saturates the outcome,
