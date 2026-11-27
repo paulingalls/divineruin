@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.87.1
+
+Process only: the team's working rules drop a per-card check for session-start files. The land run every card already does before handback covers the same suites.
+
+Release steps: none.
+
+The Dungeon Master’s combat roster now distinguishes terminal death from a fallen ally who can still be saved, and reports remaining temporary hit points. A regression check requires every combat participant field to be visible in the roster or documented as internal.
+
+Release steps: none.
+
 ## 0.87.0
 
 Eight combat reactions that used to spend their cost and do nothing now work:

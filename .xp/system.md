@@ -192,11 +192,6 @@ without certifying paid speech-recognition accuracy.
   concealment, a fallen target, and a second spend of the same reaction by
   another reactor. It names one case for each exit where the outcome or receipt
   changes (lesson #813; dead-reactions state-lifecycle F1 and F2).
-- Session start is shared by many suites: a card touching `session_hydration.py`,
-  `participant_lifecycle.py` or `agent.py`'s session setup names
-  `apps/agent/tests/session_lifecycle` in Verify. Those suites mock player rows,
-  so a new DB call on the hydration path reds them (sprint-105: story-224's
-  focused Verify was green while `test:python` had 5 reds).
 - Combat state that mirrors a DB row, such as the Quick Fingers pocket
   mirroring inventory, must rewind together with that row under
   `zhael_unravel_fate`, or Unravel Fate must refuse the rewind. A card adding
