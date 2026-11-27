@@ -69,6 +69,7 @@ def _validate_economy_pricing(data: dict) -> dict:
             raise ValueError(f"{ctx} must be an integer")
         if value < 0:
             raise ValueError(f"{ctx} must be >= 0")
+    _validate_multiplier(data.get("silver_per_gold"), "pricing[economy].silver_per_gold", positive=True)
     sale_rate = _validate_multiplier(data.get("sale_rate"), "pricing[economy].sale_rate", positive=True)
     _validate_multiplier(data.get("crafted_sale_rate"), "pricing[economy].crafted_sale_rate", positive=True)
     multipliers = parse_dict(data.get("sale_disposition_multipliers"), "pricing[economy].sale_disposition_multipliers")

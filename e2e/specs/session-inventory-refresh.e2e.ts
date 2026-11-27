@@ -1,4 +1,10 @@
 import { test, expect, queryDb } from "../fixtures/character.js";
+import {
+  overlapCombatReward,
+  playerData,
+  startingGold,
+  withCraftedSale,
+} from "../fixtures/crafted-sale.js";
 import { cleanupAccountByEmail } from "../fixtures/auth.js";
 import { API_ORIGIN } from "../ports.js";
 import { type Browser, type Page } from "@playwright/test";
@@ -54,6 +60,7 @@ async function seed(player: string, other = false) {
   await queryDb("UPDATE players SET data = $1::jsonb WHERE player_id=$2", [
     JSON.stringify({
       name: "Craft Tester",
+      gold: startingGold,
       class: "warrior",
       location_id: "millhaven",
       proficiencies: ["crafting"],
@@ -200,6 +207,7 @@ test("HTTP crafting and keep update two subscribed same-player HUDs; other playe
       await a1.page.evaluate((id) => window.__DR!.submitDecision(id, "keep"), crafted.activity_id);
       const kept = (await (await keepResponse).json()) as Snapshot;
       expect(kept.inventory.find((i) => i.id === "reinforced_shield")?.slot_info.quantity).toBe(1);
+      expect((await playerData(testUser.playerId)).gold).toBe(startingGold);
       await converged(a1.page, kept);
       await converged(a2.page, kept);
       await converged(b.page, otherBefore);
@@ -239,6 +247,7 @@ test("HTTP crafting and keep update two subscribed same-player HUDs; other playe
         (await inventory(testUser.token)).inventory.find((i) => i.id === "reinforced_shield")
           ?.slot_info.quantity,
       ).toBe(2);
+      expect((await playerData(testUser.playerId)).gold).toBe(startingGold);
     } finally {
       await a1.context.close();
       await a2.context.close();
@@ -301,6 +310,57 @@ test("keep decision revalidates resolved status after the real row lock", async 
     await conn.query("ROLLBACK");
     await conn.end();
   }
+});
+
+test("crafted sale credits the shared quote once and refuses a retry", async ({ testUser }) => {
+  await seed(testUser.playerId);
+  await withCraftedSale(testUser, async (sale) => {
+    await sale.expectProceeds(await sale.post());
+    await sale.expectState(8.1);
+    const retry = await sale.post();
+    expect(retry.status).toBe(400);
+    expect(await retry.json()).toEqual({ error: "Activity is not resolved yet" });
+    await sale.expectState(8.1);
+  });
+});
+
+test("concurrent crafted sales credit only once", async ({ testUser }) => {
+  await seed(testUser.playerId);
+  await withCraftedSale(testUser, async (sale) => {
+    const [success, refused] = (await Promise.all([sale.post(), sale.post()])).sort(
+      (a, b) => a.status - b.status,
+    );
+    await sale.expectProceeds(success);
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toEqual({ error: "Activity is not resolved yet" });
+    await sale.expectState(8.1);
+  });
+});
+
+test("crafted sale preserves a concurrent combat reward", async ({ testUser }) => {
+  await seed(testUser.playerId);
+  await withCraftedSale(testUser, async (sale) => {
+    const { response, observedOverlap } = await overlapCombatReward(testUser.playerId, sale.post);
+    await sale.expectProceeds(response);
+    expect(observedOverlap).toBe(true);
+    await sale.expectState(8.1 + 3.5);
+  });
+});
+
+test("crafted sale with missing value leaves the player and activity unchanged", async ({
+  testUser,
+}) => {
+  await seed(testUser.playerId);
+  await withCraftedSale(
+    testUser,
+    async (sale) => {
+      const response = await sale.post();
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({ error: "Internal server error" });
+      await sale.expectState();
+    },
+    { missingValue: true },
+  );
 });
 
 test("failed polling preserves HUD inventory, surfaces refresh error and retries", async ({

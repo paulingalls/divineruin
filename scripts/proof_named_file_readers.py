@@ -45,14 +45,15 @@ def data_inventory():
 
 
 def named_readers(inventory, paths):
-    modules = {m["path"] for m in inventory.values()}
+    roots = {t: {m["path"], *m["named_roots"]} for t, m in inventory.items()}
+    modules = set().union(*roots.values())
     modules.update(p for m in inventory.values() for p in m["closure"] if p.startswith("apps/agent/tests/"))
     texts = {p: source_text(p) for p in modules}
     readers = {}
     for source in paths:
         marker = re.compile(r"(?<![\w])" + re.escape(Path(source).name) + r"(?![\w])")
         naming = {p for p, text in texts.items() if marker.search(text)}
-        direct = {t for t, m in inventory.items() if m["path"] in naming}
+        direct = {t for t, entries in roots.items() if entries & naming}
         helpers = {
             p: {t for t, m in inventory.items() if p in m["closure"] and m["path"] != p}
             for p in naming
