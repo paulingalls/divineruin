@@ -4,7 +4,7 @@ import combat_grapple
 import condition_voice_rules
 import conditions
 from combat_participant import CombatParticipant
-from condition_catalog import CONDITION_CATALOG
+from condition_catalog import CONDITION_CATALOG, GUIDING_LIGHT_MARK
 from condition_produce import resolve_effective_targets
 from condition_restrictions import cannot_act
 
@@ -61,7 +61,9 @@ def _land_condition_on_one(
         tick_save=tick_save,
         sustaining_caster_id=sustaining_caster_id,
     )
-    if duration is not None and (skip_first_wrap or (not attacker.is_ally and attacker.type == "enemy")):
+    if cond_type == GUIDING_LIGHT_MARK or (
+        duration is not None and (skip_first_wrap or (not attacker.is_ally and attacker.type == "enemy"))
+    ):
         for condition in cond_target.conditions:
             if condition["type"] == cond_type:
                 condition["inflicted_round"] = state.round_number

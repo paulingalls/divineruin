@@ -4,6 +4,7 @@ import asyncpg
 
 import db
 import db_mutations_conditions
+from condition_catalog import GUIDING_LIGHT_MARK
 
 
 async def consume_beneficial_conditions(
@@ -50,6 +51,19 @@ async def persist_combat_consumption(state, player_id, consumed, *, conn):
     participant.conditions = conditions.remove_conditions(participant.conditions, consumed)
     await db_mutations.save_combat_state(updated.combat_id, updated.to_dict(), conn=conn)
     return updated
+
+
+def expire_guiding_light(state, caster_id: str | None) -> None:
+    for participant in state.participants:
+        participant.conditions = [
+            condition
+            for condition in participant.conditions
+            if not (
+                condition["type"] == GUIDING_LIGHT_MARK
+                and condition["originating_participant_id"] == caster_id
+                and condition["inflicted_round"] < state.round_number
+            )
+        ]
 
 
 def serialize_combat_check(function):

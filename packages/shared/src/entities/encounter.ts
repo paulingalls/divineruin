@@ -38,6 +38,8 @@ const pythonRepr = (value: unknown): string => {
 export const CONDITION_NAMES = [
   "wounded",
   "outlined",
+  "guiding_light_mark",
+  "invisible",
   "slowed",
   "stunned",
   "prone",

@@ -8,12 +8,14 @@ import combat_voice_rules
 import db_mutations_conditions
 import patron_echo_choice
 import spell_condition_cleanse
+import spell_invisibility
 import spell_item_resolution
 import spell_knowledge
 import spells
 import veythar_wellspring
 import wild_shape
-from condition_catalog import CONDITION_CATALOG
+from condition_catalog import CONDITION_CATALOG, INVISIBLE
+from condition_produce import resolve_effective_targets
 from declarations import Declaration, DeclarationType
 from party_state import PartyMember
 from resource_costs import gate_pool
@@ -95,6 +97,9 @@ async def _prepare_cast(
         or (condition_kind is not None and CONDITION_CATALOG[condition_kind].clearance == "start_of_caster_next_turn")
     ):
         raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")
+
+    if combat_state is None and session.combat_state is not None:
+        spell_invisibility.guard_direct_cast(session.combat_state, voice_spell, player_id, target_id, target_ids)
 
     prior_spell_id = caster.concentration.spell_id
     prior = spells_mod.get_spell(prior_spell_id) if voice_spell.concentration and prior_spell_id is not None else None
@@ -190,4 +195,9 @@ async def _prepare_cast(
             target_ids = spells_mod.normalize_target_list(spell, target_id, target_ids)
     except ValueError as e:
         raise ToolError(str(e)) from e
+    if combat_state is not None and spell.applies_condition == INVISIBLE:
+        for recipient_id in resolve_effective_targets(target_ids, target_id, self_value=player_id):
+            recipient = combat_state.get_participant(recipient_id)
+            assert recipient is not None
+            spell_invisibility.require_clear_outline(recipient)
     return spell, player, target_ids, item_target, locked_rows, heal_rows, cleanse

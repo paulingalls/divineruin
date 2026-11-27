@@ -23,6 +23,7 @@ from condition_catalog import CONDITION_CATALOG
 from condition_sources import DeliveryRefused
 from session_data import CombatParticipant, SessionData
 from spell_condition_cleanse import GREATER_RESTORATION, CleanseRefused
+from spell_invisibility import InvisibilityRefused, reveal_invisible
 
 if TYPE_CHECKING:
     from spell_casting import CastResult
@@ -182,7 +183,7 @@ async def _resolve_ability_packet(
                 suppress_resonance_changed=True,
                 **({"condition": decl.argument_type} if cleanses and decl.argument_type else {}),
             )
-        except CleanseRefused as e:
+        except (CleanseRefused, InvisibilityRefused) as e:
             return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
         cast_outcome.results[attacker.id] = result
         if result.new_resonance is not None:
@@ -300,6 +301,7 @@ async def _resolve_ability_packet(
             )
     if (spell.combat_damage or {}).get("resolution") == "attack" and "hit" not in cast_packet.get("damage_result", {}):
         cast_packet.pop("spell_attack_bonus", None)
+        cast_packet.update(reveal_invisible(attacker))
         if "concealment" not in cast_packet and (
             reveal := await concealment.reveal_attacker(attacker.id, conn=conn, queries=queries, ended_by="cast")
         ):

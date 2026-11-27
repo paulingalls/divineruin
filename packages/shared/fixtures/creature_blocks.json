@@ -38154,6 +38154,8 @@
   "condition_names": [
     "wounded",
     "outlined",
+    "guiding_light_mark",
+    "invisible",
     "slowed",
     "stunned",
     "prone",

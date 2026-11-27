@@ -397,7 +397,7 @@ Detect Magic, Detect Hollow, Commune with Nature and Arcane Eye reveal facts abo
 | Spell | Target | Range | Duration | Mechanic | Narration Cue | Audio |
 |---|---|---|---|---|---|---|
 | **Sacred Flame** | Single | 60 ft | Instant | WIS save (ignores armor). 1d6 radiant + WIS mod. Scales: 2d6/L5, 3d6/L11, 4d6/L17. | A pillar of golden light descends — not from the sky, but from somewhere beyond it. | CMB-009 variant (offensive radiance) |
-| **Guiding Light** | Single ally | 30 ft | 1 round | Next attack roll against the target has advantage. No damage. | A faint halo settles over your ally's target — subtle, warm, marking them. | Soft radiant chime |
+| **Guiding Light** | Single foe | 30 ft | 1 round | Next attack roll against the target has advantage. No damage. | A faint halo settles over your ally's target — subtle, warm, marking them. | Soft radiant chime |
 | **Mend** | Object/construct | Touch | Instant | Repair a single break or tear in an object. No combat application. | Your fingers trace the crack and the material remembers what it was. | Quiet crystalline tone |
 | **Sacred Word** | Self (area) | 10 ft radius | Instant | Undead and Hollow within 10 ft take 1d4 radiant. Scales: 2d4/L5, 3d4/L11, 4d4/L17. Living unaffected. | You speak a word that has weight. The Hollow things recoil — not from sound, but from meaning. | Resonant spoken tone + radiant pulse |
 

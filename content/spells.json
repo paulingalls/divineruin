@@ -384,11 +384,13 @@
   },
   {
     "id": "arcane_invisibility",
+    "applies_condition": "invisible",
+    "max_targets": 1,
     "name": "Invisibility",
     "source": "arcane",
     "spell_tier": "standard",
     "focus_cost": 3,
-    "mechanics": "The target becomes invisible until it attacks or casts an offensive spell. Attacks against it have disadvantage. Concentration.",
+    "mechanics": "The target becomes invisible until it attacks or casts an offensive spell. It has advantage on Stealth checks, and attacks against it have disadvantage. Concentration.",
     "narration_cue": "Light bends around you — first translucent, then gone.",
     "resonance_by_source": {
       "arcane": 2
@@ -769,11 +771,16 @@
   },
   {
     "id": "divine_guiding_light",
+    "save_condition": {
+      "save": null,
+      "condition": "guiding_light_mark",
+      "resave": null
+    },
     "name": "Guiding Light",
     "source": "divine",
     "spell_tier": "cantrip",
     "focus_cost": 0,
-    "mechanics": "The next attack roll against the marked target has advantage. No damage.",
+    "mechanics": "Mark one foe without a save. The next attack roll against it has advantage and consumes the mark. If unused, it expires at the end of your next turn. No damage.",
     "narration_cue": "A faint halo settles over your ally's target — subtle, warm, marking them.",
     "resonance_by_source": {
       "divine": 0

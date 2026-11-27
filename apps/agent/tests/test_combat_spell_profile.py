@@ -21,7 +21,13 @@ INDIRECT = {
     "divine_banishment",
     "divine_miracle",
 }
-CONDITION_SPELLS = {"arcane_hold_person", "arcane_power_word_stun", "arcane_slow", "primal_faerie_fire"}
+CONDITION_SPELLS = {
+    "arcane_hold_person",
+    "arcane_power_word_stun",
+    "arcane_slow",
+    "primal_faerie_fire",
+    "divine_guiding_light",
+}
 
 UTILITY = {
     "arcane_teleport",
@@ -64,7 +70,6 @@ UTILITY = {
     "divine_sanctuary",
     "divine_dispel_corruption",
     "divine_heal_wounds",
-    "divine_guiding_light",
     "divine_bless",
     "primal_plant_growth",
     "divine_zone_of_truth",

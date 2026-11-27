@@ -19,6 +19,7 @@ from combat_structures import require_line
 from condition_produce import resolve_effective_targets
 from declarations import Declaration
 from session_data import SessionData
+from spell_invisibility import reveal_invisible
 from spells import Spell, normalize_target_list
 
 
@@ -222,6 +223,8 @@ async def _land_one(
         originating_participant_id=caster.id,
         tick_save=resave[:3] if (resave := profile["resave"]) is not None else None,
     ):
+        if condition == "outlined":
+            packet.update(reveal_invisible(target))
         packet["condition_inflicted"] = condition
         packet["condition_targets"] = [target.id]
     else:

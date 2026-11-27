@@ -18,6 +18,7 @@ from combat_spell_save import roll_save_damage
 from combat_support import _resolve_attack_packet, apply_attack_result, apply_rolled_attack
 from oath_justice import attack_receipt
 from patron_synergy_combat import attack_player
+from spell_invisibility import reveal_invisible
 from zhael_fate import candidates
 
 
@@ -255,6 +256,7 @@ async def _land_attack(
                 frozen["consumed"] = list(prepared.consumed)
                 progress.steps.update(prepared=frozen, attacker_data=attacker_data)
                 return None
+    cast_packet.update(reveal_invisible(caster))
     if "concealment" not in cast_packet and (
         reveal := await concealment.reveal_attacker(caster.id, conn=conn, queries=queries)
     ):

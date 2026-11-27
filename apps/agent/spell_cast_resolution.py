@@ -23,6 +23,7 @@ import patron_cast_context
 import racial_resonance
 import resonance as resonance_mod
 import resonance_events
+import spell_invisibility
 import spell_item_resolution
 import spells
 import vaelti_echo_warning
@@ -30,6 +31,7 @@ import veil_ward as veil_ward_mod
 import veythar_wellspring
 import ward_resolution
 from combat_terrain import resolve_terrain
+from condition_catalog import INVISIBLE
 from party_state import PartyMember
 from session_data import CombatState, ConcentrationState, SessionData
 from spell_cast_effects import _finish_cast
@@ -153,6 +155,18 @@ async def _resolve_cast(
             session.validate_acting_player(player_id)
         concealment_packet = await concealment.transition(player_id, player, False, ended_by="cast", conn=conn)
 
+    visibility_receipt = {}
+    if spell.hostile and not combat_spell_attack:
+        if combat_state is not None:
+            actor = combat_state.get_participant(player_id)
+            assert actor is not None
+            visibility_receipt = spell_invisibility.reveal_invisible(actor)
+        elif conditions_mod.has_condition(player.get("conditions") or [], INVISIBLE):
+            if revalidate_actor:
+                session.validate_acting_player(player_id)
+            await conditions_mutations_mod.remove_player_conditions(player_id, (INVISIBLE,), conn=conn)
+            visibility_receipt = {"condition_removed": INVISIBLE}
+
     purified = None
     if item_target is not None:
         purified = await spell_item_resolution.purify_item(
@@ -243,6 +257,7 @@ async def _resolve_cast(
         conditions_mod=conditions_mod,
         conditions_mutations_mod=conditions_mutations_mod,
     )
+    result.packet.update(visibility_receipt)
     if echo is not None:
         result.packet["wellspring_echo"] = echo
         result.packet["dm_cue"] = veythar_wellspring.describe_cast(echo)

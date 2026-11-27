@@ -13,7 +13,7 @@ import rules_engine
 from combat_fate_rolls import packet_save
 from combat_legendary_resistance import finalize_save, override_fields
 from communication_voice_rules import can_hear
-from condition_catalog import BEACON_OF_HOPE, DIVINE_WARD, IRON_STANCE, PROTECTION_FROM_HOLLOW, WAR_CRY_RALLY
+from condition_catalog import BEACON_OF_HOPE, DIVINE_WARD, INVISIBLE, IRON_STANCE, PROTECTION_FROM_HOLLOW, WAR_CRY_RALLY
 
 if TYPE_CHECKING:
     from abilities import Ability
@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 BENEFICIAL_CONDITIONS = frozenset(
     {
         "blessed",
+        INVISIBLE,
         "shielded",
         "enraged",
         "inspired",
