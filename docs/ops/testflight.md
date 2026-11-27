@@ -241,7 +241,7 @@ release remain untested here.
 
 ## Expo SDK 58 update (2026-11-26)
 
-The app locks Expo 58.0.26, React Native 0.88.1 and React 19.3.0. Expo's
+The app locks Expo 58.1.0, React Native 0.88.1 and React 19.3.0. Expo's
 SDK-selected native dependencies include Gesture Handler 3.3.0 and AsyncStorage
 2.2.0. The LiveKit packages move together to React Native SDK 3.2.0, WebRTC
 150.2.0 and Expo plugin 1.2.0. The minimum Xcode version is 26.4.
