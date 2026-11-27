@@ -8,7 +8,6 @@ import asyncpg
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "apps" / "agent"))
 
 import db
-import db_mutations
 import db_queries
 import pricing_queries
 from combat_events import EventSink
@@ -23,7 +22,6 @@ async def main(player_id: str) -> None:
                 35,
                 [player_id],
                 recipient_id=player_id,
-                mutations=db_mutations,
                 queries=db_queries,
                 pricing=pricing_queries,
                 conn=conn,
