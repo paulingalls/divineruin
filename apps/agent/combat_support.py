@@ -6,6 +6,7 @@ from inspect import getattr_static
 from livekit.agents.llm import ToolError
 
 import check_resolution_attack
+import combat_down
 import combat_grapple
 import combat_resolution
 import combat_wrongdoing
@@ -30,6 +31,91 @@ from session_data import CombatParticipant, CombatState, SessionData
 logger = logging.getLogger("divineruin.tools")
 
 
+PARTICIPANT_SUMMARY_PROJECTED_FIELDS: frozenset[str] = frozenset(
+    {
+        "ac",
+        "action_ledger",
+        "action_pool",
+        "catalog_audio",
+        "catalog_narration",
+        "choir_reaction",
+        "choir_silence_exposed",
+        "choir_suppression",
+        "conditions",
+        "creature_id",
+        "death_save_failures",
+        "deferred_effects",
+        "hp_current",
+        "hp_max",
+        "id",
+        "initiative",
+        "is_dead",
+        "is_fallen",
+        "multiattack_sequence",
+        "name",
+        "still_dormant",
+        "temp_hp",
+        "type",
+        "wild_shape",
+        "yielded",
+    }
+)
+
+PARTICIPANT_SUMMARY_INTERNAL_FIELDS: dict[str, str] = {
+    "advantage_vs": "Conditional attack advantage sources.",
+    "archetype_id": "Class eligibility and budget initialization.",
+    "attack_mod": "Role-derived attack arithmetic.",
+    "attributes": "Resolver modifiers and initiative tie-breaking.",
+    "bark_skin_active": "The roster gives base AC. The attack roll applies Bark Skin and the receipt reports the hit.",
+    "carried_items": "Pocket inventory mirror. Item interactions report outcomes.",
+    "category": "Reward classification.",
+    "choir_movement_round": "Once-per-round Choir movement marker.",
+    "condition_immunities": "Condition landing protections.",
+    "corruption_field": "Automatic field configuration. Receipts report effects.",
+    "damage_affinities": "Damage resistance and vulnerability inputs.",
+    "damage_mult": "Role-derived damage arithmetic.",
+    "dc_mod": "Role-derived save DC arithmetic.",
+    "death_save_successes": "Death-save settlement counter. Receipts report outcomes.",
+    "enhancers": "Declaration resolution configuration.",
+    "fly_speed": "Movement resolver budget.",
+    "flyby": "Opportunity-attack exemption.",
+    "has_reaction_ability": "Reaction ownership gate. Reaction windows offer usable reactions.",
+    "hollow": "Hollow mechanics configuration. Receipts report effects.",
+    "hollow_death_resolved": "Hollow death settlement deduplication.",
+    "iron_resolve_spent": "Once-per-encounter survival spend marker.",
+    "last_action_execution": "Action replay identity receipt.",
+    "legendary": "Legendary configuration. Dedicated phase output offers choices.",
+    "legendary_actions": "Remaining legendary budget. Dedicated phase output offers choices.",
+    "level": "Ability scaling and eligibility.",
+    "loot_table_id": "Loot settlement lookup.",
+    "orenthel_beacon": "Patron attack rule flag.",
+    "pending_preparation": "Held preparation consumed by the attack resolver.",
+    "prone_immunity": "Prone landing protection.",
+    "radiant_suppression_pending": "Pending regeneration-suppression transition.",
+    "reaction_ids": "Reaction ownership IDs. Reaction windows offer usable reactions.",
+    "regeneration": "Turn-start healing configuration. Receipts report results.",
+    "regeneration_suppressed": "Regeneration transition bookkeeping.",
+    "resist_nonmagical_physical": "Weapon-affinity resolution input.",
+    "resistance_tags": "De-escalation argument resistance.",
+    "role": "Encounter scaling and boss rules.",
+    "save_advantages": "Saving-throw protection sources.",
+    "saving_throw_proficiencies": "Saving-throw arithmetic.",
+    "scholars_ward": "Patron saving-throw rule flag.",
+    "shield_spell_active": "The roster gives base AC. The attack roll applies Shield and the receipt reports the hit.",
+    "signature_ability": "Boss signature configuration. Dedicated phase output reports it.",
+    "sneak_attack_round": "Once-per-round rider spend marker.",
+    "structure_kind": "Structure rules dispatch.",
+    "tags": "Creature mechanics classification.",
+    "thornwall_damage_round": "Once-per-round wall damage marker.",
+    "tidewalker": "Patron movement-cost rule flag.",
+    "tier": "Authored creature and reward scaling.",
+    "turn_start_damage": "Automatic turn-start damage configuration.",
+    "unholy_fortitude": "Survival resolver configuration.",
+    "veilrender_turn_round": "Turn-start execution deduplication.",
+    "xp_value": "Encounter reward input.",
+}
+
+
 def _participant_summary(p: CombatParticipant) -> dict:
     summary = {
         "id": p.id,
@@ -49,6 +135,10 @@ def _participant_summary(p: CombatParticipant) -> dict:
         "deferred_effects": p.deferred_effects,
         **action_summary(p),
     }
+    if combat_down.is_terminally_down(p):
+        summary["is_dead"] = True
+    if p.temp_hp:
+        summary["temp_hp"] = p.temp_hp
     if form := p.wild_shape:
         summary["wild_shape"] = {
             "form_id": form["form_id"],
