@@ -305,6 +305,17 @@ Every spell entry includes:
 - **Narration cue** — for the DM's narrative packet (not a script, a mood/image to draw from)
 - **Audio cue** — maps to the audio design doc's SFX catalog, auto-pushed to client on cast
 
+### Narrated utility spells
+
+The DM resolves these effects in narration after the registered cast:
+
+- `arcane_prestidigitation` produces minor sensory and household tricks.
+- `arcane_mage_light` produces narrated light until [Phase 11](../milestones/11_world_loop.md) supplies lighting state.
+- `primal_druidcraft` produces descriptive nature tricks, including the voiced forecast.
+- `primal_speak_with_animals` enables a conversation the DM voices for the animal.
+
+Detect Magic, Detect Hollow, Commune with Nature and Arcane Eye reveal facts about the world. Their results come from engine state.
+
 ### Cantrips (0 Focus, 0 Resonance)
 
 | Spell | Target | Range | Duration | Mechanic | Narration Cue | Audio |

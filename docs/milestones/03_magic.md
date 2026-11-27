@@ -19,11 +19,10 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
 | M3.3 — Spell Catalog (8 criteria) | 8 | 0 | 0 |
 | M3.4 — Concentration & Racial Resonance (9 criteria) | 9 | 0 | 0 |
 
-**Status: PARTIAL.** The Resonance, Hollow Echo, Veil Ward, casting validation, concentration and racial paths have focused acceptance coverage in `test_m31_resonance_capstone.py`, `test_m32_hollow_echo_veil_ward_capstone.py`, `test_m33_casting_capstone.py`, `test_m34_concentration_racial_capstone.py` and `test_m35_session_persistence_capstone.py`. Turn Undead/Hollow has registered combat coverage for saves, fleeing, destruction, and XP settlement. The 87-spell catalog is queryable; catalog presence does not prove every spell's execution. M33 remains partial: deferred spell effects and world/terrain-dependent mechanics remain open. Choir casting aura and death Resonance use the existing cast and death paths; they do not imply raw corruption generation or completion of every Hollow mechanic.
+**Status: PARTIAL.** The Resonance, Hollow Echo, Veil Ward, casting validation, concentration and racial paths have focused acceptance coverage in `test_m31_resonance_capstone.py`, `test_m32_hollow_echo_veil_ward_capstone.py`, `test_m33_casting_capstone.py`, `test_m34_concentration_racial_capstone.py` and `test_m35_session_persistence_capstone.py`. Turn Undead/Hollow has registered combat coverage for saves, fleeing, destruction, and XP settlement. The [Phase 3 Spell Effect Ledger](03_spell_ledger.md) classifies all 87 catalog spells and links unfinished mechanics to Phase 14. Choir casting aura and death Resonance use the existing cast and death paths; they do not imply raw corruption generation or completion of every Hollow mechanic.
 
 ### Material gaps
 
-- **`content/spells.json` does not exist.** Spec is internally consistent at 87 spells (Arcane 30 = 5+6+6+6+7; Divine 28 = 4+6+6+6+6; Primal 29 = 5+6+6+6+6 — match the headline at `magic.md:541`). Implementer has a well-defined data shape. <!-- see audit/phase-3-magic.md -->
 - **Historical `request_attack` was not a spell-cast tool.** It used an inventory token without spell catalog, Focus, Resonance, or concentration checks. The retired DM name was replaced by `declare_phase`; spell casting now uses `activate`. This earlier path does not count toward M3.3.
 - **`RaceData` schema gap.** `apps/agent/creation_races.py:8-15` `RaceData` has only `id/name/description/card_description/attribute_bonuses` — no Resonance fields. When M3.4 ships, either extend `RaceData` or seed via a separate `racial_resonance_bonuses` content file (per the milestone). Thessyn's 10+ session counter and Vaelti's 1-round advance warning need state plumbing the character record does not currently expose. <!-- see audit/phase-3-magic.md -->
 - **Draethar Inner Fire cost reconciled.** M3.4 now states the shipped −3 Resonance and 1d6 unpreventable self fire damage, once per encounter.
@@ -146,6 +145,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
 - [x] Unit tests cover casting validation, Resonance generation integration, cantrip scaling, and spell lookup
 
 **Key references:**
+- [Phase 3 Spell Effect Ledger](03_spell_ledger.md)
 - *Game Mechanics Magic Doc — Spell Catalog*
 - *Game Mechanics Magic Doc — Cantrip Scaling*
 - *Game Mechanics Magic Doc — Spell Entry Format*
