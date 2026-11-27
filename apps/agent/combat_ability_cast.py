@@ -15,6 +15,7 @@ import combat_yield
 import concealment
 import db_queries
 import spell_casting
+import wild_shape
 from combat_condition_landing import land_condition_on_participants
 from combat_structures import blocked_reason, line_blocker
 from condition_sources import DeliveryRefused
@@ -79,6 +80,7 @@ async def _resolve_ability_packet(
     from combat_spell_recipients import select
 
     spell = spells.get_spell(decl.action)
+    declared = decl
     cleanses = spell.id == GREATER_RESTORATION
     turns_undead = spell.id == combat_turn_undead.TURN_UNDEAD
     steps = progress.steps if progress is not None else {}
@@ -147,6 +149,18 @@ async def _resolve_ability_packet(
                 recipients = combat_spell_heal.combat_recipients(state, attacker, decl, spell, heal)
             except ValueError as e:
                 return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
+        form = None
+        if spell.wild_shape is not None:
+            if player is None:
+                raise RuntimeError(f"Missing locked player row for Wild Shape: {attacker.id}")
+            queries = (damage_deps or {}).get("queries", db_queries)
+            locked = await queries.get_player(attacker.id, conn=conn, for_update=True)
+            if locked is None:
+                raise RuntimeError(f"Missing locked player row for Wild Shape: {attacker.id}")
+            form_id, _, stamina = wild_shape.gate(
+                attacker, declared, locked, spell.wild_shape, stamina_cost=spell.wild_shape["stamina_cost"]
+            )
+            form = (form_id, await wild_shape.prepare_form(form_id, conn), stamina)
         try:
             result = await cast_resolver._resolve_cast(
                 session,
@@ -169,6 +183,11 @@ async def _resolve_ability_packet(
         if result.concentration_spell_id is not spell_casting._UNCHANGED:
             caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
         cast_packet = result.packet
+        if form is not None:
+            form_id, beast, stamina = form
+            steps["wild_shape"] = await wild_shape.transform(
+                attacker, form_id, beast, focus=None, stamina=stamina, conn=conn
+            )
         if spell.hostile:
             steps["yield_receipt"] = combat_yield.end(attacker)
         if shield_receipts:
@@ -276,6 +295,8 @@ async def _resolve_ability_packet(
         "cast": cast_packet,
         **steps.get("yield_receipt", {}),
     }
+    if "wild_shape" in steps:
+        summary["wild_shape"] = steps["wild_shape"]
     if interception is not None:
         summary["reactive_architecture"] = interception
     return _attach_riders(summary, attacker, decl)

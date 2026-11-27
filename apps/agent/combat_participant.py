@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import temp_hp
 from encounter_roles import EncounterRole
+
+if TYPE_CHECKING:
+    from wild_shape import WildShapeState
 
 
 @dataclass
@@ -51,6 +55,7 @@ class CombatParticipant:
     unholy_fortitude: dict | None = None
     tags: list[str] = field(default_factory=list)
     creature_id: str | None = None
+    wild_shape: WildShapeState | None = None
     catalog_narration: dict = field(default_factory=dict)
     catalog_audio: dict = field(default_factory=dict)
     deferred_effects: list[dict] = field(default_factory=list)

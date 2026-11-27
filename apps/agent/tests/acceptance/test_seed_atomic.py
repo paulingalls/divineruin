@@ -315,3 +315,30 @@ def test_invalid_weapon_catalog_rolls_back(fresh_migrated_db, tmp_path, monkeypa
         assert before["items"] and before["archetypes"]
         check_refusal(*invalid_item)
         assert asyncio.run(rows(fresh_migrated_db)) == before
+
+
+@pytest.mark.parametrize("gate", ["python", "typescript"])
+def test_seed_rejects_unknown_wild_shape_creature(fresh_migrated_db, tmp_path, monkeypatch, capfd, gate):
+    seed_catalogs = importlib.import_module("seed_catalogs")
+    monkeypatch.setenv("DATABASE_URL", fresh_migrated_db)
+    monkeypatch.setattr(seed_content, "CONTENT_DIR", tmp_path)
+    for name in seed_content.TABLE_MAP:
+        (tmp_path / name).write_bytes((ROOT / "content" / name).read_bytes())
+    path = tmp_path / "spells.json"
+    catalog = json.loads(path.read_text())
+    spell = next(row for row in catalog if row["id"] == "primal_wild_shape")
+    spell["wild_shape"]["forms"][0]["creature_id"] = "missing_beast"
+    path.write_text(json.dumps(catalog))
+    if gate == "python":
+
+        async def accept_typescript(_snapshot: dict) -> None:
+            return None
+
+        monkeypatch.setattr(seed_catalogs, "_validate_typescript", accept_typescript)
+
+    with pytest.raises(ValueError) as refusal:
+        asyncio.run(seed_content.main())
+    captured = capfd.readouterr()
+    diagnostics = f"{refusal.value}\n{captured.err}"
+    assert any("primal_wild_shape" in line and "missing_beast" in line for line in diagnostics.splitlines())
+    assert ("TypeScript runtime catalog validation failed" in str(refusal.value)) == (gate == "typescript")

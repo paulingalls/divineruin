@@ -1,6 +1,6 @@
 import { parseLocationRow } from "../apps/server/src/locations.ts";
 import { numericToDangerLevel } from "../apps/server/src/errand_risk.ts";
-import { parseSpellRow, setSpells } from "../apps/server/src/spells.ts";
+import { parseSpellCatalog, setSpells } from "../apps/server/src/spells.ts";
 import { parseActivityTypeRows } from "../apps/server/src/training_state_machine.ts";
 import { parseProgramRows, parseErrandRow } from "../apps/server/src/activity_templates.ts";
 import { parseRecipeRow } from "../apps/server/src/recipes.ts";
@@ -12,6 +12,8 @@ import { parseRoleArchetypeRow } from "../apps/server/src/role_archetypes.ts";
 import { parseMilestoneRow } from "../apps/server/src/milestones.ts";
 import { parsePricingRow } from "../apps/server/src/pricing.ts";
 
+import { asRecord } from "../apps/server/src/parse-helpers.ts";
+
 const snapshot = JSON.parse(await Bun.stdin.text()) as Record<
   string,
   { id: string; data: unknown }[]
@@ -21,7 +23,15 @@ function rows(table: string) {
   if (!result?.length) throw new Error(`${table} produced no rows`);
   return result;
 }
-setSpells(new Map(rows("spells").map(({ id, data }) => [id, parseSpellRow(id, data)])));
+setSpells(
+  parseSpellCatalog(
+    rows("spells"),
+    rows("creatures").map(({ id, data }) => ({
+      id,
+      category: asRecord(data, `creatures[${id}]`).category,
+    })),
+  ),
+);
 const types = parseActivityTypeRows(rows("training_activity_types"));
 parseProgramRows(rows("training_programs"), types);
 const itemIds = new Set(rows("items").map(({ id }) => id));

@@ -7,7 +7,6 @@ from pathlib import Path
 
 PYTHON_CATALOGS = (
     ("items", "weapon_proficiency", "validate_weapon_profile"),
-    ("spells", "spells", "parse_spell_row"),
     ("archetypes", "archetypes", "parse_archetype_row"),
     ("racial_resonance_bonuses", "racial_resonance", "parse_racial_resonance_row"),
     ("archetype_abilities", "abilities", "parse_ability_row"),
@@ -18,11 +17,16 @@ PYTHON_CATALOGS = (
     ("npcs", "npcs", "parse_npc_row"),
     ("companions", "companion_profiles", "parse_companion_row"),
     ("training_activity_types", "training_rules", "parse_activity_type_row"),
-    ("hollowed_hallucinations", "hollowed_hallucinations", "parse_hollowed_hallucination_row"),
+    (
+        "hollowed_hallucinations",
+        "hollowed_hallucinations",
+        "parse_hollowed_hallucination_row",
+    ),
 )
 SERVER_TABLES = (
     "locations",
     "spells",
+    "creatures",
     "training_activity_types",
     "training_programs",
     "errand_templates",
@@ -46,11 +50,13 @@ async def validate_runtime_catalogs(conn) -> None:
             raise ValueError(f"{table} produced no rows")
         snapshot[table] = [{"id": row["id"], "data": json.loads(row["data"])} for row in rows]
     await _validate_typescript(snapshot)
+    spells = importlib.import_module("spells")
+    creatures = [{"id": row["id"], "category": row["data"]["category"]} for row in snapshot["creatures"]]
+    spells.set_spells(spells.parse_spell_catalog(snapshot["spells"], creatures))
     for table, name, parser in PYTHON_CATALOGS:
         module = importlib.import_module(name)
-        parsed = {row["id"]: getattr(module, parser)(row["id"], row["data"]) for row in snapshot[table]}
-        if name == "spells":
-            module.set_spells(parsed)
+        for row in snapshot[table]:
+            getattr(module, parser)(row["id"], row["data"])
 
 
 async def _validate_typescript(snapshot: dict) -> None:

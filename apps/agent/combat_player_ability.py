@@ -5,6 +5,7 @@ import combat_reposition
 import combat_sacrifice_play
 import combat_shadow_step
 import veythar_wellspring
+import wild_shape
 from combat_ability import (
     AbilityCastOutcome,
     _resolve_ability_condition_packet,
@@ -59,6 +60,26 @@ async def resolve(
     # ability-condition path — deduct its cost and land the condition on the target participant —
     # NOT through _resolve_ability_packet (which casts a spell). Pre-gated in _prevalidate_ability_focus.
     resolved = declared_ability(decl.action)
+    if resolved is not None and resolved[0].id == wild_shape.DRUID_ABILITY:
+        locked = await queries.get_player(attacker.id, conn=conn, for_update=True)
+        if locked is None:
+            raise RuntimeError(f"Missing locked player row for Wild Shape: {attacker.id}")
+        ability = resolved[0]
+        cost = ability.cost
+        form_id, focus, stamina = wild_shape.gate(
+            attacker, decl, locked, wild_shape.druid_profile(), focus_cost=cost.focus, stamina_cost=cost.stamina
+        )
+        beast = await wild_shape.prepare_form(form_id, conn)
+        form = await wild_shape.transform(attacker, form_id, beast, focus=focus, stamina=stamina, conn=conn)
+        return {
+            "actor_id": attacker.id,
+            "resolved": True,
+            "declaration_type": str(decl.type),
+            "action": decl.action,
+            "wild_shape": form,
+            "effect": ability.effect,
+            "narration_cue": ability.narration_cue,
+        }
     if resolved is not None and resolved[0].id == SACRIFICE_PLAY:
         return await combat_sacrifice_play.resolve(
             session,

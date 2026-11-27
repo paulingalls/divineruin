@@ -300,8 +300,8 @@ class _FakePool:
     def __init__(self, rows):
         self._rows = rows
 
-    async def fetch(self, _query):
-        return self._rows
+    async def fetch(self, query):
+        return [] if "FROM creatures" in query else self._rows
 
 
 async def test_load_spells_malformed_row_does_not_wipe_loaded_map(monkeypatch):

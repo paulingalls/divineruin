@@ -3,6 +3,11 @@
 export type SpellSource = "arcane" | "divine" | "primal";
 export type SpellTier = "cantrip" | "minor" | "standard" | "major" | "supreme";
 
+export interface WildShapeProfile {
+  stamina_cost: number;
+  forms: { creature_id: string; min_level: number }[];
+}
+
 export interface Spell {
   id: string;
   name: string;
@@ -13,4 +18,5 @@ export interface Spell {
   narration_cue: string;
   verbal: boolean;
   hostile: boolean;
+  wild_shape?: WildShapeProfile;
 }

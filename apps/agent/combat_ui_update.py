@@ -45,7 +45,7 @@ def _active_id(state: CombatState) -> str | None:
 
 
 def _project_combatant(p: CombatParticipant, active_id: str | None) -> dict:
-    return {
+    packet = {
         "id": p.id,
         "name": p.name,
         "isAlly": p.is_ally,
@@ -56,6 +56,14 @@ def _project_combatant(p: CombatParticipant, active_id: str | None) -> dict:
         "conditions": [_project_condition(c) for c in p.conditions],
         "isActive": p.id == active_id,
     }
+    if form := p.wild_shape:
+        packet["wildShape"] = {
+            "formId": form["form_id"],
+            "name": form["name"],
+            "hpCurrent": form["hp_current"],
+            "hpMax": form["hp_max"],
+        }
+    return packet
 
 
 def build_combat_ui_update(state: CombatState) -> dict:

@@ -116,7 +116,8 @@ class AbilityDecl(DeclarationPayload):
     argument_type: str = Field(
         description='Only for action "de_escalate": the kind of case made this round — reason, '
         "emotion, self_interest, threat, bluff or evidence. For arcane_elemental_burst: fire, cold, or lightning. For divine_greater_restoration: charmed or"
-        " petrified when choosing between both. Empty string otherwise."
+        " petrified when choosing between both. For druid_wild_shape or primal_wild_shape, pass a form id (e.g. grey_wolf, "
+        "steppe_bison, or dire_bear) from get_spell_info(primal_wild_shape) and leave targets empty. Empty string otherwise."
     )
 
 

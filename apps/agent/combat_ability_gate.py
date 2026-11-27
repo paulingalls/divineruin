@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import abilities
 import combat_spatial
 import mentor_variants
+import wild_shape
 from combat_order_riders import COORDINATED_ASSAULT as COORDINATED_ASSAULT
 from combat_order_riders import DIRECT_STRIKE as DIRECT_STRIKE
 from combat_order_riders import FIELD_MEDIC, SACRIFICE_PLAY
@@ -90,6 +91,7 @@ def combat_ability(ability: abilities.Ability) -> bool:
         or ability.applies_condition is not None
         or ability.id
         in (
+            wild_shape.DRUID_ABILITY,
             SECOND_WIND,
             VANISH,
             SMOKE_BOMB,

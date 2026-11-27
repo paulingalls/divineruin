@@ -11,6 +11,7 @@ import spell_item_resolution
 import spell_knowledge
 import spells
 import veythar_wellspring
+import wild_shape
 from declarations import Declaration, DeclarationType
 from party_state import PartyMember
 from resource_costs import gate_pool
@@ -67,6 +68,8 @@ async def _prepare_cast(
 
     try:
         voice_spell = spells_mod.get_spell(spell_id)
+        if voice_spell.wild_shape is not None and combat_state is None:
+            raise ToolError(wild_shape.activation_refusal(in_combat=session.in_combat))
         combat_voice_rules.guard_spell(
             combat_state if combat_state is not None else session.combat_state,
             player_id,

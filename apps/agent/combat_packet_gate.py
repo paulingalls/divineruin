@@ -12,6 +12,7 @@ import patron_synergy_heal
 import spell_condition_cleanse
 import spell_knowledge
 import spells
+import wild_shape
 from combat_ability import (
     _gate_ability_condition,
     condition_ability,
@@ -123,6 +124,11 @@ async def _prevalidate_ability_focus(
             # fails loud before ANY packet resolves — never rolling back a phase that already wrote
             # other actors' HP/Focus (the packet re-checks defensively for direct callers).
             _validate_argument_type(decl)
+        elif action == wild_shape.DRUID_ABILITY and resolved_ability is not None:
+            cost = resolved_ability[0].cost
+            wild_shape.gate(
+                actor, decl, player, wild_shape.druid_profile(), focus_cost=cost.focus, stamina_cost=cost.stamina
+            )
         elif resolved_ability is not None and resolved_ability[0].id in (
             SECOND_WIND,
             VANISH,
@@ -177,6 +183,8 @@ async def _prevalidate_ability_focus(
                 )
                 known_spell_ids_by_player[actor_id] = known_spell_ids
             spell = cast_resolver._gate_spell(player, action, known_spell_ids)
+            if spell.wild_shape is not None:
+                wild_shape.gate(actor, decl, player, spell.wild_shape, stamina_cost=spell.wild_shape["stamina_cost"])
             import combat_spell_profile
 
             try:
