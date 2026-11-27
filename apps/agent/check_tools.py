@@ -216,6 +216,7 @@ async def _check_save_impl(
             effect_on_fail,
             advantage=encounter_facts.hearth_save_advantage(state, player_id),
             scholars_ward=scholars_ward(player),
+            hollow_source=effect_on_fail.strip().lower() == "hollowed",
             rally_sources=encounter_facts.pending_rally(state, player_id),
         )
     except ValueError as e:

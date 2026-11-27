@@ -8,7 +8,8 @@ import ability_persistence
 import mentor_variants
 from ability_voice_rules import require_ability_delivery
 from communication_voice_rules import DeliveryRefused, can_hear
-from dice import roll
+from dice import maximum, roll
+from healing_dice import maximum_healing
 from patron_synergy import has_engine_synergy
 
 SONG_OF_REST = "bard_song_of_rest"
@@ -61,8 +62,9 @@ async def apply_song_of_rest(
             skipped.append({"player_id": pid, "reason": "cannot_hear"})
             continue
         stamina, focus, before = recovery[pid]
-        rolled = roll("1d8").total
-        bonus = roll("1d6").total if restoring_song else 0
+        maximized = maximum_healing(players[pid].get("conditions") or [])
+        rolled = maximum("1d8") if maximized else roll("1d8").total
+        bonus = (maximum("1d6") if maximized else roll("1d6").total) if restoring_song else 0
         after = min(max_hp[pid], before + rolled + bonus)
         recovery[pid] = stamina, focus, after
         entry: dict = {

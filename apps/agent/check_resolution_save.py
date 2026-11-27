@@ -18,8 +18,9 @@ from check_resolution import (
     _apply_condition_modifiers,
     roll_bonus_dice,
 )
+from condition_catalog import PROTECTION_FROM_HOLLOW
 from condition_restrictions import mark_save_penalty, saving_throw_advantage
-from conditions import get_condition_effects
+from conditions import get_condition_effects, has_condition
 from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier, proficiency_bonus
 
@@ -99,6 +100,7 @@ def resolve_saving_throw(
     bonus_dice_eligible: bool = True,
     advantage: bool = False,
     scholars_ward: bool = False,
+    hollow_source: bool = False,
     modifier_bonus: int = 0,
     rally_sources: tuple[str, ...] = (),
     originating_participant_id: str | None = None,
@@ -161,7 +163,8 @@ def resolve_saving_throw(
     save_modifier = mod + flat_mod + bonus.total + len(rally_sources)
     ward_advantage = scholars_ward and effect_on_fail.strip().lower() == "hollowed"
     condition_advantage = condition_advantage or saving_throw_advantage(conditions)
-    d20 = D20Roll(save_modifier, dc, advantage or condition_advantage or ward_advantage, disadvantage)
+    protected = hollow_source and has_condition(conditions, PROTECTION_FROM_HOLLOW)
+    d20 = D20Roll(save_modifier, dc, advantage or condition_advantage or ward_advantage or protected, disadvantage)
     return _save_result(
         SavingThrowResult(
             save_type=save_lower,
@@ -243,6 +246,11 @@ def roll_participant_save(
         "conditions": participant.conditions,
         "saving_throw_proficiencies": participant.saving_throw_proficiencies if include_proficiency else [],
     }
+    source = (
+        combat_state.get_participant(originating_participant_id)
+        if combat_state is not None and originating_participant_id is not None
+        else None
+    )
     return resolve_saving_throw(
         player_data,
         save_type,
@@ -253,6 +261,7 @@ def roll_participant_save(
         bonus_dice_eligible=bonus_dice_eligible,
         advantage=advantage or item_advantage or hearth_save_advantage(combat_state, participant.id),
         scholars_ward=participant.scholars_ward,
+        hollow_source=source is not None and source.hollow is not None,
         modifier_bonus=cathedral_bonus(combat_state, participant.id),
         rally_sources=pending_rally(combat_state, participant.id),
         originating_participant_id=originating_participant_id,

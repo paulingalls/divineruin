@@ -13,7 +13,7 @@ import rules_engine
 from combat_fate_rolls import packet_save
 from combat_legendary_resistance import finalize_save, override_fields
 from communication_voice_rules import can_hear
-from condition_catalog import IRON_STANCE, WAR_CRY_RALLY
+from condition_catalog import BEACON_OF_HOPE, DIVINE_WARD, IRON_STANCE, PROTECTION_FROM_HOLLOW, WAR_CRY_RALLY
 
 if TYPE_CHECKING:
     from abilities import Ability
@@ -22,7 +22,19 @@ if TYPE_CHECKING:
     from session_data import CombatParticipant, CombatState, SessionData
 
 
-BENEFICIAL_CONDITIONS = frozenset({"blessed", "shielded", "enraged", "inspired", "precise_strike", IRON_STANCE})
+BENEFICIAL_CONDITIONS = frozenset(
+    {
+        "blessed",
+        "shielded",
+        "enraged",
+        "inspired",
+        "precise_strike",
+        IRON_STANCE,
+        DIVINE_WARD,
+        BEACON_OF_HOPE,
+        PROTECTION_FROM_HOLLOW,
+    }
+)
 
 
 def requires_hostile_target(ability: "Ability") -> bool:

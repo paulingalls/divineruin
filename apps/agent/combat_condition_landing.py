@@ -116,6 +116,7 @@ def land_condition_on_participants(
     packet: dict,
     inspire_attack_upgrade: bool = False,
     sustaining_caster_id: str | None = None,
+    originating_participant_id: str | None = None,
 ) -> list[str]:
     """Land ``cond_type`` on EACH participant of a multi-target declaration (M4.8 story-012).
 
@@ -136,6 +137,7 @@ def land_condition_on_participants(
             packet=packet,
             inspire_attack_upgrade=inspire_attack_upgrade,
             sustaining_caster_id=sustaining_caster_id,
+            originating_participant_id=originating_participant_id,
         ):
             voiced.append(target_id if target_id is not None else attacker.id)
     return voiced

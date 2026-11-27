@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, TypedDict
 
 import dice
 from condition_catalog import CONDITION_CATALOG
+from healing_dice import shared_roll
 from patron_synergy import has_engine_synergy
 from rules_engine import attribute_modifier
 from terrain import is_natural
@@ -61,7 +62,7 @@ class ResonanceRemoval(TypedDict):
 
 
 HealComponent = HealBonus | ResonanceRemoval
-HealSynergy = Callable[[str, int, int], list[HealComponent]]
+HealSynergy = Callable[[str, int, int, bool], list[HealComponent]]
 
 
 def for_cast(
@@ -77,19 +78,23 @@ def for_cast(
     shared: list[HealComponent] = []
     if spell_id == "primal_healing_touch" and has_engine_synergy(player, CLEANSING_TOUCH):
         shared.append({"id": CLEANSING_TOUCH, "resonance_removed": 1})
+    verdant_roll = None
     if has_engine_synergy(player, VERDANT_HEALING):
         if terrain is None:
             raise RuntimeError("Verdant Healing requires resolved cast terrain")
         if is_natural(terrain):
-            shared.append({"id": VERDANT_HEALING, "bonus": dice_mod.roll("1d4").total})
+            verdant_roll = shared_roll("1d4", dice_mod.roll)
     if first_stay and has_engine_synergy(player, TRAVELERS_BLESSING):
         shared.append({"id": TRAVELERS_BLESSING, "bonus": 1})
     savers = set()
     if facts is not None and has_engine_synergy(player, APPOINTED_MERCY):
         savers = {pid for pid, saved_round in facts["death_save_success_round"].items() if saved_round == round_number}
 
-    def effects(recipient_id: str, before: int, base: int) -> list[HealComponent]:
-        components = [*shared, *bonus_components(player, before, base)]
+    def effects(recipient_id: str, before: int, base: int, maximized: bool) -> list[HealComponent]:
+        components = list(shared)
+        if verdant_roll is not None:
+            components.append({"id": VERDANT_HEALING, "bonus": verdant_roll(maximized)})
+        components.extend(bonus_components(player, before, base))
         if recipient_id in savers:
             components.append({"id": APPOINTED_MERCY, "bonus": 1})
         return components

@@ -109,7 +109,7 @@ def test_charm_spell_declaration_paths(spell_id):
     "spell_id,selectors",
     [
         ("arcane_bolt", {"target_id": "other"}),
-        ("divine_bless", {"target_id": "goblin_scout_1"}),
+        ("divine_bless", {"target_id": "player_1"}),
         ("divine_mass_heal", {}),
     ],
 )

@@ -381,7 +381,7 @@ async def test_incombat_resolve_drops_signal_when_none_land():
 async def test_declare_gate_rejects_over_cap_multitarget():
     import combat_packet
 
-    decl = _ability_decl(target_ids=["a", "b", "c", "d"])  # 4 > max_targets 3
+    decl = _ability_decl(target_ids=["caster", "ally_1", "ally_2", "ally_3"])
     adv = SimpleNamespace(packets=[SimpleNamespace(declaration=decl, actor_id="caster")])
     state = _combat_state_with_allies()
     session = make_context(player_id="caster").userdata

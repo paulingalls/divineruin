@@ -267,6 +267,9 @@ def recipient_spec(spell: "Spell | Ability") -> Mapping[str, Any] | None:
 
 
 def validate_target(state, caster, declaration, spell):
+    from combat_ability_save import BENEFICIAL_CONDITIONS
+    from combat_down import is_terminally_down
+    from condition_produce import resolve_effective_targets
     from spell_condition_cleanse import GREATER_RESTORATION, combat_target
 
     if spell.id == GREATER_RESTORATION:
@@ -281,6 +284,12 @@ def validate_target(state, caster, declaration, spell):
         from combat_spell_condition import validate_targets as validate_condition_targets
 
         validate_condition_targets(state, caster, declaration, spell)
+        return
+    if spell.applies_condition in BENEFICIAL_CONDITIONS:
+        for target_id in resolve_effective_targets(declaration.target_ids, declaration.target_id, self_value=caster.id):
+            target = state.get_participant(target_id)
+            if target is None or not target.is_ally or is_terminally_down(target):
+                raise ValueError(f"{spell.name} requires an ally in the fight who is alive: {target_id}")
         return
     profile = getattr(spell, "combat_damage", None)
     if profile is None or profile["resolution"] == "deferred":

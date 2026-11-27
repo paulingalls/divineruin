@@ -1058,11 +1058,13 @@
   },
   {
     "id": "divine_beacon_of_hope",
+    "applies_condition": "beacon_of_hope",
+    "max_targets": 3,
     "name": "Beacon of Hope",
     "source": "divine",
     "spell_tier": "standard",
     "focus_cost": 3,
-    "mechanics": "Up to three allies gain advantage on WIS and death saves, and any healing they receive restores maximum HP. Concentration.",
+    "mechanics": "Up to three allies gain advantage on WIS and death saves, and healing they receive uses the maximum of its dice plus the usual modifiers, capped by their maximum HP. Concentration.",
     "narration_cue": "Hope is not a feeling. It's a decision. Your prayer makes that decision easier.",
     "resonance_by_source": {
       "divine": 1
@@ -1101,11 +1103,13 @@
   },
   {
     "id": "divine_divine_ward",
+    "applies_condition": "divine_ward",
+    "max_targets": 1,
     "name": "Divine Ward",
     "source": "divine",
     "spell_tier": "major",
     "focus_cost": 4,
-    "mechanics": "One ally gains resistance to all damage for 1 round as your patron interposes their will.",
+    "mechanics": "One ally gains resistance to all damage until the start of your next turn.",
     "narration_cue": "A shield that isn't a shield. The blow lands and seems diminished. Reduced. Judged insufficient.",
     "resonance_by_source": {
       "divine": 2
@@ -1650,6 +1654,8 @@
   },
   {
     "id": "primal_protection_from_hollow",
+    "applies_condition": "protection_from_hollow",
+    "max_targets": 1,
     "name": "Protection from Hollow",
     "source": "primal",
     "spell_tier": "standard",

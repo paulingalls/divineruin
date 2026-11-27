@@ -130,7 +130,9 @@ async def grant(player_id, player, location_id, kind: CharmKind, *, mutations, c
 async def save_on_arrival(players, location_id, *, mutations, conn):
     for player_id, player in players.items():
         current = read(player, player_id, location_id)
-        save = check_resolution_save.resolve_saving_throw(player, "wisdom", 18, "charmed", bonus_dice_eligible=False)
+        save = check_resolution_save.resolve_saving_throw(
+            player, "wisdom", 18, "charmed", bonus_dice_eligible=False, hollow_source=True
+        )
         if current is None and not save.success:
             await grant(player_id, player, location_id, PARADISE_TRAP, mutations=mutations, conn=conn)
 
