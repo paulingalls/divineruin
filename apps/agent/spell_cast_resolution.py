@@ -185,8 +185,16 @@ async def _resolve_cast(
         if revalidate_actor:
             session.validate_acting_player(player_id)
         prior_spell_id = caster.concentration.spell_id
-        if combat_state is not None and prior_spell_id is not None:
-            concentration_break.remove_owned_spell_conditions(combat_state, prior_spell_id, player_id)
+        if prior_spell_id is not None:
+            prior = spells_mod.get_spell(prior_spell_id)
+            if prior.applies_condition is not None:
+                await concentration_break.release_persisted_spell_conditions(
+                    combat_state, prior_spell_id, prior.applies_condition, player_id, conn=conn, locked_rows=locked_rows
+                )
+            if combat_state is not None:
+                concentration_break.remove_owned_spell_conditions(
+                    combat_state, prior_spell_id, player_id, applied=prior.applies_condition
+                )
         await concentration_mutations_mod.update_player_concentration(player_id, spell_id, conn=conn)
         concentration_spell_id = spell_id
 

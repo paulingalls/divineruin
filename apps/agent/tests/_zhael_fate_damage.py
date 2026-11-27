@@ -30,7 +30,9 @@ async def inner_fire(world, reload):
     place_actors(state)
     session = world.ctx.userdata
     session.combat_state = state
-    required_player(state, pid).conditions = apply_condition([], "blessed", source="divine_bless")
+    required_player(state, pid).conditions = apply_condition(
+        [], "blessed", source="divine_bless", sustaining_caster_id=pid
+    )
     session.concentration.spell_id = "divine_bless"
     await update_player_concentration(pid, "divine_bless")
     call = game_tools(session, activate)
@@ -38,6 +40,7 @@ async def inner_fire(world, reload):
         with (
             patch("check_resolution.dice_roll", side_effect=[_d20(8), _d20(19)]) as dice,
             patch("dice.roll", return_value=_damage_die(4)) as burn,
+            patch("condition_bonus.dice_roll", return_value=_damage_die(1)),
         ):
             held = await call("activate", id="draethar_inner_fire")
             offer = held["fate_offer"]

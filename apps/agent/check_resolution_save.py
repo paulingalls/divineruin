@@ -18,7 +18,6 @@ from check_resolution import (
     _apply_condition_modifiers,
     roll_bonus_dice,
 )
-from condition_bonus import BonusDiceRoll
 from condition_restrictions import mark_save_penalty, saving_throw_advantage
 from conditions import get_condition_effects
 from dramatic import DramaticContext, evaluate_dramatic_context
@@ -104,9 +103,7 @@ def resolve_saving_throw(
     rally_sources: tuple[str, ...] = (),
     originating_participant_id: str | None = None,
 ) -> SavingThrowResult:
-    # ``bonus_dice_eligible`` gates the beneficial +1d4 fold/consume (M4.8 story-003). Player-initiated
-    # saves keep the default True; engine-auto saves (Beat-4 tick-clear, concentration-break) pass
-    # False so an automatic save never spends the single-use die (customer decision 6102eca13319).
+    # Engine-automatic saves pass False to leave single-use dice for chosen rolls.
     save_lower = save_type.lower()
     if save_lower not in VALID_SAVE_NAMES:
         raise ValueError(f"Unknown save type: '{save_type}'")
@@ -154,14 +151,12 @@ def resolve_saving_throw(
             context="",
         )
 
-    # Beneficial bonus die (M4.8 story-002): Blessed/Inspired add +1d4 to the save (roll-kind
-    # "save"), folded into the modifier so the total reflects it. Reached only past the auto-fail
-    # gate, so an auto-failed save never spends the die. The consumed condition is signalled for
-    # story-003 to remove.
-    bonus = (
-        roll_bonus_dice(effects, "save", rng=rng, spoken_buffs_eligible=player_data.get("spoken_buffs_eligible", True))
-        if bonus_dice_eligible
-        else BonusDiceRoll(0, ())
+    bonus = roll_bonus_dice(
+        effects,
+        "save",
+        rng=rng,
+        spoken_buffs_eligible=player_data.get("spoken_buffs_eligible", True),
+        single_use_eligible=bonus_dice_eligible,
     )
     save_modifier = mod + flat_mod + bonus.total + len(rally_sources)
     ward_advantage = scholars_ward and effect_on_fail.strip().lower() == "hollowed"

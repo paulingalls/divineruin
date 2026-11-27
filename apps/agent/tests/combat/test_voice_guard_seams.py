@@ -1,4 +1,5 @@
-from unittest.mock import AsyncMock, MagicMock
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from combat.test_voice_condition_restrictions import attack, charm_state
@@ -139,16 +140,18 @@ def test_attack_producer_carries_position_eligibility_to_real_resolver():
     actor.conditions = [{"type": "inspired"}, {"type": "blessed"}]
     state.spatial["zones"] = {"quiet": {"kind": "silence", "center_id": "other", "radius_ft": 0}}
     weapon = dict(LONGSWORD)
-    result, _ = roll_attack(
-        actor,
-        weapon,
-        state.participants[1],
-        valdris_ac_bonus=0,
-        combat_state=state,
-        weapon_profile=weapon,
-        player={"class": "warrior"},
-    )
-    assert result.consumed_conditions == ("blessed",)
+    with patch("condition_bonus.dice_roll", return_value=SimpleNamespace(total=3)):
+        result, _ = roll_attack(
+            actor,
+            weapon,
+            state.participants[1],
+            valdris_ac_bonus=0,
+            combat_state=state,
+            weapon_profile=weapon,
+            player={"class": "warrior"},
+        )
+    assert result.attack_modifier == 4
+    assert result.consumed_conditions == ()
     assert any(c["type"] == "inspired" for c in actor.conditions)
 
 

@@ -6,36 +6,20 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from combat._helpers import save_result
 from inventory_snapshot_fixture import snapshot_query
-from sample_fixtures import FixedRng
 from weapon_fixtures import LONGSWORD
 
 import combat_packet
-from check_resolution_save import resolve_saving_throw
 from conditions import apply_condition
 from tools._discover_fixtures import LOCATION_WITH_HIDDEN, _roll
 from tools._discover_fixtures import mock_discovery_events as mock_discovery_events
 from tools._helpers import SAMPLE_PLAYER, _ctx_with_bus, _make_context
 
-BLESSED = apply_condition([], "blessed")
+INSPIRED = apply_condition([], "inspired")
 _ATTRS = {"strength": 12, "dexterity": 12, "constitution": 12, "wisdom": 12, "charisma": 12, "intelligence": 12}
 
 
 def _player(conditions):
     return {"attributes": _ATTRS, "level": 3, "conditions": conditions}
-
-
-def test_save_eligible_default_folds_and_consumes():
-    res = resolve_saving_throw(_player(BLESSED), "wisdom", 12, "x", rng=FixedRng(3))
-    base = resolve_saving_throw(_player([]), "wisdom", 12, "x", rng=FixedRng(3))
-    assert res.total == base.total + 3
-    assert res.consumed_conditions == ("blessed",)
-
-
-def test_save_eligible_false_skips_fold_and_consume():
-    res = resolve_saving_throw(_player(BLESSED), "wisdom", 12, "x", rng=FixedRng(3), bonus_dice_eligible=False)
-    base = resolve_saving_throw(_player([]), "wisdom", 12, "x", rng=FixedRng(3))
-    assert res.total == base.total
-    assert res.consumed_conditions == ()
 
 
 @pytest.mark.asyncio
@@ -45,7 +29,7 @@ async def test_concentration_break_save_passes_eligible_false():
     resolver = MagicMock()
     resolver.resolve_saving_throw = MagicMock(return_value=save_result(True, total=18))
     queries = MagicMock()
-    queries.get_player = AsyncMock(return_value=_player(BLESSED))
+    queries.get_player = AsyncMock(return_value=_player(INSPIRED))
     concentration_mutations = MagicMock()
     concentration_mutations.update_player_concentration = AsyncMock()
     session = MagicMock()
@@ -110,7 +94,7 @@ async def test_attack_packet_surfaces_consumed_conditions():
             target_hp_remaining=4,
             target_killed=False,
             narrative_hint="x",
-            consumed_conditions=("blessed",),
+            consumed_conditions=("inspired",),
         )
     )
     mutations, queries, break_mod = _combat_mocks()
@@ -124,7 +108,7 @@ async def test_attack_packet_surfaces_consumed_conditions():
         resolver=resolver,
         concentration_break_mod=break_mod,
     )
-    assert resp["consumed_conditions"] == ("blessed",)
+    assert resp["consumed_conditions"] == ("inspired",)
 
 
 @pytest.mark.asyncio
@@ -141,7 +125,7 @@ async def test_extra_attack_consumes_beneficial_die_once():
     assert player is not None
     player.action_pool = [dict(_WEAPON)]
     player.enhancers = ["extra_attack"]
-    player.conditions = apply_condition([], "blessed")
+    player.conditions = apply_condition([], "inspired")
     mutations, queries, break_mod = _combat_mocks()
     packet = ResolutionPacket(
         actor_id="player_1",
@@ -159,9 +143,9 @@ async def test_extra_attack_consumes_beneficial_die_once():
         conn=MagicMock(),
     )
     assert len(summary["attacks"]) == 2
-    assert summary["attacks"][0]["consumed_conditions"] == ("blessed",)
+    assert summary["attacks"][0]["consumed_conditions"] == ("inspired",)
     assert summary["attacks"][1]["consumed_conditions"] == ()
-    assert "blessed" not in [c["type"] for c in player.conditions]
+    assert "inspired" not in [c["type"] for c in player.conditions]
 
 
 @pytest.mark.asyncio
@@ -170,7 +154,7 @@ async def test_save_tool_consumes_and_persists():
     from tools._helpers import SAMPLE_PLAYER, _make_context
 
     queries = MagicMock()
-    queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": apply_condition([], "blessed")})
+    queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": apply_condition([], "inspired")})
     cond_mut = MagicMock()
     cond_mut.remove_player_conditions = AsyncMock()
 
@@ -178,7 +162,7 @@ async def test_save_tool_consumes_and_persists():
 
     cond_mut.remove_player_conditions.assert_awaited_once()
     args, _ = cond_mut.remove_player_conditions.call_args
-    assert args[1] == ("blessed",)  # (player_id, consumed_types)
+    assert args[1] == ("inspired",)  # (player_id, consumed_types)
 
 
 @pytest.mark.asyncio

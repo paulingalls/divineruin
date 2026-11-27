@@ -20,11 +20,15 @@ def roll_bonus_dice(
     rng: random.Random | None = None,
     *,
     spoken_buffs_eligible: bool = True,
+    single_use_eligible: bool = True,
 ) -> BonusDiceRoll:
     total = 0
     war_songs_bonus = 0
     consumed: list[str] = []
     for bonus in effects.bonus_dice:
+        single_use = CONDITION_CATALOG[bonus.source].clearance == "consumed_on_use"
+        if single_use and not single_use_eligible:
+            continue
         if bonus.source == "inspired" and (not spoken_buffs_eligible or "no_spoken_buffs" in effects.restrictions):
             continue
         if roll_kind in bonus.scopes:
@@ -33,6 +37,6 @@ def roll_bonus_dice(
             total += value
             if upgraded:
                 war_songs_bonus += value
-            if CONDITION_CATALOG[bonus.source].clearance == "consumed_on_use":
+            if single_use:
                 consumed.append(bonus.source)
     return BonusDiceRoll(total, tuple(consumed), war_songs_bonus)

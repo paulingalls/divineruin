@@ -10,7 +10,6 @@ from sample_fixtures import FixedRng
 from test_rules_core import SAMPLE_PLAYER
 
 from check_resolution import resolve_skill_check_dc, roll_bonus_dice
-from check_resolution_attack import resolve_attack
 from check_resolution_save import resolve_saving_throw
 from condition_bonus import BonusDiceRoll
 from conditions import ConditionEffects, apply_condition, get_condition_effects
@@ -34,22 +33,15 @@ def _effects(conditions: list[dict]) -> ConditionEffects:
 # --- roll_bonus_dice helper: kind-scoped matching + consume signal ---
 
 
-def test_blessed_die_applies_to_attack_and_save_not_check():
-    assert roll_bonus_dice(_effects(BLESSED), "attack", FixedRng(3)) == BonusDiceRoll(3, ("blessed",))
-    assert roll_bonus_dice(_effects(BLESSED), "save", FixedRng(3)) == BonusDiceRoll(3, ("blessed",))
-    # Blessed is scoped attack+save only — a skill check gets nothing.
-    assert roll_bonus_dice(_effects(BLESSED), "check", FixedRng(3)) == BonusDiceRoll(0, ())
-
-
 def test_inspired_die_applies_to_every_roll_kind():
     for kind in ("attack", "save", "check"):
         assert roll_bonus_dice(_effects(INSPIRED), kind, FixedRng(2)) == BonusDiceRoll(2, ("inspired",))
 
 
-def test_both_dice_sum_and_signal_both():
+def test_both_dice_sum_and_only_inspire_is_consumed():
     result = roll_bonus_dice(_effects(BOTH), "attack", FixedRng(4))
     assert result.total == 8  # two 1d4, each forced to 4
-    assert set(result.consumed) == {"blessed", "inspired"}
+    assert result.consumed == ("inspired",)
 
 
 def test_no_beneficial_condition_rolls_nothing():
@@ -58,18 +50,6 @@ def test_no_beneficial_condition_rolls_nothing():
 
 
 # --- resolve_attack: +1d4 folds into the to-hit roll (content/spells.json: "+1d4 on attack rolls") ---
-
-
-def test_attack_blessed_adds_die_to_to_hit_and_consumes():
-    blessed = resolve_attack(_pc(BLESSED), WEAPON, 12, 30, rng=FixedRng(3))
-    plain = resolve_attack(_pc([]), WEAPON, 12, 30, rng=FixedRng(3))
-    # Same seed → same d20 + atk_mod; Blessed adds the rolled die (3) to the to-hit total.
-    assert blessed.attack_total == plain.attack_total + 3
-    assert blessed.consumed_conditions == ("blessed",)
-    assert plain.consumed_conditions == ()
-
-
-# --- resolve_saving_throw: +1d4 folds into the save; auto-fail wastes no die ---
 
 
 def test_save_inspired_adds_die_and_consumes():
@@ -81,8 +61,8 @@ def test_save_inspired_adds_die_and_consumes():
 
 
 def test_save_autofail_does_not_consume_the_die():
-    # Stunned auto-fails STR/DEX saves; a Blessed die must not be spent on a save that never rolls.
-    conds = apply_condition(apply_condition([], "blessed"), "stunned")
+    # Stunned auto-fails STR/DEX saves; an Inspired die must not be spent on a save that never rolls.
+    conds = apply_condition(INSPIRED, "stunned")
     res = resolve_saving_throw(_pc(conds), "strength", 12, "knocked", rng=FixedRng(5))
     assert res.roll == 0  # auto-failed path
     assert res.success is False

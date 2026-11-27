@@ -155,13 +155,9 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
         disadvantage_scopes=("str", "dex", "con"),
     ),
     "blessed": ConditionSpec(
-        clearance="consumed_on_use",
-        # +1d4 on the bearer's next attack or saving throw, consumed on use (M4.8). NOT advantage:
-        # the prior advantage_scopes=("next_roll",) never intersected any resolver scope and
-        # mismodelled a flat die as roll-twice.
+        clearance="concentration",
         bonus_die="1d4",
         bonus_die_scopes=("attack", "save"),
-        restrictions=("consumed_on_use",),
     ),
     "shielded": ConditionSpec(
         clearance="duration",

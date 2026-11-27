@@ -32,8 +32,8 @@ async def read_player_conditions(
 
     Used by combat_end to reconcile the player's persistent + beneficial-buff conditions back to
     players.data: it unions newly-acquired persistent conditions with any already stored (so a fight
-    that leaves you Exhausted doesn't clobber a pre-existing Wounded) and detects a beneficial die
-    (Blessed/Inspired) consumed in combat so its stale copy is dropped. The out-of-combat check/save
+    that leaves you Exhausted doesn't clobber a pre-existing Wounded) and drops stale copies
+    of expired buffs. The out-of-combat check/save
     read is separate and free via db_queries.get_player (it returns the whole data dict).
     """
     _conn = conn or await db.get_pool()
@@ -133,3 +133,14 @@ async def remove_player_conditions(
         return
     _conn = conn or await db.get_pool()
     await _conn.execute(_REMOVE_CONDITIONS_SQL, player_id, list(types))
+
+
+async def sustaining_recipient_ids(
+    spell_id: str, condition_type: str, caster_id: str, *, conn: asyncpg.Connection
+) -> tuple[str, ...]:
+    owned = [{"type": condition_type, "source": spell_id, "sustaining_caster_ids": [caster_id]}]
+    rows = await conn.fetch(
+        "SELECT player_id FROM players WHERE data->'conditions' @> $1::jsonb",
+        json.dumps(owned),
+    )
+    return tuple(row["player_id"] for row in rows)
