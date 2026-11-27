@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.88.1
+
+Zhael paladins can swear one Promised Hour per encounter. A new encounter lets them swear again.
+
+Release steps: none.
+
 ## 0.88.0
 
 Paladins of Valdris and Zhael can swear an oath aloud, and the engine holds them to it. A Valdris paladin swears the Oath of Justice. Striking first, striking a surrendered enemy or striking a yielded ally breaks it, and a broken oath locks Valdris's three tier abilities for the rest of that gameplay session, for hosts and guests alike. While the oath is kept, the paladin gains +2 on combat attacks and saves involving recorded wrongdoers, and on skill, social and discovery checks outside combat when the Dungeon Master says justice is at stake. A Zhael paladin swears a timed oath in combat, to defeat a foe or to keep an ally standing by a named round. Until the deadline the paladin gains +1 on every saving throw, death saves included. The DM announces when the oath is fulfilled or lapses.
