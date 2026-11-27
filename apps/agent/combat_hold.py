@@ -491,6 +491,8 @@ async def _resolve_held(
         and summary.get("damage_target_id") != damage_target.id
     ):
         raise ValueError(f"Intercepted hit did not settle damage on {damage_target.id!r}")
+    # A paused (Zhael-held) resolution's summary is discarded by the pump; on resume the movement
+    # facts join the finished summary.
     if movement := head.get("melee_approach"):
         summary = {**movement, **summary}
         if not summary["resolved"]:
