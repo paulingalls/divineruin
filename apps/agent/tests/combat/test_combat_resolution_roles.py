@@ -4,7 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from combat._helpers import _damage_resolver, _fake_db_mod, _resolve_round
+from combat._helpers import _damage_resolver, _fake_db_mod, _resolve_round, save_result
 from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
@@ -271,7 +271,7 @@ class TestResolvePhaseSurfacesLegendary:
         boss.conditions = conditions.apply_condition([], "paralyzed", source="hold_person")
         ctx.userdata.combat_state = state
         save_resolver = MagicMock()
-        save_resolver.roll_participant_save.return_value = MagicMock(success=True, rally_sources=())
+        save_resolver.roll_participant_save.return_value = save_result(True)
 
         result = await _resolve_round(ctx, **_resolve_deps(damage=3), save_resolver=save_resolver)
 

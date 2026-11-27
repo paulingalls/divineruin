@@ -177,7 +177,7 @@ async def test_actual_catalog_entry_persists_placement_and_zone_ids(spatial_entr
         assert queried.pop("still") == response["still"]
     if template["id"] == "hollow_architect":
         assert queried.pop("architect") == response["architect"]
-    assert queried == response["spatial"]
+    assert queried == {**response["spatial"], "oath_choice": None}
 
 
 @pytest.mark.parametrize(
@@ -329,7 +329,7 @@ async def test_held_reload_uses_committed_positions(spatial_entry):
     resumed = json.loads(raw)
     assert resumed["spatial"] == facts(ctx.userdata.combat_state, pid)
     assert resumed["spatial"]["distances_ft"]["mawling_1"] != 999
-    assert json.loads(await _query_info_impl(ctx, "combat")) == resumed["spatial"]
+    assert json.loads(await _query_info_impl(ctx, "combat")) == {**resumed["spatial"], "oath_choice": None}
 
 
 async def test_held_movement_rechecks_committed_eligibility(spatial_entry):

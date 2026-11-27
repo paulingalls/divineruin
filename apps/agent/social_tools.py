@@ -116,6 +116,8 @@ async def _check_social_impl(
         natural_terrain=False,
         hearing_only=False,
         synergy_context=synergy_context,
+        player_id=player_id,
+        in_combat=session.combat_state is not None,
     )
     scope = SkillScope.capture(session, player_id)
 

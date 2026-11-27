@@ -187,7 +187,10 @@ async def test_discover_gets_advantage(world, monkeypatch, producer):
     with patch("check_resolution.dice_roll", side_effect=[_roll(2), _roll(18)]) as rolls:
         result = json.loads(
             await check_tools.check(
-                world[0], DiscoverCheck(kind="discover", skill="perception", target="trees", hearing_only=False)
+                world[0],
+                DiscoverCheck(
+                    kind="discover", skill="perception", target="trees", hearing_only=False, synergy_context="none"
+                ),
             )
         )
     assert (result["roll"], rolls.call_count, result.get("gift_name")) == (18, 2, "Nature's Pulse")

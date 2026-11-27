@@ -235,7 +235,7 @@ async def continue_attack(
         if interception.get("resolved") is False:
             attack_summaries.append({**swing_move, **interception})
             break
-        swing = progress.scope("swing") if progress is not None else None
+        swing = progress.scope("swing").with_origin(attacker.id) if progress is not None else None
         reveal = (
             attacker.type == "player"
             and not resumed_swing
@@ -260,6 +260,7 @@ async def continue_attack(
                     candidates = options
             if shared_faces is not None or candidates is not None:
                 attacker_data, prepared = await prepare_player_swing(
+                    session,
                     state,
                     attacker,
                     target,

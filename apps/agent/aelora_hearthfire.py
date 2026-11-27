@@ -157,7 +157,14 @@ async def settle_entry(
     else:
         zone["failed_rounds"][mover.id] = state.round_number
         cue = f"Hearthfire stops {mover.name} at its edge."
-    return {**receipt, "roll": result.roll, "total": result.total, "success": result.success, "dm_cue": cue}
+    return {
+        **receipt,
+        **result.oath_fields(),
+        "roll": result.roll,
+        "total": result.total,
+        "success": result.success,
+        "dm_cue": cue,
+    }
 
 
 async def heal_round(

@@ -16,6 +16,7 @@ from combat_spell_condition import land_damage_rider
 from combat_spell_profile import DICE, scaled
 from combat_spell_save import roll_save_damage
 from combat_support import _resolve_attack_packet, apply_attack_result, apply_rolled_attack
+from oath_justice import attack_receipt
 from patron_synergy_combat import attack_player
 from zhael_fate import candidates
 
@@ -233,6 +234,10 @@ async def _land_attack(
                 defender=defender,
                 season=await thyra_seasons.season_for(player, conn=conn),
             )
+            if (
+                justice := await attack_receipt(session, state, caster, target, player, queries=queries, conn=conn)
+            ) is not None:
+                attacker_data["oath_justice"] = justice
             prepared = check_resolution_attack.prepare_attack(
                 attacker_data, action, ac, attack_mod=modifier, target_conditions=target.conditions
             )

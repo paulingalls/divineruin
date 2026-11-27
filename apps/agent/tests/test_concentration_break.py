@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from combat._helpers import save_result
 
 import conditions
 from caster_state import ConcentrationState, ResonanceTrack
@@ -37,7 +38,9 @@ def _deps(save_total: int | None = None):
     queries = MagicMock()
     queries.get_player = AsyncMock(return_value={"attributes": {"constitution": 14}, "level": 5})
     resolver = MagicMock()
-    resolver.resolve_saving_throw = MagicMock(return_value=MagicMock(total=save_total))
+    resolver.resolve_saving_throw = MagicMock(
+        return_value=save_result(save_total is not None and save_total >= 10, total=save_total)
+    )
     concentration_mutations = MagicMock()
     concentration_mutations.update_player_concentration = AsyncMock()
     return queries, resolver, concentration_mutations

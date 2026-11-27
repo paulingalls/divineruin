@@ -10,6 +10,7 @@ from acceptance._choir_spell_helpers import (
     give_guest_threshold_mercy,
 )
 from acceptance._choir_spell_helpers import bolt as bolt
+from combat._helpers import save_result
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
@@ -99,7 +100,6 @@ async def test_choir_discovery_rollback_is_invisible(started, monkeypatch):
 
 @pytest.mark.parametrize("face,redirect", [(20, False), (10, False), (20, True)])
 async def test_choir_real_spell_lands_on_core(started, face, redirect):
-    from types import SimpleNamespace
 
     import check_resolution_attack
     import db_queries
@@ -114,7 +114,7 @@ async def test_choir_real_spell_lands_on_core(started, face, redirect):
     recipient = state.get_participant(pid if redirect else "choir_zone")
     hp_before = recipient.hp_current
     effective_ac = recipient.ac + (0 if redirect else 2)
-    saved = SimpleNamespace(success=not redirect, rally_sources=())
+    saved = save_result(not redirect)
     with (
         patch("check_resolution_attack.resolve_attack", wraps=check_resolution_attack.resolve_attack) as attack,
         patch("check_resolution_save.roll_participant_save", return_value=saved),

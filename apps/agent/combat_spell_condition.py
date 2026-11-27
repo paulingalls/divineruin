@@ -98,6 +98,7 @@ async def land(
                 combat_state=state,
             ),
             state=state,
+            conn=conn,
         )
         if save is None:
             return
@@ -110,6 +111,7 @@ async def land(
             "dc": save.dc,
             "success": save.success,
             **override_fields(save),
+            **save.oath_fields(),
             **encounter_facts.rally_receipt(target.id, save.rally_sources),
         }
         if save.success:

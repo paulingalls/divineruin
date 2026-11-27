@@ -74,7 +74,7 @@ def _freeze_zone(state, actor, action):
     return {"targets": targets, "trigger": trigger, "duration": duration, "results": []}
 
 
-async def _save(session, state, target, action, effect, progress, advantage=False):
+async def _save(session, state, actor, target, action, effect, progress, advantage=False, *, conn, queries):
     return await packet_save(
         progress,
         session,
@@ -89,8 +89,11 @@ async def _save(session, state, target, action, effect, progress, advantage=Fals
             bonus_dice_eligible=False,
             advantage=advantage,
             combat_state=state,
+            originating_participant_id=actor.id,
         ),
         state=state,
+        queries=queries,
+        conn=conn,
     )
 
 
@@ -134,7 +137,15 @@ async def resolve_zone(
     for target_id in execution["targets"][len(results) :]:
         target = state.get_participant(target_id)
         save = await _save(
-            session, state, target, action, "stunned", progress.scope("still_save") if progress is not None else None
+            session,
+            state,
+            actor,
+            target,
+            action,
+            "stunned",
+            progress.scope("still_save") if progress is not None else None,
+            conn=conn,
+            queries=queries,
         )
         if save is None:
             return {}
@@ -223,11 +234,14 @@ async def resolve_touch(
         save = await _save(
             session,
             state,
+            actor,
             target,
             action,
             "charmed",
             progress.scope("still_save") if progress is not None else None,
             advantage,
+            conn=conn,
+            queries=queries,
         )
         if save is None:
             return {}

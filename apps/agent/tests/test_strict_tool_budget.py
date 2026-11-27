@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from _repo_inventory import repository_files
 from agent_tool_profiles import AGENT_PROFILE_NAMES, AGENT_TOOL_LISTS
-from livekit.agents.llm import ToolContext
+from livekit.agents.llm import FunctionTool, ToolContext
 from tool_schema_walk import SchemaFacts, walk_tool_schema
 
 from _gods_content import load_gods
@@ -111,7 +111,7 @@ def test_compiled_check_context_enum_matches_authored_tags(vendor):
     variants = [params["$defs"][branch["$ref"].split("/")[-1]] for branch in params["properties"]["roll"]["anyOf"]]
     assert {
         variant["properties"]["kind"]["const"] for variant in variants if "synergy_context" in variant["properties"]
-    } == {"skill", "social"}
+    } == {"skill", "social", "discover"}
     for variant in variants:
         if "synergy_context" in variant["properties"]:
             assert "synergy_context" in variant["required"]
@@ -216,3 +216,22 @@ def test_plugin_still_accepts_the_interim_strict_kwarg_and_defaults_on():
 
     openai_param = inspect.signature(openai.LLM.__init__).parameters["_strict_tool_schema"]
     assert openai_param.default is True
+
+
+@pytest.mark.parametrize("vendor", ["openai", "anthropic"])
+def test_compiled_select_timed_fields_are_closed_and_required(vendor):
+    for tools in (EXPLORATION_TOOLS, COMBAT_AGENT_TOOLS, DISPATCH_TOOLS):
+        (tool,) = [
+            tool
+            for tool in BaseGameAgent(instructions="Select an option.", tools=tools).tools
+            if isinstance(tool, FunctionTool) and tool.info.name == "select"
+        ]
+        [schema] = ToolContext([tool]).parse_function_tools(vendor, strict=True)
+        definition = schema["function"] if vendor == "openai" else schema
+        assert definition["strict"] is True
+        params = definition["parameters"] if vendor == "openai" else definition["input_schema"]
+        assert set(params["required"]) == {"choice_id", "option", "objective_kind", "target_id", "last_round"}
+        fields = params["properties"]
+        assert fields["objective_kind"]["type"] == fields["target_id"]["type"] == "string"
+        assert set(fields["objective_kind"]["enum"]) == {"none", "defeat_target", "keep_ally_standing"}
+        assert fields["last_round"]["type"] == "integer"

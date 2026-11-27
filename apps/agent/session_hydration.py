@@ -33,6 +33,7 @@ import db_mutations_veil_ward
 import db_queries
 import event_types as E
 import game_events
+import oath_breach
 import patron_gift_tools
 import player_session
 import racial_resonance
@@ -112,19 +113,20 @@ async def hydrate_patron_ability_session(
             return
         source = conn or await db.get_pool()
         async with source.acquire() as connection:
-            await _recharge_session_abilities(player_id, connection)
+            await _recharge_session_abilities(player_id, session.session_id, connection)
         session.patron_ability_entries.add(player_id)
     from patron_ability_events import publish_patron_abilities
 
     await publish_patron_abilities(session.room, player_id, session.event_bus)
 
 
-async def _recharge_session_abilities(player_id: str, connection) -> None:
+async def _recharge_session_abilities(player_id: str, session_id: str, connection) -> None:
     async with connection.transaction():
         player = await db_queries.get_player(player_id, conn=connection, for_update=True)
         if player is None:
             raise ValueError(f"missing player row: {player_id}")
         await patron_gift_tools.recharge(player_id, player, "per_session", conn=connection)
+        await oath_breach.enter_session(player_id, player, session_id, conn=connection)
 
 
 async def hydrate_session_state(

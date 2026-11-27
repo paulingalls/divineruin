@@ -65,6 +65,8 @@ async def roll_save_damage(
                 combat_state=state,
             ),
             state=state,
+            queries=queries,
+            conn=conn,
         )
         if save is None:
             return None
@@ -141,6 +143,7 @@ async def roll_save_damage(
         "success": save.success,
         "half_on_success": profile["half"],
         **override_fields(save),
+        **save.oath_fields(),
         **encounter_facts.rally_receipt(target.id, save.rally_sources),
     }
     return roll, save_info

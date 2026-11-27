@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 import db_queries
+import oath_timed
 import temp_hp
 import thyra_seasons
 from combat_down import is_terminally_down, revive
@@ -218,6 +219,10 @@ async def trigger_damage_gifts(
     ward = await trigger_death_ward(target, hp_before, player=player, queries=queries, conn=conn)
     if ward:
         return ward, drain_basis
+    if state is not None and _embrace_transition(target, hp_before, target.hp_current):
+        await oath_timed.settle(
+            state, conn=conn, reason="ally_fell", round_number=state.round_number, target_id=target.id, session=session
+        )
     embrace = await trigger_dawns_embrace(
         session, state, target, hp_before, players=players, queries=queries, conn=conn
     )

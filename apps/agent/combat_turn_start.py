@@ -27,7 +27,7 @@ def _finish_packet_start(state, actor) -> dict | None:
 
 
 async def start_choir_packet(
-    session, state, actor, *, conn, concentration_break_mod, sink, progress, effects: list[dict]
+    session, state, actor, *, conn, queries, concentration_break_mod, sink, progress, effects: list[dict]
 ) -> dict | None:
     import choir_encounter
 
@@ -36,6 +36,7 @@ async def start_choir_packet(
         state,
         actor,
         conn=conn,
+        queries=queries,
         concentration_break_mod=concentration_break_mod,
         sink=sink,
         progress=progress.scope("choir_aura") if progress is not None else None,
@@ -66,6 +67,7 @@ async def start_held_packet(session, state, head: dict, fate_rolls, deps: dict) 
         state,
         actor,
         conn=deps.get("conn"),
+        queries=deps["queries"],
         concentration_break_mod=deps["concentration_break_mod"],
         progress=aura,
         sink=deps.get("sink"),
@@ -219,7 +221,7 @@ async def _apply(
         conn=conn,
         sink=sink,
         publish_roll=False,
-        progress=progress,
+        progress=progress.with_origin(owner.id) if progress is not None else None,
     )
     if progress is not None and progress.paused:
         return None

@@ -49,10 +49,12 @@ def test_social_variant_maps_to_the_social_impl_args():
 
 def test_discover_variant_maps_to_the_discover_impl_args():
     mode, kwargs = to_impl_args(
-        DiscoverCheck(kind="discover", skill="perception", target="notice_board", hearing_only=False)
+        DiscoverCheck(
+            kind="discover", skill="perception", target="notice_board", hearing_only=False, synergy_context="none"
+        )
     )
     assert mode == "discover"
-    assert kwargs == {"skill": "perception", "target": "notice_board", "hearing_only": False}
+    assert kwargs == {"skill": "perception", "target": "notice_board", "hearing_only": False, "synergy_context": "none"}
 
 
 def test_save_variant_maps_to_the_save_impl_args():
@@ -115,7 +117,7 @@ def test_no_variant_field_is_optional(variant):
                 "context_description": "listen",
             },
         ),
-        (DiscoverCheck, {"kind": "discover", "skill": "perception", "target": "door"}),
+        (DiscoverCheck, {"kind": "discover", "skill": "perception", "target": "door", "synergy_context": "none"}),
     ],
 )
 @pytest.mark.parametrize("value", [None, 0, 1, "true", "false", [], {}])
@@ -137,7 +139,7 @@ def test_hearing_payload_rejects_nonboolean(variant, fields, value):
                 "context_description": "listen",
             },
         ),
-        (DiscoverCheck, {"kind": "discover", "skill": "perception", "target": "door"}),
+        (DiscoverCheck, {"kind": "discover", "skill": "perception", "target": "door", "synergy_context": "none"}),
     ],
 )
 def test_hearing_payload_is_required_and_preserved(variant, fields):
