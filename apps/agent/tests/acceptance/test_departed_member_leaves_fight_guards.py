@@ -232,32 +232,26 @@ async def test_departure_drops_only_its_ally_continuation(reset_db_pool, departi
                 await lifecycle.aclose()
 
 
-async def test_ally_cast_target_list_cancels_before_settlement(reset_db_pool) -> None:
+@pytest.mark.parametrize("host_targeted", [True, False])
+async def test_ally_cast_lands_on_the_targets_that_remain(reset_db_pool, host_targeted: bool) -> None:
     spell = "divine_bless"
     async with defense_fight("cleric", library=((0, spell),)) as fight:
         host, guest = fight.players
-        await fight.command(
-            "declare_phase",
-            {
-                "declarations": [
-                    {
-                        "actor_id": host,
-                        "kind": "ability",
-                        "action": spell,
-                        "targets": [host, guest],
-                        "argument_type": "",
-                    },
-                ]
-            },
-        )
+        targets = [host, guest] if host_targeted else [guest]
+        bless = {"actor_id": host, "kind": "ability", "action": spell, "targets": targets, "argument_type": ""}
+        await fight.command("declare_phase", {"declarations": [bless]})
         before = await player_row(host)
         lifecycle = await depart(fight, guest)
         try:
             packets = await fight.drain()
-            (receipt,) = [p for p in packets if p.get("outcome") == "target_left"]
-            assert (receipt["actor_id"], receipt["target_id"], receipt["resolved"]) == (host, guest, False)
-            assert (await player_row(host))["focus"] == before["focus"]
-            assert_departed(await fight.reload(), guest)
+            left = [p for p in packets if p.get("outcome") == "target_left"]
+            spent = (await player_row(host))["focus"]["current"] < before["focus"]["current"]
+            state = await fight.reload()
+            blessed = any(c["type"] == "blessed" for c in participant(state, host).conditions)
+            assert (spent, blessed, bool(left)) == (host_targeted, host_targeted, not host_targeted)
+            if left:
+                assert (left[0]["actor_id"], left[0]["target_id"], left[0]["resolved"]) == (host, guest, False)
+            assert_departed(state, guest)
         finally:
             await lifecycle.aclose()
 

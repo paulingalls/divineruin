@@ -52,6 +52,10 @@ def forget_participant(state: "CombatState", player_id: str) -> bool:
     state.initiative_order = [actor for actor in state.initiative_order if actor != player_id]
     for entries in (state.pending_declarations, state.ac_modifiers, state.first_hostility):
         entries.pop(player_id, None)
+    for declaration in state.pending_declarations.values():
+        # Partial landing, as at resolve time; a list left empty keeps its id so the action cancels.
+        if remaining := [target for target in declaration.get("target_ids") or () if target != player_id]:
+            declaration["target_ids"] = remaining
     if state.spatial is not None:
         for field in ("positions", "speeds"):
             state.spatial[field].pop(player_id, None)
