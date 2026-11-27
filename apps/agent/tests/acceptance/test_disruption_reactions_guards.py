@@ -177,6 +177,33 @@ async def test_implant_doubt_miss_opens_riposte_after_reload(reset_db_pool):
         assert await hp(fight) == [100, 100]
 
 
+async def test_fate_held_reroll_miss_opens_riposte_once_after_reload(reset_db_pool):
+    from acceptance.test_bark_skin import keep_original
+
+    async with ambush(DOUBT, fate=True, ally_archetype="skirmisher") as fight:
+        with dice(18, 5, 17, 4, 18), attack_damage(7, 4):
+            await open_stage(fight, "post_roll")
+            await spend(fight, DOUBT)
+            save = await fight.command("resolve_phase", {})
+            held = await keep_original(fight, save["fate_offer"])
+            assert (held["fate_offer"]["roll_kind"], held["fate_offer"]["die"]) == ("attack", 4)
+            await reload_session(fight)
+            # The resumed settle finishes the held reroll that missed; this call never saw it start.
+            window = (await fight.command("resolve_phase", {}))["next"]["waiting_on"]
+            assert window["stage"] == "post_reaction_miss"
+            assert [r["actor_id"] for r in window["reactions"]] == [fight.players[1]]
+            await reload_session(fight)
+            stages = []
+            for _ in range(6):
+                if (await fight.reload()).round_number != 1:
+                    break
+                waiting = (await fight.command("resolve_phase", {}))["next"]["waiting_on"]
+                stages.append(waiting and waiting["stage"])
+        assert "post_reaction_miss" not in stages
+        assert [(event["roll"], event["success"]) for event in attacks(fight)][:2] == [(18, True), (4, False)]
+        assert await hp(fight) == [100, 100]
+
+
 async def test_implant_doubt_does_not_reroll_a_hit_bark_skin_turned_aside(reset_db_pool):
     from acceptance.test_guardian_intercept import tool_receipt
 

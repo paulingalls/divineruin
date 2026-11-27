@@ -61,7 +61,6 @@ async def settle(
     entries = head.get("disruptions")
     if not entries or entries[0]["packet"]["stage"] != stage:
         return True
-    turned_miss = False
     for entry in entries:
         if entry.get("complete"):
             continue
@@ -79,8 +78,13 @@ async def settle(
                     if not await _reroll(session, state, head, entry, deps, fate):
                         return False
                     packet["mechanical_effect"] = "attack_rerolled"
-                    turned_miss = not head["roll"]["attack_result"]["hit"]
         entry["complete"] = True
+    # Read from the head, not this call: earlier calls may have completed the reroll that missed.
+    turned_miss = (
+        stage == POST_ROLL
+        and not head["roll"]["attack_result"]["hit"]
+        and any(entry["packet"].get("mechanical_effect") == "attack_rerolled" for entry in entries)
+    )
     if stage == POST_ROLL:
         combat_reaction_effect.settle_disruption_defenses(state, head)
     head["pending_reaction_packets"].extend(entry["packet"] for entry in entries)
