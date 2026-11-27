@@ -127,35 +127,28 @@ async def test_confirmation_requires_the_current_offer(
             assert merchant_after == merchant_before
 
 
-@pytest.mark.parametrize("change", ["consignment", "equipped", "tainted", "full_price"])
+@pytest.mark.parametrize("change", ["equipped", "tainted", "full_price"])
 async def test_confirmation_does_not_fall_through_to_a_sale(reset_db_pool: str, change: str) -> None:
     async with merchant_session(npc=MAREN, location=INN, disposition="friendly", held=1) as sale:
         await fund_merchant(MAREN, 13)
         offer = json.loads((await sale.sell(SWORD, MAREN, 1)).output)
-        partial, consignment = offer["options"]
+        _, consignment = offer["options"]
         pool = await db.get_pool()
         if change == "equipped":
             await pool.execute(
                 """UPDATE player_inventory SET data = data || '{"equipped":true}' WHERE player_id=$1""", sale.player_id
             )
         elif change == "tainted":
-            await pool.execute("UPDATE player_inventory SET tainted=true WHERE player_id=$1", sale.player_id)
+            await stock(sale.player_id, SWORD, 1, tainted=True)
+            await pool.execute("DELETE FROM player_inventory WHERE player_id=$1 AND NOT tainted", sale.player_id)
         elif change == "full_price":
             await pool.execute(
-                """UPDATE merchant_state SET data = data || '{"current_gold_sp":600,"max_gold_sp":600}' WHERE npc_id=$1""",
+                """UPDATE merchant_state SET data = data || '{"current_gold_sp":55}' WHERE npc_id=$1""",
                 MAREN,
             )
         before = await rows(sale.player_id), await merchant_row(MAREN)
-        option = consignment if change == "consignment" else partial
-        receipt = await sale.sell(SWORD, MAREN, 1, option["offer_id"])
-        if change in ("equipped", "tainted"):
-            assert receipt.is_error and change in receipt.output
-        else:
-            response = json.loads(receipt.output)
-            assert response["status"] == "offer"
-            if change == "full_price":
-                assert response["options"][0]["kind"] == "full"
-            else:
-                assert "consignment" in response["reason"]
+        receipt = await sale.sell(SWORD, MAREN, 1, consignment["offer_id"])
+        reason = "no longer eligible" if change == "full_price" else change
+        assert receipt.is_error and reason in receipt.output
         assert (await rows(sale.player_id), await merchant_row(MAREN)) == before
         assert not sale.packets

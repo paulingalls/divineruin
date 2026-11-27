@@ -5,22 +5,19 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 from pydantic import Field
 
-import db
 import db_content_queries
 import db_mutations_inventory
 import db_mutations_merchant
 import db_queries
-import event_types as E
-import pricing_queries
 import sale_pricing
 from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
+from consignment import OFFER_PREFIX, expires_on, place
 from db_errors import db_tool
 from disposition import resolve_disposition
-from game_events import publish_game_event
-from inventory_refresh import publish_inventory
+from durability import max_hits
 from merchant_purse import bind_sale_option, sale_terms
+from merchant_tools import merchant_visit
 from session_data import SessionData
-from tool_preconditions import require_npc_present
 from tool_support import _validate_id
 
 _REFUSAL = {
@@ -52,36 +49,15 @@ async def sell_item(
         offer_id: Empty for a new sale request. After consent, use the ID of the offered option.
     """
     _validate_id(item_id, "item_id")
-    _validate_id(npc_id, "npc_id")
     if quantity < 1:
         raise ToolError("Sell at least one item.")
-    context.disallow_interruptions()
-    session = context.userdata
-    player_id = session.acting_player_id
-    await require_npc_present(session.location_id, npc_id, suffix=" to trade")
-
-    async with db.transaction() as conn:
-        npc = await db_content_queries.get_npc(npc_id, conn=conn)
-        if npc is None:
-            raise ToolError(f"Unknown merchant: {npc_id}")
-        pool_id = npc["inventory_pool"]
-        if pool_id is None:
-            raise ToolError(f"{npc['name']} doesn't buy goods.")
-        pools = await sale_pricing.get_inventory_pools(conn=conn)
+    async with merchant_visit(context, npc_id) as visit:
+        conn = visit.conn
+        player_id = visit.player_id
+        merchant = visit.merchant
         item = await db_content_queries.get_item(item_id, conn=conn)
         if item is None:
             raise ToolError(f"'{item_id}' has no catalog sale value.")
-
-        pool = pools[pool_id]
-        pricing = await pricing_queries.get_economy_pricing(conn=conn)
-        location = await db_content_queries.get_location(pool["location"], conn=conn)
-        allocation = sale_pricing.merchant_gold_allocation(pool, location, pricing)
-        merchant = await db_mutations_merchant.lock_merchant(npc_id, allocation, conn=conn)
-        revision = await conn.fetchval(
-            "SELECT inventory_revision FROM players WHERE player_id = $1 FOR UPDATE", player_id
-        )
-        if revision is None:
-            raise ToolError(f"Unknown player: {player_id}")
 
         stack = await db_queries.get_inventory_item(player_id, item_id, conn=conn, for_update=True)
         if stack is None:
@@ -94,9 +70,11 @@ async def sell_item(
             raise ToolError(f"{item['name']} is equipped. Unequip it before selling.")
 
         disposition = await resolve_disposition(
-            npc_id, player_id, conn=conn, default_disposition=npc.get("default_disposition", "neutral")
+            npc_id, player_id, conn=conn, default_disposition=visit.npc.get("default_disposition", "neutral")
         )
-        quote = sale_pricing.quote_sale(item, pricing, kind="merchant", disposition=disposition, pool=pool, pools=pools)
+        quote = sale_pricing.quote_sale(
+            item, visit.pricing, kind="merchant", disposition=disposition, pool=visit.pool, pools=visit.pools
+        )
         if not quote["available"]:
             reason = _REFUSAL[quote["reason"]]
             if buyer := quote["merchant_kind"]:
@@ -104,24 +82,25 @@ async def sell_item(
             raise ToolError(reason)
 
         unit_sp = quote["price_sp"]
-        terms, refusal = sale_terms(merchant, item, item_id, quantity, unit_sp, disposition)
-        session.validate_acting_player(player_id)
-        if refusal:
+        terms, refusal = sale_terms(merchant.state, item, item_id, quantity, unit_sp, disposition)
+        if any(kind == "consignment" for kind, _ in terms):
+            hits = stack.get("current_hits")
+            tier = item.get("durability_tier")
+            if tier and hits is not None and hits < max_hits(tier):
+                terms = [(kind, total) for kind, total in terms if kind != "consignment"]
+                refusal = {"reason": f"{item['name']} is damaged. Please get it mended first."}
+        if offer_id.startswith(OFFER_PREFIX) and not any(kind == "consignment" for kind, _ in terms):
+            raise ToolError(refusal.get("reason", "That item is no longer eligible for consignment."))
+        if not terms:
             return json.dumps({"status": "refused", **refusal})
+
         if not offer_id and terms[0][0] == "full":
             total_sp = terms[0][1]
         else:
-            quote_state = (
-                npc_id,
-                player_id,
-                item_id,
-                merchant["last_restock_day"],
-                unit_sp,
-                revision,
-            )
+            quote_state = (npc_id, player_id, item_id, merchant.today, unit_sp, merchant.revision)
             options = [bind_sale_option(kind, total, quantity, quote_state) for kind, total in terms]
             chosen = next((option for option in options if option["offer_id"] == offer_id), None)
-            if chosen is None or chosen["kind"] == "consignment":
+            if chosen is None:
                 response = {
                     "status": "offer",
                     "item_id": item_id,
@@ -130,25 +109,34 @@ async def sell_item(
                     "quoted_total_price_sp": unit_sp * quantity,
                     "options": options,
                 }
-                if chosen is not None:
-                    response["reason"] = "I can't take consignments yet."
-                elif offer_id:
+                if offer_id:
                     response["reason"] = "That offer has changed. Ask about the current offer."
+                elif refusal:
+                    response.update(refusal)
                 return json.dumps(response)
             total_sp = chosen["total_price_sp"]
-        gold = total_sp / pricing["silver_per_gold"]
-        await db_mutations_merchant.debit_merchant(npc_id, merchant, item_id, quantity, total_sp, conn=conn)
-        await db_mutations_inventory.transact_inventory(player_id, item_id, -quantity, conn=conn)
-        balance = await db_mutations_inventory.credit_player_gold(player_id, gold, conn=conn)
+            if chosen["kind"] == "consignment":
+                entry = place(player_id, item_id, quantity, total_sp, merchant.today)
+                merchant.state["consigned_items"].append(entry)
+                await db_mutations_merchant.record_sale(npc_id, merchant.state, item_id, quantity, 0, conn=conn)
+                await db_mutations_inventory.transact_inventory(player_id, item_id, -quantity, conn=conn)
+                merchant.inventory_owners.add(player_id)
+                return json.dumps(
+                    {
+                        "status": "consigned",
+                        "npc_id": npc_id,
+                        **entry,
+                        "days_until_sale": entry["sale_day"] - merchant.today,
+                        "expiry_day": expires_on(entry),
+                    }
+                )
 
-    await publish_game_event(
-        session.room,
-        E.CURRENCY_GAINED,
-        {"player_id": player_id, "amount": gold, "currency": "gold", "source": "sale", "new_balance": balance},
-        event_bus=session.event_bus,
-    )
-    await publish_inventory(session, player_id)
-    await publish_action_sound(session, ACTION_SOUND_EXPORTS["ACTION_SELL_ITEM"])
+        await db_mutations_merchant.record_sale(npc_id, merchant.state, item_id, quantity, total_sp, conn=conn)
+        await db_mutations_inventory.transact_inventory(player_id, item_id, -quantity, conn=conn)
+        merchant.inventory_owners.add(player_id)
+        await visit.credit(total_sp / visit.pricing["silver_per_gold"], "sale")
+
+    await publish_action_sound(context.userdata, ACTION_SOUND_EXPORTS["ACTION_SELL_ITEM"])
     return json.dumps(
         {
             "status": "sold",
