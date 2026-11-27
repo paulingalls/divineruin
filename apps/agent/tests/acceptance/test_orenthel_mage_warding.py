@@ -167,13 +167,25 @@ async def renewing_spark(_world: SimpleNamespace) -> None:
     await exercise_shield("orenthel", 0, 17, False)
 
 
-@pytest.mark.parametrize("spell", [FLY, HASTE, INVISIBILITY, LIBRARY_SHIELD])
-async def test_direct_combat_cast_is_refused(mage_party, spell):
+@pytest.mark.parametrize(("spell", "self_cast"), [(FLY, False), (HASTE, False), (LIBRARY_SHIELD, True)])
+async def test_direct_combat_cast_wards_both_stores(mage_party, spell, self_cast):
     ctx, mage, ally, control = mage_party
     assert ctx.userdata.in_combat
-    with pytest.raises(ToolError, match="is cast in combat with declare_phase"):
-        await activate(ctx, spell, target_id=ally)
-    await check_pools({mage: 0, ally: 0, control: 0})
+    recipient = mage if self_cast else ally
+    cast = json.loads(await activate(ctx, spell, target_id=None if self_cast else ally))
+    ward(cast, recipient, 0)
+    stored = await db_mutations.load_combat_state(ctx.userdata.combat_state.combat_id)
+    assert stored is not None
+    await check_pools({mage: int(self_cast), ally: int(not self_cast), control: 0}, ctx.userdata.combat_state)
+    assert participant(stored, recipient).temp_hp == 1
+
+
+async def test_direct_combat_cast_on_a_foe_wards_no_one(mage_party):
+    ctx, mage, ally, control = mage_party
+    cast = json.loads(await activate(ctx, HASTE, target_id="foe"))
+    assert "mage_warding" not in cast
+    assert participant(ctx.userdata.combat_state, "foe").temp_hp == 0
+    await check_pools({mage: 0, ally: 0, control: 0}, ctx.userdata.combat_state)
 
 
 async def test_exploration_ward_follows_applied_condition_targets(mage_party):
