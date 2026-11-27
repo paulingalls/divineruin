@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.92.0
+
+Shopkeepers buy from a daily purse and have a daily limit for each item. They can offer their remaining silver or a reduced price, and wait for the player to accept before taking the goods.
+
+Release steps: Run `docker compose -f deploy/compose.yml run --build --rm migrate` on the deployment host, from the release checkout with the standard `DEPLOY_ENV_FILE` and deployment environment, before starting the new server and agent. This runs migration 071 and reseeds the economy pricing row in production. It makes no paid provider calls.
+
+Shopkeepers now have a day's coin. Each one starts the day with a purse that suits their town. A prosperous Accord merchant can buy a fine piece; Millhaven's innkeeper has a few silver to spare. When a shop can't pay in full, the shopkeeper offers what they have. A friendly shopkeeper will also take the piece on consignment: it sells in one to four days, and you come back for 90% of its price. Leave the coin for more than a week and the item comes back to you.
+
+Shops won't buy endless copies of one thing in a day: up to three of a common weapon, five of a consumable, two of an uncommon item, one of a rare one. Past that they'll take one more at half price, then nothing until dawn. Purses refill at dawn on the new Aethos clock, which runs on US Eastern time.
+
+Release steps:
+- Before the agent starts after deploy, apply migration `scripts/migrations/071_merchant_state.sql` and reseed content (`bun run seed`) against the production database. Both write production; neither is paid. The migration adds the merchant purse table, and the reseed loads the purse allocations and the Aethos clock epoch.
+
 ## 0.91.1
 
 The commit hook checks milestone totals and documentation index ranges. Run `python3 scripts/doc_index.py --write` to refresh both after editing the documentation.
