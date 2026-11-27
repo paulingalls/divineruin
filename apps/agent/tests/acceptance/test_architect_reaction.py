@@ -13,6 +13,7 @@ from acceptance.test_architect_fight import isolated_content_cache as isolated_c
 from acceptance.test_architect_fight import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_architect_terrain import set_favor
 from acceptance.test_still_anchors import fresh_session
+from acceptance.test_valdris_oath_breach import swear
 from sample_fixtures import published_payloads
 from voice_condition_fixtures import participant
 
@@ -27,7 +28,7 @@ from db_mutations_resonance import read_player_resonance
 
 
 @pytest.fixture
-async def archers(reset_db_pool):
+async def archers(reset_db_pool, request):
     harness = MawlingHarness()
     try:
         await harness.prepare((20, 20, 20), companion=None, location=WORKS)
@@ -35,6 +36,8 @@ async def archers(reset_db_pool):
         for actor in harness.players:
             player = await db_queries.get_player(actor)
             assert player is not None
+            if actor == harness.players[0] and getattr(request, "param", False):
+                player["class"] = "paladin"
             player["equipment"]["main_hand"] = {
                 "name": item["name"],
                 "damage": item["damage_dice"],
@@ -431,11 +434,15 @@ async def test_destroyed_architect_cannot_intercept_a_later_cast(archers):
     assert "reactive_architecture" not in result and not result["cast"]["damage_result"]["resolved"]
 
 
-async def test_extra_attack_can_reach_architect_after_wall_collapses(archers):
+@pytest.mark.parametrize(("archers", "sworn"), [(False, False), (True, True)], indirect=["archers"])
+async def test_extra_attack_can_reach_architect_after_wall_collapses(archers, sworn):
     actor = archers.players[0]
     state = await archers.reload()
     owner = state.architect_encounter["owner_id"]
     participant(state, actor).enhancers.append("extra_attack")
+    if sworn:
+        await set_favor(archers, "valdris", 90)
+        await swear(archers.sd)
     before = await archers.persist()
     await declare(archers, bow(actor, owner))
     with forced_rolls(face=19, damage=40):
@@ -451,3 +458,7 @@ async def test_extra_attack_can_reach_architect_after_wall_collapses(archers):
         first["target_hp_status"],
         first["damage"],
     )
+    if sworn:
+        breach = result["oath_breach"]
+        assert "oath_breach" not in first and second["oath_breach"] == breach
+        assert breach["terms"] == ["strike_first"]

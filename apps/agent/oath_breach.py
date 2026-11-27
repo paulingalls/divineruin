@@ -29,7 +29,7 @@ def breach_marker(player: dict) -> ValdrisBreach | None:
 
 def suppressed(player: dict) -> bool:
     marker = breach_marker(player)
-    return marker is not None and marker.session_id == player.get("oath_session_id")
+    return marker is not None and marker.session_id == player["oath_session_id"]
 
 
 def active_justice(book: OathBook) -> JusticeOath | None:

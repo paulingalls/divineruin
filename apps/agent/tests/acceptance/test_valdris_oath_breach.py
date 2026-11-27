@@ -248,6 +248,7 @@ async def test_layer_3_lock_rest_and_fresh_host_session(world: SimpleNamespace) 
         await f.round(attack(f.hero, GOBLIN), faces=(1,))
         original = await oath_book(f.hero)
         hud = patron_packet(f, f.hero)
+        assert hud["divine_favor"] == {"patron": "valdris", "level": 90, "max": 100}
         assert_locked(hud["abilities"])
         patron = await f.call("query_info", kind="patron")
         assert_locked(patron["abilities"])
@@ -255,12 +256,17 @@ async def test_layer_3_lock_rest_and_fresh_host_session(world: SimpleNamespace) 
         before = await row(world, 0)
         combat = f.session.combat_state.to_dict()
         events = published_payloads(f.session.room)
+        refusals = []
         for ability_id in LAYER_3:
-            with pytest.raises(ToolError, match="Oath of Justice is broken"):
+            try:
                 await f.call("activate", id=ability_id, target_id=OTHER)
+            except ToolError as error:
+                refusals.append(str(error))
         assert await row(world, 0) == before
         assert (await f.reload()).to_dict() == combat
         assert published_payloads(f.session.room) == events
+        assert len(refusals) == len(LAYER_3)
+        assert all("Oath of Justice is broken" in reason for reason in refusals)
         gift = await f.call("activate", id="valdris_weight_of_truth")
         assert gift["id"] == "valdris_weight_of_truth"
         assert (await row(world, 0))["patron_gifts"]["valdris_weight_of_truth"]["spent"]
@@ -273,6 +279,11 @@ async def test_layer_3_lock_rest_and_fresh_host_session(world: SimpleNamespace) 
         assert await oath_book(f.hero) == original
         with pytest.raises(ToolError, match="Oath of Justice is broken"):
             await f.call("select", choice_id=f"oath_{f.hero}_justice_1", option="justice")
+        await configure(world, "zhael", "paladin", divine_favor={"patron": "zhael", "level": 90, "max": 100})
+        prophecy = await f.call("activate", id="zhael_prophecy_fragment")
+        assert prophecy["id"] == "zhael_prophecy_fragment"
+        assert next(a["state"] for a in patron_packet(f, f.hero)["abilities"] if a["id"] == prophecy["id"]) == "spent"
+        await configure(world, "valdris", "paladin", divine_favor=before["divine_favor"])
         with patch("combat_end._build_handoff_agent", return_value=ExplorationAgent()):
             await f.call("end_combat", outcome="fled")
         assert f.session.combat_state is None

@@ -392,8 +392,8 @@ async def test_persisted_checkpoint_rewinds_and_new_session_recharges(unravel) -
     assert (await discovered(fight))["spent"]
 
 
-@pytest.mark.parametrize("crosses_breach", [True, False])
-async def test_oath_breach_rewind_after_checkpoint_reload(unravel: Fight, crosses_breach: bool) -> None:
+@pytest.mark.parametrize("scope", ["breach_round", "later_round", "other_combat"])
+async def test_oath_breach_rewind_after_checkpoint_reload(unravel: Fight, scope: str) -> None:
     fight = unravel
     _, paladin = fight.ids
     await favor(fight, paladin, "valdris")
@@ -408,13 +408,28 @@ async def test_oath_breach_rewind_after_checkpoint_reload(unravel: Fight, crosse
     row = await fight.reload()
     assert row["encounter_facts"]["opening_actors"][foe] == paladin
     assert (await durable(fight))["players"][paladin]["data"]["oaths"]["records"][0]["status"] == "broken"
-    if crosses_breach:
-        await assert_refused(fight, "cannot rewind across a broken Oath of Justice")
-    else:
-        await fight.declare()
-        await fight.finish_round(3)
-        await fight.reload()
-        await activate(fight)
-        saved = await durable(fight)
-        assert saved["combat"]["round_number"] == 2
-        assert saved["players"][paladin]["data"]["oaths"]["records"][0]["status"] == "broken"
+    if scope == "breach_round":
+        before, scratch = await durable(fight), cached(fight)
+        refusal = None
+        try:
+            await activate(fight)
+        except ToolError as error:
+            refusal = str(error)
+        assert await durable(fight) == before
+        assert cached(fight) == scratch
+        assert refusal == "Unravel Fate cannot rewind across a broken Oath of Justice."
+        return
+
+    if scope == "other_combat":
+        with patch("combat_end._build_handoff_agent", return_value=ExplorationAgent()):
+            await fight.call("end_combat", outcome="fled")
+        await fight.start()
+        assert fight.session.combat_state.combat_id != state.combat_id
+    rewind_round = fight.session.combat_state.round_number
+    await fight.declare()
+    await fight.finish_round(rewind_round + 1)
+    await fight.reload()
+    await activate(fight)
+    saved = await durable(fight)
+    assert saved["combat"]["round_number"] == rewind_round
+    assert saved["players"][paladin]["data"]["oaths"]["records"][0]["status"] == "broken"
