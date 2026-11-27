@@ -3,6 +3,8 @@ from unittest.mock import AsyncMock, MagicMock
 from _spell_casting_helpers import _known, _player, _spell
 from sample_fixtures import make_context, make_db_mod
 
+from caster_state import ConcentrationState
+
 
 class TestResolveCast:
     """Keep session mirrors untouched until commit so a rollback leaves them pristine."""
@@ -47,8 +49,8 @@ class TestResolveCast:
         mutations.update_player_resonance.assert_awaited_once()
         persistence.update_player_resources.assert_awaited_once()
 
-    async def test_concentration_spell_id_returned_not_synced(self):
-        from spell_casting import _UNCHANGED, _resolve_cast
+    async def test_concentration_update_returned_not_synced(self):
+        from spell_casting import _resolve_cast
 
         spell = _spell(spell_id="hold_flame", concentration=True, focus_cost=3)
         ctx = make_context()
@@ -80,13 +82,12 @@ class TestResolveCast:
             character_spells_mod=_known(spell.id),
         )
 
-        assert result.concentration_spell_id == "hold_flame"
-        assert result.concentration_spell_id is not _UNCHANGED
+        assert result.concentration_update == ConcentrationState("hold_flame")
         assert ctx.userdata.concentration.spell_id is None
         concentration.update_player_concentration.assert_awaited_once()
 
     async def test_non_concentration_cast_returns_unchanged_sentinel(self):
-        from spell_casting import _UNCHANGED, _resolve_cast
+        from spell_casting import _resolve_cast
 
         spell = _spell(spell_id="bolt", concentration=False, focus_cost=3)
         ctx = make_context()
@@ -118,7 +119,7 @@ class TestResolveCast:
         )
 
         # A non-concentration cast must be distinguishable from "clear concentration" (None).
-        assert result.concentration_spell_id is _UNCHANGED
+        assert result.concentration_update is None
         concentration.update_player_concentration.assert_not_called()
 
     async def test_non_primary_caster_writes_onto_own_pool_not_primary(self):

@@ -382,26 +382,16 @@ class PartyLifecycle:
         if not self.userdata.in_combat:
             await concealment.expire_orphaned_gift(identity, row)
         await session_hydration.hydrate_patron_ability_session(self.userdata, identity)
-        # Race guard: a second participant_connected for the same identity may have appended
-        # during the await above.
+        res = await self.resonance_mod.read_player_resonance(identity)
+        conc = await self.concentration_mod.read_player_concentration(identity)
         if self.userdata.party.contains(identity):
             return
         member = PartyMember(
             player_id=identity,
-            resonance=ResonanceTrack(),
-            concentration=ConcentrationState(),
+            resonance=ResonanceTrack(current=res["current"], flickering_bonus=res["flickering_bonus"]),
+            concentration=ConcentrationState.from_record(conc),
         )
-        self.userdata.party.members.append(member)  # IN PLACE — never reassign userdata.party (f4f16c93076e)
-
-        # Hydrate the per-member sub-states the same way session_hydration.hydrate_session_state
-        # applies them onto the primary. The veil ward is NOT among them (M24 story-004): it is
-        # scope-owned, so a joiner resolves the ward already covering the party's location and a
-        # per-member read could only ever disagree with the scope.
-        res = await self.resonance_mod.read_player_resonance(identity)
-        conc = await self.concentration_mod.read_player_concentration(identity)
-        member.resonance.current = res["current"]
-        member.resonance.flickering_bonus = res["flickering_bonus"]
-        member.concentration.spell_id = conc["spell_id"]
+        self.userdata.party.members.append(member)
         # patron_id is per-member: read from the joiner's OWN row (mirrors dm_session's primary read).
         divine_favor = row.get("divine_favor") or {}
         member.patron_id = divine_favor.get("patron", "none")

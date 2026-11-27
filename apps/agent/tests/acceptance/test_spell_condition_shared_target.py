@@ -38,7 +38,7 @@ async def test_second_hold_on_a_held_target_keeps_the_first_casters_hold(spell_f
     second = await saved_player(other)
     assert second["concentration"] == {"spell_id": None}
     assert second["focus"]["current"] == before["focus"]["current"] - 3
-    assert (await saved_player(player))["concentration"] == {"spell_id": HOLD}
+    assert (await saved_player(player))["concentration"]["spell_id"] == HOLD
     _, freed = await play(ctx, cast_spell(player, DETECT, None), defend(other))
     assert participant(freed, "foe").conditions == []
 
@@ -57,4 +57,4 @@ async def test_other_casters_stun_does_not_block_a_hold_or_a_stun_refresh(spell_
     packets, saved = await play(ctx, cast_spell(player, STUN), defend(other))
     assert receipt(packets, player)["condition_inflicted"] == "stunned"
     assert ours in participant(saved, "foe").conditions
-    assert (await saved_player(player))["concentration"] == {"spell_id": HOLD}
+    assert (await saved_player(player))["concentration"]["spell_id"] == HOLD

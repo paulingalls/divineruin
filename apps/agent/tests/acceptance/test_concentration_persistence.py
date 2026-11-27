@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
+
 from acceptance.seeds import seed_player
 
 import db
 import db_mutations_concentration
+from caster_state import ConcentrationState
 
 
 async def test_concentration_persistence_roundtrip_real_db(reset_db_pool: str) -> None:
@@ -18,10 +21,9 @@ async def test_concentration_persistence_roundtrip_real_db(reset_db_pool: str) -
     assert initial == {"spell_id": None}
 
     # Start concentrating (first update creates the key via the 1-level jsonb_set).
-    await db_mutations_concentration.update_player_concentration(player_id, "arcane_fly", conn=pool)
-    assert await db_mutations_concentration.read_player_concentration(player_id, conn=pool) == {
-        "spell_id": "arcane_fly"
-    }
+    record = ConcentrationState("arcane_fly", 72, "encounter", 4)
+    await db_mutations_concentration.update_player_concentration(player_id, record, conn=pool)
+    assert await db_mutations_concentration.read_player_concentration(player_id, conn=pool) == asdict(record)
 
     # End concentration -> spell_id cleared to null.
     await db_mutations_concentration.update_player_concentration(player_id, None, conn=pool)
@@ -35,6 +37,6 @@ async def test_concentration_replaces_prior_spell_real_db(reset_db_pool: str) ->
 
     await db_mutations_concentration.update_player_concentration(player_id, "arcane_fly", conn=pool)
     await db_mutations_concentration.update_player_concentration(player_id, "divine_bless", conn=pool)
-    assert await db_mutations_concentration.read_player_concentration(player_id, conn=pool) == {
-        "spell_id": "divine_bless"
-    }
+    assert await db_mutations_concentration.read_player_concentration(player_id, conn=pool) == asdict(
+        ConcentrationState("divine_bless")
+    )

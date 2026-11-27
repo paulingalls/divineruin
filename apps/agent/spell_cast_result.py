@@ -3,10 +3,7 @@
 import inspect
 from dataclasses import dataclass, field
 
-# Sentinel for CastResult.concentration_spell_id: a non-concentration cast never touches
-# concentration, which must be distinguishable from "end concentration" (None is a valid
-# concentration_spell_id). _UNCHANGED means "this cast did not touch concentration".
-_UNCHANGED = object()
+from caster_state import ConcentrationState
 
 
 @dataclass(frozen=True)
@@ -19,13 +16,13 @@ class CastResult:
     rollback leaks no client event).
 
     ``new_resonance`` is the total after generation, or ``None`` when nothing was generated.
-    ``resonance_updates`` holds final recipient totals after healing. ``concentration_spell_id``
-    is the started spell id, or the ``_UNCHANGED`` sentinel when the cast never touched concentration.
+    ``resonance_updates`` holds final recipient totals after healing. ``concentration_update``
+    is the new record, or None when the cast leaves concentration alone.
     """
 
     packet: dict
     new_resonance: int | None
-    concentration_spell_id: object
+    concentration_update: ConcentrationState | None
     generated: int
     events: list
     unbound_veil_mastery_spent: bool = False

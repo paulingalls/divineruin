@@ -17,7 +17,7 @@ import db_queries
 import encounter_facts
 import spells
 from combat_fate_rolls import packet_save
-from session_data import CombatState, SessionData
+from session_data import CombatState, ConcentrationState, SessionData
 
 
 async def break_concentration_on_damage(
@@ -206,9 +206,11 @@ async def end_concentration(
     conn,
     concentration_mutations=db_mutations_concentration,
     spells_mod=spells,
+    updates: dict[str, ConcentrationState] | None = None,
+    record: ConcentrationState | None = None,
 ) -> str | None:
     member = session.member_state(player_id)
-    spell_id = member.concentration.spell_id
+    spell_id = (record if record is not None else member.concentration).spell_id
     if spell_id is None:
         return None
     cstate = combat_state if combat_state is not None else session.combat_state
@@ -228,5 +230,8 @@ async def end_concentration(
 
     if cstate is not None:
         remove_owned_spell_conditions(cstate, spell_id, player_id, applied=applied)
-    member.concentration.spell_id = None
+    if updates is None:
+        member.concentration = ConcentrationState()
+    else:
+        updates[player_id] = ConcentrationState()
     return spell_id

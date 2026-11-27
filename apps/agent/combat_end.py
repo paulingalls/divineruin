@@ -12,6 +12,7 @@ import combat_end_wild_shape
 import combat_regeneration
 import combat_resolution
 import combat_rewards
+import concentration_lifetime
 import db
 import db_content_queries
 import db_mutations
@@ -246,6 +247,9 @@ async def _end_combat_db(
             weapon_durability = member_durability
 
     regenerated = await combat_regeneration.settle(cs, conn=conn, mutations=mutations)
+    concentration_updates, concentration_expired = await concentration_lifetime.settle_combat(
+        session, cs, conn=conn, ended=True
+    )
 
     # Persist cross-encounter conditions (M4.3, story-004; per-member M18 story-003): reconcile
     # EVERY player member's persistent conditions + surviving beneficial dice into their OWN
@@ -373,6 +377,8 @@ async def _end_combat_db(
         "ward_light_synced": ward_light_synced,
         "resolved_location_ward": resolved_location_ward,
         "wild_shape_ended": ended_forms,
+        "concentration_updates": concentration_updates,
+        "concentration_expired": concentration_expired,
     }
 
 

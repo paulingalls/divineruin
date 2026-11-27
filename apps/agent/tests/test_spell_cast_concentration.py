@@ -1,5 +1,7 @@
 from _spell_casting_helpers import _cast, _cast_racial, _spell
 
+from caster_state import ConcentrationState
+
 
 class TestCastSpellDecay:
     async def test_human_decays_two_before_generation(self):
@@ -32,7 +34,7 @@ class TestCastSpellConcentration:
         concentration.update_player_concentration.assert_awaited_once()
         args, _kwargs = concentration.update_player_concentration.call_args
         assert args[0] == "player_1"
-        assert args[1] == "hold_flame"
+        assert args[1] == ConcentrationState("hold_flame")
 
     async def test_new_concentration_ends_prior(self):
         _packet, ctx, _m, concentration, _e = await _cast_racial(
@@ -41,7 +43,7 @@ class TestCastSpellConcentration:
         assert ctx.userdata.concentration.spell_id == "new_spell"
         concentration.update_player_concentration.assert_awaited_once()
         _args, _kwargs = concentration.update_player_concentration.call_args
-        assert _args[1] == "new_spell"
+        assert _args[1] == ConcentrationState("new_spell")
 
     async def test_non_concentration_spell_leaves_concentration_untouched(self):
         _packet, ctx, _m, concentration, _e = await _cast_racial(

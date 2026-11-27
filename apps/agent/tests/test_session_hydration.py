@@ -28,7 +28,7 @@ def _mods(*, current=0, persisted_bonus=0, active=False, source=None, spell_id=N
         return_value={"source": source, "expires_at": None, "dismissible": True} if active else None
     )
     conc_mod = MagicMock()
-    conc_mod.read_player_concentration = AsyncMock(return_value={"spell_id": spell_id})
+    conc_mod.read_player_concentration = AsyncMock(return_value={"spell_id": spell_id, "elapsed_seconds": 90})
     ps_mod = MagicMock()
     ps_mod.hydrate_player_session = AsyncMock(return_value=count)
     return res_mod, ward_mod, conc_mod, ps_mod
@@ -74,6 +74,7 @@ class TestHydrateSessionState:
         assert session.resonance.current == 7
         assert session.location_ward is not None and session.location_ward["source"] == "druid"
         assert session.concentration.spell_id == "frost"
+        assert session.concentration.elapsed_seconds == 90
 
     async def test_thessyn_at_threshold_sets_and_persists_bonus_1(self):
         session = SessionData(player_id="p1", location_id="loc")

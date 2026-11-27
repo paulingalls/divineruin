@@ -2,7 +2,7 @@
 
 import json
 import logging
-from typing import TypedDict, cast
+from typing import TypedDict
 
 from livekit.agents.voice import RunContext
 
@@ -29,7 +29,6 @@ import veil_ward as veil_ward_mod
 import ward_resolution
 from session_data import SessionData
 from spell_cast_resolution import _resolve_cast as _resolve_cast
-from spell_cast_result import _UNCHANGED as _UNCHANGED
 from spell_cast_result import CastResult as CastResult
 from spell_cast_validation import _gate_spell as _gate_spell
 from tool_support import _validate_id
@@ -121,8 +120,8 @@ async def _cast_spell_impl(
             caster.resonance.current = result.new_resonance
         for pid, total in result.resonance_updates.items():
             session.member_state(pid).resonance.current = total
-        if result.concentration_spell_id is not _UNCHANGED:
-            caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
+        if result.concentration_update is not None:
+            caster.concentration = result.concentration_update
         if result.unbound_veil_mastery_spent:
             caster.unbound_veil_mastery_used = True
     await result.flush_events()

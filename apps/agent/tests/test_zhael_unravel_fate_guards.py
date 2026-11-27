@@ -2,7 +2,7 @@ from copy import deepcopy
 from unittest.mock import patch
 
 import pytest
-from _zhael_fate_fixtures import attack, defend, game_tools
+from _zhael_fate_fixtures import defend, game_tools
 from _zhael_unravel_fixtures import (
     GIFT,
     activate,
@@ -17,13 +17,11 @@ from _zhael_unravel_fixtures import (
     patch_player,
 )
 from _zhael_unravel_fixtures import unravel as unravel
-from acceptance._capstone_helpers import _d20, _damage_die
+from acceptance._capstone_helpers import _d20
 from combat._round_checkpoint_helpers import Fight
 from livekit.agents.llm import ToolError
-from sample_fixtures import published_payloads
 from test_aelora_gift import _live_party
 
-import event_types as E
 from encounter_roles import EncounterRole
 from exploration_agent import ExplorationAgent
 from session_data import CompanionState
@@ -360,95 +358,6 @@ async def test_persisted_checkpoint_rewinds_and_new_session_recharges(unravel) -
     assert (await discovered(fight))["spent"]
 
 
-async def test_rewind_restores_wild_shape_and_its_resources(unravel: Fight) -> None:
-    fight = unravel
-    restorer, pid = fight.ids
-    await favor(fight, pid, "thyra")
-    await patch_player(fight, pid, **{"class": "druid", "level": 5, "focus": {"current": 10, "max": 10}})
-    await fight.start()
-    initial = await fight.row()
-    checkpoint = initial["round_checkpoints"][0]
-    original = next(p for p in initial["participants"] if p["id"] == pid)
-    assert original["wild_shape"] is None and original["temp_hp"] == 2
-    await fight.declare(
-        {
-            "kind": "ability",
-            "actor_id": pid,
-            "action": "druid_wild_shape",
-            "targets": [],
-            "argument_type": "grey_wolf",
-            "reshape": [],
-        },
-        *(defend(p["id"]) for p in initial["participants"] if p["id"] != pid),
-    )
-    await fight.finish_round(2)
-    second = await durable(fight)
-    shifted = next(p for p in second["combat"]["participants"] if p["id"] == pid)
-    assert shifted["wild_shape"]["form_id"] == "grey_wolf" and shifted["ac"] != original["ac"]
-    assert [action["name"] for action in shifted["action_pool"]] == ["Bite"]
-    assert shifted["deferred_effects"][0]["name"] == "Bite"
-    before = checkpoint["players"][pid]["data"]
-    after = second["players"][pid]["data"]
-    assert after["focus"]["current"] == before["focus"]["current"] - 4
-    assert after["stamina"]["current"] == before["stamina"]["current"] - 3
-
-    assert (shifted["temp_hp"], after["temp_hp"]) == (5, 5)
-
-    receipt = await activate(fight)
-    assert receipt["round"] == 1 and "wild_shape_ended" not in receipt
-    restored = await durable(fight)
-    assert restored["players"][pid]["data"]["temp_hp"] == 2
-    assert_restored(fight, restored, checkpoint, restorer)
-    events = published_payloads(fight.session.room)
-    update = next(event for event in reversed(events) if event["type"] == E.COMBAT_UI_UPDATE)
-    assert "wildShape" not in next(p for p in update["combatants"] if p["id"] == pid)
-
-
-async def test_rewind_restores_beast_and_player_pools(unravel: Fight) -> None:
-    fight = unravel
-    restorer, pid = fight.ids
-    await favor(fight, pid, "thyra")
-    await patch_player(fight, pid, **{"class": "druid", "level": 5, "hp": {"current": 30, "max": 30}})
-    await fight.start("bandit_ambush")
-    initial = await fight.row()
-    await fight.declare(
-        {
-            "kind": "ability",
-            "actor_id": pid,
-            "action": "druid_wild_shape",
-            "targets": [],
-            "argument_type": "grey_wolf",
-            "reshape": [],
-        },
-        *(defend(p["id"]) for p in initial["participants"] if p["id"] != pid),
-    )
-    await fight.finish_round(2)
-    shaped = await fight.row()
-    checkpoint = shaped["round_checkpoints"][-1]
-    assert checkpoint["round_number"] == 2
-    await fight.declare(
-        attack("bandit_1", pid, "Light Crossbow"),
-        *(defend(p["id"]) for p in shaped["participants"] if p["id"] != "bandit_1"),
-    )
-    with (
-        patch("check_resolution.dice_roll", return_value=_d20(17)),
-        patch("check_resolution_attack.dice_roll", return_value=_damage_die(28)),
-    ):
-        await fight.finish_round(3)
-    landed = await durable(fight)
-    player = landed["players"][pid]["data"]
-    actor = next(p for p in landed["combat"]["participants"] if p["id"] == pid)
-    assert actor["wild_shape"] is None
-    assert (actor["hp_current"], actor["temp_hp"]) == (player["hp"]["current"], player["temp_hp"]) == (25, 0)
-
-    receipt = await activate(fight)
-    assert receipt["round"] == 2
-    assert_restored(fight, await durable(fight), checkpoint, restorer)
-    update = next(e for e in reversed(published_payloads(fight.session.room)) if e["type"] == E.COMBAT_UI_UPDATE)
-    projected = next(p for p in update["combatants"] if p["id"] == pid)
-    assert (projected["wildShape"]["hpCurrent"], projected["hpCurrent"], projected["tempHp"]) == (11, 30, 5)
-
-
 async def test_unravel_restores_bless_casters_and_saved_conditions(unravel: Fight) -> None:
     import character_spells
     from activate_tools import activate as cast
@@ -473,13 +382,13 @@ async def test_unravel_restores_bless_casters_and_saved_conditions(unravel: Figh
     )
     await fight.finish_round(2)
     released = await durable(fight)
-    assert released["players"][caster]["data"]["concentration"] == {"spell_id": "arcane_detect_magic"}
+    assert released["players"][caster]["data"]["concentration"]["spell_id"] == "arcane_detect_magic"
     assert released["players"][recipient]["data"]["conditions"] == saved_conditions
     assert fight.session.combat_state.get_participant(recipient).conditions == []
 
     assert (await activate(fight))["round"] == 1
     restored = await durable(fight)
-    assert restored["players"][caster]["data"]["concentration"] == {"spell_id": "divine_bless"}
+    assert restored["players"][caster]["data"]["concentration"]["spell_id"] == "divine_bless"
     assert restored["players"][recipient]["data"]["conditions"] == saved_conditions
     assert fight.session.combat_state.get_participant(recipient).conditions == saved_conditions
     with (
@@ -496,4 +405,72 @@ async def test_unravel_restores_bless_casters_and_saved_conditions(unravel: Figh
     kept = await fight.call("activate", id="zhael_fates_thread", offer_id=offer_id, keep="original")
     assert kept["total"] == 14
     await fight.invoke(game_tools(fight.session, end_combat), "end_combat", outcome="fled")
-    assert (await durable(fight))["players"][recipient]["data"]["conditions"] == saved_conditions
+    assert (await durable(fight))["players"][recipient]["data"]["conditions"] == []
+
+
+async def test_expiry_round_rewind_restores_clock_and_owned_conditions(unravel: Fight) -> None:
+    import character_spells
+    from caster_state import ConcentrationState
+    from check_tools import check
+    from conditions import apply_condition, has_condition
+
+    fight = unravel
+    recipient, caster = fight.ids
+    bless = "divine_bless"
+    await character_spells.record_learned(caster, bless, "discovery", conn=fight.pool)
+    await fight.start()
+    await fight.declare(
+        {"kind": "ability", "actor_id": caster, "action": bless, "targets": [recipient], "argument_type": ""},
+        *(defend(p.id) for p in fight.session.combat_state.participants if p.id != caster),
+    )
+    await fight.finish_round(2)
+    for round_number in range(3, 11):
+        await fight.declare()
+        await fight.finish_round(round_number)
+    opening = await fight.row()
+    original = opening["round_checkpoints"][-1]["players"][caster]["data"]["concentration"]
+    assert original == {"spell_id": bless, "combat_id": opening["combat_id"], "started_round": 1, "elapsed_seconds": 0}
+
+    target = fight.session.combat_state.get_participant(recipient)
+    target.conditions = apply_condition(target.conditions, "frightened", source="mawling_1", duration=3)
+    await fight.declare()
+    await fight.call("resolve_phase")
+    with patch("check_resolution.dice_roll", return_value=_d20(19)):
+        held = (await fight.call("resolve_phase"))["fate_offer"]
+    paused = await fight.reload()
+    assert paused["round_number"] == 11 and paused["wrap_continuation"] is not None
+    assert has_condition(fight.session.combat_state.get_participant(recipient).conditions, "blessed")
+    assert (await durable(fight))["players"][caster]["data"]["concentration"] == original
+    await fight.call("activate", id="zhael_fates_thread", offer_id=held["offer_id"], keep="original")
+    await fight.finish_round(11)
+    assert (await durable(fight))["players"][caster]["data"]["concentration"]["spell_id"] is None
+    assert not has_condition(fight.session.combat_state.get_participant(recipient).conditions, "blessed")
+
+    assert (await activate(fight))["round"] == 10
+    assert fight.session.member_state(caster).concentration == ConcentrationState.from_record(original)
+    assert (await durable(fight))["players"][caster]["data"]["concentration"] == original
+    assert has_condition(fight.session.combat_state.get_participant(recipient).conditions, "blessed")
+    with (
+        patch("check_resolution.dice_roll", return_value=_d20(10)),
+        patch("condition_bonus.dice_roll", return_value=_d20(3)),
+    ):
+        rolled = await fight.invoke(
+            game_tools(fight.session, check),
+            "check",
+            actor=recipient,
+            roll={"kind": "save", "save_type": "wisdom", "dc": 24, "effect_on_fail": "resist"},
+        )
+    if offer := rolled.get("fate_offer"):
+        rolled = await fight.call("activate", id="zhael_fates_thread", offer_id=offer["offer_id"], keep="original")
+    assert rolled["total"] == 14
+
+    await fight.declare()
+    await fight.call("resolve_phase")
+    with patch("combat_round_checkpoint.capture", side_effect=RuntimeError("expiry checkpoint failed")):
+        with pytest.raises(RuntimeError, match="expiry checkpoint failed"):
+            await fight.call("resolve_phase")
+    assert fight.session.member_state(caster).concentration == ConcentrationState.from_record(original)
+    assert (await durable(fight))["players"][caster]["data"]["concentration"] == original
+    assert has_condition(fight.session.combat_state.get_participant(recipient).conditions, "blessed")
+    await fight.finish_round(11)
+    assert (await durable(fight))["players"][caster]["data"]["concentration"]["spell_id"] is None

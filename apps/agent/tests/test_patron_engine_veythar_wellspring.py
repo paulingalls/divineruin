@@ -265,7 +265,7 @@ async def test_exploration_echo_doubles_modified_generation(world, warded):
         after = await row(world, 0)
         assert after["focus"]["current"] == 2
         assert after["resonance"]["current"] == session.resonance.current == (4 if warded else 8)
-        assert after["concentration"] == {"spell_id": HASTE}
+        assert after["concentration"]["spell_id"] == HASTE
         assert after["patron_gifts"][ECHO] == SPENT
         assert [
             gift["state"]

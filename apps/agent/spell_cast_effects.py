@@ -20,7 +20,7 @@ from patron_synergy_combat import (
     turn_undead_dc_bonus,
 )
 from patron_synergy_heal import for_cast
-from session_data import SessionData
+from session_data import ConcentrationState, SessionData
 from spell_cast_result import CastResult
 from spell_condition_cleanse import Cleanse
 
@@ -38,7 +38,7 @@ async def _finish_cast(
     generated,
     effective_resonance,
     new_resonance,
-    concentration_spell_id: object,
+    concentration_update: ConcentrationState | None,
     ward_active,
     patron,
     race,
@@ -246,7 +246,7 @@ async def _finish_cast(
     return CastResult(
         packet=packet,
         new_resonance=new_resonance,
-        concentration_spell_id=concentration_spell_id,
+        concentration_update=concentration_update,
         generated=generated,
         events=events,
         unbound_veil_mastery_spent=mastery_spent,

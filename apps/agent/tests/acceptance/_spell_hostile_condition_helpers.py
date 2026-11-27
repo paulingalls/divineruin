@@ -12,6 +12,7 @@ from voice_condition_fixtures import participant, place_actors
 import combat_turn
 import db
 import db_mutations
+from caster_state import ConcentrationState
 from creature_catalog import query_creature_by_id
 from creature_combat import translate_creature
 from declaration_payloads import AbilityDecl, AttackDecl, DefendDecl
@@ -85,7 +86,7 @@ async def reload(ctx):
     session.combat_state = state
     for member in session.party.members:
         player = await saved_player(member.player_id)
-        member.concentration.spell_id = (player.get("concentration") or {}).get("spell_id")
+        member.concentration = ConcentrationState.from_record(player.get("concentration"))
     return state
 
 

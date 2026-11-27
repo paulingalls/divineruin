@@ -15,7 +15,7 @@ import spells
 from combat_ability import AbilityCastOutcome, _resolve_ability_packet
 from declarations import Declaration, DeclarationType, resolve_declaration
 from session_data import CombatParticipant, CombatState
-from spell_casting import _UNCHANGED, CastResult
+from spell_casting import CastResult
 from spells import Spell
 
 
@@ -331,7 +331,7 @@ def _cast_resolver_returning(packet: dict) -> MagicMock:
     mod = MagicMock()
     mod._resolve_cast = AsyncMock(
         return_value=CastResult(
-            packet=dict(packet), new_resonance=None, concentration_spell_id=_UNCHANGED, generated=0, events=[]
+            packet=dict(packet), new_resonance=None, concentration_update=None, generated=0, events=[]
         )
     )
     return mod

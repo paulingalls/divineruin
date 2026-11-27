@@ -223,11 +223,15 @@ async def test_concentration_buffs_reconcile_and_release_only_their_caster(spell
     assert (condition["type"], condition["sustaining_caster_ids"]) == (kind, sorted([first, second]))
     await play(ctx, cast_spell(first, "arcane_detect_magic", None), defend("foe"))
     await end_combat(ctx, "fled")
-    condition = (await saved_player(target))["conditions"][0]
-    assert (condition["type"], condition["sustaining_caster_ids"]) == (kind, [second])
+    persisted = (await saved_player(target)).get("conditions", [])
+    if spell == BEACON:
+        assert persisted == []
+        assert (await saved_player(second))["concentration"]["spell_id"] is None
+    else:
+        assert [(c["type"], c["sustaining_caster_ids"]) for c in persisted] == [(kind, [second])]
     with ctx.userdata._bind_authenticated_actor(second, 1, lambda *_: None):
         await activate(ctx, "arcane_detect_magic")
-    assert not (await saved_player(target))["conditions"]
+    assert not (await saved_player(target)).get("conditions")
     assert (await saved_player(first))["concentration"]["spell_id"] == "arcane_detect_magic"
 
 
@@ -293,7 +297,7 @@ async def test_beacon_maximizes_verdant_healing_and_a_consumed_potion(dev_db_poo
         assert (await walk.read(ally))["hp"]["current"] == 13
 
 
-async def test_beacon_maximizes_each_song_die_for_its_recipient(world):
+async def test_beacon_ends_before_song_of_rest_rolls(world):
     from _zhael_fate_fixtures import game_tools
     from acceptance.seeds import seed_known_spells
     from test_orenthel_song_of_rest import song_party
@@ -309,7 +313,7 @@ async def test_beacon_maximizes_each_song_die_for_its_recipient(world):
         with patch("song_of_rest.roll", return_value=_damage_die(1)):
             packet = await rest("rest", rest_type="short", use_song_of_rest=True)
         heals = {entry["player_id"]: entry for entry in packet["song_of_rest"]["healing"]}
-        for pid, expected in ((host, (1, 1, 5)), (guest, (8, 6, 17))):
+        for pid, expected in ((host, (1, 1, 5)), (guest, (1, 1, 5))):
             entry = heals[pid]
             assert (entry["roll"], entry["synergy_components"][0]["bonus"], entry["hp_after"]) == expected
             assert (await saved_player(pid))["hp"]["current"] == expected[2]

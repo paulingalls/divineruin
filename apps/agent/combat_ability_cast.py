@@ -1,7 +1,7 @@
 """Resolve in-combat ability declarations backed by spells."""
 
 from dataclasses import dataclass, field, replace
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import architect_reaction
 import combat_enhancers
@@ -15,7 +15,6 @@ import combat_voice_rules
 import combat_yield
 import concealment
 import db_queries
-import spell_casting
 import wild_shape
 from combat_condition_landing import land_condition_on_participants
 from combat_spell_profile import recipient_spec
@@ -189,8 +188,8 @@ async def _resolve_ability_packet(
         if result.new_resonance is not None:
             combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)
         # Later damage in this transaction must check the spell the caster just started concentrating on.
-        if result.concentration_spell_id is not spell_casting._UNCHANGED:
-            caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
+        if result.concentration_update is not None:
+            caster.concentration = result.concentration_update
         cast_packet = result.packet
         if form is not None:
             form_id, beast, locked, stamina = form

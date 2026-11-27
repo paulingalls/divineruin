@@ -191,8 +191,8 @@ describe("parseSpellRow — fail-loud validation", () => {
   });
 });
 
-describe("required speech and hostility metadata", () => {
-  for (const field of ["verbal", "hostile"] as const) {
+describe("required spell flags", () => {
+  for (const field of ["verbal", "hostile", "concentration"] as const) {
     for (const value of [undefined, null, 0, 1, "true", "false", [], {}]) {
       test(`${field} rejects ${JSON.stringify(value)}`, async () => {
         const [row] = await loadSpellsJson();

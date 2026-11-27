@@ -6,6 +6,7 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import ability_persistence
+import concentration_lifetime
 import db
 import db_content_queries
 import db_mutations
@@ -81,6 +82,11 @@ async def rest(context: RunContext[SessionData], rest_type: RestType, use_song_o
             if players[actor].get("location_id") != location_id:
                 raise ToolError("You are no longer at this rest location.")
             players = {pid: row for pid, row in players.items() if row.get("location_id") == location_id}
+            concentration_updates, concentration_expired = await concentration_lifetime.settle_time(
+                session, players, 3600, long_rest=rest_type == "long", conn=conn
+            )
+            if concentration_expired:
+                players = await db_queries.get_players_for_update(sorted(players), conn=conn)
             recovery: dict[str, Recovery] = {}
             max_hp: dict[str, int] = {}
             for pid, row in players.items():
@@ -130,6 +136,7 @@ async def rest(context: RunContext[SessionData], rest_type: RestType, use_song_o
                                 **(drain or {}),
                             }
                         )
+        concentration_lifetime.adopt(session, concentration_updates)
         for pid in players:
             session.member_state(pid).resonance.current = 0
         for pid in players:
@@ -150,6 +157,7 @@ async def rest(context: RunContext[SessionData], rest_type: RestType, use_song_o
                 "players": list(players),
                 "settlement_id": anchor,
                 "hollowed_changes": hollowed_changes,
+                **({"concentration_expired": concentration_expired} if concentration_expired else {}),
                 **({"song_of_rest": song} if song is not None else {}),
             }
         )
