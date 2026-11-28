@@ -13,6 +13,7 @@ from _unbound_path_fixtures import world as world
 from _zhael_fate_fixtures import game_tools
 from acceptance.test_common_bond_crafting import RECIPE, stock
 from dice_seeds import seed_for_d20
+from test_aelora_gift import _live_party
 from test_patron_engine_aelora_craft import create, poll
 
 import db
@@ -86,13 +87,17 @@ async def test_queued_crafting(
 
 
 @pytest.mark.parametrize(
-    "conditions,roll,modifier,expected",
-    [([], 6, 6, "success"), ([EXHAUSTED, INSPIRED], 7, 4, "failure")],
+    "conditions,allied,roll,modifier,expected",
+    # A live ally removes the Unbound-alone +1, exactly as on the live check.
+    [([], False, 6, 6, "success"), ([EXHAUSTED, INSPIRED], False, 7, 4, "failure"), ([], True, 6, 5, "failure")],
 )
 async def test_experiment(
-    world: SimpleNamespace, conditions: list[dict], roll: int, modifier: int, expected: str
+    world: SimpleNamespace, conditions: list[dict], allied: bool, roll: int, modifier: int, expected: str
 ) -> None:
     await survey(world)
+    if allied:
+        _live_party(world.ctx.userdata, *world.ids)
+        assert world.ctx.userdata.allies_present_for(world.ids[0]) == 1
     await set_conditions(world, conditions)
     await stock(world, known=False)
     resolve = experimentation.resolve_experimentation
