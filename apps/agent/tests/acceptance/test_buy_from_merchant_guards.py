@@ -5,6 +5,7 @@ import pytest
 from acceptance.merchant_harness import (
     FORGE,
     GRIMJAW,
+    catalog_override,
     fund_merchant,
     location_override,
     merchant_row,
@@ -23,6 +24,21 @@ import db_mutations_merchant
 import event_types as E
 
 SHELF = {SPEAR: 2}
+
+
+@pytest.mark.parametrize("base_sp", [0, True, 2**53], ids=["zero", "boolean", "unsafe-integer"])
+async def test_invalid_catalog_price_refuses_purchase_without_writes(reset_db_pool: str, base_sp: int | bool) -> None:
+    item = "goodberry"
+    async with (
+        pool_override("weapons_armor_basic", tier_1_items=[item]),
+        catalog_override(item, value_base=base_sp),
+        merchant_session(held=0) as buyer,
+    ):
+        await fund_merchant(GRIMJAW, 600, current_inventory=SHELF)
+        before = await snapshot(buyer)
+        receipt = await buyer.purchase(item, GRIMJAW, 1)
+        assert receipt.is_error, receipt.output
+        assert await snapshot(buyer) == before
 
 
 async def test_last_unit_settles_once(reset_db_pool: str) -> None:
