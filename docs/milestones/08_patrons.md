@@ -212,7 +212,7 @@ Layer 4 lookup covers 180 pairings and 200 clauses. 114 are active/engine, 85 ar
 
 Renewing Spark gives 1 temporary HP to the recipient of an Orenthel mage’s Shield, Fly, Invisibility or Haste. The ward keeps any higher pool. `test_orenthel_mage_warding.py` exercises settlement, interruptions, target eligibility and the Shield damage receipt.
 
-Aelora’s Common Bond gives artificers, bards and diplomats +1 on live Crafting checks, recipe experiments and queued crafting rolls. Both queued crafting entry points save eligibility at creation, so earlier jobs resolve without the bonus. Common Bond stacks with Craft Blessing and is named in narration. Registered tool, HTTP and worker evidence is in `test_common_bond_crafting.py`.
+Aelora’s Common Bond gives artificers, bards and diplomats +1 on live Crafting checks, recipe experiments and queued crafting rolls. Queued crafting reads Common Bond eligibility from the player at settlement. Common Bond stacks with Craft Blessing and is named in narration. Registered tool, HTTP and worker evidence is in `test_common_bond_crafting.py`.
 
 Aelora’s Restoring Guard returns up to 2 Stamina after a guardian’s Intercept moves damage or a warden’s Bark Skin applies. The registered reaction tests verify persisted Stamina, capped receipts and checkpoint reload.
 

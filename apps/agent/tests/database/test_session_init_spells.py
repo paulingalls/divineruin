@@ -80,7 +80,7 @@ class TestSessionInitSpells:
             patch("abilities.get_archetype_abilities", return_value=(_core_ability("arcane_bolt"),)),
             patch("spells.get_spell", side_effect=lambda sid: _CATALOG[sid]),
         ):
-            result = await db_session_queries.get_session_init_payload("p1")
+            result = await db_session_queries.get_session_init_payload("p1", world_time="evening")
 
         assert "spells" in result
         assert result["spells"]["core"] == [
@@ -116,7 +116,7 @@ class TestSessionInitSpells:
             patch("abilities.get_archetype_abilities", return_value=(_core_ability("arcane_bolt"),)),
             patch("spells.get_spell", side_effect=lambda sid: _CATALOG[sid]),
         ):
-            result = await db_session_queries.get_session_init_payload("p1")
+            result = await db_session_queries.get_session_init_payload("p1", world_time="evening")
 
         assert [s["spell_id"] for s in result["spells"]["core"]] == ["arcane_bolt"]
         assert result["spells"]["learned"] == []
@@ -130,7 +130,7 @@ class TestSessionInitSpells:
             patch("abilities.get_archetype_abilities", return_value=()),
             patch("spells.get_spell", side_effect=lambda sid: _CATALOG[sid]),
         ):
-            result = await db_session_queries.get_session_init_payload("p1")
+            result = await db_session_queries.get_session_init_payload("p1", world_time="evening")
 
         assert result["spells"] == {"core": [], "learned": []}
 
@@ -160,7 +160,7 @@ class TestSessionInitSpells:
             patch("abilities.get_archetype_abilities", return_value=()),
             patch("spells.get_spell", side_effect=lookup),
         ):
-            result = await db_session_queries.get_session_init_payload("p1")
+            result = await db_session_queries.get_session_init_payload("p1", world_time="evening")
 
         assert [s["spell_id"] for s in result["spells"]["learned"]] == ["arcane_fireball"]
         assert "character" in result  # rest of the payload intact

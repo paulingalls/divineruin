@@ -142,8 +142,7 @@ async def rest(context: RunContext[SessionData], rest_type: RestType, use_song_o
         for pid in players:
             session.member_state(pid).resonance.current = 0
         for pid in players:
-            payload = await db_session_queries.get_session_init_payload(pid)
-            payload["world_state"]["time"] = session.world_time
+            payload = await db_session_queries.get_session_init_payload(pid, world_time=session.world_time)
             await publish_game_event(
                 session.room, E.SESSION_INIT, payload, session.event_bus, destination_identities=[pid]
             )

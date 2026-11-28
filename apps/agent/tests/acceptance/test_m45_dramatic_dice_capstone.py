@@ -114,12 +114,16 @@ async def test_death_save_is_always_dramatic(reset_db_pool: str) -> None:
     state.participants[0] = fallen
     try:
         await _start_combat(pool, player_id, state, ctx)
-        response = json.loads(await combat_death_save._request_death_save_impl(ctx))
+        ctx.userdata.party.members[0].patron_id = "mortaen"
+        with patch("combat_resolution.dice_roll", return_value=_d20(11)):
+            response = json.loads(await combat_death_save._request_death_save_impl(ctx))
 
         assert response["dramatic"] is True
         assert response["context"] == "death_save"
         save_events = [e for e in _dice_events(room) if e.get("roll_type") == "death_save"]
-        assert save_events, "the death save emitted a DICE_ROLL"
+        [packet] = save_events
+        assert (packet["roll"], packet["modifier"], packet["total"], packet["success"]) == (11, 2, 13, True)
+        assert (packet["bonus"], packet["total_successes"], packet["total_failures"]) == (2, 1, 0)
         assert save_events[0]["dramatic"] is True
         assert save_events[0]["context"] == "death_save"
     finally:
@@ -139,16 +143,28 @@ async def test_out_of_combat_skill_check_dramatic(reset_db_pool: str) -> None:
     room = make_mock_room()
     ctx = make_context(player_id, room=room)
     with patch("check_resolution.dice_roll", return_value=_d20(20)):
-        await check_tools._check_skill_impl(ctx, "perception", "moderate", "scanning the hall")
+        critical = json.loads(await check_tools._check_skill_impl(ctx, "perception", "moderate", "scanning the hall"))
     crit = next(e for e in _dice_events(room) if e.get("roll_type") == "skill_check")
+    assert (crit["roll"], crit["modifier"], crit["total"], crit["success"]) == (
+        20,
+        critical["modifier"],
+        critical["total"],
+        True,
+    )
     assert crit["dramatic"] is True
     assert crit["context"] == "natural_20"
 
     room2 = make_mock_room()
     ctx2 = make_context(player_id, room=room2)
     with patch("check_resolution.dice_roll", return_value=_d20(10)):
-        await check_tools._check_skill_impl(ctx2, "perception", "moderate", "scanning the hall")
+        normal = json.loads(await check_tools._check_skill_impl(ctx2, "perception", "moderate", "scanning the hall"))
     routine = next(e for e in _dice_events(room2) if e.get("roll_type") == "skill_check")
+    assert (routine["roll"], routine["modifier"], routine["total"], routine["success"]) == (
+        10,
+        normal["modifier"],
+        normal["total"],
+        normal["outcome"] == "success",
+    )
     assert routine["dramatic"] is False
     assert routine["context"] == ""
 

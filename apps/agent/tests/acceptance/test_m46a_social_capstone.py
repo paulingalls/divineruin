@@ -6,13 +6,17 @@ import json
 from unittest.mock import patch
 
 from acceptance._capstone_helpers import _build_state, _d20, _dice_events, _enemy, _resolve_round
+from acceptance.disposition_event_assertions import assert_named_disposition, listen
 from acceptance.seeds import seed_player, seed_player_with_pools
-from sample_fixtures import make_context, make_mock_room
+from sample_fixtures import make_context, make_mock_room, published_payloads
 
 import combat_turn
 import db
 import db_mutations
-import social_tools
+from background_process import BackgroundProcess
+from check_payloads import SocialCheck
+from combat_agent import COMBAT_AGENT_TOOLS
+from exploration_agent import EXPLORATION_TOOLS
 
 _NPC_ID = "guildmaster_torin"  # a real seeded NPC (content/npcs.json)
 
@@ -40,14 +44,32 @@ async def test_m46a_social_check_shifts_and_persists_disposition(reset_db_pool: 
     )
 
     ctx = make_context(player_id, room=make_mock_room())
+    bus = listen(ctx.userdata)
+    check = next(tool for tool in EXPLORATION_TOOLS if tool.__name__ == "check")
+    roll = SocialCheck(kind="social", npc_id=_NPC_ID, skill="persuasion", difficulty="easy", synergy_context="none")
+    with patch("check_resolution.dice_roll", return_value=_d20(8)):
+        rebuffed = json.loads(await check(ctx, roll))
+    assert rebuffed["outcome"] == "failure" and rebuffed["total"] == 12 and rebuffed["dc"] == 14
+    [failed_roll] = [p for p in published_payloads(ctx.userdata.room) if p.get("roll_type") == "social_check"]
+    assert (failed_roll["roll"], failed_roll["modifier"], failed_roll["total"], failed_roll["success"]) == (
+        8,
+        4,
+        12,
+        False,
+    )
+    assert (failed_roll["dramatic"], failed_roll["context"]) == (rebuffed["dramatic"], rebuffed["context"])
+    ctx.userdata.room.local_participant.publish_data.reset_mock()
     with patch("check_resolution.dice_roll", return_value=_d20(20)):
-        result = json.loads(await social_tools._check_social_impl(ctx, _NPC_ID, "persuasion", "easy"))
+        result = json.loads(await check(ctx, roll))
 
     assert result["outcome"] == "success"
     assert result["previous_disposition"] == "hostile"
     assert result["new_disposition"] != "hostile", "a landed persuasion should soften a hostile NPC"
     assert result["disposition_shift"] > 0
     assert result["narrative_cue"]
+    [packet] = [p for p in published_payloads(ctx.userdata.room) if p.get("roll_type") == "social_check"]
+    assert (packet["roll"], packet["modifier"], packet["total"], packet["success"]) == (20, 4, 24, True)
+    assert (packet["dramatic"], packet["context"]) == (result["dramatic"], result["context"])
 
     # The clamped new disposition round-trips to the npc_dispositions SSOT.
     row = await pool.fetchrow(
@@ -55,6 +77,48 @@ async def test_m46a_social_check_shifts_and_persists_disposition(reset_db_pool: 
     )
     assert row is not None
     assert json.loads(row["data"])["disposition"] == result["new_disposition"]
+    assert_named_disposition(
+        BackgroundProcess(ctx.session, ctx.userdata),
+        bus,
+        published_payloads(ctx.userdata.room),
+        npc_id=_NPC_ID,
+        npc_name="Guildmaster Torin",
+        previous="hostile",
+        new=result["new_disposition"],
+        reason="social_check: persuasion",
+    )
+
+
+async def test_m46a_social_check_against_creature_combatant(reset_db_pool: str) -> None:
+    """A creature combatant has no npcs row; the participant is the disposition target."""
+    pool = await db.get_pool()
+    player_id = "cap_m46a_social_combat"
+    await seed_player(pool, player_id=player_id, class_="diplomat")
+    state = _build_state("combat_cap_m46a_social", player_id, [_enemy("goblin_scout_1", hp=7)])
+    ctx = make_context(player_id, room=make_mock_room())
+    await db_mutations.save_combat_state(state.combat_id, state.to_dict(), conn=pool)
+    ctx.userdata.combat_state = state
+    bus = listen(ctx.userdata)
+    check = next(tool for tool in COMBAT_AGENT_TOOLS if tool.__name__ == "check")
+    roll = SocialCheck(
+        kind="social", npc_id="goblin_scout_1", skill="intimidation", difficulty="easy", synergy_context="none"
+    )
+    try:
+        with patch("check_resolution.dice_roll", return_value=_d20(20)):
+            result = json.loads(await check(ctx, roll))
+        assert result["previous_disposition"] == "neutral"
+        assert_named_disposition(
+            BackgroundProcess(ctx.session, ctx.userdata),
+            bus,
+            published_payloads(ctx.userdata.room),
+            npc_id="goblin_scout_1",
+            npc_name="Goblin Scout 1",
+            previous="neutral",
+            new=result["new_disposition"],
+            reason="social_check: intimidation",
+        )
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id, conn=pool)
 
 
 async def test_m46a_diplomat_deescalation_ends_combat(reset_db_pool: str) -> None:

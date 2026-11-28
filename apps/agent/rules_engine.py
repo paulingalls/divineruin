@@ -323,28 +323,6 @@ def exhaustion_stack_cap(player_data: dict) -> int:
     return 3 if has_iron_constitution(player_data) else 5
 
 
-def skill_modifier(player_data: dict, skill: str) -> int:
-    skill_lower = skill.lower()
-    attr = SKILLS.get(skill_lower)
-    if attr is None:
-        raise ValueError(f"Unknown skill: '{skill}'")
-
-    attributes = player_data.get("attributes", {})
-    if isinstance(attr, tuple):
-        mod = max(attribute_modifier(attributes.get(a, 10)) for a in attr)
-    else:
-        mod = attribute_modifier(attributes.get(attr, 10))
-
-    tier = _get_skill_tier(player_data, skill_lower)
-    mod += SKILL_TIER_BONUS[tier]
-
-    if tier != "untrained":
-        level = player_data.get("level", 1)
-        mod += proficiency_bonus(level)
-
-    return mod
-
-
 def dc_for_tier(tier: DcTier | str) -> int:
     """Look up DC value for a difficulty tier. Raises ValueError on unknown tiers."""
     normalized = tier.lower()

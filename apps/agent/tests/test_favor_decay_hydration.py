@@ -9,6 +9,7 @@ import pytest
 from speech_handles import completed_handle
 
 import event_types as E
+import favor_rules
 import session_hydration
 from base_agent import BaseGameAgent
 from exploration_agent import ExplorationAgent
@@ -74,10 +75,16 @@ async def test_primary_decay_persists_once_and_publishes_after_commit(dev_db_poo
         assert persisted["last_decay_at"] == NOW.isoformat()
 
     try:
-        with patch("game_events.publish_game_event", side_effect=capture):
+        with (
+            patch("game_events.publish_game_event", side_effect=capture),
+            patch.object(
+                favor_rules, "build_divine_favor_changed_payload", wraps=favor_rules.build_divine_favor_changed_payload
+            ) as build_payload,
+        ):
             await session_hydration.hydrate_session_state(
                 session, {"race": "human", "divine_favor": favor}, conn=dev_db_pool, now=NOW, **_mods()
             )
+        assert build_payload.call_count == bool(amount)
         persisted = await _favor(dev_db_pool, player_id)
         assert persisted["level"] == expected
         assert persisted["last_served_at"] == served
@@ -90,6 +97,7 @@ async def test_primary_decay_persists_once_and_publishes_after_commit(dev_db_poo
             if amount:
                 assert events[0]["amount"] == amount
                 assert events[0]["new_level"] == expected
+        assert all("requested_amount" not in event for event in events)
         with patch("game_events.publish_game_event", side_effect=capture):
             await session_hydration.hydrate_session_state(
                 SessionData(player_id=player_id, location_id="loc"),

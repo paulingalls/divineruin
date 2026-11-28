@@ -11,6 +11,32 @@ def apply_favor_delta(level: int, max_level: int, amount: int) -> int:
     return max(0, min(level + amount, max_level))
 
 
+def build_divine_favor_changed_payload(
+    *,
+    player_id: str,
+    patron_id: str,
+    previous_level: int,
+    new_level: int,
+    max_level: int,
+    last_whisper_level: int,
+    reason: str,
+    requested_amount: int | None = None,
+) -> dict:
+    payload = {
+        "new_level": new_level,
+        "previous_level": previous_level,
+        "patron_id": patron_id,
+        "last_whisper_level": last_whisper_level,
+        "amount": new_level - previous_level,
+        "reason": reason,
+        "max": max_level,
+        "player_id": player_id,
+    }
+    if requested_amount is not None:
+        payload["requested_amount"] = requested_amount
+    return payload
+
+
 def neglect_decay(favor: dict, now: datetime) -> int:
     if now.tzinfo is None or now.utcoffset() is None:
         raise ValueError("now must have a timezone")

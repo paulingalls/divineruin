@@ -14,6 +14,7 @@ from voice_condition_fixtures import participant
 import architect_encounter
 import check_resolution_attack
 import check_resolution_save
+import combat_ability_save
 import concentration_break
 import db_mutations
 import db_queries
@@ -64,7 +65,19 @@ async def test_entry_refusal(world: SimpleNamespace, melee: bool) -> None:
         assert require_spatial(state)["positions"][FOE]["x"] == pytest.approx(20)
         assert movement["moved_ft"] == pytest.approx(10)
         assert movement["movement_spent_ft"] == pytest.approx(10)
-        assert movement["hearthfire_entries"][0]["success"] is False
+        [receipt] = movement["hearthfire_entries"]
+        assert (receipt["roll"], receipt["success"]) == (2, False)
+        assert set(receipt) == {
+            "source_id",
+            "mover_id",
+            "dc",
+            "roll",
+            "total",
+            "success",
+            "dm_cue",
+            "combat_id",
+            "round_number",
+        }
         assert state.hearthfire_zones[0]["failed_rounds"] == {FOE: 1}
         if melee:
             assert movement["attack_resolved"] is False
@@ -285,7 +298,13 @@ async def test_swept_entry_uses_height_and_both_creatures_save_stats(
         participant(state, FOE).attributes["wisdom"] = 14
         await checkpoint(world)
         action = {**move(FOE, -30), "destination": point(-30, height)}
-        with rolls(), patch("check_resolution.dice_roll", side_effect=[] if face is None else [_d20(face)]) as dice:
+        with (
+            rolls(),
+            patch("check_resolution.dice_roll", side_effect=[] if face is None else [_d20(face)]) as dice,
+            patch.object(
+                combat_ability_save, "player_ability_dc", wraps=combat_ability_save.player_ability_dc
+            ) as ability_dc,
+        ):
             await declare(world, call, action)
             packets, _ = await drain(world, call)
             assert dice.call_count == (0 if face is None else 1)
@@ -293,6 +312,9 @@ async def test_swept_entry_uses_height_and_both_creatures_save_stats(
         if face is None:
             assert "hearthfire_entries" not in movement
         else:
+            ability_dc.assert_called_once()
+            assert ability_dc.call_args.args[0].id == follower.id
+            assert ability_dc.call_args.args[1] == "wisdom"
             receipt = movement["hearthfire_entries"][0]
             assert (receipt["dc"], receipt["roll"], receipt["total"], receipt["success"]) == (
                 16,

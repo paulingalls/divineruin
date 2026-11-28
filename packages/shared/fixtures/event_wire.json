@@ -1,6 +1,22 @@
 {
   "_doc": "Canonical wire-shape fixture (story-007). The single source of truth both lanes assert against: the Python agent publishers must serialize these exact shapes, and the TS mobile handlers/parsers must accept them. A key rename on either side fails its lane's wire-contract test instead of silently rendering a blank value (concern 82fc). Each event is the full top-level wire object {type, ...payload} as flat-merged by game_events.publish_game_event.",
   "events": {
+    "currency_gained": {
+      "type": "currency_gained",
+      "player_id": "player_1",
+      "amount": 0.015,
+      "currency": "gold",
+      "source": "crafting",
+      "new_balance": 0.315
+    },
+    "currency_spent": {
+      "type": "currency_spent",
+      "player_id": "player_1",
+      "amount": 0.2,
+      "currency": "gold",
+      "source": "repair",
+      "new_balance": 0
+    },
     "temp_hp_session_set": {
       "type": "session_init",
       "character": {
@@ -256,6 +272,14 @@
       "player_id": "player_1",
       "cancelled": true
     },
+    "disposition_changed": {
+      "type": "disposition_changed",
+      "npc_id": "guildmaster_torin",
+      "npc_name": "Guildmaster Torin",
+      "previous": "neutral",
+      "new": "friendly",
+      "reason": "world_effect: torin_disposition +1"
+    },
     "companion_cue": {
       "type": "companion_cue",
       "voice_id": "COMPANION_SABLE"
@@ -354,11 +378,130 @@
       "dramatic": false,
       "context": ""
     },
+    "ordinary_skill_success": {
+      "type": "dice_roll",
+      "roll_type": "skill_check",
+      "roll": 20,
+      "modifier": 4,
+      "total": 24,
+      "skill": "perception",
+      "success": true,
+      "dramatic": true,
+      "context": "natural_20"
+    },
+    "ordinary_skill_failure": {
+      "type": "dice_roll",
+      "roll_type": "skill_check",
+      "roll": 3,
+      "modifier": 4,
+      "total": 7,
+      "skill": "perception",
+      "success": false,
+      "dramatic": false,
+      "context": ""
+    },
+    "ordinary_save": {
+      "type": "dice_roll",
+      "roll_type": "saving_throw",
+      "roll": 8,
+      "modifier": 3,
+      "total": 11,
+      "save_type": "strength",
+      "success": false,
+      "dramatic": false,
+      "context": ""
+    },
+    "choir_aura_save": {
+      "type": "dice_roll",
+      "roll_type": "choir_aura",
+      "roll": 14,
+      "modifier": 8,
+      "total": 22,
+      "save_type": "wisdom",
+      "success": true,
+      "actor_id": "player_1",
+      "dc": 15,
+      "concentration_broken": null,
+      "cue": "Lost voices tug at your focus."
+    },
+    "death_save": {
+      "type": "dice_roll",
+      "roll_type": "death_save",
+      "roll": 11,
+      "modifier": 2,
+      "total": 13,
+      "success": true,
+      "bonus": 2,
+      "critical_success": false,
+      "critical_failure": false,
+      "total_successes": 1,
+      "total_failures": 0,
+      "dramatic": true,
+      "context": "death_save"
+    },
+    "deescalation_argument": {
+      "type": "dice_roll",
+      "roll_type": "de_escalate",
+      "roll": 16,
+      "modifier": 5,
+      "total": 21,
+      "skill": "persuasion",
+      "success": true,
+      "dramatic": true,
+      "context": "de_escalate",
+      "actor": "Kael",
+      "round": 1,
+      "surrendered": 0,
+      "living": 2,
+      "ends_combat": false
+    },
+    "social_roll": {
+      "type": "dice_roll",
+      "roll_type": "social_check",
+      "roll": 8,
+      "modifier": 4,
+      "total": 12,
+      "skill": "persuasion",
+      "success": false,
+      "dramatic": false,
+      "context": ""
+    },
+    "gathering_roll": {
+      "type": "dice_roll",
+      "roll_type": "gathering_check",
+      "roll": 7,
+      "modifier": 4,
+      "total": 11,
+      "skill": "survival",
+      "success": true,
+      "dramatic": false,
+      "context": ""
+    },
+    "navigation_roll": {
+      "type": "dice_roll",
+      "roll_type": "navigation_check",
+      "roll": 1,
+      "modifier": 3,
+      "total": 4,
+      "skill": "survival",
+      "success": false,
+      "dramatic": true,
+      "context": "natural_1"
+    },
+    "narrative_roll": {
+      "type": "dice_roll",
+      "roll_type": "narrative",
+      "roll": 9,
+      "modifier": -2,
+      "total": 7,
+      "notation": "4d6kh3-2"
+    },
     "discover_failed": {
       "type": "dice_roll",
       "roll_type": "skill_check",
       "skill": "perception",
       "roll": 3,
+      "modifier": 6,
       "total": 9,
       "dramatic": false,
       "context": ""
@@ -368,6 +511,7 @@
       "roll_type": "skill_check",
       "skill": "perception",
       "roll": 3,
+      "modifier": 6,
       "total": 9,
       "dramatic": false,
       "context": ""
@@ -377,6 +521,7 @@
       "roll_type": "skill_check",
       "skill": "perception",
       "roll": 15,
+      "modifier": 6,
       "total": 21,
       "dramatic": false,
       "context": ""
@@ -389,6 +534,7 @@
       "type": "session_init",
       "character": {
         "player_id": "wire_patron",
+        "location_id": "accord_market_square",
         "divine_favor": {
           "patron": "veythar",
           "level": 40,
@@ -396,6 +542,11 @@
         },
         "patron_gifts": {}
       },
+      "location": {
+        "id": "accord_market_square",
+        "name": "Accord Market Square"
+      },
+      "world_state": { "time": "morning" },
       "abilities": [
         {
           "id": "veythar_scholars_ward",

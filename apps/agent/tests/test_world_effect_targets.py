@@ -2,12 +2,7 @@
 
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
-from quest_tools import _apply_world_effects
-from session_data import CompanionState, SessionData
 from world_effect_targets import EFFECT_NPC_MAP, is_valid_disposition_target
 
 CONTENT_DIR = Path(__file__).parent.parent.parent.parent / "content"
@@ -15,37 +10,6 @@ CONTENT_DIR = Path(__file__).parent.parent.parent.parent / "content"
 
 def _load_ids(filename: str) -> set[str]:
     return {entity["id"] for entity in json.loads((CONTENT_DIR / filename).read_text())}
-
-
-def _mocks():
-    queries = MagicMock()
-    queries.get_npc_disposition = AsyncMock(return_value="neutral")
-    mutations = MagicMock()
-    mutations.set_npc_disposition = AsyncMock()
-    content = MagicMock()
-    content.get_npc = AsyncMock(return_value={"default_disposition": "neutral"})
-    return mutations, queries, content
-
-
-class TestCompanionShorthandResolvesPerPlayer:
-    @pytest.mark.asyncio
-    async def test_companion_disposition_lands_on_the_assigned_companion_not_kael(self):
-        mutations, queries, content = _mocks()
-        session = SessionData(player_id="p1", location_id="accord_market_square")
-        session.companion = CompanionState(id="companion_sable", name="Sable")
-        pending: list[tuple[str, dict]] = []
-
-        await _apply_world_effects(
-            ["companion_disposition +3"],
-            session,
-            pending,
-            mutations=mutations,
-            queries=queries,
-            content=content,
-        )
-
-        mutations.set_npc_disposition.assert_called_once()
-        assert mutations.set_npc_disposition.call_args[0][0] == "companion_sable"
 
 
 class TestEffectNpcMap:

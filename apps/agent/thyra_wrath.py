@@ -19,13 +19,8 @@ from session_data import SessionData
 from terrain import WRATH_DAMAGE_TYPES, TerrainType, is_natural
 
 
-def _living(participant: CombatParticipant) -> bool:
-    return (
-        participant.structure_kind != THORNWALL
-        and participant.hp_current > 0
-        and not participant.is_fallen
-        and not participant.is_dead
-    )
+def _standing_non_thornwall(participant: CombatParticipant) -> bool:
+    return participant.structure_kind != THORNWALL and participant.is_standing
 
 
 def _recipients(state: CombatState) -> tuple[list[CombatParticipant], list[str]]:
@@ -36,7 +31,7 @@ def _recipients(state: CombatState) -> tuple[list[CombatParticipant], list[str]]
     spared = []
     hidden_count = 0
     for foe in state.participants:
-        if foe.is_ally or not _living(foe):
+        if foe.is_ally or not _standing_non_thornwall(foe):
             continue
         if foe.id in still:
             if foe.id in hidden:
@@ -61,7 +56,7 @@ async def wildmothers_wrath(
     require_complete_round(state, WILDMOTHERS_WRATH)
     working = deepcopy(state)
     actor = working.get_participant(actor_id)
-    if actor is None or actor.type != "player" or not _living(actor):
+    if actor is None or actor.type != "player" or not _standing_non_thornwall(actor):
         raise ToolError("Wildmother's Wrath requires a living acting player in this fight.")
     terrain = await resolve_terrain(session, combat_state=working)
     if not is_natural(terrain):
@@ -92,7 +87,7 @@ async def wildmothers_wrath(
         outcome = "dies" if foe.is_dead else "falls" if fallen else "stays standing"
         narration.append(f"{foe.name} takes {damage} {damage_type} and {outcome}.")
     narration.extend(spared)
-    if not any(not foe.is_ally and _living(foe) for foe in working.participants):
+    if not any(not foe.is_ally and _standing_non_thornwall(foe) for foe in working.participants):
         narration.append("No foe is left standing.")
     judgment_rewards = working.judgment_rewards[previous_judgments:]
     if judgment_rewards:

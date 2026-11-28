@@ -1,6 +1,7 @@
 """Shared rolling and persistence of an attack before impact."""
 
 from dataclasses import asdict, replace
+from typing import TYPE_CHECKING
 
 import check_resolution_attack
 import combat_marks
@@ -29,6 +30,9 @@ from patron_synergy_combat import VeiledStrike, attack_player
 from weapon_proficiency import has_weapon_proficiency
 from world_season import Season
 
+if TYPE_CHECKING:
+    from combat_state import CombatState
+
 BEACON = "Beacon"
 
 
@@ -39,7 +43,6 @@ def roll_attack(
     *,
     valdris_ac_bonus: int,
     target_ac_bonus: int = 0,
-    enemies_remaining: int | None = None,
     is_first_attack_of_combat: bool = False,
     resolver=check_resolution_attack,
     combat_state=None,
@@ -87,7 +90,7 @@ def roll_attack(
     )
     spend_sneak_attack(attacker, combat_state, attack_result)
 
-    return promote_attack(attack_result, enemies_remaining, is_first_attack_of_combat), effective_ac
+    return promote_attack(attack_result, combat_state, is_first_attack_of_combat), effective_ac
 
 
 def attack_roll_inputs(
@@ -286,8 +289,21 @@ def record_beacon_attack(combat_state, attacker, target, attack_result: check_re
         targets.append(target.id)
 
 
-def promote_attack(attack_result, enemies_remaining, is_first_attack_of_combat):
+def promote_attack(
+    attack_result: check_resolution_attack.AttackResult,
+    combat_state: "CombatState | None",
+    is_first_attack_of_combat: bool,
+) -> check_resolution_attack.AttackResult:
     if not attack_result.dramatic:
+        enemies_remaining = (
+            sum(
+                1
+                for participant in combat_state.participants
+                if participant.type == "enemy" and not participant.is_fallen
+            )
+            if combat_state is not None
+            else None
+        )
         verdict = evaluate_dramatic_context(
             DramaticContext(
                 roll_type="attack",
@@ -319,37 +335,6 @@ def deserialize_roll(data: dict) -> tuple:
     fields = dict(data["attack_result"])
     fields["consumed_conditions"] = tuple(fields.get("consumed_conditions") or ())
     return check_resolution_attack.AttackResult(**fields), data["effective_ac"]
-
-
-def build_attack_dice_roll_payload(attacker, attack_result) -> dict:
-    payload = {
-        "roll_type": "attack",
-        "attacker": attacker.name,
-        "roll": attack_result.roll,
-        "modifier": attack_result.attack_modifier,
-        "total": attack_result.attack_total,
-        "success": attack_result.hit,
-        "narrative": attack_result.narrative_hint,
-        "damage": attack_result.damage,
-        "critical": attack_result.critical_success,
-        "dramatic": attack_result.dramatic,
-        "context": attack_result.context,
-    }
-    if attack_result.oath_justice is not None:
-        payload["oath_justice"] = attack_result.oath_justice
-    if attack_result.sneak_attack_dice is not None:
-        payload.update(
-            damage_type=attack_result.damage_type,
-            sneak_attack_dice=attack_result.sneak_attack_dice,
-            sneak_attack_raw_damage=attack_result.sneak_attack_raw_damage,
-        )
-    if attack_result.synergy_damage_type is not None:
-        payload.update(
-            synergy_damage=attack_result.synergy_damage, synergy_damage_type=attack_result.synergy_damage_type
-        )
-    if attack_result.synergy_clause_id is not None:
-        payload["synergy_clause_id"] = attack_result.synergy_clause_id
-    return payload
 
 
 def held_reaction_ac(head: dict) -> int:

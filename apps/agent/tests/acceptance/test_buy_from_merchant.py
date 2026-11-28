@@ -15,6 +15,7 @@ from acceptance.merchant_harness import (
     SaleSession,
     fund_merchant,
     location_override,
+    merchant_player_gold,
     merchant_row,
     merchant_scope,
     merchant_session,
@@ -108,6 +109,7 @@ async def test_spoken_purchase_quotes_then_confirms(
         consent = "Yes, I'll buy it."
         run.stt.transcript = consent
         start = len(run.requests)
+        before_gold = await merchant_player_gold(run.player_id)
         bought = result(await run.turn("purchase_item", **args, offer_id=offer["offer_id"]))
         assert bought == {"status": "purchased", **args, "total_price_sp": 1, "new_balance": 6.9, "new_item_count": 1}
         assert any(
@@ -117,9 +119,8 @@ async def test_spoken_purchase_quotes_then_confirms(
             and any(getattr(item, "output", None) == quoted.output for item in request["chat_ctx"].items)
             for request in run.requests[start:]
         )
-        assert await pool.fetchval(
-            "SELECT (data->>'gold')::numeric FROM players WHERE player_id=$1", run.player_id
-        ) == Decimal("6.9")
+        after_gold = await merchant_player_gold(run.player_id)
+        assert after_gold == Decimal("6.9")
         assert (await rows(run.player_id))[1][SPEAR, False]["quantity"] == 1
         after = await merchant_row(GRIMJAW)
         assert after is not None
@@ -137,10 +138,10 @@ async def test_spoken_purchase_quotes_then_confirms(
         (currency,) = run.packets(E.CURRENCY_SPENT)[gold_packets:]
         for key, value in {
             "player_id": run.player_id,
-            "amount": 0.1,
+            "amount": float(before_gold - after_gold),
             "currency": "gold",
             "source": "merchant_purchase",
-            "new_balance": 6.9,
+            "new_balance": float(after_gold),
         }.items():
             assert currency[key] == value
         (pack,) = run.packets(E.INVENTORY_UPDATED)[pack_packets:]
@@ -151,11 +152,6 @@ async def test_spoken_purchase_quotes_then_confirms(
         run.stt.transcript = "I'm done trading."
         assert result(await run.turn("conclude_trade"))["status"] == "concluded_trade"
         assert isinstance(run.session.current_agent, ExplorationAgent)
-
-
-async def gold(pid: str) -> Decimal:
-    pool = await db.get_pool()
-    return await pool.fetchval("SELECT (data->>'gold')::numeric FROM players WHERE player_id=$1", pid)
 
 
 async def sink_rows(pid: str) -> list[dict]:
@@ -274,9 +270,9 @@ async def test_settles_pool_tier_and_exact_funds(
         assert after[0]["current_inventory"] == remaining
         assert after[0]["current_gold_sp"] == 600 + price
         assert (await rows(session.player_id))[1][item, False]["quantity"] == quantity
-        assert await gold(session.player_id) == Decimal(balance) - Decimal(price) / 10
+        assert await merchant_player_gold(session.player_id) == Decimal(balance) - Decimal(price) / 10
         if balance == "0.1":
-            assert await gold(session.player_id) == 0
+            assert await merchant_player_gold(session.player_id) == 0
         (sink,) = await sink_rows(session.player_id)
         assert (sink["sink_type"], sink["sink_category"], sink["item_id"], sink["amount_sp"]) == (
             "merchant_purchase",

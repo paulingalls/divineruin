@@ -19,7 +19,7 @@ from combat_damage import apply_attack_result
 from combat_damage_results import AutomaticDamageResult
 from combat_departure import target_left_receipt
 from combat_fate_rolls import PacketRolls, packet_save
-from combat_legendary_resistance import finalize_save, override_fields
+from combat_legendary_resistance import finalize_save
 from combat_movement_cost import rectangle
 from condition_restrictions import cannot_act
 
@@ -44,7 +44,7 @@ def proposed_state(state: CombatState, actor_id: str, operations: list[dict]) ->
     actor = state.get_participant(actor_id)
     if not architect_encounter.is_owner(state, actor_id):
         raise ValueError("Only the Architect can Reshape")
-    if actor is None or actor.is_fallen or actor.is_dead or actor.hp_current <= 0 or cannot_act(actor.conditions):
+    if actor is None or not actor.is_standing or cannot_act(actor.conditions):
         raise ValueError("The Architect is unavailable to Reshape")
     available = remaining(state, actor)
     if len(operations) > available:
@@ -191,14 +191,9 @@ async def _floor_target(
             damage = AutomaticDamageResult(dice.roll("2d6").total, "bludgeoning", context="reshape_floor")
             _, adjusted = combat_damage_affinity.apply(target, action, damage, state=state)
             save = finalize_save(state, target, save, failed_conditions=("prone",), failed_damage=adjusted.damage)
-        steps.update(
-            save_success=save.success,
-            save_roll=save.roll,
-            save_total=save.total,
-            **override_fields(save),
-            **save.oath_fields(),
-            **encounter_facts.rally_receipt(target.id, save.rally_sources),
-        )
+        save_fields = save.receipt_fields(target.id, prefix="save_")
+        del save_fields["save_type"], save_fields["save_dc"]
+        steps.update(save_fields)
     encounter_facts.record_party_attack(state, actor, target)
     effect = {"target_id": target_id, "save_success": steps["save_success"], "save_dc": 15}
     if "success_override" in steps:

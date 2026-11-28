@@ -22,10 +22,6 @@ from session_data import SessionData
 NAME = "The Scale's Verdict"
 
 
-def _living(participant: CombatParticipant) -> bool:
-    return participant.hp_current > 0 and not participant.is_fallen and not participant.is_dead
-
-
 def _judged_foe(state: CombatState, target_id: str) -> CombatParticipant:
     if target_id in still_encounter.hidden_ids(state):
         raise ToolError("An unrevealed Still anchor cannot be judged.")
@@ -35,7 +31,7 @@ def _judged_foe(state: CombatState, target_id: str) -> CombatParticipant:
     if choir is not None and target_id == choir["owner_id"] and choir["phase"] != "exposed":
         raise ToolError("The Choir is protected until its core is exposed.")
     foe = state.get_participant(target_id)
-    if foe is None or foe.is_ally or foe.is_structure or not _living(foe):
+    if foe is None or foe.is_ally or foe.is_structure or not foe.is_standing:
         raise ToolError(f"{NAME} requires a living hostile creature in this fight.")
     return foe
 
@@ -51,7 +47,7 @@ async def scales_verdict(
         raise ToolError(f"Use target_id to select one living hostile creature for {NAME}.")
     working = deepcopy(state)
     actor = working.get_participant(actor_id)
-    if actor is None or actor.type != "player" or not _living(actor):
+    if actor is None or actor.type != "player" or not actor.is_standing:
         raise ToolError(f"{NAME} requires a living acting player in this fight.")
     foe = _judged_foe(working, target_id)
     evidence = []
@@ -82,7 +78,7 @@ async def scales_verdict(
     )
 
     stunned = False
-    if evidence and _living(foe):
+    if evidence and foe.is_standing:
         stunned = _land_condition_on_one(working, foe.id, actor, "stunned", NAME, packet=receipt, duration=1)
         if stunned and working.beat in ("narration", "wrap") and working.wrap_continuation is None:
             # Preserve the stun through the imminent wrap. A paused wrap has already ticked.

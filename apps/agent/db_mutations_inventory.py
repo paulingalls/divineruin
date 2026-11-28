@@ -1,4 +1,4 @@
-"""Stack-scoped durability and signed quantity mutations."""
+"""Player gold, stack-scoped durability, and signed quantity mutations."""
 
 import json
 from decimal import Decimal
@@ -9,8 +9,19 @@ import db
 import db_mutations
 
 
-async def credit_player_gold(player_id: str, amount: Decimal | float, *, conn: asyncpg.Connection) -> float:
-    """Add gold in the caller's transaction and return the resulting balance."""
+def _gold_payload(player_id: str, amount: Decimal, source: str, balance: Decimal) -> dict:
+    return {
+        "player_id": player_id,
+        "amount": float(amount),
+        "currency": "gold",
+        "source": source,
+        "new_balance": float(balance),
+    }
+
+
+async def credit_player_gold(player_id: str, amount: Decimal | float, *, source: str, conn: asyncpg.Connection) -> dict:
+    """Add gold in the caller's transaction and return the currency payload with the resulting balance."""
+    amount = Decimal(str(amount))
     balance = await conn.fetchval(
         """
         UPDATE players
@@ -19,19 +30,20 @@ async def credit_player_gold(player_id: str, amount: Decimal | float, *, conn: a
         RETURNING (data->>'gold')::numeric
         """,
         player_id,
-        Decimal(str(amount)),
+        amount,
     )
     if balance is None:
         raise ValueError(f"Player {player_id} is missing")
-    return float(balance)
+    return _gold_payload(player_id, amount, source, balance)
 
 
 class InsufficientGold(ValueError):
     """The locked player balance cannot cover a charge."""
 
 
-async def debit_player_gold(player_id: str, amount: Decimal | float, *, conn: asyncpg.Connection) -> float:
-    """Charge a player already locked by the caller and return the resulting balance."""
+async def debit_player_gold(player_id: str, amount: Decimal | float, *, source: str, conn: asyncpg.Connection) -> dict:
+    """Charge a player already locked by the caller and return the currency payload with the resulting balance."""
+    amount = Decimal(str(amount))
     balance = await conn.fetchval(
         """
         UPDATE players
@@ -40,11 +52,11 @@ async def debit_player_gold(player_id: str, amount: Decimal | float, *, conn: as
         RETURNING (data->>'gold')::numeric
         """,
         player_id,
-        Decimal(str(amount)),
+        amount,
     )
     if balance is None:
         raise InsufficientGold(player_id)
-    return float(balance)
+    return _gold_payload(player_id, amount, source, balance)
 
 
 async def update_item_durability(

@@ -30,7 +30,6 @@ async def roll_hostile(session, state, head, declaration, action, contribution, 
         head["executed_action"] if stored is not None else begin_execution(state, attacker, action, declaration, head)
     )
     ac_bonus = state.ac_modifiers.get(target.id, 0) + contribution
-    enemies_remaining = sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen)
     first_attack = not state.first_attack_resolved
     prepared = None
     can_implant_doubt = any(IMPLANT_DOUBT in participant.reaction_ids for participant in state.participants)
@@ -102,7 +101,7 @@ async def roll_hostile(session, state, head, declaration, action, contribution, 
             target_conditions=target.conditions,
         )
         spend_sneak_attack(attacker, state, result)
-        result = promote_attack(result, enemies_remaining, first_attack)
+        result = promote_attack(result, state, first_attack)
         effective_ac = prepared.d20.dc
         head.pop("fate_attack", None)
     else:
@@ -113,7 +112,6 @@ async def roll_hostile(session, state, head, declaration, action, contribution, 
             target,
             valdris_ac_bonus=valdris_ac_bonus,
             target_ac_bonus=ac_bonus,
-            enemies_remaining=enemies_remaining,
             is_first_attack_of_combat=first_attack,
             resolver=packet_deps["resolver"],
             combat_state=state,

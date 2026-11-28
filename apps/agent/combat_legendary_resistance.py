@@ -19,13 +19,7 @@ def finalize_save(
     failed_conditions: Iterable[str] = (),
     failed_damage: int = 0,
 ) -> SavingThrowResult:
-    if (
-        target.creature_id != architect_encounter.CREATURE_ID
-        or target.hp_current <= 0
-        or target.is_fallen
-        or target.is_dead
-        or result.success
-    ):
+    if target.creature_id != architect_encounter.CREATURE_ID or not target.is_standing or result.success:
         return result
     action = combat_recharge.LEGENDARY_RESISTANCE
     if not combat_recharge.available(target, action):
@@ -44,8 +38,3 @@ def finalize_save(
         narrative_hint=f"{target.name} succeeds using {action['name']}.",
         success_override=action["name"],
     )
-
-
-def override_fields(result: SavingThrowResult) -> dict[str, str]:
-    override = getattr(result, "success_override", None)
-    return {"success_override": override} if override is not None else {}

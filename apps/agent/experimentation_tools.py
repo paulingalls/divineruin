@@ -24,6 +24,7 @@ import logging
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
+import check_skill
 import db
 import db_mutations
 import db_queries
@@ -32,6 +33,7 @@ import experimentation_db
 import materials as materials_module
 import recipe_validation
 import recipes
+from check_skill_modifier import CRAFTING_ACTIVITY_SKILL
 from inventory_refresh import publish_inventory
 from session_data import SessionData
 from tool_support import _validate_id
@@ -100,7 +102,16 @@ async def _experiment_with_materials_impl(
             await mutations_mod.consume_player_materials(
                 player_id, alloc.by_id, allow_tainted=match["tainted_materials"], conn=conn
             )
-            outcome = experimentation.resolve_experimentation(player, match["crafting_dc"], rng=rng)
+            session = context.userdata
+            outcome = experimentation.resolve_experimentation(
+                player,
+                match["crafting_dc"],
+                ally_present=session.allies_present_for(player_id),
+                **await check_skill.skill_context(
+                    session, player, CRAFTING_ACTIVITY_SKILL, player_id=player_id, conn=conn
+                ),
+                rng=rng,
+            )
             roll_details: dict[str, object] = {
                 "roll": outcome.roll,
                 "dc": outcome.dc,

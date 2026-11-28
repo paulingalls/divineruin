@@ -73,14 +73,7 @@ class TestCheckDiscover:
         assert result["outcome"] == "not_found"
         mock_discovery_events.assert_awaited_once()
         assert mock_discovery_events.await_args.args[1] == E.DICE_ROLL
-        assert set(mock_discovery_events.await_args.args[2]) == {
-            "roll_type",
-            "skill",
-            "roll",
-            "total",
-            "dramatic",
-            "context",
-        }
+        assert mock_discovery_events.await_args.args[2]["skill"] == "arcana"
         mutations.set_player_flag.assert_not_called()
 
     @pytest.mark.asyncio

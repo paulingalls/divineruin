@@ -145,7 +145,7 @@ def _repair_item_case(player: dict, row_tier: str, required_tier: str):
             "silver_per_gold": 10,
         }
     )
-    inventory_mutations = MagicMock(debit_player_gold=AsyncMock(return_value=14.8))
+    inventory_mutations = MagicMock(debit_player_gold=AsyncMock(return_value={"new_balance": 14.8}))
     inventory_mutations.update_item_durability = AsyncMock()
 
     async def invoke():

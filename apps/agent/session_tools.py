@@ -20,6 +20,7 @@ import db_queries
 import event_types as E
 from asset_utils import slug_asset_url
 from db_errors import db_tool
+from disposition import build_disposition_changed_payload
 from game_events import publish_game_event
 from role_archetypes import shift_disposition
 from session_data import SessionData
@@ -74,6 +75,8 @@ async def _update_npc_disposition_impl(
     if npc is None:
         raise ToolError(f"NPC '{npc_id}' not found.")
 
+    npc_name = npc["name"]
+
     # Stage-driven precondition (story-005): the NPC must be present at the player's
     # current location. M7's collapsed agent exposes this verb in every region, so the
     # guard — not a per-agent tool list — keeps disposition shifts to co-located NPCs.
@@ -103,20 +106,13 @@ async def _update_npc_disposition_impl(
         pending_events.append(
             (
                 E.DISPOSITION_CHANGED,
-                {
-                    "npc_id": npc_id,
-                    "npc_name": npc.get("name", npc_id),
-                    "previous": current,
-                    "new": new_disposition,
-                    "reason": reason,
-                },
+                build_disposition_changed_payload(npc_id, npc_name, current, new_disposition, reason),
             )
         )
 
     for event_type, payload in pending_events:
         await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
 
-    npc_name = npc.get("name", npc_id)
     session.record_event(f"{npc_name} disposition: {current} -> {new_disposition} ({reason})")
     session.record_companion_memory(f"Player {reason} with {npc_name}")
 

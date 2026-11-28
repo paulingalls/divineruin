@@ -111,7 +111,7 @@ async def completed(arc):
     assert not [q for q in await db_queries.get_active_player_quests(arc.player) if q["quest_id"] == QUEST]
     assert not arc.bg._quest_cache
     assert "advance_quest:" not in arc.bg._last_warm_layer
-    assert not (await db_session_queries.get_session_init_payload(arc.player))["quests"]
+    assert not (await db_session_queries.get_session_init_payload(arc.player, world_time=arc.sd.world_time))["quests"]
     channels = (list(arc.events), list(arc.bg._speech_queue))
     assert (await command(arc, 8)).is_error
     assert await durable(arc) == after

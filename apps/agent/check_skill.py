@@ -1,9 +1,12 @@
 """Skill resolution shared by ordinary checks and patron rerolls."""
 
+from __future__ import annotations
+
 import json
 import logging
 from contextlib import nullcontext
 from functools import partial
+from typing import TYPE_CHECKING, Literal, TypedDict
 
 from livekit.agents.llm import ToolError
 
@@ -11,15 +14,18 @@ import check_resolution
 import choir_scene
 import concealment
 import condition_voice_rules
+import db_content_queries
 import event_types as E
 import patron_deeds
 import rules_engine
 import skill_persistence
 import thyra_seasons
+from combat_state import CombatState
 from combat_terrain import skill_natural_terrain
 from condition_consume import consume_beneficial_conditions
 from condition_voice_rules import validate_hearing_check
 from db_errors import validated_player_conditions
+from dice_roll_payloads import build_skill_dice_roll_payload
 from patron_gifts import KNOWLEDGE_SKILLS
 from patron_location import check_first_stay
 from session_data import SessionData
@@ -27,9 +33,42 @@ from skill_check_effects import SkillCheckEffects
 from skill_fate import SkillScope, prepare_skill_offer
 from tool_support import _cap_str
 
+if TYPE_CHECKING:
+    from types import ModuleType
+
+    import asyncpg
+
+    from world_season import Season
+
 logger = logging.getLogger("divineruin.tools")
 VALID_SKILLS = set(rules_engine.SKILLS)
 VALID_DIFFICULTIES = set(rules_engine.DC_TIERS)
+
+
+class SkillContext(TypedDict):
+    natural_terrain: bool
+    first_stay: bool
+    season: Season | None
+
+
+async def skill_context(
+    session: SessionData,
+    player: dict,
+    skill: str,
+    *,
+    player_id: str,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    combat_state: CombatState | None = None,
+    content_mod: ModuleType = db_content_queries,
+    terrain_exclusion: Literal["social_scene", "spoken_combat_argument"] | None = None,
+) -> SkillContext:
+    """Read the situational modifiers for the caller's roller at roll time."""
+    return {
+        "first_stay": await check_first_stay(player, session, skill, player_id=player_id, conn=conn),
+        "natural_terrain": terrain_exclusion is None
+        and await skill_natural_terrain(session, player, skill, combat_state=combat_state, content_mod=content_mod),
+        "season": await thyra_seasons.skill_season(player, skill, conn=conn),
+    }
 
 
 async def _check_skill_run(
@@ -82,13 +121,11 @@ async def _check_skill_run(
         skill,
         difficulty if reroll_dc is None else reroll_dc,
         ally_present=session.allies_present_for(player_id),
-        first_stay=await check_first_stay(player, session, skill, player_id=player_id, conn=conn),
-        natural_terrain=await skill_natural_terrain(session, player, skill),
         hearing_only=hearing_only,
         synergy_context=synergy_context,
         player_id=player_id,
         in_combat=session.combat_state is not None,
-        season=await thyra_seasons.skill_season(player, skill, conn=conn),
+        **await skill_context(session, player, skill, player_id=player_id, conn=conn),
     )
 
     scope = SkillScope.capture(session, player_id)
@@ -183,15 +220,13 @@ async def _finish_skill(
     effects.events.append(
         (
             E.DICE_ROLL,
-            {
-                "roll_type": "skill_check",
-                "skill": result.skill,
-                "roll": result.roll,
-                "total": result.total,
-                "success": result.success,
-                "dramatic": result.dramatic,
-                "context": result.context,
-            },
+            build_skill_dice_roll_payload(
+                result,
+                roll_type="skill_check",
+                success=result.success,
+                dramatic=result.dramatic,
+                context=result.context,
+            ),
         )
     )
 

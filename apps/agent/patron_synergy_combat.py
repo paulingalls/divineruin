@@ -116,7 +116,6 @@ def encounter_damage_clause(
         return None
 
     from combat_melee_approach import is_melee
-    from combat_veilrender import living
     from encounter_facts import ZHAEL_THREADED_BLADE
 
     facts = state.encounter_facts
@@ -135,7 +134,7 @@ def encounter_damage_clause(
         has_engine_synergy(player, ORENTHEL_UNDEAD_WRATH)
         and (target.hollow or target.category == "undead")
         and any(
-            ally.id != attacker.id and ally.is_ally and living(ally) and 2 * ally.hp_current < ally.hp_max
+            ally.id != attacker.id and ally.is_ally and ally.is_standing and 2 * ally.hp_current < ally.hp_max
             for ally in state.participants
         )
     ):
@@ -173,12 +172,11 @@ def first_attack_defense(defender: dict | None, state: CombatState | None, targe
 
 def fallen_ally_defense(defender: dict | None, state: CombatState | None, target: CombatParticipant) -> int:
     from combat_down import is_terminally_down
-    from combat_veilrender import living
 
     if (
         defender is None
         or state is None
-        or not living(target)
+        or not target.is_standing
         or not has_engine_synergy(defender, MORTAEN_THRESHOLD_SHIELD)
     ):
         return 0
@@ -210,9 +208,8 @@ def _nearby_ally_defense(
     qualifies: Callable[[CombatParticipant], bool] = lambda _: True,
 ) -> int:
     from combat_spatial import inside, position, require_spatial
-    from combat_veilrender import living
 
-    if defender is None or state is None or not living(target) or not has_engine_synergy(defender, clause_id):
+    if defender is None or state is None or not target.is_standing or not has_engine_synergy(defender, clause_id):
         return 0
 
     spatial = require_spatial(state)
@@ -221,7 +218,7 @@ def _nearby_ally_defense(
         any(
             ally.id != target.id
             and ally.is_ally
-            and living(ally)
+            and ally.is_standing
             and qualifies(ally)
             and inside(target_position, position(spatial, ally.id), 5)
             for ally in state.participants
@@ -230,10 +227,8 @@ def _nearby_ally_defense(
 
 
 async def marshal_death_save_bonus(state: CombatState, *, queries) -> int:
-    from combat_veilrender import living
-
     for candidate in state.participants:
-        if candidate.type != "player" or not living(candidate):
+        if candidate.type != "player" or not candidate.is_standing:
             continue
         player = await queries.get_player(candidate.id)
         if player is None:
@@ -341,11 +336,9 @@ def outnumbered_oath(player: dict, state: CombatState | None, attacker: CombatPa
     if state is None or not attacker.is_ally or not has_engine_synergy(player, OATH_OF_VALOR):
         return False
 
-    from combat_veilrender import living
-
     allies = enemies = 0
     for participant in state.participants:
-        if living(participant):
+        if participant.is_standing:
             if participant.is_ally:
                 allies += 1
             else:

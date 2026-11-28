@@ -11,8 +11,7 @@ import architect_reaction
 import combat_round_checkpoint
 import combat_spatial
 import db_content_queries
-import encounter_facts
-from combat_state import CombatState
+from combat_state import CombatState, load_snapshot
 
 
 def key(location_id: str) -> str:
@@ -56,7 +55,7 @@ async def write(session, state: CombatState, status: str, *, mutations, conn, **
 
 
 def _dormant(record: dict, location_id: str) -> CombatState:
-    retained = CombatState.from_dict(encounter_facts.upgrade_legacy_snapshot(record["snapshot"]))
+    retained = load_snapshot(record["snapshot"])
     old = retained.architect_encounter
     if old is None or old["phase"] != "active" or retained.location_id != location_id:
         raise ValueError("Invalid dormant Architect encounter")

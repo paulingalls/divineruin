@@ -218,7 +218,7 @@ async def test_session_init_uses_host_during_guest_handback():
         with sd._bind_authenticated_actor("guest", 1, lambda *_: None):
             task = asyncio.create_task(ExplorationAgent()._publish_session_init(sd))
             await task
-    query.assert_awaited_once_with("host")
+    query.assert_awaited_once_with("host", world_time=sd.world_time)
     assert publish.await_args is not None
     assert publish.await_args.args[1] == E.SESSION_INIT
 

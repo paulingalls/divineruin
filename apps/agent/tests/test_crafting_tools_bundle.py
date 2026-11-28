@@ -34,7 +34,7 @@ async def _rent(
 ):
     db_mod, conn = make_db_mod()
     mutations = mutations or _mutations()
-    inventory = inventory or MagicMock(debit_player_gold=AsyncMock(return_value=13.8))
+    inventory = inventory or MagicMock(debit_player_gold=AsyncMock(return_value={"new_balance": 13.8}))
     queries = queries or _queries(disposition=disposition, player={"player_id": "player_1", "gold": gold})
     result = await _rent_workspace_impl(
         make_context(),
@@ -61,7 +61,7 @@ class TestBundleWrites:
             assert call.args[:2] == ("player_1", "accord_guild_hall")
             assert call.args[3] == "rental"
             assert call.kwargs["conn"] is conn
-        inventory.debit_player_gold.assert_awaited_once_with("player_1", 1.2, conn=conn)
+        inventory.debit_player_gold.assert_awaited_once_with("player_1", 1.2, source="workspace_rental", conn=conn)
 
     async def test_both_rows_expire_together_after_n_days(self):
         _, mutations, _, _ = await _rent(days=4)

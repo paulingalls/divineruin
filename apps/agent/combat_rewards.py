@@ -181,23 +181,13 @@ async def distribute_currency(
     multiplier = Decimal(str(encounter_loot.party_reward_multiplier(seats)))
     share_copper = currency_silver * multiplier * 100 // (seats * Decimal(str(silver_per_gold)))
     share_gold = share_copper / 100
-    amount = float(share_gold)
     primary_currency_gold: float = 0
     for pid in seat_order:
         await queries.get_player(pid, conn=conn, for_update=True)
-        new_balance = await db_mutations_inventory.credit_player_gold(pid, share_gold, conn=conn)
+        payload = await db_mutations_inventory.credit_player_gold(pid, share_gold, source="combat", conn=conn)
         if pid == recipient_id:
-            primary_currency_gold = amount
-        await channel.emit(
-            E.CURRENCY_GAINED,
-            {
-                "player_id": pid,
-                "amount": amount,
-                "currency": "gold",
-                "source": "combat",
-                "new_balance": new_balance,
-            },
-        )
+            primary_currency_gold = payload["amount"]
+        await channel.emit(E.CURRENCY_GAINED, payload)
     return primary_currency_gold
 
 

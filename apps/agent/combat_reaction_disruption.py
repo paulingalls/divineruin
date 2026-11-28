@@ -12,14 +12,14 @@ from ability_voice_rules import DISSONANT_WHISPER, IMPLANT_DOUBT
 from check_resolution_save import roll_participant_save
 from combat_ability_save import player_ability_dc
 from combat_attack_roll import (
-    build_attack_dice_roll_payload,
     deserialize_roll,
     promote_attack,
     serialize_roll,
 )
 from combat_fate_rolls import PacketRolls, PhaseRolls, packet_save
-from combat_legendary_resistance import finalize_save, override_fields
+from combat_legendary_resistance import finalize_save
 from combat_state import CombatState
+from dice_roll_payloads import build_attack_dice_roll_payload
 from reaction_windows import POST_ROLL, PRE_ROLL
 from session_data import SessionData
 
@@ -135,16 +135,7 @@ async def _save(
     if result is None:
         return False
     result = finalize_save(state, attacker, result)
-    packet.update(
-        save_type=result.save_type,
-        save_dc=result.dc,
-        save_roll=result.roll,
-        save_modifier=result.modifier,
-        save_total=result.total,
-        save_success=result.success,
-        **override_fields(result),
-        **result.oath_fields(),
-    )
+    packet.update(result.receipt_fields(attacker.id, prefix="save_"), save_modifier=result.modifier)
     if result.success:
         packet["reason"] = "The attacker resisted the disruption."
     return True
@@ -184,11 +175,7 @@ async def _reroll(
         damage_mult=attacker.damage_mult,
         target_conditions=target.conditions,
     )
-    result = promote_attack(
-        result,
-        sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen),
-        not state.first_attack_resolved,
-    )
+    result = promote_attack(result, state, not state.first_attack_resolved)
     head["roll"] = serialize_roll(result, ac)
     # The damage resolver can now publish the kept result after reductions and redirection.
     head["roll_published"] = False

@@ -38,6 +38,7 @@ from check_payloads import CheckPayload
 from check_skill import _check_skill_run
 from condition_consume import consume_beneficial_conditions, serialize_combat_check
 from db_errors import db_tool, validated_player_conditions
+from dice_roll_payloads import build_narrative_dice_roll_payload, build_saving_throw_dice_roll_payload
 from game_events import publish_game_event
 from gathering_tools import _check_gather_impl
 from patron_passives import scholars_ward
@@ -293,32 +294,25 @@ async def _finish_save(session, player_id, result, conditions_mutations, db_mod,
     await publish_game_event(
         session.room,
         E.DICE_ROLL,
-        {
-            "roll_type": "saving_throw",
-            **result.oath_fields(),
-            **encounter_facts.rally_receipt(player_id, result.rally_sources),
-            "save_type": result.save_type,
-            "roll": result.roll,
-            "total": result.total,
-            "success": result.success,
-            "dramatic": result.dramatic,
-            "context": result.context,
-        },
+        build_saving_throw_dice_roll_payload(
+            result,
+            roller_id=player_id,
+            roll_type="saving_throw",
+            dramatic=result.dramatic,
+            context=result.context,
+        ),
         event_bus=session.event_bus,
     )
 
     outcome = "success" if result.success else "failure"
     session.record_event(f"Saving throw ({result.save_type} DC {result.dc}): {outcome}")
 
+    save_fields = result.receipt_fields(player_id)
+    del save_fields["success"]
     response = {
         "outcome": outcome,
-        **result.oath_fields(),
-        **encounter_facts.rally_receipt(player_id, result.rally_sources),
-        "save_type": result.save_type,
-        "roll": result.roll,
+        **save_fields,
         "modifier": result.modifier,
-        "total": result.total,
-        "dc": result.dc,
         "margin": result.margin,
         "effect_applied": result.effect_applied,
         "narrative_hint": result.narrative_hint,
@@ -352,11 +346,7 @@ async def _check_dice_impl(
     await publish_game_event(
         session.room,
         E.DICE_ROLL,
-        {
-            "roll_type": "narrative",
-            "notation": result.notation,
-            "total": result.total,
-        },
+        build_narrative_dice_roll_payload(result),
         event_bus=session.event_bus,
     )
 

@@ -132,6 +132,7 @@ async def consume_exploration(session: SessionData, item_id: str, target_id: str
             raise ToolError("Declare a consume action with declare_phase while in combat.")
         if {holder_id, target_id} - set(session.party.member_ids):
             raise ToolError("Healing items require a party player at the holder's location.")
+        hp_events = EventSink()
         async with db.transaction() as conn:
             rows = await db_queries.get_players_for_update([holder_id, target_id], conn=conn)
             holder, target = rows.get(holder_id), rows.get(target_id)
@@ -152,21 +153,16 @@ async def consume_exploration(session: SessionData, item_id: str, target_id: str
                 dice_mod=dice,
             )
             inventory = await inventory_refresh.inventory_payload(holder_id, conn=conn)
-
-            updates = {
-                pid: hp_changed_payload.from_player(rows[pid], current=hp["hp_current"])
-                for pid, hp in combat_spell_heal.hp_updates(holder_id, packet).items()
-            }
-
-        for recipient_id, health in updates.items():
-            with isolated_publish("item heal HP"):
-                await publish_game_event(
+            for recipient_id, hp in combat_spell_heal.hp_updates(holder_id, packet).items():
+                await hp_events.emit(
                     session.room,
                     E.HP_CHANGED,
-                    health,
+                    hp_changed_payload.from_player(rows[recipient_id], current=hp["hp_current"]),
                     event_bus=session.event_bus,
                     destination_identities=[recipient_id],
                 )
+        with isolated_publish("item heal HP"):
+            await hp_events.flush()
         with isolated_publish("item heal inventory"):
             await publish_game_event(session.room, E.INVENTORY_UPDATED, inventory, event_bus=session.event_bus)
         healed = packet["healing_results"][0]["healed"]

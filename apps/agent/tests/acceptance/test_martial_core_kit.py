@@ -317,6 +317,8 @@ async def test_shield_bash_respects_legendary_resistance_and_stun_immunity(fight
     receipt = next(packet for packet in packets if packet["actor_id"] == actor)
     assert receipt["damage"] > 0
     assert receipt["save_success"] is not immune
+    assert receipt["save_roll"] == 1 and "save_total" in receipt
+    assert {"save_type", "save_dc", "rally_bonuses"}.isdisjoint(receipt)
     assert receipt.get("success_override") == (None if immune else "Legendary Resistance")
     assert receipt["condition_immune" if immune else "condition_resisted"] == "stunned"
     target = (await fight.reload()).get_participant(foe)

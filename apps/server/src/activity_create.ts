@@ -1,5 +1,4 @@
-import type { God } from "../../../packages/shared/src/entities/god.ts";
-import { captureCraftingPatrons } from "./activity_crafting_patron.ts";
+import { captureCraftBlessing } from "./activity_crafting_patron.ts";
 import { consumeMaterials } from "./inventory_allocation.ts";
 import { inventorySnapshot } from "./inventory_snapshot.ts";
 import { sql } from "./db.ts";
@@ -75,11 +74,7 @@ function makeActivityId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
 }
 
-export async function handleCreateActivity(
-  req: Request,
-  playerId: string,
-  craftingPatrons?: God[],
-): Promise<Response> {
+export async function handleCreateActivity(req: Request, playerId: string): Promise<Response> {
   try {
     const body = (await req.json().catch(() => null)) as {
       type?: string;
@@ -260,11 +255,7 @@ export async function handleCreateActivity(
         FROM players WHERE player_id = ${playerId}
       `;
       archetype = playerRows[0]?.class ?? undefined;
-      const { blessing, commonBond } = captureCraftingPatrons(
-        playerRows[0]?.divine_favor,
-        archetype,
-        craftingPatrons,
-      );
+      const blessing = captureCraftBlessing(playerRows[0]?.divine_favor);
       const durationMultiplier = blessing ? 0.75 : 1;
       durationMin = duration.min * durationMultiplier;
       durationMax = duration.max * durationMultiplier;
@@ -328,7 +319,6 @@ export async function handleCreateActivity(
         crafting_tier: craftingTier,
         tainted_materials: recipe.tainted_materials,
         ...(blessing && { craft_blessing: blessing }),
-        ...(commonBond && { common_bond: commonBond }),
       };
     } else {
       // companion_errand

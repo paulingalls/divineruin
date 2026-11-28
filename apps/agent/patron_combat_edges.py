@@ -72,7 +72,7 @@ def kaelens_judgment(state: CombatState | None, actor: str, *, target_id: str | 
 
     updated = deepcopy(state)
     target = updated.get_participant(target_id) if target_id is not None else None
-    if target is None or target.is_ally or target.hp_current <= 0 or target.is_dead or target.is_fallen:
+    if target is None or target.is_ally or not target.is_standing:
         raise ToolError("Kaelen's Judgment requires a living enemy in this encounter.")
     if has_condition(target.conditions, WORTHY_FOE):
         raise ToolError("That enemy is already a Worthy Foe.")
@@ -89,7 +89,7 @@ def mark_of_justice(state: CombatState | None, actor: str, *, target_id: str | N
 
     updated = deepcopy(state)
     target = updated.get_participant(target_id) if target_id is not None else None
-    if target is None or target.is_ally or target.hp_current <= 0 or target.is_dead or target.is_fallen:
+    if target is None or target.is_ally or not target.is_standing:
         raise ToolError("Mark of Justice requires a living enemy in this encounter.")
     target.conditions = apply_condition(target.conditions, MARK_OF_JUSTICE, source=actor)
     return updated, {"marked_target": {"id": target.id, "name": target.name}}
@@ -113,7 +113,7 @@ def threshold_walk(state: CombatState | None, actor: str, *, target_id: str | No
     follower = updated.get_participant(actor)
     if follower is None or follower.type != "player":
         raise ToolError("Threshold Walk requires the acting player to be a player participant.")
-    if follower.is_fallen or follower.is_dead or follower.hp_current <= 0:
+    if not follower.is_standing:
         raise ToolError("A fallen or dead follower cannot use Threshold Walk.")
     follower.conditions = apply_condition(follower.conditions, INCORPOREAL, duration=2, source=actor)
     return updated, cue

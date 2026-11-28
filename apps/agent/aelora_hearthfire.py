@@ -18,7 +18,6 @@ from combat_movement_cost import AXES
 from combat_participant import CombatParticipant
 from combat_state import CombatState
 from healing_dice import maximum_healing, shared_roll
-from rules_engine import attribute_modifier, proficiency_bonus
 
 if TYPE_CHECKING:
     from combat_events import EventSink
@@ -56,13 +55,7 @@ def place(state: CombatState | None, actor: str, *, target_id: str | None) -> tu
     if state.wrap_continuation is not None:
         raise ToolError("Finish the partially resolved round before using Hearthfire.")
     follower = state.get_participant(actor)
-    if (
-        follower is None
-        or follower.type != "player"
-        or follower.is_fallen
-        or follower.hp_current <= 0
-        or is_terminally_down(follower)
-    ):
+    if follower is None or follower.type != "player" or not follower.is_standing or is_terminally_down(follower):
         raise ToolError("Hearthfire requires a standing player in this fight.")
 
     updated = deepcopy(state)
@@ -118,7 +111,10 @@ def _along(origin: dict, delta: dict, fraction: float) -> dict:
 
 
 def _entry_dc(follower: CombatParticipant) -> int:
-    return 8 + proficiency_bonus(follower.level) + attribute_modifier(follower.attributes.get("wisdom", 10))
+    # Fate's roll helpers import Hearthfire while loading the shared save path.
+    from combat_ability_save import player_ability_dc
+
+    return player_ability_dc(follower, "wisdom")
 
 
 def freeze_source(state: CombatState, follower: CombatParticipant) -> None:
@@ -173,14 +169,9 @@ async def settle_entry(
     else:
         zone["failed_rounds"][mover.id] = state.round_number
         cue = f"Hearthfire stops {mover.name} at its edge."
-    return {
-        **receipt,
-        **result.oath_fields(),
-        "roll": result.roll,
-        "total": result.total,
-        "success": result.success,
-        "dm_cue": cue,
-    }
+    save_fields = result.receipt_fields(mover.id)
+    del save_fields["save_type"]
+    return {**receipt, **save_fields, "dm_cue": cue}
 
 
 async def heal_round(

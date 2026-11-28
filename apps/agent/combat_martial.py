@@ -52,7 +52,7 @@ from combat_ability_save import player_ability_dc
 from combat_condition_landing import _land_condition_on_one
 from combat_down import damage_target_unavailable
 from combat_fate_rolls import PacketRolls, packet_save
-from combat_legendary_resistance import finalize_save, override_fields
+from combat_legendary_resistance import finalize_save
 from combat_order_riders import FIELD_MEDIC
 from combat_participant import CombatParticipant
 from combat_structures import blocked_reason, line_blocker
@@ -223,14 +223,7 @@ def cleave_targets(decl: Declaration) -> list[str]:
 
 
 def standing_foe(target: CombatParticipant | None) -> bool:
-    return (
-        target is not None
-        and not target.is_ally
-        and not target.is_structure
-        and not target.is_fallen
-        and not target.is_dead
-        and target.hp_current > 0
-    )
+    return target is not None and not target.is_ally and not target.is_structure and target.is_standing
 
 
 def reach_refusal(state: CombatState, actor: CombatParticipant, target_id: str, weapon: dict) -> str | None:
@@ -262,15 +255,7 @@ def skip_swing(target_id: str, reason: str) -> dict:
 
 def _study_target(state: CombatState, decl: Declaration) -> CombatParticipant | None:
     target = state.get_participant(decl.target_id) if decl.target_id else None
-    if (
-        target is None
-        or target.is_ally
-        or target.is_structure
-        or target.hp_current <= 0
-        or damage_target_unavailable(target)
-    ):
-        return None
-    return target
+    return target if standing_foe(target) else None
 
 
 async def exploit_weakness(
@@ -430,13 +415,9 @@ async def bash_save(
     if save is None:
         return
     save = finalize_save(state, target, save, failed_conditions=("stunned",))
-    receipt.update(
-        override_fields(save),
-        save_success=save.success,
-        save_roll=save.roll,
-        save_total=save.total,
-        **save.oath_fields(),
-    )
+    save_fields = save.receipt_fields(target.id, prefix="save_")
+    del save_fields["save_type"], save_fields["save_dc"]
+    receipt.update(save_fields)
     if save.success:
         receipt["condition_resisted"] = "stunned"
     elif _land_condition_on_one(state, target.id, actor, "stunned", SHIELD_BASH, packet=receipt, duration=1):

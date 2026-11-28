@@ -51,6 +51,11 @@ async def stock(player_id: str, item: str, quantity: int, *, tainted: bool = Fal
     )
 
 
+async def merchant_player_gold(player_id: str) -> Decimal:
+    pool = await db.get_pool()
+    return await pool.fetchval("SELECT (data->>'gold')::numeric FROM players WHERE player_id=$1", player_id)
+
+
 async def rows(player_id: str) -> tuple[dict, dict]:
     pool = await db.get_pool()
     player = await pool.fetchrow("SELECT data, inventory_revision FROM players WHERE player_id=$1", player_id)

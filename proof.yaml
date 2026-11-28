@@ -34,6 +34,7 @@
       "apps/agent/catalog_parse.py",
       "apps/agent/check_resolution.py",
       "apps/agent/check_resolution_save.py",
+      "apps/agent/check_skill_modifier.py",
       "apps/agent/combat_damage_affinity.py",
       "apps/agent/combat_grapple.py",
       "apps/agent/combat_init_validation.py",

@@ -22,9 +22,10 @@ from combat_enemy_active import already_hollowed
 from combat_enemy_conditions import land_outcome
 from combat_events import emit_or_publish
 from combat_fate_rolls import packet_save, saved_throw, store_throw
-from combat_legendary_resistance import finalize_save, override_fields
+from combat_legendary_resistance import finalize_save
 from combat_support import _resolve_attack_packet
 from dice import roll as dice_roll
+from dice_roll_payloads import build_saving_throw_dice_roll_payload
 from session_data import CombatParticipant, SessionData
 
 if TYPE_CHECKING:
@@ -41,19 +42,6 @@ def is_combined_attack_action(action: dict) -> bool:
         and has_damage(action)
         and not is_save_damage_action(action)
     )
-
-
-def _save_fields(result, roller_id: str) -> dict:
-    return {
-        **result.oath_fields(),
-        **override_fields(result),
-        **encounter_facts.rally_receipt(roller_id, result.rally_sources),
-        "save_type": result.save_type,
-        "save_roll": result.roll,
-        "save_total": result.total,
-        "save_dc": result.dc,
-        "save_success": result.success,
-    }
 
 
 def failed_conditions(target: CombatParticipant, action: dict) -> tuple[str, ...]:
@@ -116,7 +104,7 @@ async def _resolve_enemy_condition_packet(
         "declaration_type": str(decl.type),
         "action": decl.action,
         "target": target.name,
-        **_save_fields(result, target.id),
+        **result.receipt_fields(target.id, prefix="save_"),
     }
     if reaction_save_advantage and result.advantage_applied:
         summary["save_advantage"] = True
@@ -159,7 +147,6 @@ async def resolve_combined_attack_action(
     shield_reaction: str | None,
     damage_target: CombatParticipant | None = None,
     psychic_shield_id: str | None = None,
-    enemies_remaining: int,
     is_first_attack_of_combat: bool,
     reaction_save_advantage: bool,
     publish_roll: bool,
@@ -177,7 +164,6 @@ async def resolve_combined_attack_action(
             shield_reaction=shield_reaction,
             psychic_shield_id=psychic_shield_id,
             damage_target=damage_target,
-            enemies_remaining=enemies_remaining,
             is_first_attack_of_combat=is_first_attack_of_combat,
             mutations=mutations,
             queries=queries,
@@ -303,19 +289,14 @@ async def resolve_save_damage_action(
             sink,
             session.room,
             E.DICE_ROLL,
-            {
-                **result.oath_fields(),
-                **override_fields(result),
-                **encounter_facts.rally_receipt(target.id, result.rally_sources),
-                "roll_type": "saving_throw",
-                "save_type": result.save_type,
-                "roll": result.roll,
-                "total": result.total,
-                "success": result.success,
-                "dramatic": result.dramatic,
-                "context": result.context,
-                "damage": damage_result.damage,
-            },
+            build_saving_throw_dice_roll_payload(
+                result,
+                roller_id=target.id,
+                roll_type="saving_throw",
+                dramatic=result.dramatic,
+                context=result.context,
+                damage=damage_result.damage,
+            ),
             event_bus=session.event_bus,
         )
     summary = await apply_attack_result(
@@ -338,7 +319,7 @@ async def resolve_save_damage_action(
     if progress is not None and progress.paused:
         steps["selected_save"] = store_throw(result)
         return {}
-    summary.update(_save_fields(result, target.id))
+    summary.update(result.receipt_fields(target.id, prefix="save_"))
     summary["half_on_success"] = action.get("save_success_damage", "half") == "half"
     summary["damage_halved"] = result.success and summary["half_on_success"]
     if reaction_save_advantage and result.advantage_applied:
@@ -427,7 +408,6 @@ async def resolve_enemy_strike(
             shield_reaction=shield_reaction,
             psychic_shield_id=psychic_shield_id,
             damage_target=damage_target,
-            enemies_remaining=sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen),
             is_first_attack_of_combat=not state.first_attack_resolved,
             reaction_save_advantage=reaction_save_advantage,
             progress=progress,

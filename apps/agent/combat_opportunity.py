@@ -129,7 +129,6 @@ async def counter_strike(
         reactor,
         target,
         [action],
-        sum(p.type == "enemy" and not p.is_fallen for p in state.participants),
         not state.first_attack_resolved,
         attack_cursor=spend.setdefault("attack", {}),
         progress=progress,

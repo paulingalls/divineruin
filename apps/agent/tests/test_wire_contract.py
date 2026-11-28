@@ -1,23 +1,40 @@
 """The shared event fixture anchors both languages; neither side may invent the other publisher or parser shape."""
 
 import json
+from collections.abc import Awaitable, Callable
+from decimal import Decimal
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
 
+import asyncpg
 import pytest
-from sample_fixtures import _WARRIOR_MILESTONES, GUILD_PLAYER, _milestones_mod_for
+from sample_fixtures import _WARRIOR_MILESTONES, GUILD_PLAYER, _milestones_mod_for, make_mock_room
 
-import combat_attack_roll
 import combat_events
 import combat_rewards
 import companion_cue_events
 import db_session_queries
 import event_types
+import favor_rules
 import hollow_echo
 import hollow_echo_events
 import resonance_events
 import veil_ward_events
+from check_resolution import SkillCheckResult
 from check_resolution_attack import AttackResult
+from check_resolution_save import SavingThrowResult
+from combat_resolution import DeathSaveResult
+from db_mutations_inventory import credit_player_gold, debit_player_gold
+from dice import DiceResult
+from dice_roll_payloads import (
+    build_attack_dice_roll_payload,
+    build_death_save_dice_roll_payload,
+    build_narrative_dice_roll_payload,
+    build_saving_throw_dice_roll_payload,
+    build_skill_dice_roll_payload,
+)
+from game_events import publish_game_event
 from hollow_echo import HollowEchoResult
 from progression_tools import _award_divine_favor_core, _award_xp_core
 from session_data import CompanionState
@@ -50,6 +67,57 @@ def test_fixture_event_types_match_python_constants() -> None:
     assert FIXTURE["events"]["combat_attack_hit"]["type"] == event_types.DICE_ROLL
     assert FIXTURE["events"]["combat_attack_miss"]["type"] == event_types.DICE_ROLL
     assert FIXTURE["events"]["companion_cue"]["type"] == event_types.COMPANION_CUE
+
+
+@pytest.mark.parametrize("large_balance", [False, True], ids=["fixture-balance", "large-balance"])
+@pytest.mark.parametrize(
+    ("event_type", "mutation", "direction"),
+    [(event_types.CURRENCY_GAINED, credit_player_gold, 1), (event_types.CURRENCY_SPENT, debit_player_gold, -1)],
+)
+async def test_currency_mutation_serializes_to_fixture(
+    dev_db_pool: asyncpg.Pool,
+    event_type: str,
+    mutation: Callable[..., Awaitable[dict]],
+    direction: int,
+    large_balance: bool,
+) -> None:
+    player_id = f"currency_wire_{uuid4().hex}"
+    expected = {**FIXTURE["events"][event_type], "player_id": player_id}
+    assert expected["type"] == event_type
+    amount = Decimal(str(expected["amount"]))
+    start = Decimal(str(expected["new_balance"])) - direction * amount
+    if large_balance:
+        start = Decimal("9007199254740992.03")
+        expected["new_balance"] = float(start + direction * amount)
+    await dev_db_pool.execute(
+        "INSERT INTO players (player_id, data) VALUES ($1, jsonb_build_object('gold', $2::numeric))", player_id, start
+    )
+    try:
+        async with dev_db_pool.acquire() as conn, conn.transaction():
+            await conn.fetchval("SELECT player_id FROM players WHERE player_id=$1 FOR UPDATE", player_id)
+            payload = await mutation(player_id, amount, source=expected["source"], conn=conn)
+        room = make_mock_room()
+        await publish_game_event(room, event_type, payload)
+        room.local_participant.publish_data.assert_awaited_once()
+        packet = json.loads(room.local_participant.publish_data.await_args.args[0])
+        balance = await dev_db_pool.fetchval(
+            "SELECT (data->>'gold')::numeric FROM players WHERE player_id=$1", player_id
+        )
+        assert packet["amount"] == float(direction * (balance - start))
+        assert packet["new_balance"] == float(balance)
+        assert packet == expected
+    finally:
+        await dev_db_pool.execute("DELETE FROM players WHERE player_id=$1", player_id)
+
+
+def test_disposition_changed_serializes_to_fixture() -> None:
+    from disposition import build_disposition_changed_payload
+
+    expected = FIXTURE["events"]["disposition_changed"]
+    payload = build_disposition_changed_payload(
+        expected["npc_id"], expected["npc_name"], expected["previous"], expected["new"], expected["reason"]
+    )
+    assert {"type": event_types.DISPOSITION_CHANGED, **payload} == expected
 
 
 @pytest.mark.asyncio
@@ -89,9 +157,70 @@ def test_combat_attack_dice_roll_serializes_to_fixture(fixture_name: str) -> Non
     attacker = MagicMock(name="attacker")
     attacker.name = expected["attacker"]
 
-    payload = combat_attack_roll.build_attack_dice_roll_payload(attacker, attack_result)
+    payload = build_attack_dice_roll_payload(attacker, attack_result)
 
     assert {"type": event_types.DICE_ROLL, **payload} == expected
+
+
+@pytest.mark.parametrize(
+    ("fixture", "roll_type", "skill", "face", "modifier", "dc", "success", "dramatic", "context", "fields"),
+    [
+        ("ordinary_skill_success", "skill_check", "perception", 20, 4, 15, True, True, "natural_20", {}),
+        ("ordinary_skill_failure", "skill_check", "perception", 3, 4, 15, False, False, "", {}),
+        (
+            "deescalation_argument",
+            "de_escalate",
+            "persuasion",
+            16,
+            5,
+            15,
+            True,
+            True,
+            "de_escalate",
+            {"actor": "Kael", "round": 1, "surrendered": 0, "living": 2, "ends_combat": False},
+        ),
+        ("social_roll", "social_check", "persuasion", 8, 4, 10, False, False, "", {}),
+        ("gathering_roll", "gathering_check", "survival", 7, 4, 13, True, False, "", {}),
+        ("navigation_roll", "navigation_check", "survival", 1, 3, 14, False, True, "natural_1", {}),
+    ],
+)
+def test_skill_dice_roll_serializes_to_fixture(
+    fixture, roll_type, skill, face, modifier, dc, success, dramatic, context, fields
+) -> None:
+    total = face + modifier
+    result = SkillCheckResult(skill, face, modifier, total, dc, total >= dc, total - dc, "")
+    payload = build_skill_dice_roll_payload(
+        result, roll_type=roll_type, success=success, dramatic=dramatic, context=context, **fields
+    )
+    assert {"type": event_types.DICE_ROLL, **payload} == FIXTURE["events"][fixture]
+
+
+def test_other_dice_rolls_serialize_to_fixtures() -> None:
+    ordinary = SavingThrowResult("strength", 8, 3, 11, 15, False, -4, "held", "")
+    choir = SavingThrowResult("wisdom", 14, 8, 22, 15, True, 7, None, "")
+    death = DeathSaveResult(11, True, False, False, 1, 0, False, False, "")
+    payloads = {
+        "ordinary_save": build_saving_throw_dice_roll_payload(
+            ordinary,
+            roller_id="player_1",
+            roll_type="saving_throw",
+            dramatic=ordinary.dramatic,
+            context=ordinary.context,
+        ),
+        "choir_aura_save": build_saving_throw_dice_roll_payload(
+            choir,
+            roller_id="player_1",
+            roll_type="choir_aura",
+            actor_id="player_1",
+            dc=15,
+            concentration_broken=None,
+            cue="Lost voices tug at your focus.",
+        ),
+        "death_save": build_death_save_dice_roll_payload(death, {"bonus": 2}),
+        "narrative_roll": build_narrative_dice_roll_payload(DiceResult("4d6kh3-2", [2, 3, 4], [1], 7)),
+    }
+    for fixture, payload in payloads.items():
+        assert {"type": event_types.DICE_ROLL, **payload} == FIXTURE["events"][fixture]
 
 
 def test_fixture_hollow_echo_bands_match_agent_resolver() -> None:
@@ -236,8 +365,11 @@ async def _favor_core_pending_events() -> dict[str, dict]:
 
 @pytest.mark.asyncio
 async def test_divine_favor_changed_serializes_to_fixture() -> None:
-    # player_id names the recipient; party-wide favor is filtered by each client.
-    wire = await _favor_core_pending_events()
+    with patch.object(
+        favor_rules, "build_divine_favor_changed_payload", wraps=favor_rules.build_divine_favor_changed_payload
+    ) as build_payload:
+        wire = await _favor_core_pending_events()
+    build_payload.assert_called_once()
     assert wire[event_types.DIVINE_FAVOR_CHANGED] == FIXTURE["events"]["divine_favor_changed"]
 
 
@@ -322,3 +454,35 @@ async def test_patron_wire_uses_projection_and_rejects_malformed_before_delivery
     )
     assert room.local_participant.publish_data.await_args is not None
     assert json.loads(room.local_participant.publish_data.await_args.args[0]) == FIXTURE["patron_spent_snapshot"]
+
+
+async def test_session_init_builder_publishes_shared_world_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    from game_events import publish_game_event
+
+    expected = FIXTURE["events"]["patron_session_init"]
+    player = {**expected["character"], "class": "warrior"}
+    player_id = player["player_id"]
+    for owner, name, result in (
+        (db_session_queries.db_queries, "get_player_at_patron_revision", (player, expected["patron_revision"])),
+        (db_session_queries.db_content_queries, "get_location", expected["location"]),
+        (db_session_queries.db_queries, "get_inventory_snapshot", {}),
+        (db_session_queries.db_queries, "get_active_player_quests", []),
+        (db_session_queries.db_activity_queries, "get_player_map_progress", {}),
+        (db_session_queries.character_spells, "get_known", []),
+    ):
+        monkeypatch.setattr(owner, name, AsyncMock(return_value=result))
+
+    room = MagicMock()
+    room.isconnected.return_value = True
+    publish = room.local_participant.publish_data = AsyncMock()
+    payload = await db_session_queries.get_session_init_payload(player_id, world_time="morning")
+    await publish_game_event(room, event_types.SESSION_INIT, payload, destination_identities=[player_id])
+
+    publish.assert_awaited_once()
+    assert publish.await_args is not None
+    wire = json.loads(publish.await_args.args[0])
+    assert wire["type"] == expected["type"] == event_types.SESSION_INIT
+    assert wire["world_state"] == expected["world_state"] == {"time": "morning"}
+    assert wire["location"] == expected["location"]
+    assert wire["character"]["player_id"] == player_id
+    assert publish.await_args.kwargs["destination_identities"] == [player_id]

@@ -192,21 +192,14 @@ async def wrap_phase(
                 state.beat = combat_phase.PhaseBeat.NARRATION
                 return state, None, combat_phase.PhaseAdvance(beat_completed=state.beat), {}, None, None, {}, []
             encounter_facts.consume_rally(state, actor.id, result.rally_sources)
-            if result.rally_sources or (result.oath_justice is not None or result.oath_timed is not None):
-                receipt = {
-                    "actor_id": actor.id,
-                    "condition": event["type"],
-                    "roll": result.roll,
-                    "total": result.total,
-                    "dc": result.dc,
-                    "success": result.success,
-                    **result.oath_fields(),
-                    **encounter_facts.rally_receipt(actor.id, result.rally_sources),
-                }
-                if result.rally_sources:
+            if result.has_receipt():
+                save_fields = result.receipt_fields(actor.id)
+                del save_fields["save_type"]
+                receipt = {"actor_id": actor.id, "condition": event["type"], **save_fields}
+                if "rally_bonuses" in receipt:
                     wrap.rally_saves.append(receipt)
                     cursor["wrap"]["rally_saves"] = wrap.rally_saves
-                if result.oath_justice is not None or result.oath_timed is not None:
+                if "oath_justice" in receipt or "oath_timed" in receipt:
                     wrap.oath_saves.append(receipt)
                     cursor["wrap"]["oath_saves"] = wrap.oath_saves
             if result.success:

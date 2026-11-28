@@ -13,9 +13,7 @@ from action_contracts_still import STILL_ZONE_KINDS
 from combat_participant import CombatParticipant
 from combat_recharge import action_key
 from combat_recharge import initialize as initialize_action_ledger
-from combat_terrain import skill_natural_terrain
 from declarations import DeclarationType
-from patron_location import check_first_stay
 
 CREATURE_ID = "hollow_still"
 ANCHOR_HP = (40, 40, 40, 40, 45, 45)
@@ -308,6 +306,9 @@ async def search(session, state, actor, declaration, *, queries, conn, progress=
         return {"actor_id": actor.id, "resolved": False, "reason": "All six Still anchors have been found."}
     skill = SEARCH_ACTIONS[declaration.action]
 
+    # Choir combat UI imports Still helpers while check_skill is loading.
+    import check_skill
+
     async def roll():
         player = await queries.get_player(actor.id, conn=conn, for_update=True)
         if player is None:
@@ -317,9 +318,10 @@ async def search(session, state, actor, declaration, *, queries, conn, progress=
             skill,
             SEARCH_DC,
             ally_present=session.allies_present_for(actor.id),
-            natural_terrain=await skill_natural_terrain(session, player, skill, combat_state=state),
             hearing_only=skill == "perception",
-            first_stay=await check_first_stay(player, session, skill, player_id=actor.id, conn=conn),
+            **await check_skill.skill_context(
+                session, player, skill, player_id=actor.id, conn=conn, combat_state=state
+            ),
         )
 
     result = await progress.skill(session, actor.id, roll) if progress is not None else await roll()

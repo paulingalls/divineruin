@@ -95,7 +95,7 @@ async def test_guest_rents_workspace_with_own_gold_and_disposition():
     context, actor = guest_context()
     queries = smith_queries("friendly")
     mutations = module(create_workspace_rental="guest_rental")
-    inventory = module(debit_player_gold=13.0)
+    inventory = module(debit_player_gold={"new_balance": 13.0})
     with actor:
         result = json.loads(
             await _rent_workspace_impl(
@@ -268,7 +268,7 @@ async def test_stale_workspace_last_rental():
     context, actor, revocation = revocable_context()
     queries = smith_queries("friendly")
     mutations = module(create_workspace_rental="guest_rental")
-    inventory = module(debit_player_gold=13.0)
+    inventory = module(debit_player_gold={"new_balance": 13.0})
     revoke_after(inventory.debit_player_gold, revocation)
     tx_db, tx_state = transaction_probe()
     with actor, pytest.raises(RuntimeError, match="stale generation"):

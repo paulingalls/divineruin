@@ -56,6 +56,10 @@ async def test_live_discover_wire_matches_fixture(case, die, player, expected):
     packets = [json.loads(call.args[0]) for call in room.local_participant.publish_data.await_args_list]
     client_packets = [packet for packet in packets if packet["type"] != "hidden_revealed"]
     assert client_packets == [FIXTURE[name] for name in expected]
+    if case == "no_candidate":
+        packet = client_packets[0]
+        assert (packet["roll"], packet["modifier"], packet["total"]) == (3, 6, 9)
+        assert "success" not in packet
     if case == "success":
         assert result["outcome"] == "discovered"
         assert [packet["type"] for packet in packets] == ["dice_roll", "play_sound", "hidden_revealed"]
@@ -74,7 +78,8 @@ async def test_ordinary_skill_check_roll_keeps_success():
             _make_context(room=room), "perception", "moderate", "scanning", queries=queries, mutations=mutations
         )
     packet = json.loads(room.local_participant.publish_data.await_args_list[0].args[0])
-    assert set(packet) == set(FIXTURE["discover_failed"]) | {"success"}
+    assert packet == FIXTURE["ordinary_skill_failure"]
+    assert (packet["roll"], packet["modifier"], packet["total"]) == (3, 4, 7)
     assert packet["success"] is False
 
 

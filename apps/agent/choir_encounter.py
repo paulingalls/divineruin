@@ -4,16 +4,15 @@ from dataclasses import replace
 from functools import partial
 
 import check_resolution
+import check_skill
 import condition_voice_rules
 import db_queries
-import encounter_facts
 import event_types as E
 from combat_damage_affinity import DAMAGE_TYPES
 from combat_events import emit_or_publish
 from combat_fate_rolls import packet_save
-from combat_terrain import skill_natural_terrain
 from declarations import DeclarationType
-from patron_location import check_first_stay
+from dice_roll_payloads import build_saving_throw_dice_roll_payload
 from patron_synergy_combat import spell_damage_type_override
 
 SEARCH_TARGET = "choir_sound"
@@ -174,9 +173,10 @@ async def search(session, state, actor, declaration, *, queries, conn, progress=
             skill,
             18,
             ally_present=session.allies_present_for(actor.id),
-            natural_terrain=await skill_natural_terrain(session, player, skill, combat_state=state),
             hearing_only=skill == "perception",
-            first_stay=await check_first_stay(player, session, skill, player_id=actor.id, conn=conn),
+            **await check_skill.skill_context(
+                session, player, skill, player_id=actor.id, conn=conn, combat_state=state
+            ),
         )
 
     result = await progress.skill(session, actor.id, roll) if progress is not None else await roll()
@@ -278,22 +278,23 @@ async def turn_start(
         and session.member_state(actor.id).concentration.spell_id is not None
     ):
         broken = await concentration_break_mod.end_concentration(session, actor.id, combat_state=state, conn=conn)
-    result = {
+    aura = {
         "actor_id": actor.id,
-        "save_type": "wisdom",
         "dc": 15,
-        "success": save.success,
         "concentration_broken": broken,
         "cue": "Lost voices tug at your focus.",
-        **save.oath_fields(),
-        **encounter_facts.rally_receipt(actor.id, save.rally_sources),
     }
-
     if sink is not None:
         await emit_or_publish(
-            sink, session.room, E.DICE_ROLL, {"roll_type": "choir_aura", **result}, event_bus=session.event_bus
+            sink,
+            session.room,
+            E.DICE_ROLL,
+            build_saving_throw_dice_roll_payload(save, roller_id=actor.id, roll_type="choir_aura", **aura),
+            event_bus=session.event_bus,
         )
-    return result
+    save_fields = save.receipt_fields(actor.id)
+    del save_fields["roll"], save_fields["total"]
+    return {**save_fields, **aura}
 
 
 def engine_damage_spell_ids(allowed):

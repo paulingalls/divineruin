@@ -363,8 +363,7 @@ class PartyLifecycle:
             )
 
     async def _publish_member_snapshot(self, identity: str) -> None:
-        payload = await db_session_queries.get_session_init_payload(identity)
-        payload["world_state"]["time"] = self.userdata.world_time
+        payload = await db_session_queries.get_session_init_payload(identity, world_time=self.userdata.world_time)
         await game_events.publish_game_event(
             self.room, E.SESSION_INIT, payload, self.userdata.event_bus, destination_identities=[identity]
         )

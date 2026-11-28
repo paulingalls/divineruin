@@ -19,6 +19,7 @@ from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import check_skill
 import choir_scene
 import condition_voice_rules
 import db
@@ -29,17 +30,14 @@ import db_queries
 import lost_scout_scene
 import rules_engine
 import still_encounter
-import thyra_seasons
 from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
 from check_discovery_roll import publish_roll, roll_response
-from combat_terrain import skill_natural_terrain
 from condition_consume import consume_beneficial_conditions, serialize_combat_check
 from condition_voice_rules import validate_hearing_check
 from db_errors import validated_player_conditions
 from game_events import publish_game_event, publish_hidden_revealed
 from inventory_refresh import publish_inventory
 from patron_gifts import KNOWLEDGE_SKILLS, veythar_gift
-from patron_location import check_first_stay
 from patron_synergy import validate_synergy_context
 from quest_completion import finish_quest
 from quest_progress import advance_on_item_discovered, discovery_quest_ids, lock_discovery_rows
@@ -250,10 +248,10 @@ async def _resolve_discovery(
         player_id=player_id,
         in_combat=session.combat_state is not None,
         ally_present=session.allies_present_for(player_id),
-        first_stay=await check_first_stay(player, session, skill_lower, player_id=player_id, conn=conn),
-        natural_terrain=await skill_natural_terrain(session, player, skill_lower, content_mod=content),
         hearing_only=hearing_only,
-        season=await thyra_seasons.skill_season(player, skill_lower, conn=conn),
+        **await check_skill.skill_context(
+            session, player, skill_lower, player_id=player_id, conn=conn, content_mod=content
+        ),
     )
     if result.auto_fail:
 

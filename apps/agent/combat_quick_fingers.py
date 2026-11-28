@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, TypedDict
 import abilities
 import ability_persistence
 import check_resolution
+import check_skill
 import combat_martial
 import combat_melee_approach
 import condition_voice_rules
@@ -18,13 +19,10 @@ import dice
 import durability
 import event_types as E
 import inventory_refresh
-import thyra_seasons
 from asset_utils import compute_item_image_url
 from combat_ability import _gate_ability_condition, _with_variant
 from combat_ability_gate import QUICK_FINGERS, QUICK_FINGERS_RIDER, declared_ability
-from combat_terrain import skill_natural_terrain
 from declarations import Declaration, resolve_declaration
-from patron_location import check_first_stay
 from rules_engine import attribute_modifier
 from tool_support import build_item_acquired_payload
 
@@ -209,10 +207,10 @@ async def resolve(
                 skill,
                 dc,
                 ally_present=session.allies_present_for(actor.id),
-                natural_terrain=await skill_natural_terrain(session, player, skill, combat_state=state),
                 hearing_only=False,
-                season=await thyra_seasons.skill_season(player, skill, conn=conn),
-                first_stay=await check_first_stay(player, session, skill, player_id=actor.id, conn=conn),
+                **await check_skill.skill_context(
+                    session, player, skill, player_id=actor.id, conn=conn, combat_state=state
+                ),
             )
 
         result = await progress.skill(session, actor.id, roll) if progress is not None else await roll()

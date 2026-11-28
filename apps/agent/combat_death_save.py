@@ -22,6 +22,7 @@ from combat_support import _require_combat
 from condition_restrictions import saving_throw_advantage
 from conditions import get_condition_effects
 from db_errors import db_tool
+from dice_roll_payloads import build_death_save_dice_roll_payload
 from game_events import publish_game_event
 from patron_synergy_combat import MORTAEN_HOLD_THE_CROSSING, marshal_death_save_bonus
 from session_data import CombatState, SessionData
@@ -273,20 +274,7 @@ async def _request_death_save_locked(
     await publish_game_event(
         session.room,
         E.DICE_ROLL,
-        {
-            "roll_type": "death_save",
-            **bonus_receipt,
-            "total": result.roll + bonus_receipt["bonus"],
-            **encounter_facts.rally_receipt(faller_id, rally_sources),
-            "roll": result.roll,
-            "success": result.success,
-            "critical_success": result.critical_success,
-            "critical_failure": result.critical_failure,
-            "total_successes": result.total_successes,
-            "total_failures": result.total_failures,
-            "dramatic": result.dramatic,
-            "context": result.context,
-        },
+        build_death_save_dice_roll_payload(result, bonus_receipt),
         event_bus=session.event_bus,
     )
     await _publish_sounds(session, sounds)

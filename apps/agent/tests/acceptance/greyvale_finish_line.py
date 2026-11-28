@@ -79,7 +79,7 @@ async def scene_hint(arc, stage):
     assert cue.priority == SpeechPriority.IMPORTANT
     assert beat["companion_hints"][0] in cue.instructions
     assert f"[{get_companion_profile(arc.sd.companion.id).voice_id}," in cue.instructions
-    payload = await db_session_queries.get_session_init_payload(arc.player)
+    payload = await db_session_queries.get_session_init_payload(arc.player, world_time=arc.sd.world_time)
     (active,) = payload["quests"]
     assert active["hints"] == [hint for b in scene["beats"] for hint in b.get("companion_hints", [])]
     assert active["hints"]

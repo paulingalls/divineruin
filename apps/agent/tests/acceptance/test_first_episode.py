@@ -6,7 +6,12 @@ from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
-from acceptance.first_episode_harness import episode, until
+from acceptance.first_episode_harness import (
+    assert_episode_guest_join_snapshot,
+    episode,
+    prepare_persisted_player,
+    until,
+)
 from livekit.agents import llm
 
 import db_queries
@@ -44,6 +49,7 @@ async def test_volunteered_creation(livekit_server, reset_db_pool, tmp_path):
             assert not receipt.is_error, receipt.output
             progress = json.loads(receipt.output)["progress"]
             assert progress["phase"] == ("calling" if category == "race" else "identity")
+        run.session.userdata.world_time = "morning"
         receipt = await run.turn("finalize_character")
         assert not receipt.is_error, receipt.output
         await until(
@@ -58,7 +64,10 @@ async def test_volunteered_creation(livekit_server, reset_db_pool, tmp_path):
         assert (saved["race"], saved["class"], saved["deity"]) == ("elari", "rogue", "kaelen")
         assert saved["divine_favor"]["patron"] == "kaelen"
         assert saved["backstory"] == "A wanderer."
-        assert run.packets(E.SESSION_INIT)[0]["character"]["name"] == "Vale"
+        snapshot = run.packets(E.SESSION_INIT)[0]
+        assert snapshot["character"]["name"] == "Vale"
+        assert snapshot["character"]["player_id"] == run.player_id
+        assert snapshot["world_state"]["time"] == "morning"
         assert run.session.userdata.onboarding_beat == 1
         assert len(run.model.calls) == 6
         assert len(run.model.receipts) == 6
@@ -315,29 +324,17 @@ async def test_calling_and_name_finalize(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("beat", [3, 4, 5])
 async def test_persisted_onboarding_startup(livekit_server, reset_db_pool, tmp_path, beat):
-    import db_mutations
-    import db_mutations_companion
-    from creation_rules import build_character_data
-
-    async def prepare(player_id):
-        data = build_character_data("Vale", "human", "warrior", "kaelen", "", created_at=datetime.now(UTC))
-        data["session_count"] = 7
-        data["location_id"] = "accord_market_square"
-        await db_mutations.create_player(player_id, None, data)
-        await db_mutations.set_player_flag(player_id, "onboarding_beat", beat)
-        if beat > 3:
-            await db_mutations.set_player_flag(player_id, "companion_met", True)
-            await db_mutations_companion.upsert_companion_relationship(
-                player_id,
-                "companion_lira",
-                relationship_tier=1,
-                session_count=4,
-                affinity=12,
-                session_memories=["Shared the rain."],
-            )
+    async def prepare(player_id: str) -> None:
+        await prepare_persisted_player(player_id, beat)
 
     expected = "OnboardingAgent" if beat == 3 else "ExplorationAgent"
-    async with episode(livekit_server, tmp_path, prepare=prepare, initial_agent=expected) as run:
+    async with episode(livekit_server, tmp_path, prepare=prepare, initial_agent=expected, world_time="morning") as run:
+        # Gameplay startup also sends a host snapshot through PartyLifecycle.
+        snapshot_count = 1 if beat == 3 else 2
+        await until(lambda: len(run.packets(E.SESSION_INIT)) >= snapshot_count)
+        for snapshot in run.packets(E.SESSION_INIT):
+            assert snapshot["character"]["player_id"] == run.player_id
+            assert snapshot["world_state"]["time"] == "morning"
         saved = await db_queries.get_player(run.player_id)
         assert saved is not None
         assert saved["session_count"] == 8
@@ -364,6 +361,11 @@ async def test_persisted_onboarding_startup(livekit_server, reset_db_pool, tmp_p
             assert state.companion.session_count == relationship["session_count"] == 5
             assert state.companion.affinity == relationship["affinity"] == 12
             assert state.companion.session_memories == relationship["session_memories"] == ["Shared the rain."]
+
+
+@pytest.mark.asyncio
+async def test_episode_guest_receives_join_snapshot(livekit_server, reset_db_pool, tmp_path):
+    await assert_episode_guest_join_snapshot(livekit_server, tmp_path)
 
 
 @pytest.mark.parametrize("companion_id", ["companion_kael", "companion_lira", "companion_tam", "companion_sable", None])

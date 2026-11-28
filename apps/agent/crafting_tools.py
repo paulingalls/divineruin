@@ -49,7 +49,6 @@ from disposition import resolve_disposition
 from game_events import publish_game_event
 from inventory_refresh import publish_inventory
 from patron_favor import get_patron_tier
-from patron_synergy import common_bond_crafting_bonus
 from session_data import SessionData
 from tool_preconditions import require_npc_present
 from tool_support import _validate_id
@@ -229,14 +228,16 @@ async def _rent_workspace_impl(
     price_gp = price_sp / pricing["silver_per_gold"]
     expires_at = (now_fn or _default_now)() + timedelta(days=days)
 
-    balance = None
+    currency = None
     async with db_mod.transaction() as conn:
         player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
         if not player:
             raise ToolError(f"Unknown player: {player_id}")
         if price_sp:
             try:
-                balance = await inv_mutations_mod.debit_player_gold(player_id, price_gp, conn=conn)
+                currency = await inv_mutations_mod.debit_player_gold(
+                    player_id, price_gp, source="workspace_rental", conn=conn
+                )
             except InsufficientGold as exc:
                 gold = player.get("gold", 0)
                 raise ToolError(f"Not enough gold: the rental costs {price_gp:.1f}gp and you have {gold}gp.") from exc
@@ -254,18 +255,12 @@ async def _rent_workspace_impl(
 
         context.userdata.validate_acting_player(player_id)
 
-    if balance is not None:
+    if currency is not None:
         with isolated_publish("workspace rental balance"):
             await publish_game_event(
                 context.userdata.room,
                 E.CURRENCY_SPENT,
-                {
-                    "player_id": player_id,
-                    "amount": price_gp,
-                    "currency": "gold",
-                    "source": "workspace_rental",
-                    "new_balance": balance,
-                },
+                currency,
                 event_bus=context.userdata.event_bus,
             )
     logger.info("rent_workspace: player=%s npc=%s offer=%s days=%s", player_id, npc_id, offer.token, days)
@@ -406,7 +401,6 @@ async def _start_crafting_project_impl(
             }
             min_seconds = min_seconds * 3 // 4
             max_seconds = max_seconds * 3 // 4
-        common_bond = common_bond_crafting_bonus(player)
         now = (now_fn or _default_now)()
         resolve_at = now + timedelta(seconds=(rng or random.Random()).randint(min_seconds, max_seconds))
 
@@ -432,7 +426,6 @@ async def _start_crafting_project_impl(
                 "crafting_tier": crafting_tier,
                 "tainted_materials": recipe["tainted_materials"],
                 **blessing,
-                **({"common_bond": common_bond} if common_bond is not None else {}),
             },
             "outcome": None,
             "narration_text": None,

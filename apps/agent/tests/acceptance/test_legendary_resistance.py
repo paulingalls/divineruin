@@ -43,6 +43,8 @@ async def test_charge_spends_three_uses_then_lands_prone(fight):
         packet = await charge(fight, owner)
         assert packet.get("condition_resisted") == "prone", packet
         assert packet["save_success"] and packet["success_override"] == "Legendary Resistance"
+        assert packet["save_roll"] == 1 and "save_total" in packet
+        assert {"save_type", "save_dc", "rally_bonuses"}.isdisjoint(packet)
         architect = (await fight.reload()).get_participant(owner)
         assert not architect.conditions
         assert architect.action_ledger["legendary resistance"]["remaining"] == remaining

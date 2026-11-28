@@ -14,6 +14,7 @@ from dialogue_parser import Segment
 pytestmark = pytest.mark.usefixtures("stub_companion_errand_affinity_io")
 
 SAMPLE_PLAYER = {
+    "divine_favor": {"patron": "valdris", "level": 0, "max": 100},
     "name": "Aldric",
     "level": 3,
     "class": "warrior",

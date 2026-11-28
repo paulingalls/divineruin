@@ -18,6 +18,7 @@ from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import check_skill
 import communication_voice_rules
 import condition_voice_rules
 import db
@@ -31,7 +32,8 @@ import social_resolution
 import zhael_foretold_words
 from condition_consume import consume_beneficial_conditions, serialize_combat_check
 from db_errors import validated_player_conditions
-from disposition import resolve_disposition
+from dice_roll_payloads import build_skill_dice_roll_payload
+from disposition import build_disposition_changed_payload, resolve_disposition, resolve_disposition_target
 from game_events import publish_game_event
 from patron_synergy import has_engine_synergy
 from session_data import SessionData
@@ -98,6 +100,9 @@ async def _check_social_impl(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
+    npc_name, default_disposition = await resolve_disposition_target(
+        npc_id, session.companion, content_mod=content, combat_state=session.combat_state
+    )
     session_id = session.session_id
     binding = (
         await zhael_foretold_words.pending(player_id, npc_id, session_id)
@@ -113,11 +118,13 @@ async def _check_social_impl(
         binding["dc"] if binding is not None else base_dc,
         rng,
         ally_present=session.allies_present_for(player_id),
-        natural_terrain=False,
         hearing_only=False,
         synergy_context=synergy_context,
         player_id=player_id,
         in_combat=session.combat_state is not None,
+        **await check_skill.skill_context(
+            session, player, skill_lower, player_id=player_id, content_mod=content, terrain_exclusion="social_scene"
+        ),
     )
     scope = SkillScope.capture(session, player_id)
 
@@ -131,7 +138,8 @@ async def _check_social_impl(
         session_id=session_id,
         binding=binding,
         queries=queries,
-        content=content,
+        npc_name=npc_name,
+        default_disposition=default_disposition,
         mutations=mutations,
         conditions_mutations=conditions_mutations,
         db_mod=db_mod,
@@ -172,7 +180,8 @@ async def _finish_social(
     session_id: str,
     binding: zhael_foretold_words.Binding | None,
     queries,
-    content,
+    npc_name: str,
+    default_disposition: str,
     mutations,
     conditions_mutations,
     db_mod,
@@ -180,7 +189,12 @@ async def _finish_social(
     scope=None,
 ):
     current = await resolve_disposition(
-        npc_id, player_id, conn=conn, for_update=conn is not None, queries_mod=queries, content_mod=content
+        npc_id,
+        player_id,
+        conn=conn,
+        for_update=conn is not None,
+        queries_mod=queries,
+        default_disposition=default_disposition,
     )
     try:
         outcome = social_resolution.resolve_social_check(
@@ -194,6 +208,7 @@ async def _finish_social(
         raise ToolError(str(error)) from error
 
     shift = outcome.new_disposition != current
+    reason = f"social_check: {skill}"
     consumed_state = None
     if shift or roll.consumed_conditions:
         async with (
@@ -220,13 +235,17 @@ async def _finish_social(
                     npc_id,
                     player_id,
                     outcome.new_disposition,
-                    f"social_check: {skill}",
+                    reason,
                     **({"conn": write_conn} if write_conn is not None else {}),
                 )
 
     if binding is not None:
         assert conn is not None
         await zhael_foretold_words.clear(conn, player_id, npc_id, session_id, binding)
+
+    disposition_payload = (
+        build_disposition_changed_payload(npc_id, npc_name, current, outcome.new_disposition, reason) if shift else None
+    )
 
     async def flush():
         if consumed_state is not None:
@@ -236,22 +255,20 @@ async def _finish_social(
         await publish_game_event(
             session.room,
             E.DICE_ROLL,
-            {
-                "roll_type": "social_check",
-                "skill": skill,
-                "roll": roll.roll,
-                "total": roll.total,
-                "success": outcome.success,
-                "dramatic": outcome.dramatic,
-                "context": outcome.context,
-            },
+            build_skill_dice_roll_payload(
+                roll,
+                roll_type="social_check",
+                success=outcome.success,
+                dramatic=outcome.dramatic,
+                context=outcome.context,
+            ),
             event_bus=session.event_bus,
         )
-        if shift:
+        if disposition_payload is not None:
             await publish_game_event(
                 session.room,
                 E.DISPOSITION_CHANGED,
-                {"npc_id": npc_id, "previous": current, "new": outcome.new_disposition},
+                disposition_payload,
                 event_bus=session.event_bus,
             )
         return {

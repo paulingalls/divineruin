@@ -23,7 +23,7 @@ from caster_state import ConcentrationState
 from combat_conditions_persist import reconcile_member_conditions
 from combat_departure import forget_participant
 from combat_round_checkpoint import combat_image
-from combat_state import CombatState
+from combat_state import CombatState, load_snapshot
 from concentration_break import end_concentration, remove_owned_spell_conditions
 from game_events import publish_game_event
 from host_handoff import promote_after_departure
@@ -166,7 +166,7 @@ def _forget_caster_in_history(state: CombatState, caster_id: str, spell_id: str 
         held = ConcentrationState.from_record(data.get("concentration")).spell_id
         if "concentration" in data:
             data["concentration"] = {"spell_id": None}
-        image = CombatState.from_dict(checkpoint["combat"])
+        image = load_snapshot(checkpoint["combat"])
         for sid in {sid for sid in (spell_id, held) if sid is not None}:
             remove_owned_spell_conditions(image, sid, caster_id, applied=spells.get_spell(sid).applies_condition)
         checkpoint["combat"] = combat_image(image)

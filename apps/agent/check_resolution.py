@@ -8,32 +8,17 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, replace
 
-import thyra_seasons
+from check_skill_modifier import _ATTR_ABBREV as _ATTR_ABBREV
+from check_skill_modifier import _ATTR_FULL as _ATTR_FULL
+from check_skill_modifier import _apply_condition_modifiers as _apply_condition_modifiers
+from check_skill_modifier import base_check_modifier, skill_context_receipt
+from check_skill_modifier import skill_modifier as skill_modifier
 from condition_bonus import roll_bonus_dice as roll_bonus_dice
 from condition_voice_rules import auto_fail_hearing_perception
-from conditions import ConditionEffects, get_condition_effects
 from dice import roll as dice_roll
 from dramatic import DramaticContext, evaluate_dramatic_context
-from patron_gifts import skill_gift
-from patron_synergy import (
-    ContextSynergyReceipt,
-    CraftingSynergyReceipt,
-    common_bond_crafting_bonus,
-    context_skill_bonus,
-    discovery_skill_bonus,
-    validate_synergy_context,
-)
-from rules_engine import (
-    SKILL_TIER_BONUS,
-    SKILL_TIER_ORDER,
-    SKILLS,
-    SkillTier,
-    _get_skill_tier,
-    attribute_modifier,
-    dc_for_tier,
-    narrative_hint,
-    proficiency_bonus,
-)
+from patron_synergy import ContextSynergyReceipt, CraftingSynergyReceipt
+from rules_engine import SKILL_TIER_ORDER, SkillTier, _get_skill_tier, dc_for_tier, narrative_hint
 from world_season import Season
 
 
@@ -109,42 +94,6 @@ def _check_auto_fail(dc: int, skill_tier: SkillTier) -> bool:
     if dc >= 28 and rank < _MASTER_RANK:
         return True
     return dc >= 24 and rank < _EXPERT_RANK
-
-
-# --- Condition modifiers (M4.3, story-003) ---
-
-# Bridge the resolver's full attribute names to the conditions catalog's 3-letter
-# scope tokens (conditions.py uses "str"/"dex"/"con"/"wis" etc. for disadvantage_scopes
-# and auto_fail_saves). Keeps conditions.py + its tests untouched (out of this domain).
-_ATTR_ABBREV: dict[str, str] = {
-    "strength": "str",
-    "dexterity": "dex",
-    "constitution": "con",
-    "intelligence": "int",
-    "wisdom": "wis",
-    "charisma": "cha",
-}
-
-# Inverse of _ATTR_ABBREV: the catalog's tick_save (conditions.py) and other internals speak the
-# 3-letter abbreviation ("wis"), but resolve_saving_throw validates against the full attribute name.
-# Expand an abbreviation to the full name before handing it to the save resolver.
-_ATTR_FULL: dict[str, str] = {abbrev: full for full, abbrev in _ATTR_ABBREV.items()}
-
-
-def _apply_condition_modifiers(effects: ConditionEffects, scopes: set[str]) -> tuple[int, bool, bool, bool]:
-    """Classify an already-aggregated ConditionEffects into a roll's mechanical effect for the scopes.
-
-    Returns ``(flat_modifier, advantage, disadvantage, auto_fail)``. ``flat_modifier`` is the
-    aggregate check_modifier (e.g. Exhausted -1/stack); the three bools are True when ``scopes``
-    intersects the respective ConditionEffects set. ``scopes`` is the roll's relevant tokens —
-    e.g. {"str","athletics"} for a STR skill check, {"attack"} for an attack, {"con"} for a CON
-    save. Pure: a thin scope-matching adapter. Takes the pre-computed effects so each resolver
-    aggregates conditions exactly once (it shares the effects with roll_bonus_dice).
-    """
-    advantage = bool(scopes & effects.advantage_scopes)
-    disadvantage = bool(scopes & effects.disadvantage_scopes)
-    auto_fail = bool(scopes & effects.auto_fail_saves)
-    return effects.check_modifier, advantage, disadvantage, auto_fail
 
 
 # --- Check resolution ---
@@ -239,14 +188,26 @@ def resolve_check(
         extra_modifier: Flat condition modifier folded into the total (M4.3); 0 = none.
         advantage/disadvantage: Roll-with-(dis)advantage flags from active conditions (M4.3).
     """
-    attr_mod = attribute_modifier(attribute_score)
-    tier_bonus = SKILL_TIER_BONUS[skill_tier]
+    return _resolve_check_with_modifier(
+        base_check_modifier(attribute_score, level, skill_tier) + extra_modifier,
+        dc,
+        rng=rng,
+        advantage=advantage,
+        disadvantage=disadvantage,
+        auto_fail=_check_auto_fail(dc, skill_tier),
+    )
 
-    prof = 0 if skill_tier == "untrained" else proficiency_bonus(level)
 
-    total_mod = attr_mod + prof + tier_bonus + extra_modifier
-
-    if _check_auto_fail(dc, skill_tier):
+def _resolve_check_with_modifier(
+    total_mod: int,
+    dc: int,
+    *,
+    rng: random.Random | None,
+    advantage: bool,
+    disadvantage: bool,
+    auto_fail: bool,
+) -> CheckResult:
+    if auto_fail:
         # raw_die=0 → evaluator returns (False, ""); a check has no roll_type,
         # so only nat-20/nat-1 could ever fire here anyway.
         verdict = evaluate_dramatic_context(DramaticContext(raw_die=0))
@@ -305,27 +266,9 @@ def _resolve_skill_check_impl(
     in_combat: bool = False,
     discovery: bool = False,
 ) -> SkillCheckResult:
-    from oath_justice import TAG
-
-    validate_synergy_context(synergy_context)
-
     skill_lower = skill.lower()
     hearing_failed = auto_fail_hearing_perception(
         player_data.get("conditions") or [], skill=skill, hearing_only=hearing_only
-    )
-    tier = _get_skill_tier(player_data, skill_lower)
-    auto_fail = hearing_failed or _check_auto_fail(dc, tier)
-    context_synergy = (
-        context_skill_bonus(
-            player_data,
-            skill_lower,
-            synergy_context,
-            player_id=player_id,
-            in_combat=in_combat,
-            auto_fail=auto_fail,
-        )
-        if not auto_fail or synergy_context == TAG
-        else None
     )
     if hearing_failed:
         return SkillCheckResult(
@@ -338,64 +281,42 @@ def _resolve_skill_check_impl(
             margin=-dc,
             narrative_hint="You cannot hear; this hearing-only Perception check automatically fails",
             auto_fail=True,
-            context_synergy=context_synergy,
+            context_synergy=skill_context_receipt(
+                player_data, skill_lower, synergy_context, player_id=player_id, in_combat=in_combat, auto_fail=True
+            ),
         )
-    attr = SKILLS.get(skill_lower)
-    if attr is None:
-        raise ValueError(f"Unknown skill: '{skill}'")
 
-    attributes = player_data.get("attributes", {})
-    score = max(attributes.get(a, 10) for a in attr) if isinstance(attr, tuple) else attributes.get(attr, 10)
-
-    level = player_data.get("level", 1)
-
-    attr_names = attr if isinstance(attr, tuple) else (attr,)
-    scopes = {_ATTR_ABBREV.get(a, a) for a in attr_names} | {skill_lower}
-    effects = get_condition_effects(
-        [condition for condition in player_data.get("conditions") or [] if condition["type"] != "iron_resolve"]
+    tier = _get_skill_tier(player_data, skill_lower)
+    auto_fail = _check_auto_fail(dc, tier)
+    projected = skill_modifier(
+        player_data,
+        skill,
+        ally_present=ally_present,
+        natural_terrain=natural_terrain,
+        first_stay=first_stay,
+        season=season,
+        synergy_context=synergy_context,
+        player_id=player_id,
+        in_combat=in_combat,
+        discovery=discovery,
+        tier=tier,
+        auto_fail=auto_fail,
     )
-    flat_mod, advantage, disadvantage, _auto_fail = _apply_condition_modifiers(effects, scopes)
-    disadvantage = disadvantage or skill_lower in player_data.get("scene_disadvantage_skills", ())
     # An auto-failed check rolls nothing, so the bonus die is not spent when it cannot help.
-    if auto_fail:
-        bonus, consumed = 0, ()
-    else:
+    bonus, consumed = 0, ()
+    if not auto_fail:
         rolled = roll_bonus_dice(
-            effects, "check", rng=rng, spoken_buffs_eligible=player_data.get("spoken_buffs_eligible", True)
+            projected.effects, "check", rng=rng, spoken_buffs_eligible=player_data.get("spoken_buffs_eligible", True)
         )
         bonus, consumed = rolled.total, rolled.consumed
 
-    gift_name = None
-    crafting_synergy = None
-    if not auto_fail:
-        gift_bonus, gift_advantage, gift_name = skill_gift(
-            player_data, skill_lower, ally_present=ally_present, natural_terrain=natural_terrain, first_stay=first_stay
-        )
-        bonus += gift_bonus + thyra_seasons.skill_bonus(player_data, season, skill_lower)
-        advantage = advantage or gift_advantage
-        automatic = discovery_skill_bonus(player_data, skill_lower) if discovery else None
-        if automatic is not None:
-            bonus += automatic["bonus"]
-        if context_synergy is not None:
-            bonus += context_synergy["bonus"]
-            if automatic is not None:
-                context_synergy["automatic_discovery"] = dict(automatic)
-        else:
-            context_synergy = automatic
-        if skill_lower == "crafting":
-            crafting_synergy = common_bond_crafting_bonus(player_data)
-            if crafting_synergy is not None:
-                bonus += crafting_synergy["bonus"]
-
-    check = resolve_check(
-        score,
-        level,
-        tier,
+    check = _resolve_check_with_modifier(
+        projected.value + bonus,
         dc,
         rng=rng,
-        extra_modifier=flat_mod + bonus,
-        advantage=advantage,
-        disadvantage=disadvantage,
+        advantage=projected.advantage,
+        disadvantage=projected.disadvantage,
+        auto_fail=auto_fail,
     )
 
     return SkillCheckResult(
@@ -411,9 +332,9 @@ def _resolve_skill_check_impl(
         context=check.context,
         consumed_conditions=consumed,
         auto_fail=check.auto_fail,
-        gift_name=gift_name,
-        context_synergy=context_synergy,
-        crafting_synergy=crafting_synergy,
+        gift_name=projected.gift_name,
+        context_synergy=projected.context_synergy,
+        crafting_synergy=projected.crafting_synergy,
         d20=check.d20,
     )
 

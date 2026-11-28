@@ -7,7 +7,7 @@ import combat_spatial
 import encounter_facts
 from combat_enemy_action import resolve_save_damage_action
 from combat_fate_rolls import packet_save
-from combat_legendary_resistance import finalize_save, override_fields
+from combat_legendary_resistance import finalize_save
 from combat_structures import blocking_wall
 
 
@@ -122,14 +122,9 @@ async def resolve_effect(
         save = finalize_save(state, target, save, failed_conditions=("charmed",) if duration else ())
     else:
         duration = 0
-    result = {
-        "actor_id": actor.id,
-        "resolved": True,
-        "save_success": save.success,
-        **override_fields(save),
-        **save.oath_fields(),
-        **encounter_facts.rally_receipt(target.id, save.rally_sources),
-    }
+    save_fields = save.receipt_fields(target.id, prefix="save_")
+    del save_fields["save_type"], save_fields["save_roll"], save_fields["save_total"], save_fields["save_dc"]
+    result = {"actor_id": actor.id, "resolved": True, **save_fields}
     if reaction_save_advantage and save.advantage_applied:
         result["save_advantage"] = True
     if not save.success:

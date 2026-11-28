@@ -190,18 +190,15 @@ async def test_item_reward_skips_member_already_ahead():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("speaker", ["player_1", "player_2"])
-async def test_quest_standing_effects_reach_each_member(speaker):
+async def test_quest_reputation_effects_reach_each_member(speaker):
     case = quest_case([{"on_complete": {}}], {"player_1": 0, "player_2": 0})
     ctx, _, conn, _, content, queries, mutations = case
     content.get_faction = AsyncMock(return_value={"id": "thornwatch"})
-    content.get_npc = AsyncMock(return_value={"default_disposition": "neutral"})
-    queries.get_npc_disposition = AsyncMock(return_value="neutral")
-    mutations.set_npc_disposition = AsyncMock()
     events = []
     reputation = MagicMock(adjust_player_faction_reputation=AsyncMock(return_value=-5))
     with ctx.userdata._bind_authenticated_actor(speaker, 1, lambda *_: None):
         await _apply_world_effects(
-            ["torin_disposition +1", "thornwatch_reputation killed_faction_member"],
+            ["thornwatch_reputation killed_faction_member"],
             ctx.userdata,
             events,
             conn=conn,
@@ -214,7 +211,6 @@ async def test_quest_standing_effects_reach_each_member(speaker):
         "player_1",
         "player_2",
     ]
-    assert [call.args[1] for call in mutations.set_npc_disposition.await_args_list] == ["player_1", "player_2"]
     assert all(call.kwargs["conn"] is conn for call in reputation.adjust_player_faction_reputation.await_args_list)
 
 

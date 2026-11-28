@@ -102,7 +102,7 @@ class ExplorationAgent(BaseGameAgent):
 
     async def _publish_session_init(self, sd: SessionData) -> None:
         try:
-            payload = await db_session_queries.get_session_init_payload(sd.primary_player_id)
+            payload = await db_session_queries.get_session_init_payload(sd.primary_player_id, world_time=sd.world_time)
             await publish_game_event(
                 sd.room, E.SESSION_INIT, payload, sd.event_bus, destination_identities=[sd.primary_player_id]
             )

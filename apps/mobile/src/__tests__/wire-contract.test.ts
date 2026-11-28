@@ -2,6 +2,7 @@ import { panelStore } from "@/stores/panel-store";
 import { parsePatronSnapshot } from "@/audio/patron-abilities";
 import { handleGameEventMessage } from "@/audio/game-event-handler";
 import { test, expect, beforeEach, spyOn } from "bun:test";
+import { Participant, ParticipantKind } from "livekit-client";
 
 import FIXTURE from "../../../../packages/shared/fixtures/event_wire.json";
 import * as E from "@/audio/event-types";
@@ -23,7 +24,7 @@ import { HOLLOW_ECHO_DISPLAY, hudStore, type ResonanceState } from "@/stores/hud
 import { portraitStore } from "@/stores/portrait-store";
 import { parseSpellRows } from "@/utils/spell-display";
 
-import { captureTimers, resetStores, SAMPLE_CHARACTER } from "./use-game-events.helpers";
+import { captureTimers, encode, resetStores, SAMPLE_CHARACTER } from "./use-game-events.helpers";
 
 // packages/shared/fixtures/event_wire.json is the cross-language SSOT wire shape. The
 // Python lane (apps/agent/tests/test_wire_contract.py) asserts each publisher serializes
@@ -53,8 +54,40 @@ test("fixture event types match the TS wire constants", () => {
   }
   expect(EVENTS.discover_reveal_cue.type).toBe(E.PLAY_SOUND);
   expect(EVENTS.party_yield_combat.type).toBe(E.COMBAT_UI_UPDATE);
-  expect(Object.keys(EVENTS)).toHaveLength(29);
+  expect(EVENTS.currency_gained.type).toBe(E.CURRENCY_GAINED);
+  expect(EVENTS.currency_spent.type).toBe(E.CURRENCY_SPENT);
+  expect(Object.keys(EVENTS)).toHaveLength(42);
 });
+
+test.each(["currency_gained", "currency_spent"] as const)(
+  "%s fixture updates only the recipient's initialized purse",
+  (eventType) => {
+    const event = EVENTS[eventType];
+    authStore.setState({ playerId: event.player_id });
+    const agent = new Participant(
+      "agent",
+      "dm",
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      ParticipantKind.AGENT,
+    );
+    const sendCurrency = (playerId: string) =>
+      handleGameEventMessage({ from: agent, payload: encode({ ...event, player_id: playerId }) });
+
+    sendCurrency(event.player_id);
+    expect(panelStore.getState().characterDetail).toBeNull();
+    handleGameEvent({
+      type: "session_init",
+      character: { player_id: event.player_id, name: "Kael", class: "warrior", gold: 50 },
+    });
+    sendCurrency("other_player");
+    expect(panelStore.getState().characterDetail?.gold).toBe(50);
+    sendCurrency(event.player_id);
+    expect(panelStore.getState().characterDetail?.gold).toBe(event.new_balance);
+  },
+);
 
 test("recipient-scoped session end and cancellation use the Python wire fixture", () => {
   authStore.setState({ playerId: EVENTS.session_end_guest.player_id });
@@ -77,29 +110,52 @@ test("companion_cue fixture shows the assigned companion portrait", () => {
   expect(portraitStore.getState().companionVisible).toBe(true);
 });
 
-for (const [fixtureName, expectedStinger] of [
-  ["combat_attack_hit", "success_sting"],
-  ["combat_attack_miss", "fail_sting"],
+for (const fixtureName of [
+  "combat_attack_hit",
+  "combat_attack_miss",
+  "discover_failed",
+  "discover_no_candidate",
+  "discover_success",
+  "ordinary_skill_success",
+  "ordinary_skill_failure",
+  "ordinary_save",
+  "choir_aura_save",
+  "death_save",
+  "deescalation_argument",
+  "social_roll",
+  "gathering_roll",
+  "navigation_roll",
+  "narrative_roll",
 ] as const) {
   test(`${fixtureName} fixture drives the complete dice overlay and stinger`, () => {
     const event = EVENTS[fixtureName];
+    const success = "success" in event ? event.success : undefined;
     const playSfx = spyOn(sfxPlayer, "playSfx").mockImplementation(() => {});
     try {
-      const timers = captureTimers(() => handleGameEvent({ ...event }));
+      const timers = captureTimers(() =>
+        handleGameEventMessage({
+          payload: new TextEncoder().encode(JSON.stringify(event)),
+          from: { isAgent: true },
+        } as Parameters<typeof handleGameEventMessage>[0]),
+      );
       const overlay = hudStore.getState().overlays[0];
       expect(overlay.type).toBe("dice_result");
-      expect(overlay.payload).toMatchObject({
+      expect(overlay.payload).toEqual({
         roll: event.roll,
         modifier: event.modifier,
         total: event.total,
-        success: event.success,
+        success,
         rollType: event.roll_type,
-        narrative: event.narrative,
+        narrative: "narrative" in event ? event.narrative : undefined,
+        dramatic: "dramatic" in event ? event.dramatic : undefined,
       });
-      const stinger = timers.find((timer) => timer.delay === DICE_STINGER_DELAY_MS);
-      expect(stinger).toBeDefined();
-      stinger!.fn();
-      expect(playSfx).toHaveBeenCalledWith(expectedStinger);
+      const stingers = timers.filter((timer) => timer.delay === DICE_STINGER_DELAY_MS);
+      expect(stingers).toHaveLength(success === undefined ? 0 : 1);
+      stingers.forEach(({ fn }) => fn());
+      expect(playSfx.mock.calls.map(([soundName]) => soundName)).toEqual([
+        "dice_roll",
+        ...(success === undefined ? [] : [success ? "success_sting" : "fail_sting"]),
+      ]);
     } finally {
       playSfx.mockRestore();
     }
@@ -308,6 +364,7 @@ test("patron fixture initializes the sheet and malformed snapshots reject atomic
       from: { isAgent: true },
     } as Parameters<typeof handleGameEventMessage>[0]);
   send(initial);
+  expect(sessionStore.getState().locationContext?.timeOfDay).toBe("morning");
   expect(panelStore.getState().characterDetail?.abilities as unknown).toEqual(initial.abilities);
   send(EVENTS.patron_abilities_updated);
   send(FIXTURE.patron_spent_snapshot);

@@ -24,7 +24,7 @@ from combat_departure import forget_participant
 from combat_down import sync_companion_consciousness
 from combat_events import isolated_publish
 from combat_phase import combat_outcome
-from combat_state import CombatState
+from combat_state import CombatState, load_snapshot
 from combat_ui_update import build_combat_ui_update
 from game_events import publish_game_event
 from inventory_refresh import publish_inventory
@@ -68,7 +68,7 @@ def _previous_opening(state: CombatState) -> dict:
 
 
 def _restore_combat(previous: dict, live: CombatState) -> CombatState:
-    restored = CombatState.from_dict(deepcopy(previous))
+    restored = load_snapshot(deepcopy(previous))
     restored.departed_player_ids = list(live.departed_player_ids)
     for pid in restored.departed_player_ids:
         forget_participant(restored, pid)
@@ -208,12 +208,9 @@ async def activate(session: SessionData) -> str:
             if missing := members.keys() - current.keys():
                 raise ToolError(f"Unravel Fate cannot restore missing players: {sorted(missing)}.")
             ability = await patron_ability_tools._locked_ability(conn, actor, GIFT)
-            raw = await conn.fetchval(
-                "SELECT data FROM combat_instances WHERE combat_id = $1 FOR UPDATE", live.combat_id
-            )
-            if raw is None:
+            committed = await db_mutations.load_combat_state(live.combat_id, conn=conn, for_update=True)
+            if committed is None:
                 raise ToolError(_NO_FIGHT)
-            committed = CombatState.from_dict(json.loads(raw))
             if committed.combat_id != live.combat_id or committed.round_number != live.round_number:
                 raise ToolError("The fight opening changed. Reload it before using Unravel Fate.")
             previous = _previous_opening(committed)

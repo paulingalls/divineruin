@@ -88,6 +88,25 @@ class SavingThrowResult:
             fields["oath_timed"] = self.oath_timed
         return fields
 
+    def has_receipt(self) -> bool:
+        return bool(self.rally_sources or self.oath_justice is not None or self.oath_timed is not None)
+
+    def receipt_fields(self, roller_id: str, *, prefix: str = "") -> dict:
+        from encounter_facts import rally_receipt
+
+        fields = {
+            "save_type": self.save_type,
+            f"{prefix}roll": self.roll,
+            f"{prefix}total": self.total,
+            f"{prefix}dc": self.dc,
+            f"{prefix}success": self.success,
+            **self.oath_fields(),
+            **rally_receipt(roller_id, self.rally_sources),
+        }
+        if self.success_override is not None:
+            fields["success_override"] = self.success_override
+        return fields
+
 
 def resolve_saving_throw(
     player_data: dict,

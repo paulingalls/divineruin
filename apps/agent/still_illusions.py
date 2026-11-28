@@ -6,11 +6,10 @@ from copy import deepcopy
 from livekit.agents.llm import ToolError
 
 import check_resolution
+import check_skill
 import combat_recharge
 import condition_voice_rules
 import conditions
-from combat_terrain import skill_natural_terrain
-from patron_location import check_first_stay
 from still_encounter import in_zone
 
 ID_PREFIX = "still_illusion_"
@@ -126,9 +125,10 @@ async def investigate(
             player_id=player_id,
             in_combat=True,
             ally_present=session.allies_present_for(player_id),
-            natural_terrain=await skill_natural_terrain(session, player, skill, combat_state=working),
             hearing_only=False,
-            first_stay=not companion and await check_first_stay(player, session, skill, player_id=player_id, conn=conn),
+            **await check_skill.skill_context(
+                session, player, skill, player_id=target_id, conn=conn, combat_state=working
+            ),
         )
         working.still_encounter["illusion"]["seen_through"] = result.success
         if result.consumed_conditions and not companion:

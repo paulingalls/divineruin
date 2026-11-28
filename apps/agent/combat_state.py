@@ -279,3 +279,7 @@ class CombatState:
             data.get("round_checkpoints", []), state.combat_id, state.round_number
         )
         return state
+
+
+def load_snapshot(data: dict) -> CombatState:
+    return CombatState.from_dict(encounter_facts.upgrade_legacy_snapshot(data))

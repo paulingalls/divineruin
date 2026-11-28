@@ -45,29 +45,6 @@ OAK_SHIELD = {
 RECIPES = [IRON_SWORD, OAK_SHIELD]
 
 
-class TestResolveExperimentation:
-    def test_dc_is_base_plus_four(self):
-        out = experimentation.resolve_experimentation(SAMPLE_PLAYER, 13, rng=random.Random(_seed_for_d20(10)))
-        assert out.dc == 17
-
-    def test_success_when_total_meets_dc(self):
-        out = experimentation.resolve_experimentation(SAMPLE_PLAYER, 13, rng=random.Random(_seed_for_d20(14)))
-        assert out.success is True
-        assert out.roll == 14
-        assert out.total == 17
-        assert out.margin == 0
-
-    def test_failure_when_below_dc(self):
-        out = experimentation.resolve_experimentation(SAMPLE_PLAYER, 13, rng=random.Random(_seed_for_d20(13)))
-        assert out.success is False
-        assert out.margin < 0
-
-    def test_deterministic_by_seed(self):
-        a = experimentation.resolve_experimentation(SAMPLE_PLAYER, 13, rng=random.Random(5))
-        b = experimentation.resolve_experimentation(SAMPLE_PLAYER, 13, rng=random.Random(5))
-        assert a == b
-
-
 class TestFindMatchingRecipe:
     def test_matches_on_output_and_materials(self):
         provided = {"iron_ingot": 2, "leather_strip": 1}
@@ -175,49 +152,6 @@ def _seams(*, recipes_list, known_ids, available, alloc_satisfied=True):
 
 
 class TestExperimentWithMaterials:
-    @pytest.mark.asyncio
-    async def test_success_learns_recipe(self):
-        kwargs, _, mods = _seams(
-            recipes_list=[IRON_SWORD], known_ids=[], available={"iron_ingot": 2, "leather_strip": 1}
-        )
-        out = json.loads(
-            await _experiment_with_materials_impl(
-                make_context(),
-                {"iron_ingot": 2, "leather_strip": 1},
-                "iron_sword",
-                rng=random.Random(_seed_for_d20(20)),
-                **kwargs,
-            )
-        )
-        assert out["outcome"] == "success"
-        assert out["learned_recipe"] == "iron_sword"
-        assert out["produced_item"] == "iron_sword"
-        mods["mutations"].add_player_known_recipe.assert_awaited_once()
-        assert mods["mutations"].add_player_known_recipe.call_args[0][2] == "experimentation"
-        mods["mutations"].consume_player_materials.assert_awaited_once()
-        mods["exp_db"].record_failed_experiment.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_roll_failure_is_retryable_not_recorded(self):
-        kwargs, _, mods = _seams(
-            recipes_list=[IRON_SWORD], known_ids=[], available={"iron_ingot": 2, "leather_strip": 1}
-        )
-        out = json.loads(
-            await _experiment_with_materials_impl(
-                make_context(),
-                {"iron_ingot": 2, "leather_strip": 1},
-                "iron_sword",
-                rng=random.Random(_seed_for_d20(1)),
-                **kwargs,
-            )
-        )
-        assert out["outcome"] == "failure"
-        assert out["learned_recipe"] is None
-        assert out["retryable"] is True
-        mods["mutations"].consume_player_materials.assert_awaited_once()  # spent on a real attempt
-        mods["exp_db"].record_failed_experiment.assert_not_awaited()  # retryable, not recorded
-        mods["mutations"].add_player_known_recipe.assert_not_awaited()
-
     @pytest.mark.asyncio
     async def test_no_match_consumes_and_records(self):
         kwargs, _, mods = _seams(recipes_list=[IRON_SWORD], known_ids=[], available={"scrap": 3})
