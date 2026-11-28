@@ -23,7 +23,7 @@ from activate_tools import activate
 from check_resolution import D20Roll
 
 ORDINARY = "arcane_mage_hand"
-UNWIRED = ("divine_shield_of_faith", "primal_natures_grasp", "arcane_counterspell")
+UNWIRED = ("primal_natures_grasp", "arcane_counterspell")
 
 
 @pytest.mark.parametrize("spell", [SHIELD, BARK_SKIN])

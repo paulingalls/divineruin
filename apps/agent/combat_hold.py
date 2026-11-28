@@ -394,6 +394,7 @@ async def _resolve_held(
     action, an enemy condition packet, a DEFEND — resolves with the live resolver exactly as it
     would have in the single-pass phase.
     """
+    from combat_attack_roll import shield_of_faith_ac
     from combat_phase import ResolutionPacket
 
     declaration = _held_declaration(head)
@@ -410,11 +411,17 @@ async def _resolve_held(
     if fate_rolls is not None and (session.fate_lock.locked() or head.get("roll_steps")):
         deps["progress"] = PacketRolls(fate_rolls, head.setdefault("roll_steps", {}), deps["queries"], deps["conn"])
     damage_target = combat_reaction_effect.intercept_target(state, head)
+    reaction_ac_bonus = combat_reaction_effect.ac_bonus(state, head)
+    if "shield_of_faith_ac" in head:
+        # Departure ends the ward while the already-rolled strike retains its AC.
+        target = state.get_participant(declaration.target_id or "")
+        live_ward = shield_of_faith_ac(target.conditions if target is not None else [])
+        reaction_ac_bonus += head["shield_of_faith_ac"] - live_ward
     summary = await _resolve_one_packet(
         session,
         state,
         packet,
-        reaction_ac_bonus=combat_reaction_effect.ac_bonus(state, head),
+        reaction_ac_bonus=reaction_ac_bonus,
         reaction_save_advantage=combat_reaction_effect.save_advantage(
             state,
             head,

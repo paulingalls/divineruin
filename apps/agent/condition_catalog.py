@@ -82,6 +82,7 @@ STUDIED_WEAKNESS = "studied_weakness"
 IRON_STANCE = "iron_stance"
 WAR_CRY_RALLY = "war_cry_rally"
 DIVINE_WARD = "divine_ward"
+SHIELD_OF_FAITH = "shield_of_faith"
 BEACON_OF_HOPE = "beacon_of_hope"
 PROTECTION_FROM_HOLLOW = "protection_from_hollow"
 
@@ -92,6 +93,7 @@ INVISIBLE = "invisible"
 
 CONDITION_CATALOG: dict[str, ConditionSpec] = {
     DIVINE_WARD: ConditionSpec(clearance="start_of_caster_next_turn", restrictions=("damage_resistance_all",)),
+    SHIELD_OF_FAITH: ConditionSpec(clearance="start_of_caster_next_turn", ac_modifier=2),
     BEACON_OF_HOPE: ConditionSpec(clearance="concentration", advantage_scopes=("wis", "death_save")),
     PROTECTION_FROM_HOLLOW: ConditionSpec(clearance="concentration"),
     INCORPOREAL: ConditionSpec(

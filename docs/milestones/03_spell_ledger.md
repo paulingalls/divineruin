@@ -5,7 +5,7 @@ The [catalog](../../content/spells.json) supplies the IDs. The [magic design](..
 
 ## Classification
 
-The 87 spells include **27 engine**, **4 narrated**, **56 unwired** and **0 uncertified**.
+The 87 spells include **28 engine**, **4 narrated**, **55 unwired** and **0 uncertified**.
 
 - **engine** — The named function resolves the effect and the linked committed test asserts the outcome.
 - **narrated** — The design assigns the result to the DM’s narration.
@@ -55,7 +55,7 @@ The dead-reactions sprint is changing the archetype `mage_shield_spell`, which h
 | `divine_mend` | unwired | RUN `divine_mend` (cantrip). The oak staff stayed at 1 durability hit and the cast produced no repair receipt. [M14.1](14_engine_completeness.md#spell-divine_mend). |
 | `divine_sacred_word` | engine | `combat_spell_recipients.select + combat_spell_damage.land`. [`test_sacred_word_selects_only_nearby_undead_and_hollow`](../../apps/agent/tests/combat/test_area_spell_recipients.py). The caster-radius case checks eligible and excluded recipients. The damage lane also tests d4 scaling. |
 | `divine_heal_wounds` | engine | `combat_spell_heal.land_exploration + combat_spell_heal.land_combat_cast`. [`test_immediate_healing_persists_and_names_the_actual_restoration`](../../apps/agent/tests/test_spell_heal_landing.py). The Heal Wounds cases check the authored roll, Wisdom bonus, receipt and persisted HP in and out of combat. |
-| `divine_shield_of_faith` | unwired | RUN `divine_shield_of_faith` (2 Focus). Ordinary cast succeeded. The ally still took a threshold hit and the pre-roll window offered `cleric_shield_of_faith` only. [M14.1](14_engine_completeness.md#spell-divine_shield_of_faith). |
+| `divine_shield_of_faith` | engine | `combat_reaction_effect._apply` uses the shared AC recheck after a hit on another ally within 30 ft. The +2 AC lasts until the start of the caster’s next turn. [Registered offer, spend, and settlement coverage](../../apps/agent/tests/acceptance/test_spell_shield_of_faith.py). |
 | `divine_bless` | engine | Each attack and rolled save gets one +1d4 until the recipient’s last sustaining caster stops. [Roll and reload coverage](../../apps/agent/tests/acceptance/test_spell_bless_lifecycle.py) and [caster-specific expiry](../../apps/agent/tests/acceptance/test_bless_caster_guard.py). |
 | `divine_sanctuary` | unwired | RUN `divine_sanctuary` (1 Focus). The protected ally acquired no condition and the cast made no targeting rule active. [M14.1](14_engine_completeness.md#spell-divine_sanctuary). |
 | `divine_detect_hollow` | unwired | RUN `divine_detect_hollow` (1 Focus). The ally held a tainted Rend Shard. The cast returned no corruption reading, direction or intensity. [M14.1](14_engine_completeness.md#spell-divine_detect_hollow). |

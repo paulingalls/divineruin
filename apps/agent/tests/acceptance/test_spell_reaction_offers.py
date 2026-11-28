@@ -26,6 +26,7 @@ from check_resolution import D20Roll
 
 SHIELD = "arcane_shield_spell"
 BARK_SKIN = "primal_bark_skin"
+FAITH = "divine_shield_of_faith"
 
 
 async def resources(fight, actor):
@@ -170,13 +171,16 @@ async def test_library_bark_skin_rechecks_roll_and_expires(reset_db_pool, critic
         ("mage", SHIELD, "mage_shield_spell", "pre_roll", 1),
         ("druid", BARK_SKIN, "druid_bark_skin", "post_roll", 2),
         ("warden", BARK_SKIN, "warden_bark_skin", "post_roll", 2),
+        ("cleric", FAITH, "cleric_shield_of_faith", "pre_roll", 2),
+        ("oracle", FAITH, "oracle_shield_of_faith", "pre_roll", 2),
+        ("paladin", FAITH, "paladin_shield_of_faith", "pre_roll", 2),
     ],
 )
 async def test_archetype_twin_is_the_only_offer(reset_db_pool, archetype, spell_id, twin, stage, cost):
-    async with defense_fight(archetype, library=((0, spell_id),)) as fight:
-        caster = fight.players[0]
+    async with defense_fight(archetype, ally_archetype="warrior", library=((0, spell_id),)) as fight:
+        caster, ally = fight.players
         before = await resources(fight, caster)
-        await declare_attacks(fight, caster, fight.enemies[0])
+        await declare_attacks(fight, ally if spell_id == FAITH else caster, fight.enemies[0])
         with patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(16 - self.modifier)):
             window, offered = await offered_id(fight, caster, stage, twin)
             assert [r["id"] for r in window["reactions"] if r["actor_id"] == caster] == [twin]

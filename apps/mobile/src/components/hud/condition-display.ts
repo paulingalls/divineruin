@@ -46,6 +46,7 @@ export const CONDITION_TYPES = [
   "precise_strike",
   "iron_stance",
   "divine_ward",
+  "shield_of_faith",
   "beacon_of_hope",
   "protection_from_hollow",
   "reckless_assault",
@@ -112,6 +113,7 @@ export const CONDITION_DISPLAY: Record<ConditionType, ConditionDisplay> = {
   },
   studied_weakness: { label: "Studied Weakness", icon: "target", color: BrandColors.hollow },
   divine_ward: { label: "Divine Ward", icon: "shield-plus", color: BrandColors.hollow },
+  shield_of_faith: { label: "Shield of Faith", icon: "shield-plus", color: BrandColors.hollow },
   beacon_of_hope: { label: "Beacon of Hope", icon: "shield-sun", color: BrandColors.hollow },
   protection_from_hollow: {
     label: "Protection from Hollow",

@@ -1,4 +1,4 @@
-"""Damage and AC changes made by self-protective reactions."""
+"""Damage and AC changes made by defensive reactions."""
 
 from dataclasses import replace
 
@@ -99,16 +99,17 @@ def halve(head: dict, target) -> None:
 
 
 def apply_bark_skin(head: dict, target: CombatParticipant) -> None:
-    result, held_ac = deserialize_roll(head["roll"])
-    if not D20Roll(result.attack_modifier, held_ac).evaluate(result.roll).success:
-        raise ValueError("Bark Skin expected a held hit that reached the original AC")
+    recheck_ac(head, target, BARK_SKIN_AC_BONUS)
+    target.bark_skin_active = True
 
-    raised_ac = held_ac + BARK_SKIN_AC_BONUS
+
+def recheck_ac(head: dict, target: CombatParticipant, bonus: int) -> None:
+    result, held_ac = deserialize_roll(head["roll"])
+    raised_ac = held_ac + bonus
     verdict = D20Roll(result.attack_modifier, raised_ac).evaluate(result.roll)
     result = replace(result, target_ac=raised_ac, narrative_hint=verdict.narrative_hint)
     if not verdict.success:
         result = miss(result, target)
-    target.bark_skin_active = True
     head["roll"] = serialize_roll(result, raised_ac)
 
 
