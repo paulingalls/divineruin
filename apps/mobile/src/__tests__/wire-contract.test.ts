@@ -53,7 +53,7 @@ test("fixture event types match the TS wire constants", () => {
   }
   expect(EVENTS.discover_reveal_cue.type).toBe(E.PLAY_SOUND);
   expect(EVENTS.party_yield_combat.type).toBe(E.COMBAT_UI_UPDATE);
-  expect(Object.keys(EVENTS)).toHaveLength(30);
+  expect(Object.keys(EVENTS)).toHaveLength(40);
 });
 
 test("recipient-scoped session end and cancellation use the Python wire fixture", () => {
@@ -77,29 +77,52 @@ test("companion_cue fixture shows the assigned companion portrait", () => {
   expect(portraitStore.getState().companionVisible).toBe(true);
 });
 
-for (const [fixtureName, expectedStinger] of [
-  ["combat_attack_hit", "success_sting"],
-  ["combat_attack_miss", "fail_sting"],
+for (const fixtureName of [
+  "combat_attack_hit",
+  "combat_attack_miss",
+  "discover_failed",
+  "discover_no_candidate",
+  "discover_success",
+  "ordinary_skill_success",
+  "ordinary_skill_failure",
+  "ordinary_save",
+  "choir_aura_save",
+  "death_save",
+  "deescalation_argument",
+  "social_roll",
+  "gathering_roll",
+  "navigation_roll",
+  "narrative_roll",
 ] as const) {
   test(`${fixtureName} fixture drives the complete dice overlay and stinger`, () => {
     const event = EVENTS[fixtureName];
+    const success = "success" in event ? event.success : undefined;
     const playSfx = spyOn(sfxPlayer, "playSfx").mockImplementation(() => {});
     try {
-      const timers = captureTimers(() => handleGameEvent({ ...event }));
+      const timers = captureTimers(() =>
+        handleGameEventMessage({
+          payload: new TextEncoder().encode(JSON.stringify(event)),
+          from: { isAgent: true },
+        } as Parameters<typeof handleGameEventMessage>[0]),
+      );
       const overlay = hudStore.getState().overlays[0];
       expect(overlay.type).toBe("dice_result");
-      expect(overlay.payload).toMatchObject({
+      expect(overlay.payload).toEqual({
         roll: event.roll,
         modifier: event.modifier,
         total: event.total,
-        success: event.success,
+        success,
         rollType: event.roll_type,
-        narrative: event.narrative,
+        narrative: "narrative" in event ? event.narrative : undefined,
+        dramatic: "dramatic" in event ? event.dramatic : undefined,
       });
-      const stinger = timers.find((timer) => timer.delay === DICE_STINGER_DELAY_MS);
-      expect(stinger).toBeDefined();
-      stinger!.fn();
-      expect(playSfx).toHaveBeenCalledWith(expectedStinger);
+      const stingers = timers.filter((timer) => timer.delay === DICE_STINGER_DELAY_MS);
+      expect(stingers).toHaveLength(success === undefined ? 0 : 1);
+      stingers.forEach(({ fn }) => fn());
+      expect(playSfx.mock.calls.map(([soundName]) => soundName)).toEqual([
+        "dice_roll",
+        ...(success === undefined ? [] : [success ? "success_sting" : "fail_sting"]),
+      ]);
     } finally {
       playSfx.mockRestore();
     }

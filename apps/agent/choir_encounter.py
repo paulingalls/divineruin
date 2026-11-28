@@ -13,6 +13,7 @@ from combat_events import emit_or_publish
 from combat_fate_rolls import packet_save
 from combat_terrain import skill_natural_terrain
 from declarations import DeclarationType
+from dice_roll_payloads import build_saving_throw_dice_roll_payload
 from patron_location import check_first_stay
 from patron_synergy_combat import spell_damage_type_override
 
@@ -278,21 +279,22 @@ async def turn_start(
         and session.member_state(actor.id).concentration.spell_id is not None
     ):
         broken = await concentration_break_mod.end_concentration(session, actor.id, combat_state=state, conn=conn)
-    result = {
+    aura = {
         "actor_id": actor.id,
-        "save_type": "wisdom",
         "dc": 15,
-        "success": save.success,
         "concentration_broken": broken,
         "cue": "Lost voices tug at your focus.",
-        **save.oath_fields(),
         **encounter_facts.rally_receipt(actor.id, save.rally_sources),
     }
-
     if sink is not None:
         await emit_or_publish(
-            sink, session.room, E.DICE_ROLL, {"roll_type": "choir_aura", **result}, event_bus=session.event_bus
+            sink,
+            session.room,
+            E.DICE_ROLL,
+            build_saving_throw_dice_roll_payload(save, roll_type="choir_aura", **aura),
+            event_bus=session.event_bus,
         )
+    result = {"save_type": save.save_type, "success": save.success, **save.oath_fields(), **aura}
     return result
 
 

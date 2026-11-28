@@ -2,6 +2,7 @@
 
 import event_types as E
 from check_resolution import SkillCheckResult
+from dice_roll_payloads import build_skill_dice_roll_payload
 from game_events import publish_game_event
 from session_data import SessionData
 
@@ -10,14 +11,13 @@ async def publish_roll(session: SessionData, result: SkillCheckResult) -> None:
     await publish_game_event(
         session.room,
         E.DICE_ROLL,
-        {
-            "roll_type": "skill_check",
-            "skill": result.skill,
-            "roll": result.roll,
-            "total": result.total,
-            "dramatic": result.dramatic,
-            "context": result.context,
-        },
+        build_skill_dice_roll_payload(
+            result,
+            roll_type="skill_check",
+            success=None,
+            dramatic=result.dramatic,
+            context=result.context,
+        ),
         event_bus=session.event_bus,
     )
 

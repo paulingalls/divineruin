@@ -7,8 +7,9 @@ import reaction_gate
 import reaction_windows
 from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _find_action
-from combat_attack_roll import build_attack_dice_roll_payload, deserialize_roll
+from combat_attack_roll import deserialize_roll
 from combat_hold_actions import _held_declaration
+from dice_roll_payloads import build_attack_dice_roll_payload
 from encounter_actions import action_kind
 from patron_zero_hp import provisional_ward_verdict
 from reaction_windows import POST_REACTION_MISS, POST_ROLL, PRE_ROLL

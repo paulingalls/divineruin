@@ -20,6 +20,7 @@ from combat_terrain import skill_natural_terrain
 from condition_consume import consume_beneficial_conditions
 from condition_voice_rules import validate_hearing_check
 from db_errors import validated_player_conditions
+from dice_roll_payloads import build_skill_dice_roll_payload
 from patron_gifts import KNOWLEDGE_SKILLS
 from patron_location import check_first_stay
 from session_data import SessionData
@@ -183,15 +184,13 @@ async def _finish_skill(
     effects.events.append(
         (
             E.DICE_ROLL,
-            {
-                "roll_type": "skill_check",
-                "skill": result.skill,
-                "roll": result.roll,
-                "total": result.total,
-                "success": result.success,
-                "dramatic": result.dramatic,
-                "context": result.context,
-            },
+            build_skill_dice_roll_payload(
+                result,
+                roll_type="skill_check",
+                success=result.success,
+                dramatic=result.dramatic,
+                context=result.context,
+            ),
         )
     )
 

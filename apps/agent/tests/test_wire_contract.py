@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sample_fixtures import _WARRIOR_MILESTONES, GUILD_PLAYER, _milestones_mod_for
 
-import combat_attack_roll
 import combat_events
 import combat_rewards
 import companion_cue_events
@@ -17,7 +16,18 @@ import hollow_echo
 import hollow_echo_events
 import resonance_events
 import veil_ward_events
+from check_resolution import SkillCheckResult
 from check_resolution_attack import AttackResult
+from check_resolution_save import SavingThrowResult
+from combat_resolution import DeathSaveResult
+from dice import DiceResult
+from dice_roll_payloads import (
+    build_attack_dice_roll_payload,
+    build_death_save_dice_roll_payload,
+    build_narrative_dice_roll_payload,
+    build_saving_throw_dice_roll_payload,
+    build_skill_dice_roll_payload,
+)
 from hollow_echo import HollowEchoResult
 from progression_tools import _award_divine_favor_core, _award_xp_core
 from session_data import CompanionState
@@ -99,9 +109,65 @@ def test_combat_attack_dice_roll_serializes_to_fixture(fixture_name: str) -> Non
     attacker = MagicMock(name="attacker")
     attacker.name = expected["attacker"]
 
-    payload = combat_attack_roll.build_attack_dice_roll_payload(attacker, attack_result)
+    payload = build_attack_dice_roll_payload(attacker, attack_result)
 
     assert {"type": event_types.DICE_ROLL, **payload} == expected
+
+
+@pytest.mark.parametrize(
+    ("fixture", "roll_type", "skill", "face", "modifier", "dc", "success", "dramatic", "context", "fields"),
+    [
+        ("ordinary_skill_success", "skill_check", "perception", 20, 4, 15, True, True, "natural_20", {}),
+        ("ordinary_skill_failure", "skill_check", "perception", 3, 4, 15, False, False, "", {}),
+        (
+            "deescalation_argument",
+            "de_escalate",
+            "persuasion",
+            16,
+            5,
+            15,
+            True,
+            True,
+            "de_escalate",
+            {"actor": "Kael", "round": 1, "surrendered": 0, "living": 2, "ends_combat": False},
+        ),
+        ("social_roll", "social_check", "persuasion", 8, 4, 10, False, False, "", {}),
+        ("gathering_roll", "gathering_check", "survival", 7, 4, 13, True, False, "", {}),
+        ("navigation_roll", "navigation_check", "survival", 1, 3, 14, False, True, "natural_1", {}),
+    ],
+)
+def test_skill_dice_roll_serializes_to_fixture(
+    fixture, roll_type, skill, face, modifier, dc, success, dramatic, context, fields
+) -> None:
+    total = face + modifier
+    result = SkillCheckResult(skill, face, modifier, total, dc, total >= dc, total - dc, "")
+    payload = build_skill_dice_roll_payload(
+        result, roll_type=roll_type, success=success, dramatic=dramatic, context=context, **fields
+    )
+    assert {"type": event_types.DICE_ROLL, **payload} == FIXTURE["events"][fixture]
+
+
+def test_other_dice_rolls_serialize_to_fixtures() -> None:
+    ordinary = SavingThrowResult("strength", 8, 3, 11, 15, False, -4, "held", "")
+    choir = SavingThrowResult("wisdom", 14, 8, 22, 15, True, 7, None, "")
+    death = DeathSaveResult(11, True, False, False, 1, 0, False, False, "")
+    payloads = {
+        "ordinary_save": build_saving_throw_dice_roll_payload(
+            ordinary, roll_type="saving_throw", dramatic=ordinary.dramatic, context=ordinary.context
+        ),
+        "choir_aura_save": build_saving_throw_dice_roll_payload(
+            choir,
+            roll_type="choir_aura",
+            actor_id="player_1",
+            dc=15,
+            concentration_broken=None,
+            cue="Lost voices tug at your focus.",
+        ),
+        "death_save": build_death_save_dice_roll_payload(death, {"bonus": 2}),
+        "narrative_roll": build_narrative_dice_roll_payload(DiceResult("4d6kh3-2", [2, 3, 4], [1], 7)),
+    }
+    for fixture, payload in payloads.items():
+        assert {"type": event_types.DICE_ROLL, **payload} == FIXTURE["events"][fixture]
 
 
 def test_fixture_hollow_echo_bands_match_agent_resolver() -> None:

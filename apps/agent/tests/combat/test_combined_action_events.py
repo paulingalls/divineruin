@@ -133,6 +133,7 @@ async def test_save_damage_announces_the_save_and_applied_damage(
         "round_number": state.round_number,
         "save_type": save.save_type,
         "roll": save.roll,
+        "modifier": save.modifier,
         "total": save.total,
         "success": save_success,
         "dramatic": save.dramatic,

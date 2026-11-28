@@ -18,7 +18,6 @@ import encounter_facts
 import event_types as E
 import temp_hp
 import wild_shape
-from combat_attack_roll import build_attack_dice_roll_payload
 from combat_damage_events import record_damage_event
 from combat_damage_results import AutomaticDamageResult, SaveDamageResult, attack_fields
 from combat_damage_settlement import apply_attack_result as apply_attack_result
@@ -31,6 +30,7 @@ from combat_reaction_defense import halve_psychic
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_ui_update import build_combat_ui_update
 from combat_zero_hp import _after_hp_change, _handle_hp_zero
+from dice_roll_payloads import build_attack_dice_roll_payload
 from patron_combat_edges import reward_worthy_foe
 from patron_zero_hp import trigger_damage_gifts
 from session_data import CombatParticipant, SessionData

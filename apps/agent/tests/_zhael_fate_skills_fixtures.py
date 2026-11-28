@@ -7,6 +7,8 @@ import pytest
 from _patron_engine_fixtures import configure
 from _zhael_fate_fixtures import defend, game_tools
 from acceptance._capstone_helpers import _build_state, _enemy, _player
+from livekit.agents.llm import ToolError
+from sample_fixtures import published_payloads
 from test_aelora_gift import _live_party
 from voice_condition_fixtures import place_actors
 
@@ -179,3 +181,16 @@ async def quest_stage(player_id, quest_id):
 async def quantity(player_id, item_id):
     inventory_item = await db_queries.get_inventory_item(player_id, item_id)
     return inventory_item["quantity"] if inventory_item is not None else 0
+
+
+def event_types(session):
+    return [event["type"] for event in published_payloads(session.room)]
+
+
+async def keep(call, offer):
+    choice = {"id": FATE, "offer_id": offer["offer_id"]}
+    await call(0, "activate", **choice)
+    result = await call(0, "activate", **choice, keep="reroll")
+    with pytest.raises(ToolError, match="current Fate"):
+        await call(0, "activate", **choice, keep="reroll")
+    return result

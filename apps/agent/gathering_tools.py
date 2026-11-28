@@ -33,6 +33,7 @@ from action_sound_content import publish_action_sound
 from combat_terrain import skill_natural_terrain
 from condition_consume import consume_beneficial_conditions, serialize_combat_check
 from db_errors import validated_player_conditions
+from dice_roll_payloads import build_skill_dice_roll_payload
 from game_events import publish_game_event, publish_hidden_revealed
 from inventory_refresh import publish_inventory
 from session_data import SessionData
@@ -248,15 +249,13 @@ async def _finish_gather(
         await publish_game_event(
             session.room,
             E.DICE_ROLL,
-            {
-                "roll_type": "gathering_check",
-                "skill": skill,
-                "roll": roll.roll,
-                "total": roll.total,
-                "success": success,
-                "dramatic": result.dramatic,
-                "context": result.context,
-            },
+            build_skill_dice_roll_payload(
+                roll,
+                roll_type="gathering_check",
+                success=success,
+                dramatic=result.dramatic,
+                context=result.context,
+            ),
             event_bus=session.event_bus,
         )
 
