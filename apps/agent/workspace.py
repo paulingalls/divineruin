@@ -45,14 +45,18 @@ class RentalQuote:
     reason: str  # "" when available
 
 
-def whole_silver(base_sp: int, multiplier: float) -> int:
+def whole_silver(base_sp: int, multiplier: float, *additional_multipliers: float) -> int:
     """Round a multiplied integer price half up to whole silver."""
     if isinstance(base_sp, bool) or not isinstance(base_sp, int):
         raise ValueError("base_sp must be a non-negative integer")
     if base_sp < 0:
         raise ValueError("base_sp must be a non-negative integer")
     basis_points = round(multiplier * 10_000)
-    result = (2 * base_sp * basis_points + 10_000) // 20_000
+    scale = 10_000
+    for extra in additional_multipliers:
+        basis_points *= round(extra * 10_000)
+        scale *= 10_000
+    result = (2 * base_sp * basis_points + scale) // (2 * scale)
     if result > 2**53 - 1:
         raise OverflowError("whole-silver result exceeds Number.MAX_SAFE_INTEGER")
     return result

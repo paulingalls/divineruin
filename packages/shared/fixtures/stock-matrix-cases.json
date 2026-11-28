@@ -1,0 +1,44 @@
+{
+  "columns": ["prosperous", "struggling", "military", "trade_hub", "frontier", "corrupt"],
+  "matrix": {
+    "hamlet": {
+      "generalStock": [15, 6, 12, 15, 6, 3],
+      "armsStock": [15, 6, 18, 15, 6, 3],
+      "generalGold": [15, 5, 10, 13, 8, 3],
+      "armsGold": [null, null, null, null, null, null]
+    },
+    "village": {
+      "generalStock": [15, 6, 12, 15, 6, 3],
+      "armsStock": [15, 6, 18, 15, 6, 3],
+      "generalGold": [38, 13, 25, 31, 19, 6],
+      "armsGold": [75, 25, 100, 63, 38, 13]
+    },
+    "town": {
+      "generalStock": [15, 6, 12, 15, 6, 3],
+      "armsStock": [15, 6, 18, 15, 6, 3],
+      "generalGold": [113, 38, 75, 94, 56, 19],
+      "armsGold": [225, 75, 300, 188, 113, 38]
+    },
+    "city": {
+      "generalStock": [15, 6, 12, 15, 6, 3],
+      "armsStock": [15, 6, 18, 15, 6, 3],
+      "generalGold": [300, 100, 200, 250, 150, 50],
+      "armsGold": [600, 200, 800, 500, 300, 100]
+    },
+    "capital": {
+      "generalStock": [20, 8, 16, 20, 8, 4],
+      "armsStock": [20, 8, 24, 20, 8, 4],
+      "generalGold": [750, 250, 500, 625, 375, 125],
+      "armsGold": [1500, 500, 2000, 1250, 750, 250]
+    }
+  },
+  "additionalM62Traits": {
+    "scholarly": { "generalStock": 12, "armsStock": 12, "generalGold": 200, "armsGold": 400 },
+    "devout": { "generalStock": 12, "armsStock": 12, "generalGold": 200, "armsGold": 400 },
+    "refuge": { "generalStock": 12, "armsStock": 12, "generalGold": 200, "armsGold": 400 }
+  },
+  "combinedGold": [
+    { "traits": ["prosperous", "military"], "generalGold": 300, "armsGold": 1200 },
+    { "traits": ["prosperous", "frontier"], "generalGold": 225, "armsGold": 450 }
+  ]
+}

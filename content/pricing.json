@@ -17,6 +17,7 @@
       "village": { "general": 25, "specialist": 50, "exotic": null, "black_market": null },
       "town": { "general": 75, "specialist": 150, "exotic": 200, "black_market": 100 },
       "city": { "general": 200, "specialist": 400, "exotic": 600, "black_market": 300 },
+      "capital": { "general": 500, "specialist": 1000, "exotic": 1500, "black_market": 800 },
       "keldaran_hold": { "general": 200, "specialist": 400, "exotic": 600, "black_market": 300 }
     },
     "merchant_gold_personality_multipliers": {
@@ -27,7 +28,44 @@
       "corrupt": 0.25,
       "devout": 1,
       "frontier": 0.75,
-      "refuge": 1
+      "refuge": 1,
+      "trade_hub": 1.25
+    },
+    "stock_modifiers": {
+      "prosperous": {
+        "quantity_multiplier": 1.25,
+        "tier_3_allowed": true,
+        "tier_3_chance_bonus": 0.15
+      },
+      "struggling": {
+        "quantity_multiplier": 0.5,
+        "tier_3_allowed": false,
+        "tier_3_chance_bonus": 0
+      },
+      "military": {
+        "quantity_multiplier": {
+          "weapons_armor_basic": 1.5,
+          "weapons_armor_quality": 1.5,
+          "alchemical_supplies_common": 0.75,
+          "exotic_goods": 0.75,
+          "jeweler_goods": 0.75,
+          "general_supplies": 1,
+          "temple_supplies": 1,
+          "black_market": 1
+        },
+        "tier_3_allowed": true,
+        "tier_3_chance_bonus": 0
+      },
+      "trade_hub": {
+        "quantity_multiplier": 1.25,
+        "tier_3_allowed": true,
+        "tier_3_chance_bonus": 0
+      },
+      "frontier": { "quantity_multiplier": 0.5, "tier_3_allowed": false, "tier_3_chance_bonus": 0 },
+      "corrupt": { "quantity_multiplier": 0.25, "tier_3_allowed": true, "tier_3_chance_bonus": 0 },
+      "scholarly": { "quantity_multiplier": 1, "tier_3_allowed": true, "tier_3_chance_bonus": 0 },
+      "devout": { "quantity_multiplier": 1, "tier_3_allowed": true, "tier_3_chance_bonus": 0 },
+      "refuge": { "quantity_multiplier": 1, "tier_3_allowed": true, "tier_3_chance_bonus": 0 }
     }
   }
 ]

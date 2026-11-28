@@ -264,9 +264,9 @@ Content/spec divergence: spec uses **Thornwatch + Merchant Guild** as worked exa
 - Tier classification on `Item` schema OR on pool entries
 - 7 inventory pools (`general_supplies`, `weapons_armor_basic`, `weapons_armor_quality`, `alchemical_supplies_common`, `exotic_goods`, `jeweler_goods`, `black_market`)
 - Pool schema with `tier_1_items[]` + `tier_2_items[{item_id, quantity_by_settlement: {hamlet, village, town, city}}]` + `tier_3_items[{item_id, settlements, presence_chance, restock_check, rotation_group?, quantity?}]`
-- 5 settlement size multipliers (Hamlet 0.25× / Village 0.5× / Town 1.0× / City 1.5× / Capital 2.0×)
-- 6 personality modifiers (Prosperous +25% / Struggling -50% / Military +50% weapons /-25% civilian / Trade Hub +25% all / Isolated -50% T2 + 25% price markup / Cursed -75%)
-- `Location.size: enum(hamlet|village|town|city|capital)` + `Location.personality: enum[]` schema extension
+- Authored Tier 2 ranges for Hamlet, Village, Town and City already include size scaling. Capital scales the city roll by 4/3. Keldaran Hold uses city stock policy.
+- Stock and gold use the authored economy trait modifiers. Frontier carries the spec’s Isolated policy, and Corrupt carries Cursed. Capital and Trade Hub are economy inputs.
+- M6.2 location schema supplies `settlement_tier` and `personality`; policy also accepts composed personality traits.
 - `merchant_state` table: `current_inventory`, `current_gold`, `max_gold`, `last_restock_tick`, `buyback_history`, `consigned_items` (Redis + PostgreSQL backing)
 - Daily gold allocations derive from the trade location’s settlement tier and personality, and the bound pool’s merchant kind and buying rules. Merchant purses and buyback counts refresh on the first eligible sale after Aethos dawn.
 - Daily full-price buyback limits per item: three common weapons, armor or shields, five other common goods, two uncommon goods, or one rare or legendary good. One more unit can be offered at half price.
@@ -279,8 +279,8 @@ Content/spec divergence: spec uses **Thornwatch + Merchant Guild** as worked exa
 **Acceptance criteria:**
 - [x] All 7 spec pools ship in `content/inventory_pools.json` with tiered structure + settlement-keyed quantities. The weapons pools cover 15 standard weapons with 15 masterwork variants in the quality pool’s city and capital rotation. Registered combat checks the +1 damage on normal and critical hits. Registered sales check each variant’s price and settlement.
 - [x] `inventory_pool` field populated on every merchant NPC in `content/npcs.json`. The lead scoped this criterion to Grimjaw, Selene, Maren and Dara. `apps/agent/tests/test_inventory_pools.py` and `apps/server/src/inventory_pools.test.ts` pin the four bindings. `apps/agent/tests/acceptance/test_seed_atomic.py` exercises both reseed validators.
-- [x] Location.size + Location.personality schema extensions; all settlements in `content/locations.json` populated <!-- verified 2026-09-01: shipped by Phase 6 M6.2 as packages/shared/src/entities/location.ts:81-82 settlement_tier?: SettlementSize + personality?: SettlementPersonality, over the exported SETTLEMENT_SIZE_VALUES / SETTLEMENT_PERSONALITY_VALUES arrays; all 13 settlement locations populated (6 dungeon/wilderness deliberately omit both). Test packages/shared/src/entities/location.test.ts:103-133 (13 pass). NAMING/VOCAB DIVERGENCE from this milestone's spec: field is settlement_tier not size; sizes are hamlet|village|town|city|keldaran_hold (capital deferred, keldaran_hold added); personalities are the 8 M6.2 traits (prosperous/struggling/military/scholarly/corrupt/devout/frontier/refuge) not the 6 economy traits (trade_hub/isolated/cursed absent) -- AC4's 5x6 matrix still needs that reconciliation -->
-- [ ] 5×6 size×personality stock multiplier matrix matches spec for both inventory and gold pool
+- [x] Location.size + Location.personality schema extensions; all settlements in `content/locations.json` populated using the M6.2 vocabulary.
+- [x] The 5×6 size and personality matrix matches the stock and gold spec. Python checks stock, including the Tier 3 access and slot rules. Python and TypeScript check each gold allocation and reject malformed modifiers on reseed.
 - [ ] `merchant_state` table reads/writes for current_inventory + current_gold + buyback_history + consigned_items
 - [ ] `daily_restock_at_dawn` resets all merchants per spec algorithm; matches deterministic output for fixed seed
 - [ ] `attempt_purchase` enforces stock check + gold check + capacity check; emits sink_event (M9.8 dep)
@@ -304,7 +304,7 @@ Content/spec divergence: spec uses **Thornwatch + Merchant Guild** as worked exa
 
 The seven spec pools and temple supplies ship in `inventory_pools` with tiered availability and settlement-keyed quantities. Grimjaw, Selene, Maren and Dara each bind one pool. Both seeders check item IDs and merchant bindings, and the reseed retires the three superseded pool rows in the same transaction as the replacement catalog.
 
-Remaining stock work includes the settlement size and personality matrix, daily inventory restock, player purchases, and traveling merchants.
+Remaining stock work includes daily inventory restock, player purchases, and traveling merchants.
 
 ---
 
