@@ -240,9 +240,7 @@ async def activate(session: SessionData) -> str:
             saved = previous["players"]
             roster = (members.keys() & saved.keys()) - set(committed.departed_player_ids)
             restored = _restore_combat(previous["combat"], committed)
-            if saved.keys() - roster or any(
-                p.id not in roster for p in committed.participants if p.type in ("player", "temporary_hollowed")
-            ):
+            if saved.keys() - roster:
                 _require_pocket_rewind(restored, committed)
             inventory_before = await checkpoints.read_inventory(conn, sorted(roster))
             restored_players = {}
