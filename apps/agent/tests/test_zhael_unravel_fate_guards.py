@@ -1,4 +1,5 @@
-from copy import deepcopy
+from types import SimpleNamespace
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -18,18 +19,16 @@ from _zhael_unravel_fixtures import (
 )
 from _zhael_unravel_fixtures import unravel as unravel
 from acceptance._capstone_helpers import _d20, _damage_die
-from acceptance._spell_hostile_condition_helpers import receipt
 from acceptance.test_departed_member_leaves_fight_guards import leave_unravel_guest
 from acceptance.test_still_anchors import strike
 from combat._round_checkpoint_helpers import Fight
+from livekit import rtc
 from livekit.agents.llm import ToolError
-from test_aelora_gift import _live_party
 
 import character_spells
-import conditions
 from check_resolution import D20Roll
-from combat_zero_hp import _handle_hp_zero
 from encounter_roles import EncounterRole
+from participant_lifecycle import _setup_party_join
 from session_data import CompanionState
 from session_hydration import hydrate_patron_ability_session
 
@@ -106,91 +105,37 @@ async def test_refused_declaration_leaves_rewind_available(unravel) -> None:
     assert_restored(fight, await durable(fight), old["round_checkpoints"][0], actor)
 
 
-async def join_combat(fight: Fight) -> str:
-    joiner = await fight.join()
-    state = fight.session.combat_state
-    assert state is not None and state.spatial is not None
-    host, ally = fight.ids[:2]
-    participant = deepcopy(state.get_participant(ally))
-    assert participant is not None
-    participant.id = joiner
-    participant.hp_current = 3
-    await patch_player(fight, joiner, hp={"current": participant.hp_current, "max": participant.hp_max})
-    state.participants.insert(1, participant)
-    state.initiative_order.insert(1, joiner)
-    state.spatial["positions"][joiner] = dict(state.spatial["positions"][host], y=1)
-    state.spatial["speeds"][joiner] = state.spatial["speeds"][ally]
+async def join_party(fight: Fight) -> str:
+    joiner = await fight.add_player(fight.session.location_id)
+    await patch_player(fight, joiner, hp={"current": 3, "max": 20})
     assert fight.lifecycle is not None
     await fight.lifecycle.aclose()
-    fight.lifecycle = _live_party(fight.session, *fight.ids)
-    await fight.write_row(state.to_dict())
+    fight.session.room.remote_participants = {pid: SimpleNamespace(identity=pid) for pid in fight.ids[:-1]}
+    fight.lifecycle = _setup_party_join(fight.session.room, fight.session)
+    fight.lifecycle._on_connected(cast(rtc.RemoteParticipant, SimpleNamespace(identity=joiner)))
+    assert await fight.lifecycle.authorize(joiner) and fight.session.party.contains(joiner)
+    assert fight.session.combat_state.get_participant(joiner) is None
     return joiner
 
 
-@pytest.mark.parametrize(("spell", "cost"), [("divine_heal_wounds", 2), ("divine_divine_ward", 4)])
-async def test_rewind_refuses_to_split_a_cast_on_a_mid_round_joiner(unravel: Fight, spell: str, cost: int) -> None:
-    fight = unravel
-    host = fight.ids[0]
-    await patch_player(fight, host, **{"class": "cleric", "level": 10, "focus": {"current": 10, "max": 10}})
-    await character_spells.record_learned(host, spell, "training", is_prepared=True, conn=fight.pool)
-    opening_row = await opening(fight, 1)
-    start = opening_row["round_checkpoints"][-1]
-    starting_focus = start["players"][host]["data"]["focus"]["current"]
-    joiner = await join_combat(fight)
-    await fight.declare(
-        {"kind": "ability", "actor_id": host, "action": spell, "targets": [joiner], "argument_type": ""},
-        *(defend(pid) for pid in (*fight.ids[1:], "mawling_1", "mawling_2")),
-    )
-    cast = receipt((await fight.call("resolve_phase"))["packets"], host)
-    await fight.finish_round(3)
-    await fight.reload()
-    before = await durable(fight)
-    previous, current = before["combat"]["round_checkpoints"]
-    assert previous == start and joiner not in previous["players"] and joiner in current["players"]
-    assert before["players"][host]["data"]["focus"]["current"] == starting_focus - cost
-    participant = fight.session.combat_state.get_participant(joiner)
-    if spell == "divine_heal_wounds":
-        (heal,) = cast["healing_results"]
-        assert heal["target_id"] == joiner and heal["healed"] > 0
-        assert before["players"][joiner]["data"]["hp"]["current"] == participant.hp_current == 3 + heal["healed"]
-    else:
-        assert cast["condition_targets"] == [joiner]
-        assert any(c["type"] == "divine_ward" for c in participant.conditions)
-
-    try:
-        await assert_refused(fight, JOINER_REFUSAL, host)
-    finally:
-        await fight.reload()
-        assert await durable(fight) == before
-
-
-@pytest.mark.parametrize("arrival", ["previous", "current", "echo"])
+@pytest.mark.parametrize("arrival", ["previous", "current"])
 async def test_rewind_refuses_even_when_joiner_spent_nothing(unravel: Fight, arrival: str) -> None:
     fight = unravel
     await opening(fight, 2 if arrival == "current" else 1)
-    joiner = await join_combat(fight)
+    joiner = await join_party(fight)
     await favor(fight, joiner)
     before_turn = (await durable(fight))["players"][joiner]["data"]
-    if arrival == "echo":
-        state = fight.session.combat_state
-        guest = state.get_participant(joiner)
-        guest.conditions = conditions.apply_condition(conditions.apply_condition([], "hollowed"), "hollowed")
-        guest.hp_current = 0
-        _handle_hp_zero(fight.session, state, guest, overkill=0, was_fallen=False, hp_status="fallen", sounds=[])
-        await fight.write_row(state.to_dict())
-    if arrival != "current":
+    if arrival == "previous":
         await fight.declare()
         await fight.finish_round(3)
 
     await fight.reload()
     before = await durable(fight)
     previous, current = before["combat"]["round_checkpoints"]
-    assert joiner not in previous["players"] and (joiner in current["players"]) == (arrival != "current")
-    assert fight.session.combat_state.get_participant(joiner).type == (
-        "temporary_hollowed" if arrival == "echo" else "player"
-    )
-    if arrival != "echo":
-        assert before["players"][joiner]["data"] == before_turn
+    assert joiner not in previous["players"] and (joiner in current["players"]) == (arrival == "previous")
+    assert fight.session.combat_state.get_participant(joiner) is None
+    spent = {key for key in before_turn.keys() | before["players"][joiner]["data"].keys() if key != "resonance"}
+    assert all(before["players"][joiner]["data"].get(key) == before_turn.get(key) for key in spent)
     try:
         await assert_refused(fight, JOINER_REFUSAL)
         if arrival == "previous":

@@ -217,10 +217,7 @@ async def activate(session: SessionData) -> str:
             if committed.combat_id != live.combat_id or committed.round_number != live.round_number:
                 raise ToolError("The fight opening changed. Reload it before using Unravel Fate.")
             previous = _previous_opening(committed)
-            if any(
-                p.type in ("player", "temporary_hollowed") and p.id not in previous["players"]
-                for p in committed.participants
-            ):
+            if members.keys() - previous["players"].keys():
                 raise ToolError("Unravel Fate cannot rewind this round. Someone joined the fight after it began.")
             for pid, player in current.items():
                 marker = breach_marker(player)
