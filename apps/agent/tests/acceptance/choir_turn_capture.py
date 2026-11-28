@@ -167,15 +167,24 @@ class ChoirTurnCapture:
         if turn is not None:
             turn.record(
                 stage,
-                f"call_id={output.call_id} name={output.name!r} is_error={output.is_error} output={output.output!r}",
+                f"call_id={output.call_id} name={output.name!r} is_error={output.is_error} "
+                f"output_len={len(output.output)} output={output.output[:300]!r}",
             )
 
     def timeout_message(self, ordinal: int, headline: str) -> str:
         missing = self.turns[ordinal]
-        out = StringIO()
-        print(f"{headline} (expected tool {missing.tool}, authenticated player {self.player})", file=out)
+        turns = StringIO()
+        last = "none"
         for i, turn in self.turns.items():
-            self._dump_turn(out, turn, self.turns.get(i + 1))
+            reached = self._dump_turn(turns, turn, self.turns.get(i + 1))
+            if i == ordinal:
+                last = reached
+        out = StringIO()
+        print(
+            f"{headline} (expected tool {missing.tool}, authenticated player {self.player}, last_stage={last})",
+            file=out,
+        )
+        out.write(turns.getvalue())
         if self.unassigned_input:
             print(f"\nInput outside the expected player's pending turn: {self.unassigned_input!r}", file=out)
         manager = self.manager
@@ -205,7 +214,7 @@ class ChoirTurnCapture:
             if frame is not None:
                 traceback.print_stack(frame, limit=1, file=out)
 
-    def _dump_turn(self, out: StringIO, turn: Turn, following: Turn | None) -> None:
+    def _dump_turn(self, out: StringIO, turn: Turn, following: Turn | None) -> str:
         stop = following.transcript_offset if following is not None else len(self.transcripts)
         received = [
             f"identity={heard.participant_identity!r} generation={heard.generation} text={heard.text!r}"
@@ -228,6 +237,7 @@ class ChoirTurnCapture:
                 print(f"  {stage}: absent{suffix}", file=out)
         for observed, branch in turn.stages.get("model_branch", ()):
             print(f"  model_branch: +{observed - turn.started:.3f}s {branch}", file=out)
+        return last
 
     def close(self) -> None:
         self.cleanup.close()
