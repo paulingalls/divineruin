@@ -10,6 +10,7 @@ from livekit.agents.llm import ToolError
 
 import ability_persistence
 import check_resolution
+import check_skill
 import combat_resolution
 import communication_voice_rules
 import condition_voice_rules
@@ -156,8 +157,16 @@ async def _resolve_deescalation_packet(
             combat_resolution.DEESCALATE_BASE_DC,
             rng,
             ally_present=session.allies_present_for(attacker.id),
-            natural_terrain=False,
             hearing_only=False,
+            **await check_skill.skill_context(
+                session,
+                current_player,
+                "persuasion",
+                player_id=attacker.id,
+                conn=conn,
+                combat_state=state,
+                terrain_exclusion="spoken_combat_argument",
+            ),
         )
 
     if progress is not None:

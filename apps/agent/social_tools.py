@@ -18,6 +18,7 @@ from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import check_skill
 import communication_voice_rules
 import condition_voice_rules
 import db
@@ -117,11 +118,13 @@ async def _check_social_impl(
         binding["dc"] if binding is not None else base_dc,
         rng,
         ally_present=session.allies_present_for(player_id),
-        natural_terrain=False,
         hearing_only=False,
         synergy_context=synergy_context,
         player_id=player_id,
         in_combat=session.combat_state is not None,
+        **await check_skill.skill_context(
+            session, player, skill_lower, player_id=player_id, content_mod=content, terrain_exclusion="social_scene"
+        ),
     )
     scope = SkillScope.capture(session, player_id)
 

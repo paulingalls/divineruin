@@ -19,6 +19,7 @@ from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import check_skill
 import condition_voice_rules
 import db
 import db_content_queries
@@ -30,7 +31,6 @@ import event_types as E
 import gathering
 import rules_engine
 from action_sound_content import publish_action_sound
-from combat_terrain import skill_natural_terrain
 from condition_consume import consume_beneficial_conditions, serialize_combat_check
 from db_errors import validated_player_conditions
 from dice_roll_payloads import build_skill_dice_roll_payload
@@ -103,8 +103,8 @@ async def _check_gather_impl(
         dc,
         rng,
         ally_present=session.allies_present_for(player_id),
-        natural_terrain=await skill_natural_terrain(session, player, skill, content_mod=content),
         hearing_only=False,
+        **await check_skill.skill_context(session, player, skill, player_id=player_id, content_mod=content),
     )
     scope = SkillScope.capture(session, player_id)
     resource_table = {rarity: tuple(ids) for rarity, ids in (resource_table_raw or {}).items()}

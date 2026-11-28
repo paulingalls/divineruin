@@ -154,7 +154,7 @@ async def test_choir_search_carries_uncharted_senses(first_stay, bonus, mock_com
     decl = resolve_declaration({"type": "interact", "action": "choir_search_perception", "target_id": "choir_sound"})
     with (
         patch("check_resolution.dice_roll", return_value=_d20(10)),
-        patch("choir_encounter.check_first_stay", return_value=first_stay),
+        patch("check_skill.check_first_stay", return_value=first_stay),
     ):
         packet = await combat_packet._resolve_one_packet(
             ctx.userdata,
