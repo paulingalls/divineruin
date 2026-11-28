@@ -37,6 +37,36 @@ def test_spec_pool_catalog():
     assert stocked == CASES["items"].keys()
 
 
+def test_masterwork_rotation_matches_the_standard_weapons() -> None:
+    items = catalog_rows(authored("items.json"))
+    by_id = {row["id"]: row["data"] for row in items}
+    pools = parse_inventory_pools(catalog_rows(authored("inventory_pools.json")), items)
+    weapons = [pools[f"weapons_armor_{grade}"] for grade in ("basic", "quality")]
+    variants = CASES["masterwork_variants"]
+    standard = {
+        row["item_id"] for pool in weapons for row in pool["tier_2_items"] if by_id[row["item_id"]]["type"] == "weapon"
+    }
+    assert len(variants) == len(set(variants.values())) == 15
+    assert standard == variants.keys()
+    rotation = [
+        row for pool in weapons for row in pool["tier_3_items"] if row.get("rotation_group") == "masterwork_weapons"
+    ]
+    assert sorted(row["item_id"] for row in rotation) == sorted(variants.values())
+    for row in rotation:
+        assert row["settlements"] == ["city", "capital"]
+        assert row["presence_chance"] == 1
+        assert row["restock_check"] == "weekly"
+    for base_id, variant_id in variants.items():
+        base, variant = by_id[base_id], by_id[variant_id]
+        assert validate_weapon_profile(variant_id, variant) == validate_weapon_profile(base_id, base)
+        assert variant["damage_bonus"] == 1
+        assert "well-balanced" in variant["description"]
+        assert variant["value_base"] > base["value_base"]
+        for field in ("damage_dice", "properties"):
+            assert variant[field] == base[field]
+        assert variant["effects"] == base["effects"]
+
+
 @pytest.mark.parametrize("case", CASES["malformed"])
 def test_pool_parser_refuses_malformed_entry(case):
     pools = authored("inventory_pools.json")

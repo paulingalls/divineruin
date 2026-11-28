@@ -3720,14 +3720,509 @@
         ]
       }
     ],
-    "value_base": 200,
+    "value_base": 400,
     "value_modifiers": {},
     "damage_dice": "1d8",
     "properties": [
       "versatile"
     ],
     "durability_tier": "standard",
-    "crafting_use": "trade"
+    "crafting_use": "trade",
+    "damage_bonus": 1
+  },
+  {
+    "id": "masterwork_spear",
+    "name": "Masterwork Spear",
+    "tier": 2,
+    "type": "weapon",
+    "weapon_category": "simple",
+    "weapon_range": "melee",
+    "weapon_kind": "spear",
+    "rarity": "uncommon",
+    "description": "The shaft settles in your palm, well-balanced just behind the head.",
+    "tags": [
+      "weapon",
+      "melee"
+    ],
+    "weight": 3,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage_type": "piercing",
+        "properties": [
+          "versatile",
+          "thrown"
+        ],
+        "versatile_damage": "1d8",
+        "range": "20/60"
+      }
+    ],
+    "value_base": 2,
+    "damage_dice": "1d6",
+    "properties": [
+      "versatile",
+      "thrown"
+    ],
+    "durability_tier": "standard",
+    "damage_bonus": 1
+  },
+  {
+    "id": "masterwork_dagger",
+    "name": "Masterwork Dagger",
+    "tier": 2,
+    "type": "weapon",
+    "weapon_category": "simple",
+    "weapon_range": "melee",
+    "weapon_kind": "dagger",
+    "rarity": "uncommon",
+    "description": "A well-balanced dagger that turns lightly between your fingers.",
+    "tags": [
+      "weapon",
+      "melee",
+      "ranged",
+      "basic"
+    ],
+    "weight": 1.0,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage_type": "piercing",
+        "properties": [
+          "light",
+          "finesse",
+          "thrown"
+        ]
+      }
+    ],
+    "value_base": 100,
+    "value_modifiers": {},
+    "damage_dice": "1d4",
+    "properties": [
+      "light",
+      "finesse",
+      "thrown"
+    ],
+    "durability_tier": "standard",
+    "crafting_use": "trade",
+    "damage_bonus": 1
+  },
+  {
+    "id": "masterwork_handaxe",
+    "name": "Masterwork Handaxe",
+    "tier": 2,
+    "type": "weapon",
+    "weapon_category": "simple",
+    "weapon_range": "melee",
+    "weapon_kind": "handaxe",
+    "rarity": "uncommon",
+    "description": "The haft sits steady in your fist. This handaxe is well-balanced even on a short swing.",
+    "tags": [
+      "weapon",
+      "melee"
+    ],
+    "weight": 2,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage_type": "slashing",
+        "properties": [
+          "light",
+          "thrown"
+        ],
+        "range": "20/60"
+      }
+    ],
+    "value_base": 4,
+    "damage_dice": "1d6",
+    "properties": [
+      "light",
+      "thrown"
+    ],
+    "durability_tier": "standard",
+    "damage_bonus": 1
+  },
+  {
+    "id": "masterwork_mace",
+    "name": "Masterwork Mace",
+    "tier": 2,
+    "type": "weapon",
+    "weapon_category": "simple",
+    "weapon_range": "melee",
+    "weapon_kind": "mace",
+    "rarity": "uncommon",
+    "description": "The weight pulls straight through the grip of this well-balanced mace.",
+    "tags": [
+      "weapon",
+      "melee",
+      "basic"
+    ],
+    "weight": 4,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage_type": "bludgeoning",
+        "properties": []
+      }
+    ],
+    "value_base": 10,
+    "damage_dice": "1d6",
+    "properties": [],
+    "durability_tier": "standard",
+    "damage_bonus": 1
+  },
+  {
+    "id": "masterwork_shortsword",
+    "name": "Masterwork Shortsword",
+    "tier": 2,
+    "type": "weapon",
+    "weapon_category": "martial",
+    "weapon_range": "melee",
+    "weapon_kind": "shortsword",
+    "rarity": "uncommon",
+    "description": "This well-balanced shortsword changes direction at a flick of the wrist.",
+    "tags": [
+      "weapon",
+      "melee",
+      "basic"
+    ],
+    "weight": 2.0,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage_type": "piercing",
+        "properties": [
+          "light",
+          "finesse"
+        ]
+      }
+    ],
+    "value_base": 200,
+    "value_modifiers": {},
+    "damage_dice": "1d6",
+    "properties": [
+      "light",
+      "finesse"
+    ],
+    "durability_tier": "standard",
+    "crafting_use": "trade",
+    "damage_bonus": 1
+  },
+  {
+    "id": "masterwork_battleaxe",
+    "name": "Masterwork Battleaxe",
+    "tier": 2,
+    "type": "weapon",
+    "weapon_category": "martial",
+    "weapon_range": "melee",
+    "weapon_kind": "battleaxe",
+    "rarity": "uncommon",
+    "description": "A well-balanced battleaxe. The head follows your hands without a tug.",
+    "tags": [
+      "weapon",
+      "melee"
+    ],
+    "weight": 4,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage_type": "slashing",
+        "properties": [
+          "versatile"
+        ],
+        "versatile_damage": "1d10"
+      }
+    ],
+    "value_base": 16,
+    "damage_dice": "1d8",
+    "properties": [
+      "versatile"
+    ],
+    "durability_tier": "standard",
+    "damage_bonus": 1
+  },
+  {
+    "id": "masterwork_shortbow",
+    "name": "Masterwork Shortbow",
+    "tier": 2,
+    "type": "weapon",
+    "weapon_category": "simple",
+    "weapon_range": "ranged",
+    "weapon_kind": "shortbow",
+    "rarity": "uncommon",
+    "description": "The string gives a clean twang. This well-balanced shortbow settles quickly after release.",
+    "tags": [
+      "weapon",
+      "ranged"
+    ],
+    "weight": 2,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage_type": "piercing",
+        "properties": [
+          "two-handed",
+          "ammunition"
+        ],
+        "range": "80/320"
+      }
+    ],
+    "value_base": 30,
+    "damage_dice": "1d6",
+    "properties": [
+      "two-handed",
+      "ammunition"
+    ],
+    "durability_tier": "standard",
+    "damage_bonus": 1
+  },
+  {
+    "id": "masterwork_light_crossbow",
+    "name": "Masterwork Light Crossbow",
+    "tier": 2,
+    "type": "weapon",
+    "weapon_category": "simple",
+    "weapon_range": "ranged",
+    "weapon_kind": "light_crossbow",
+    "rarity": "uncommon",
+    "description": "The latch clicks softly. This well-balanced light crossbow sits level against your shoulder.",
+    "tags": [
+      "weapon",
+      "ranged"
+    ],
+    "weight": 5,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage_type": "piercing",
+        "properties": [
+          "two-handed",
+          "loading",
+          "ammunition"
+        ],
+        "range": "80/320"
+      }
+    ],
+    "value_base": 30,
+    "damage_dice": "1d8",
+    "properties": [
+      "two-handed",
+      "loading",
+      "ammunition"
+    ],
+    "durability_tier": "standard",
+    "damage_bonus": 1
+  },
+  {
+    "id": "masterwork_rapier",
+    "name": "Masterwork Rapier",
+    "tier": 2,
+    "type": "weapon",
+    "weapon_category": "martial",
+    "weapon_range": "melee",
+    "weapon_kind": "rapier",
+    "rarity": "uncommon",
+    "description": "This well-balanced rapier follows the smallest turn of your wrist.",
+    "tags": [
+      "weapon",
+      "melee"
+    ],
+    "weight": 2,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage_type": "piercing",
+        "properties": [
+          "finesse"
+        ]
+      }
+    ],
+    "value_base": 30,
+    "damage_dice": "1d8",
+    "properties": [
+      "finesse"
+    ],
+    "durability_tier": "standard",
+    "damage_bonus": 1
+  },
+  {
+    "id": "masterwork_greatsword",
+    "name": "Masterwork Greatsword",
+    "tier": 2,
+    "type": "weapon",
+    "weapon_category": "martial",
+    "weapon_range": "melee",
+    "weapon_kind": "greatsword",
+    "rarity": "uncommon",
+    "description": "The long blade moves without fighting your grip. It's a well-balanced greatsword.",
+    "tags": [
+      "weapon",
+      "melee"
+    ],
+    "weight": 6,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage_type": "slashing",
+        "properties": [
+          "heavy",
+          "two-handed"
+        ]
+      }
+    ],
+    "value_base": 50,
+    "damage_dice": "2d6",
+    "properties": [
+      "heavy",
+      "two-handed"
+    ],
+    "durability_tier": "standard",
+    "damage_bonus": 1
+  },
+  {
+    "id": "masterwork_warhammer",
+    "name": "Masterwork Warhammer",
+    "tier": 2,
+    "type": "weapon",
+    "weapon_category": "martial",
+    "weapon_range": "melee",
+    "weapon_kind": "warhammer",
+    "rarity": "uncommon",
+    "description": "A well-balanced warhammer with a haft that stays steady as you swing.",
+    "tags": [
+      "weapon",
+      "melee"
+    ],
+    "weight": 3,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage_type": "bludgeoning",
+        "properties": [
+          "versatile"
+        ],
+        "versatile_damage": "1d10"
+      }
+    ],
+    "value_base": 20,
+    "damage_dice": "1d8",
+    "properties": [
+      "versatile"
+    ],
+    "durability_tier": "standard",
+    "damage_bonus": 1
+  },
+  {
+    "id": "masterwork_longbow",
+    "name": "Masterwork Longbow",
+    "tier": 2,
+    "type": "weapon",
+    "weapon_category": "martial",
+    "weapon_range": "ranged",
+    "weapon_kind": "longbow",
+    "rarity": "uncommon",
+    "description": "The string hums at the draw. The limbs of this well-balanced longbow pull evenly.",
+    "tags": [
+      "weapon",
+      "ranged"
+    ],
+    "weight": 2,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage_type": "piercing",
+        "properties": [
+          "two-handed",
+          "heavy",
+          "ammunition"
+        ],
+        "range": "150/600"
+      }
+    ],
+    "value_base": 60,
+    "damage_dice": "1d8",
+    "properties": [
+      "two-handed",
+      "heavy",
+      "ammunition"
+    ],
+    "durability_tier": "standard",
+    "damage_bonus": 1
+  },
+  {
+    "id": "masterwork_heavy_crossbow",
+    "name": "Masterwork Heavy Crossbow",
+    "tier": 2,
+    "type": "weapon",
+    "weapon_category": "martial",
+    "weapon_range": "ranged",
+    "weapon_kind": "heavy_crossbow",
+    "rarity": "uncommon",
+    "description": "The crank clicks into place. This well-balanced heavy crossbow settles firmly into your shoulder.",
+    "tags": [
+      "weapon",
+      "ranged"
+    ],
+    "weight": 18,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage_type": "piercing",
+        "properties": [
+          "two-handed",
+          "heavy",
+          "loading",
+          "ammunition"
+        ],
+        "range": "100/400"
+      }
+    ],
+    "value_base": 60,
+    "damage_dice": "1d10",
+    "properties": [
+      "two-handed",
+      "heavy",
+      "loading",
+      "ammunition"
+    ],
+    "durability_tier": "standard",
+    "damage_bonus": 1
+  },
+  {
+    "id": "masterwork_hand_crossbow",
+    "name": "Masterwork Hand Crossbow",
+    "tier": 2,
+    "type": "weapon",
+    "weapon_category": "martial",
+    "weapon_range": "ranged",
+    "weapon_kind": "hand_crossbow",
+    "rarity": "uncommon",
+    "description": "The trigger clicks crisp and short. This well-balanced hand crossbow holds steady in one hand.",
+    "tags": [
+      "weapon",
+      "ranged"
+    ],
+    "weight": 3,
+    "effects": [
+      {
+        "type": "weapon",
+        "damage_type": "piercing",
+        "properties": [
+          "light",
+          "loading",
+          "ammunition"
+        ],
+        "range": "30/120"
+      }
+    ],
+    "value_base": 80,
+    "damage_dice": "1d6",
+    "properties": [
+      "light",
+      "loading",
+      "ammunition"
+    ],
+    "durability_tier": "standard",
+    "damage_bonus": 1
   },
   {
     "id": "treasure_map_intel",

@@ -95,6 +95,32 @@ async def test_sale_commits_receipt_and_snapshots(
         ]
 
 
+async def test_masterwork_sales_pay_each_variant_value(reset_db_pool: str) -> None:
+    root = Path(__file__).resolve().parents[4]
+    fixture = json.loads((root / "packages/shared/fixtures/inventory-pool-cases.json").read_text())
+    pricing = json.loads((root / "content/pricing.json").read_text())[0]
+    sale_rate = pricing["sale_rate"] * pricing["sale_disposition_multipliers"]["neutral"]
+    variants = fixture["spec_encodings"]["aliases"]["rotations"]["Quality / masterwork variant"]
+    assert len(set(variants)) == len(variants) == 15
+    for item_id in variants:
+        async with merchant_session(item=item_id, held=1) as sale:
+            before, inventory = await rows(sale.player_id)
+            assert inventory[(item_id, False)]["quantity"] == 1
+            receipt = await sale.sell(item_id, GRIMJAW, 1)
+            assert not receipt.is_error, (item_id, receipt.output)
+            result = json.loads(receipt.output)
+            expected_sp = int(fixture["items"][item_id]["value_base"] * sale_rate)
+            assert (result["status"], result["item_id"], result["unit_price_sp"], result["total_price_sp"]) == (
+                "sold",
+                item_id,
+                expected_sp,
+                expected_sp,
+            )
+            after, inventory = await rows(sale.player_id)
+            assert after["gold"] == before["gold"] + expected_sp / 10
+            assert (item_id, False) not in inventory
+
+
 async def test_sale_allocates_at_actual_trade_location(reset_db_pool: str) -> None:
     location = "grimjaw_quarters"
     pool = await db.get_pool()

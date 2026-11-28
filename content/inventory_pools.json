@@ -342,6 +342,104 @@
         "presence_chance": 1,
         "restock_check": "weekly",
         "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_spear",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_dagger",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_handaxe",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_mace",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_shortsword",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_battleaxe",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_shortbow",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_light_crossbow",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_rapier",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_greatsword",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_warhammer",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_longbow",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_heavy_crossbow",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_hand_crossbow",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
       }
     ]
   },

@@ -103,7 +103,12 @@ async def test_parsed_catalog_matches_complete_proficiency_table(dev_db_pool, mo
             assert proficient is expected[item_id], (archetype_id, item_id)
             if proficient != has_weapon_proficiency(original, item):
                 changed.add((archetype_id, item_id))
-    assert changed == {(aid, addition["weapon"]) for aid, addition in additions.items()}
+    variants = json.loads((ROOT / "packages/shared/fixtures/inventory-pool-cases.json").read_text())[
+        "masterwork_variants"
+    ]
+    base_changes = {(aid, addition["weapon"]) for aid, addition in additions.items()}
+    variant_changes = {(aid, variants[base]) for aid, base in base_changes if base in variants}
+    assert changed == base_changes | variant_changes
 
 
 @pytest.mark.parametrize("archetype_id", CLASSES)

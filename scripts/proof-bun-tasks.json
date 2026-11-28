@@ -221,6 +221,9 @@
         "imports-of": "apps/server/src/items-load.test.ts"
       },
       {
+        "imports-of": "apps/server/src/items-damage-bonus.test.ts"
+      },
+      {
         "imports-of": "apps/server/src/livekit.test.ts"
       },
       {

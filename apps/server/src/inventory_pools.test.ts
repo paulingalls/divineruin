@@ -52,6 +52,49 @@ test("matches the tiered spec pools, stock catalog, and bindings", () => {
   expect(stocked).toEqual(new Set(authored.keys()));
 });
 
+test("the masterwork rotation mirrors the standard weapon stock", () => {
+  const catalog = parseInventoryPools(rows(pools), itemRows);
+  const weapons = [catalog.get("weapons_armor_basic")!, catalog.get("weapons_armor_quality")!];
+  const byId = new Map<string, unknown>(items.map((row) => [row.id, row]));
+  const variants = Object.entries(cases.masterwork_variants);
+  expect(variants).toHaveLength(15);
+  expect(new Set(variants.map(([, variant]) => variant)).size).toBe(15);
+  const standard = weapons
+    .flatMap((pool) => pool.tier_2_items)
+    .map((row) => row.item_id)
+    .filter((id) => parseItemRow(id, byId.get(id)).type === "weapon");
+  expect(new Set(standard)).toEqual(new Set(variants.map(([base]) => base)));
+
+  const rotation = weapons
+    .flatMap((pool) => pool.tier_3_items)
+    .filter((row) => row.rotation_group === "masterwork_weapons");
+  expect(rotation.map((row) => row.item_id).sort()).toEqual(
+    variants.map(([, variant]) => variant).sort(),
+  );
+  for (const row of rotation) {
+    expect(row.settlements).toEqual(["city", "capital"]);
+    expect(row.presence_chance).toBe(1);
+    expect(row.restock_check).toBe("weekly");
+  }
+  for (const [baseId, variantId] of variants) {
+    const base = parseItemRow(baseId, byId.get(baseId));
+    const variant = parseItemRow(variantId, byId.get(variantId));
+    expect(variant).toHaveProperty("damage_bonus", 1);
+    expect(variant.description).toContain("well-balanced");
+    expect(variant.value_base).toBeGreaterThan(base.value_base);
+    for (const field of [
+      "weapon_category",
+      "weapon_range",
+      "weapon_kind",
+      "damage_dice",
+      "properties",
+    ] as const) {
+      expect(variant[field]).toEqual(base[field]);
+    }
+    expect(variant.effects).toEqual(base.effects);
+  }
+});
+
 for (const row of cases.malformed) {
   test(`refuses ${row.pool} ${row.path.join(".")} ${row.remove ? "missing" : JSON.stringify(row.value)}`, () => {
     const source = structuredClone(pools.find((pool) => pool.id === row.pool)!);
