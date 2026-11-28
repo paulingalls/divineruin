@@ -79,11 +79,6 @@ async def attack_sequence(
                 attacker.conditions = conditions.apply_condition(
                     attacker.conditions, RECKLESS_ASSAULT_RIDER, source=martial
                 )
-    # Encounter-context dramatic signals (M4.5, story-004) the per-attack resolver can't see:
-    # the count of foes still standing as this declaration is resolved (==1 => last enemy), and
-    # whether any attack has resolved this whole combat yet (the opening strike). Computed once
-    # before the swing loop so all swings of an expanded sequence share one verdict.
-    enemies_remaining = sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen)
     is_first_attack = not state.first_attack_resolved
     return await continue_attack(
         session,
@@ -92,7 +87,6 @@ async def attack_sequence(
         attacker,
         target,
         actions,
-        enemies_remaining,
         is_first_attack,
         attack_cursor=attack_cursor,
         movement=movement,
@@ -108,7 +102,6 @@ async def continue_attack(
     attacker,
     target,
     actions,
-    enemies_remaining,
     is_first_attack,
     *,
     attack_cursor,
@@ -148,7 +141,6 @@ async def continue_attack(
         attack_cursor.update(
             actions=actions,
             target_id=anchor.id,
-            enemies_remaining=enemies_remaining,
             is_first_attack=is_first_attack,
             summaries=attack_summaries,
             reveal_receipt=reveal_receipt,
@@ -330,7 +322,6 @@ async def continue_attack(
                 psychic_shield_id=psychic_shield_id,
                 damage_target=damage_target,
                 grapple_blocked=grapple_blocked,
-                enemies_remaining=enemies_remaining,
                 is_first_attack_of_combat=is_first_attack,
                 mutations=mutations,
                 queries=queries,
@@ -358,7 +349,7 @@ async def continue_attack(
                 target_conditions=target.conditions,
             )
             spend_sneak_attack(attacker, state, result)
-            result = promote_attack(result, enemies_remaining, is_first_attack)
+            result = promote_attack(result, state, is_first_attack)
             sub = await apply_rolled_attack(
                 session,
                 attacker,

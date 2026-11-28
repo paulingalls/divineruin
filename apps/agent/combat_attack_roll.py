@@ -1,6 +1,7 @@
 """Shared rolling and persistence of an attack before impact."""
 
 from dataclasses import asdict, replace
+from typing import TYPE_CHECKING
 
 import check_resolution_attack
 import combat_marks
@@ -21,6 +22,9 @@ from patron_synergy_combat import VeiledStrike, attack_player
 from weapon_proficiency import has_weapon_proficiency
 from world_season import Season
 
+if TYPE_CHECKING:
+    from combat_state import CombatState
+
 BEACON = "Beacon"
 
 
@@ -31,7 +35,6 @@ def roll_attack(
     *,
     valdris_ac_bonus: int,
     target_ac_bonus: int = 0,
-    enemies_remaining: int | None = None,
     is_first_attack_of_combat: bool = False,
     resolver=check_resolution_attack,
     combat_state=None,
@@ -79,7 +82,7 @@ def roll_attack(
     )
     spend_sneak_attack(attacker, combat_state, attack_result)
 
-    return promote_attack(attack_result, enemies_remaining, is_first_attack_of_combat), effective_ac
+    return promote_attack(attack_result, combat_state, is_first_attack_of_combat), effective_ac
 
 
 def attack_roll_inputs(
@@ -278,8 +281,21 @@ def record_beacon_attack(combat_state, attacker, target, attack_result: check_re
         targets.append(target.id)
 
 
-def promote_attack(attack_result, enemies_remaining, is_first_attack_of_combat):
+def promote_attack(
+    attack_result: check_resolution_attack.AttackResult,
+    combat_state: "CombatState | None",
+    is_first_attack_of_combat: bool,
+) -> check_resolution_attack.AttackResult:
     if not attack_result.dramatic:
+        enemies_remaining = (
+            sum(
+                1
+                for participant in combat_state.participants
+                if participant.type == "enemy" and not participant.is_fallen
+            )
+            if combat_state is not None
+            else None
+        )
         verdict = evaluate_dramatic_context(
             DramaticContext(
                 roll_type="attack",
