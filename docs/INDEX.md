@@ -650,7 +650,7 @@ Additional topics: Async Activities: Decisions 58-61: errand models, concurrency
 | Player-to-Player Trade (Decisions 122-128) | 310-325 | Deferred P2P trade under world rules, voice-first, provenance, atomic transactions |
 | Terrain (Decisions 129-132) | 326-352 | One closed terrain enum on Location; ten values and their derived properties |
 | World Clock (Decision 133) | 353-356 | Fixed UTC−5, shared epoch, and dawn-based merchant days |
-| Carrying Capacity (Decision 134) | 357-359 |  |
+| Carrying Capacity (Decision 134) | 357-359 | Unbounded carrying until the M14.2 carry rule ships; no purchase capacity refusal |
 
 ---
 
