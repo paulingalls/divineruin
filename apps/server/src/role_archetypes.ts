@@ -208,15 +208,28 @@ export function parseRoleArchetypeRow(id: string, raw: unknown): RoleArchetype {
   };
 }
 
+export function validateRolePoolBinding(role: RoleArchetype, poolIds: ReadonlySet<string>): void {
+  if (role.inventory_pool !== null && !poolIds.has(role.inventory_pool)) {
+    throw new Error(
+      `role_archetypes[${role.id}].inventory_pool references unknown pool '${role.inventory_pool}'`,
+    );
+  }
+}
+
 export async function loadRoleArchetypes(): Promise<void> {
-  const rows = await sql<{ id: string; data: unknown }[]>`
-    SELECT id, data FROM role_archetypes
+  const rows = await sql<{ id: string; data: unknown; pool_id: string | null }[]>`
+    SELECT role.id, role.data, inventory.id AS pool_id
+    FROM role_archetypes AS role
+    LEFT JOIN inventory_pools AS inventory ON inventory.id = role.data->>'inventory_pool'
   `;
+  const poolIds = new Set(rows.map((row) => row.pool_id).filter((id) => id !== null));
   // Build the local map then swap in one synchronous step, so a malformed row fails loud
   // WITHOUT wiping an already-loaded map (mirrors the Python loader's discipline).
   const map = new Map<string, RoleArchetype>();
   for (const row of rows) {
-    map.set(row.id, parseRoleArchetypeRow(row.id, row.data));
+    const role = parseRoleArchetypeRow(row.id, row.data);
+    validateRolePoolBinding(role, poolIds);
+    map.set(role.id, role);
   }
   roleArchetypes = map;
   console.log(`Loaded ${map.size} role archetypes`);

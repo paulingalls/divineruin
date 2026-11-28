@@ -1,12 +1,12 @@
 import json
 import re
 from pathlib import Path
-from unittest.mock import AsyncMock
 
 import pytest
 
 from economy_pricing import parse_economy_pricing
-from sale_pricing import get_inventory_pools, merchant_gold_allocation, quote_sale, validate_npc_pool_bindings
+from inventory_pools import bound_inventory_pools, parse_inventory_pools
+from sale_pricing import merchant_gold_allocation, quote_sale
 
 ROOT = Path(__file__).parents[3]
 
@@ -23,68 +23,28 @@ CASES = json.loads((ROOT / "packages/shared/fixtures/sale-price-cases.json").rea
 assert CASES and len({case["id"] for case in CASES}) == len(CASES)
 
 
-@pytest.fixture
-def pool_lookup(monkeypatch):
-    pools, items = authored("inventory_pools.json"), authored("items.json")
-
-    async def fetch(query: str) -> list[dict]:
-        rows = pools if query == "SELECT id, data FROM inventory_pools ORDER BY id" else items
-        assert rows is pools or query == "SELECT id, data FROM items ORDER BY id"
-        return [{"id": row["id"], "data": json.dumps(row)} for row in rows]
-
-    connection = AsyncMock()
-    connection.fetch.side_effect = fetch
-    monkeypatch.setattr("db.get_pool", AsyncMock(return_value=connection))
-    return pools
-
-
-async def test_authored_npc_pool_bindings(pool_lookup):
-    pools = await get_inventory_pools()
-    assert {pool_id: pool["buys"] for pool_id, pool in pools.items()} == {
-        "market_general": "all",
-        "grimjaw_weapons": ["weapon", "armor", "shield", "ammunition"],
-        "temple_supplies": ["consumable"],
-        "millhaven_supplies": "all",
-    }
-    assert {pool_id: pool["buys_rarities"] for pool_id, pool in pools.items()} == {
-        "market_general": ["common"],
-        "grimjaw_weapons": ["common", "uncommon", "rare", "legendary"],
-        "temple_supplies": ["common", "uncommon", "rare", "legendary"],
-        "millhaven_supplies": ["common"],
-    }
-    npcs = authored("npcs.json")
-    validate_npc_pool_bindings(catalog_rows(npcs), pools)
-    assert {npc["id"]: npc["inventory_pool"] for npc in npcs if npc["inventory_pool"] is not None} == {
-        "grimjaw_blacksmith": "grimjaw_weapons",
-        "temple_warden_selene": "temple_supplies",
-        "innkeeper_maren": "millhaven_supplies",
-        "aelora_guildmaster_dara": "market_general",
-    }
-
-
-async def test_inventory_pool_lookup_rejects_invalid_buying_rules(pool_lookup):
-    pool_lookup[0]["buys_rarities"] = ["unknown_rarity"]
-    with pytest.raises(ValueError, match=r"market_general.*buys_rarities"):
-        await get_inventory_pools()
-
-
 @pytest.mark.parametrize("case", CASES, ids=[case["id"] for case in CASES])
-async def test_sale_quote(case, pool_lookup):
-    pools = await get_inventory_pools()
+def test_sale_quote(case):
+    npcs = authored("npcs.json")
+    pools = parse_inventory_pools(catalog_rows(authored("inventory_pools.json")), catalog_rows(authored("items.json")))
     pricing = parse_economy_pricing(authored("pricing.json")[0])
     if "npc" in case:
-        npc = next(npc for npc in authored("npcs.json") if npc["id"] == case["npc"])
+        npc = next(npc for npc in npcs if npc["id"] == case["npc"])
         pool = pools[npc["inventory_pool"]]
-        pool["location"] = case.get("pool_location", pool["location"])
+        location_id = case["trade_location"]
+        pool["merchant_kind"] = case.get("pool_merchant_kind", pool["merchant_kind"])
         pool["buys"] = case.get("pool_buys", pool["buys"])
-        location = next((row for row in authored("locations.json") if row["id"] == pool["location"]), None)
+        location = next((row for row in authored("locations.json") if row["id"] == location_id), None)
         if location is not None:
             location.update(case.get("location_fields", {}))
         if "error" in case:
             with pytest.raises(ValueError, match=re.escape(case["error"])):
-                merchant_gold_allocation(pool, location, pricing)
+                merchant_gold_allocation(pool, location, pricing, location_id=location_id)
         else:
-            assert merchant_gold_allocation(pool, location, pricing) == case["expected_allocation_sp"]
+            assert (
+                merchant_gold_allocation(pool, location, pricing, location_id=location_id)
+                == case["expected_allocation_sp"]
+            )
         return
     assert (
         quote_sale(
@@ -93,7 +53,7 @@ async def test_sale_quote(case, pool_lookup):
             kind=case["kind"],
             disposition=case["disposition"],
             pool=pools[case["pool"]] if case["pool"] else None,
-            pools=pools,
+            pools=bound_inventory_pools(catalog_rows(npcs), pools),
         )
         == case["expected"]
     )

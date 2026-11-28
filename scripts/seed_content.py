@@ -236,6 +236,9 @@ async def seed(conn: asyncpg.Connection, *, production: bool = False, catalog_on
         counts[table] = len(entities)
         print(f"  {table}: {len(entities)} entities")
 
+    await conn.execute(
+        "DELETE FROM inventory_pools WHERE id IN ('market_general', 'grimjaw_weapons', 'millhaven_supplies')"
+    )
     return counts
 
 

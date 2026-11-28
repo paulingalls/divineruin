@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { MERCHANT_KIND_VALUES } from "@divineruin/shared";
 
 import items from "../../../content/items.json";
 import inventoryPools from "../../../content/inventory_pools.json";
@@ -7,28 +8,11 @@ import locations from "../../../content/locations.json";
 import pricingRows from "../../../content/pricing.json";
 import cases from "../../../packages/shared/fixtures/sale-price-cases.json";
 import { parsePricingRow } from "./pricing.ts";
-import { merchantGoldAllocation, parseInventoryPools, quoteSale } from "./sale_pricing.ts";
+import { boundInventoryPools, parseInventoryPools } from "./inventory_pools.ts";
+import { merchantGoldAllocation, quoteSale } from "./sale_pricing.ts";
 
 const itemRows = items.map((item) => ({ id: item.id, data: item }));
 const poolRows = inventoryPools.map((pool) => ({ id: pool.id, data: pool }));
-
-test.each([
-  ["buys", "weapon"],
-  ["buys", []],
-  ["buys", [3]],
-  ["buys_rarities", "all"],
-  ["buys_rarities", []],
-  ["buys_rarities", ["unknown_rarity"]],
-] as const)("rejects malformed buying rules %s = %j", (field, value) => {
-  const data = { ...inventoryPools[0], [field]: value };
-  expect(() => parseInventoryPools([{ id: "market_general", data }], itemRows)).toThrow(
-    `inventory_pools[market_general].${field}`,
-  );
-});
-
-test("rejects an empty item catalog", () => {
-  expect(() => parseInventoryPools(poolRows, [])).toThrow("items produced no rows");
-});
 
 if (!cases.length || new Set(cases.map((row) => row.id)).size !== cases.length) {
   throw new Error("sale price cases must be nonempty with unique ids");
@@ -40,14 +24,23 @@ for (const row of cases) {
     if (row.npc) {
       const npc = npcs.find(({ id }) => id === row.npc)!;
       const pool = pools.get(npc.inventory_pool!)!;
-      pool.location = row.pool_location ?? pool.location;
+      const locationId = row.trade_location;
+      if (row.pool_merchant_kind) {
+        const kind = MERCHANT_KIND_VALUES.find((kind) => kind === row.pool_merchant_kind);
+        if (!kind) throw new Error(`unknown fixture merchant kind ${row.pool_merchant_kind}`);
+        pool.merchant_kind = kind;
+      }
       pool.buys = row.pool_buys ?? pool.buys;
-      const authored = locations.find(({ id }) => id === pool.location);
+      const authored = locations.find(({ id }) => id === locationId);
       const location = authored && { ...authored, ...row.location_fields };
       if (row.error) {
-        expect(() => merchantGoldAllocation(pool, location, pricing)).toThrow(row.error);
+        expect(() => merchantGoldAllocation(pool, location, pricing, locationId)).toThrow(
+          row.error,
+        );
       } else {
-        expect(merchantGoldAllocation(pool, location, pricing)).toBe(row.expected_allocation_sp!);
+        expect(merchantGoldAllocation(pool, location, pricing, locationId)).toBe(
+          row.expected_allocation_sp!,
+        );
       }
       return;
     }
@@ -60,7 +53,10 @@ for (const row of cases) {
         kind: row.kind,
         disposition: row.disposition,
         pool,
-        pools,
+        pools: boundInventoryPools(
+          npcs.map((npc) => ({ id: npc.id, data: npc })),
+          pools,
+        ),
       }),
     ).toEqual(row.expected);
   });
