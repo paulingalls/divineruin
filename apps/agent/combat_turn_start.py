@@ -177,8 +177,7 @@ async def _damage(session, state, victim, *, conn, sink, mutations, queries, con
     if (
         owner.creature_id != "hollow_mawling"
         or owner.turn_start_damage is None
-        or owner.hp_current <= 0
-        or owner.is_fallen
+        or not owner.is_standing
         or is_terminally_down(owner)
         or cannot_act(owner.conditions)
     ):

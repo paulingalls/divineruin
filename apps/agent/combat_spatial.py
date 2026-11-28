@@ -239,7 +239,7 @@ def facts(state, origin_id):
     inactive_auras = {
         f"{actor.id}_corruption_aura"
         for actor in state.participants
-        if actor.hollow is not None and (actor.is_dead or actor.is_fallen or actor.hp_current <= 0)
+        if actor.hollow is not None and not actor.is_standing
     }
     zones = {
         key: {

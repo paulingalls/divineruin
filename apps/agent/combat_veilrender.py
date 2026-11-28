@@ -35,10 +35,6 @@ def mark_radiant(target, action, result):
         target.radiant_suppression_pending = True
 
 
-def living(actor):
-    return actor.hp_current > 0 and not actor.is_fallen and not actor.is_dead
-
-
 def absorb_spell(state, caster, declaration, packet):
     """Consume only living Veilrender recipients; caster bookkeeping has already run."""
     spell = spells.get_spell(declaration.action)
@@ -53,7 +49,7 @@ def absorb_spell(state, caster, declaration, packet):
     remaining, absorbed = [], []
     for target_id in targets:
         target = state.get_participant(target_id)
-        if target is None or target.creature_id != "hollow_veilrender" or not living(target):
+        if target is None or target.creature_id != "hollow_veilrender" or not target.is_standing:
             remaining.append(target_id)
             continue
         if cannot_act(target.conditions):
@@ -95,11 +91,11 @@ async def turn_start(
     from combat_damage import apply_attack_result
     from combat_damage_results import AutomaticDamageResult
 
-    sources = [p for p in state.participants if p.corruption_field is not None and living(p)]
+    sources = [p for p in state.participants if p.corruption_field is not None and p.is_standing]
     steps = progress.steps if progress is not None else {}
     effects = steps.get("effects")
     if effects is None:
-        if actor is None or actor.veilrender_turn_round == state.round_number or not living(actor):
+        if actor is None or actor.veilrender_turn_round == state.round_number or not actor.is_standing:
             return []
         if not sources and actor.regeneration is None:
             return []
@@ -178,7 +174,7 @@ async def turn_start(
         if scope is not None:
             scope.steps.pop("effect")
         effects.append(effect)
-        if not living(actor):
+        if not actor.is_standing:
             break
     steps.pop("effects", None)
     return effects

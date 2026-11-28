@@ -32,13 +32,7 @@ def thornwall(state: CombatState | None, actor: str, *, destination: dict | None
         raise ToolError("Thornwall can only be used in combat.")
     require_complete_round(state, GIFT)
     follower = state.get_participant(actor)
-    if (
-        follower is None
-        or follower.type != "player"
-        or follower.is_fallen
-        or follower.is_dead
-        or follower.hp_current <= 0
-    ):
+    if follower is None or follower.type != "player" or not follower.is_standing:
         raise ToolError("Thornwall requires a living acting player in this fight.")
     if destination is None:
         raise ToolError("Thornwall requires start and end points.")

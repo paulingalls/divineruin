@@ -45,7 +45,7 @@ def multiple_recipients(spell: Spell) -> bool:
 
 
 def _standing_creature(target: CombatParticipant | None) -> TypeGuard[CombatParticipant]:
-    return target is not None and not (target.is_fallen or target.is_dead or target.is_structure)
+    return target is not None and not target.is_structure and target.is_standing
 
 
 def select_deliveries(
