@@ -10,9 +10,11 @@ async_rules.resolve_crafting rather than reaching for a private cross-module hel
 import random
 from dataclasses import dataclass
 
-from patron_synergy import CraftingSynergyReceipt, common_bond_crafting_bonus
+from check_resolution import skill_modifier
+from check_skill_modifier import CRAFTING_ACTIVITY_SKILL
+from patron_synergy import CraftingSynergyReceipt
 from recipe_validation import check_material_requirements
-from rules_engine import skill_modifier
+from world_season import Season
 
 # Experimentation adds +4 to the recipe's normal crafting DC (spec §Experimentation Flow).
 EXPERIMENTATION_DC_PENALTY = 4
@@ -29,7 +31,14 @@ class ExperimentationOutcome:
 
 
 def resolve_experimentation(
-    player_data: dict, base_dc: int, *, skill: str = "arcana", rng: random.Random | None = None
+    player_data: dict,
+    base_dc: int,
+    *,
+    ally_present: int = 0,
+    natural_terrain: bool = False,
+    first_stay: bool = False,
+    season: Season | None = None,
+    rng: random.Random | None = None,
 ) -> ExperimentationOutcome:
     """Roll d20 + crafting skill modifier vs base_dc+4. Binary success/failure.
 
@@ -37,13 +46,20 @@ def resolve_experimentation(
     """
     r = rng or random.Random()
     d20 = r.randint(1, 20)
-    mod = skill_modifier(player_data, skill)
-    crafting_synergy = common_bond_crafting_bonus(player_data)
-    total = d20 + mod + (crafting_synergy["bonus"] if crafting_synergy is not None else 0)
+    projected = skill_modifier(
+        player_data,
+        CRAFTING_ACTIVITY_SKILL,
+        ally_present=ally_present,
+        natural_terrain=natural_terrain,
+        first_stay=first_stay,
+        season=season,
+        crafting_activity=True,
+    )
+    total = d20 + projected.value
     dc = base_dc + EXPERIMENTATION_DC_PENALTY
     margin = total - dc
     return ExperimentationOutcome(
-        success=margin >= 0, roll=d20, total=total, dc=dc, margin=margin, crafting_synergy=crafting_synergy
+        success=margin >= 0, roll=d20, total=total, dc=dc, margin=margin, crafting_synergy=projected.crafting_synergy
     )
 
 

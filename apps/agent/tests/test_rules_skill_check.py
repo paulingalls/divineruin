@@ -1,5 +1,6 @@
 import random
 
+import pytest
 from test_rules_core import SAMPLE_PLAYER as BASE_PLAYER
 
 from check_resolution import resolve_skill_check, resolve_skill_check_dc
@@ -14,7 +15,7 @@ class TestResolveSkillCheck:
         rng = random.Random(42)
         result = resolve_skill_check(
             SAMPLE_PLAYER,
-            "athletics",
+            "Athletics",
             "moderate",
             rng=rng,
             natural_terrain=False,
@@ -27,6 +28,12 @@ class TestResolveSkillCheck:
         assert result.total == test_roll + 5
         assert result.dc == 12  # moderate = 12
         assert result.success == (result.total >= 12 or test_roll == 20)
+
+    def test_unknown_skill_raises(self):
+        with pytest.raises(ValueError, match="Unknown skill"):
+            resolve_skill_check(
+                SAMPLE_PLAYER, "flying", "easy", natural_terrain=False, ally_present=0, hearing_only=False
+            )
 
     def test_nat_20_always_succeeds(self):
         # Find a seed that gives nat 20. Use very_hard (DC 20) to avoid auto-fail for untrained.

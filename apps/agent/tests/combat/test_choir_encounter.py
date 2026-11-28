@@ -85,7 +85,6 @@ async def test_choir_search_success_and_failure_spend_action(skill, face, succes
     ctx, _, mutations, queries = await start_choir()
     state = ctx.userdata.combat_state
     actor = state.get_participant("player_1")
-    from rules_engine import skill_modifier
 
     player = {
         **queries.get_player.return_value,
@@ -109,7 +108,9 @@ async def test_choir_search_success_and_failure_spend_action(skill, face, succes
     assert packet["resolved"] is True
     assert packet["success"] is success
     assert packet["dc"] == 18
-    assert packet["modifier"] == skill_modifier(player, skill)
+    attribute_bonus = 2 if skill == "perception" else 4
+    trained_bonus = {"untrained": 0, "trained": 5, "expert": 7, "master": 8}
+    assert packet["modifier"] == attribute_bonus + trained_bonus[tier]
     assert packet["auto_fail"] is False
     assert state.choir_encounter["phase"] == ("exposed" if success else "search")
     assert ("core_id" in packet["choir"]) is success

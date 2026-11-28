@@ -11,7 +11,6 @@ from rules_engine import (
     dc_for_tier,
     narrative_hint,
     proficiency_bonus,
-    skill_modifier,
 )
 
 
@@ -46,58 +45,6 @@ SAMPLE_PLAYER = {
     "proficiencies": ["athletics", "stealth", "perception"],
     "saving_throw_proficiencies": ["strength", "constitution"],
 }
-
-
-class TestSkillModifier:
-    def test_proficient_skill(self):
-        mod = skill_modifier(SAMPLE_PLAYER, "athletics")
-        assert mod == 5
-
-    def test_unproficient_skill(self):
-        mod = skill_modifier(SAMPLE_PLAYER, "persuasion")
-        assert mod == -1
-
-    def test_proficient_dex_skill(self):
-        mod = skill_modifier(SAMPLE_PLAYER, "stealth")
-        assert mod == 4
-
-    def test_wisdom_perception(self):
-        mod = skill_modifier(SAMPLE_PLAYER, "perception")
-        assert mod == 3
-
-    def test_unknown_skill_raises(self):
-        with pytest.raises(ValueError, match="Unknown skill"):
-            skill_modifier(SAMPLE_PLAYER, "flying")
-
-    def test_all_skills_resolve(self):
-        for skill_name in SKILLS:
-            mod = skill_modifier(SAMPLE_PLAYER, skill_name)
-            assert isinstance(mod, int)
-
-    def test_case_insensitive(self):
-        mod = skill_modifier(SAMPLE_PLAYER, "Athletics")
-        assert mod == 5
-
-    def test_higher_level_proficiency(self):
-        player = {**SAMPLE_PLAYER, "level": 7}
-        mod = skill_modifier(player, "athletics")
-        assert mod == 6
-
-    def test_crafting_uses_max_attribute(self):
-        mod = skill_modifier(SAMPLE_PLAYER, "crafting")
-        assert mod == 0
-        player = {**SAMPLE_PLAYER, "attributes": {**SAMPLE_PLAYER["attributes"], "wisdom": 16}}
-        mod = skill_modifier(player, "crafting")
-        assert mod == 3
-
-    def test_skill_tier_from_player_data(self):
-        player = {**SAMPLE_PLAYER, "skill_tiers": {"athletics": "expert"}}
-        mod = skill_modifier(player, "athletics")
-        assert mod == 7
-
-    def test_untrained_gets_no_prof_or_tier(self):
-        mod = skill_modifier(SAMPLE_PLAYER, "arcana")
-        assert mod == 0
 
 
 class TestSkills:

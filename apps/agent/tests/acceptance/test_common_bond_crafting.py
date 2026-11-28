@@ -30,7 +30,7 @@ CLAUSE = "aelora_common_bond_crafting"
 RECEIPT = {"id": CLAUSE, "name": "Common Bond", "bonus": 1}
 ARCHETYPES = ("artificer", "bard", "diplomat")
 RECIPE = "wooden_club"
-EXCLUDED = [("aelora", "rogue"), ("thyra", "artificer"), ("none", "artificer"), (None, "artificer")]
+EXCLUDED = [("aelora", "rogue"), ("thyra", "artificer")]
 
 
 @pytest.fixture
@@ -43,20 +43,22 @@ def crafting_server(migrated_db: str) -> Iterator[dict[str, str]]:
     yield from start_server(migrated_db)
 
 
-async def setup(world: SimpleNamespace, patron: str | None, archetype: str, *, trained: bool = False) -> None:
+async def setup(
+    world: SimpleNamespace, patron: str, archetype: str, *, trained: bool = False, wisdom: int = 10
+) -> None:
     await configure(
         world,
-        patron or "none",
+        patron,
         archetype,
         location_id=world.ctx.userdata.location_id,
-        attributes={"intelligence": 10},
+        attributes={"intelligence": 10, "wisdom": wisdom},
         proficiencies=["crafting"] if trained else [],
-        divine_favor={"patron": patron, "level": 0, "max": 100} if patron else None,
+        divine_favor={"patron": patron, "level": 0, "max": 100},
     )
 
 
 async def live_check(world: SimpleNamespace, patron: str, archetype: str, skill: str) -> dict:
-    await setup(world, patron, archetype)
+    await setup(world, patron, archetype, wisdom=14)
     assert not world.ctx.userdata.ally_present_for(world.ids[0])
     with patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=13)):
         return await game_tools(world.ctx.userdata, check)(
@@ -78,10 +80,10 @@ async def common_bond(world: SimpleNamespace, archetype: str) -> None:
     assert result["roll"] == baseline["roll"] == 13
     for field in ("total", "modifier", "margin"):
         assert result[field] == baseline[field] + 1
-    assert baseline["total"] == 13 and "crafting_synergy" not in baseline
+    assert baseline["total"] == 15 and "crafting_synergy" not in baseline
     assert result["crafting_synergy"] == RECEIPT
     event = [p for p in published_payloads(world.ctx.userdata.room) if p["type"] == "dice_roll"][-1]
-    assert event["total"] == 14
+    assert event["total"] == 16
 
 
 SCENARIOS = {CLAUSE: ("patron_synergy:common_bond_crafting_bonus", common_bond, [(a,) for a in ARCHETYPES])}
@@ -92,10 +94,10 @@ async def test_live_crafting(world: SimpleNamespace, archetype: str) -> None:
     await common_bond(world, archetype)
 
 
-@pytest.mark.parametrize("archetype,skill", [("rogue", "crafting"), ("artificer", "arcana")])
-async def test_live_exclusions(world: SimpleNamespace, archetype: str, skill: str) -> None:
+@pytest.mark.parametrize("archetype,skill,total", [("rogue", "crafting", 15), ("artificer", "arcana", 13)])
+async def test_live_exclusions(world: SimpleNamespace, archetype: str, skill: str, total: int) -> None:
     result = await live_check(world, "aelora", archetype, skill)
-    assert result["total"] == 13 and "crafting_synergy" not in result
+    assert result["total"] == total and "crafting_synergy" not in result
 
 
 def authored_receipt(archetype: str) -> dict:
@@ -128,7 +130,7 @@ async def stock(world: SimpleNamespace, *, known: bool) -> None:
     [
         ("aelora", "artificer", 7, 12, True),
         ("aelora", "artificer", 15, 8, True),
-        *((patron, archetype, 7, 11, False) for patron, archetype in EXCLUDED[:2]),
+        *((patron, archetype, 7, 11, False) for patron, archetype in EXCLUDED),
     ],
 )
 async def test_experiment(
@@ -140,7 +142,7 @@ async def test_experiment(
     with patch.object(
         experimentation,
         "resolve_experimentation",
-        side_effect=lambda p, dc, **_: resolve(p, dc, rng=random.Random(seed)),
+        side_effect=lambda p, dc, *, rng=None, **kwargs: resolve(p, dc, rng=random.Random(seed), **kwargs),
     ):
         result = await game_tools(world.ctx.userdata, agent=DispatchAgent())(
             "begin_activity",
@@ -183,37 +185,52 @@ async def queue(world: SimpleNamespace, request: pytest.FixtureRequest, via: str
 
 
 @pytest.mark.parametrize(
-    "via,seed,legacy,tier,roll",
+    "via,queued,settled,old_snapshot,seed,tier,roll",
     [
-        ("agent", 15, False, "success", 7),
-        ("rest", 15, False, "success", 7),
-        ("agent", 7, False, "success", 11),
-        ("agent", 31, False, "failure", 1),
-        ("agent", 15, True, "partial", 7),
+        ("agent", "aelora", "aelora", True, 15, "success", 7),
+        ("rest", "aelora", "thyra", True, 15, "partial", 7),
+        ("rest", "thyra", "aelora", False, 15, "success", 7),
+        ("agent", "aelora", "aelora", False, 7, "success", 11),
+        ("agent", "thyra", "aelora", False, 31, "failure", 1),
+        ("agent", "aelora", "thyra", True, 15, "partial", 7),
     ],
 )
 async def test_async_crafting(
-    world: SimpleNamespace, request: pytest.FixtureRequest, via: str, seed: int, legacy: bool, tier: str, roll: int
+    world: SimpleNamespace,
+    request: pytest.FixtureRequest,
+    via: str,
+    queued: str,
+    settled: str,
+    old_snapshot: bool,
+    seed: int,
+    tier: str,
+    roll: int,
 ) -> None:
-    await setup(world, "aelora", "artificer", trained=True)
+    await setup(world, queued, "artificer", trained=True)
     activity = await queue(world, request, via)
-    if legacy:
+    if old_snapshot:
+        await world.pool.execute(
+            "UPDATE async_activities SET data=jsonb_set(data, '{parameters,common_bond}', $2::jsonb) WHERE id=$1",
+            activity["id"],
+            json.dumps(authored_receipt("artificer")),
+        )
+    else:
         await world.pool.execute(
             "UPDATE async_activities SET data = data #- '{parameters,common_bond}' WHERE id=$1", activity["id"]
         )
-    else:
-        await set_patron(world, "thyra")
+    await set_patron(world, settled)
 
     outcome, prompt, _ = await poll(world, activity, seed)
     ctx = outcome["narrative_context"]
-    assert (outcome["tier"], ctx["roll"], ctx["total"], ctx["dc"]) == (tier, roll, roll + int(not legacy), 8)
-    assert ctx.get("common_bond") == (None if legacy else RECEIPT)
-    assert ("Common Bond" in prompt) is not legacy
+    eligible = settled == "aelora"
+    assert (outcome["tier"], ctx["roll"], ctx["total"], ctx["dc"]) == (tier, roll, roll + int(eligible), 8)
+    assert ctx.get("common_bond") == (RECEIPT if eligible else None)
+    assert ("Common Bond" in prompt) == eligible
     assert outcome["crafted_item_id"] == (None if tier == "failure" else "club_wooden")
-    assert_creation(activity, (675, 1350), "Acknowledged")
-    if not legacy:
-        assert activity["parameters"]["common_bond"] == authored_receipt("artificer")
-    if seed == 15 and not legacy:
+    assert "common_bond" not in activity["parameters"]
+    if queued == "aelora":
+        assert_creation(activity, (675, 1350), "Acknowledged")
+    if queued == "aelora" and eligible and seed == 15:
         saved = await db_activity_queries.get_activity(activity["id"])
         assert saved is not None
         assert [option["id"] for option in saved["decision_options"]] == ["keep", "sell"]
@@ -270,15 +287,3 @@ async def test_async_zero_value_craft_offers_only_keep(world: SimpleNamespace) -
     assert saved is not None
     assert [option["id"] for option in saved["decision_options"]] == ["keep"]
     assert saved["decision_options"] == outcome["decision_options"]
-
-
-@pytest.mark.parametrize("via", ["agent", "rest"])
-@pytest.mark.parametrize("patron,archetype", EXCLUDED)
-async def test_async_creation_exclusions(
-    world: SimpleNamespace, request: pytest.FixtureRequest, via: str, patron: str | None, archetype: str
-) -> None:
-    await setup(world, patron, archetype, trained=True)
-    activity = await queue(world, request, via)
-    assert "common_bond" not in activity["parameters"]
-    if patron == "aelora":
-        assert activity["parameters"]["craft_blessing"] == {**BLESSING, "tier": "Acknowledged"}

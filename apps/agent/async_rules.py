@@ -9,9 +9,12 @@ errand_risk.py (ADR 0006); these functions compute the skill-check outcome only.
 import random
 from dataclasses import dataclass
 
+from check_resolution import skill_modifier
+from check_skill_modifier import CRAFTING_ACTIVITY_SKILL
 from crafting_gates import tainted_blocks_crafter, workspace_accessible
 from quality_outcomes import apply_quality_outcome
-from rules_engine import attribute_modifier, dc_for_tier, skill_modifier
+from rules_engine import attribute_modifier, dc_for_tier
+from world_season import Season
 
 # --- Outcome dataclasses ---
 
@@ -50,6 +53,7 @@ def resolve_crafting(
     workspace_access: list[str] | None = None,
     crafting_tier: str | None = None,
     quality_tables: dict | None = None,
+    season: Season | None = None,
     rng: random.Random | None = None,
 ) -> CraftingOutcome:
     """Resolve a crafting activity: re-check the workspace-access and tainted-Expert
@@ -125,12 +129,14 @@ def resolve_crafting(
     # Exceptional at DC+10, Success at DC, Partial DC-5..DC-1, Failure below DC-5. No
     # natural-1/20 special-casing — a master can't fail a trivial recipe, a nat-20 with a
     # low mod won't force Exceptional.
-    craft_skill = parameters.get("skill", "arcana")
     dc = parameters.get("dc", dc_for_tier("moderate"))
-    mod = skill_modifier(player_data, craft_skill)
+    # The worker has no live party roster, so queued bench work is solitary.
+    projected = skill_modifier(
+        player_data, CRAFTING_ACTIVITY_SKILL, ally_present=0, season=season, crafting_activity=True
+    )
     d20 = r.randint(1, 20)
-    common_bond = parameters.get("common_bond")
-    total = d20 + mod + (common_bond["bonus"] if common_bond is not None else 0)
+    total = d20 + projected.value
+    common_bond = projected.crafting_synergy
     margin = total - dc
 
     bonus_property = None
@@ -185,7 +191,7 @@ def resolve_crafting(
         "roll": d20,
         "total": total,
         "dc": dc,
-        "skill": craft_skill,
+        "skill": CRAFTING_ACTIVITY_SKILL,
         "recipe_name": result_item_name,
         "bonus_property": bonus_property,
         "flaw": flaw,

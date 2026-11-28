@@ -183,6 +183,7 @@
       "content/archetypes.json",
       "content/creatures.json",
       "content/gathering_nodes.json",
+      "content/gods.json",
       "content/inventory_pools.json",
       "content/items.json",
       "content/locations.json",

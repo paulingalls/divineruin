@@ -1,6 +1,3 @@
-import gods from "../../../content/gods.json";
-import { type God, validateGods } from "../../../packages/shared/src/entities/god.ts";
-
 import { test, expect, beforeEach, mock } from "bun:test";
 import {
   dbMockFactory,
@@ -124,64 +121,4 @@ test.each([
   } else {
     expect(row.parameters).not.toHaveProperty("craft_blessing");
   }
-});
-
-const commonBond = { id: "aelora_common_bond_crafting", name: "Common Bond", bonus: 1 };
-
-async function craftingParameters(patron: string, archetype: string, catalog?: God[]) {
-  setQueryStubs([
-    {
-      match: "data->'divine_favor'",
-      result: [
-        {
-          ...playerWarrior.result[0],
-          class: archetype,
-          divine_favor: { patron, level: 0, max: 100 },
-        },
-      ],
-    },
-    skillExpert,
-    slotsEmpty,
-    { match: "item_id IN", result: [{ item_id: "herb_bundle", quantity: 1 }] },
-  ]);
-  const request = makeRequest("POST", "/api/activities", {
-    type: "crafting",
-    parameters: {
-      recipe_id: "healing_poultice",
-      class: "artificer",
-      patron: "aelora",
-      common_bond: { ...commonBond, bonus: 99 },
-    },
-  });
-  const response = await handleCreateActivity(request, "player_1", catalog);
-  expect(response.status).toBe(200);
-  const insert = getCapturedQueries().find((q) => q.sql.includes("INSERT INTO async_activities"));
-  return (insert!.values[2] as { parameters: Record<string, unknown> }).parameters;
-}
-
-test.each([
-  ["aelora", "artificer", commonBond],
-  ["thyra", "artificer", undefined],
-  ["aelora", "rogue", undefined],
-  ["none", "artificer", undefined],
-] as const)(
-  "captures Common Bond for stored %s %s regardless of request fields",
-  async (patron, archetype, expected) => {
-    expect((await craftingParameters(patron, archetype)).common_bond).toEqual(expected);
-  },
-);
-
-test.each([
-  { status: "pending" },
-  { resolution: "narrated" },
-  { implementation_id: "aelora_common_bond" },
-] as const)("ignores an authored Common Bond clause with %j", async (changes) => {
-  const catalog = validateGods(structuredClone(gods));
-  const row = catalog.find((god) => god.god_id === "aelora")!.layer_4_synergy_matrix.artificer!;
-  const clause = row.clauses[1]!;
-  expect(clause.implementation_id).toBe(commonBond.id);
-  Object.assign(clause, changes);
-  expect(
-    (await craftingParameters("aelora", "artificer", validateGods(catalog))).common_bond,
-  ).toBeUndefined();
 });
