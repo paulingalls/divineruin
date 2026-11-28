@@ -6,7 +6,7 @@ from uuid import uuid4
 from acceptance.mawling_harness import MawlingHarness
 from acceptance.test_architect_fight import pos
 from acceptance.test_bark_skin import keep_original
-from acceptance.test_guardian_intercept import BANDIT, SWORD
+from acceptance.test_guardian_intercept import BANDIT, SWORD, tool_receipt
 from acceptance.test_opportunity_strike import participant
 from acceptance.test_still_actions import reveal_and_wake
 from acceptance.test_still_anchors import fresh_session, strike
@@ -123,22 +123,27 @@ async def defense_fight(
         await fight.close()
 
 
-async def spend(fight: MawlingHarness, ability: str, *, stage: str) -> list[dict]:
+async def spend(
+    fight: MawlingHarness, ability: str, *, stage: str, actor: str | None = None, cost: int | None = None
+) -> list[dict]:
     packets = []
+    actor = fight.players[0] if actor is None else actor
     for _ in range(8):
         result = await fight.command("resolve_phase", {})
         if offer := result.get("fate_offer"):
+            packets.extend(result["packets"])
             result = await keep_original(fight, offer)
         packets.extend(result["packets"])
         if window := result["next"]["waiting_on"]:
             if window["stage"] != stage:
                 continue
-            assert ability in {reaction["id"] for reaction in window["reactions"]}, window
-            target = fight.players[0]
+            assert (actor, ability) in {(r["actor_id"], r["id"]) for r in window["reactions"]}, window
             pool = "stamina" if ability == BRACE else "focus"
-            before = (await player_row(target))[pool]["current"]
-            await fight.command("activate", {"id": ability})
-            assert (await player_row(target))[pool]["current"] == before - (2 if ability == BRACE else 1)
+            before = (await player_row(actor))[pool]["current"]
+            receipt = await tool_receipt(fight, actor, "activate", {"id": ability})
+            assert not receipt.is_error, receipt.output
+            expected_cost = (2 if ability == BRACE else 1) if cost is None else cost
+            assert (await player_row(actor))[pool]["current"] == before - expected_cost
             return packets
     raise AssertionError(f"No {stage} window for {ability}")
 
