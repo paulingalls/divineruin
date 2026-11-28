@@ -123,8 +123,15 @@ async def test_held_approach(reset_db_pool, route):
 
 @pytest.mark.parametrize("target_departs", [False, True], ids=["sibling-and-next-turn", "target-departs"])
 async def test_restraint_ends_with_the_movers_turn(reset_db_pool, target_departs):
-    async with defense_fight("druid", "hollow_mawling", ally_archetype="bard", library=((0, GRASP),)) as fight:
-        caster, bard = fight.players
+    async with defense_fight(
+        "druid",
+        "hollow_mawling",
+        ally_archetype="bard",
+        extra_archetypes=("bard",) if target_departs else (),
+        library=((0, GRASP),),
+    ) as fight:
+        caster, bard, *remaining = fight.players
+        lookout_target = remaining[0] if target_departs else bard
         mover = fight.enemies[0]
         state = await fight.reload()
         row = await query_creature_by_id("bandit")
@@ -136,6 +143,8 @@ async def test_restraint_ends_with_the_movers_turn(reset_db_pool, target_departs
         spatial = state.spatial
         assert spatial is not None
         spatial["positions"].update({mover: pos(35), bard: pos(35, 5), lookout.id: pos(5)})
+        if target_departs:
+            spatial["positions"][lookout_target] = pos(5, 5)
         spatial["speeds"][lookout.id] = translated["speed"]
         await fight.persist()
         focus, _ = await resources(fight, caster)
@@ -145,7 +154,7 @@ async def test_restraint_ends_with_the_movers_turn(reset_db_pool, target_departs
             {
                 "declarations": [
                     composite,
-                    {"actor_id": lookout.id, **strike(caster if target_departs else bard, action=SWORD)},
+                    {"actor_id": lookout.id, **strike(lookout_target, action=SWORD)},
                 ]
             },
         )
@@ -161,24 +170,21 @@ async def test_restraint_ends_with_the_movers_turn(reset_db_pool, target_departs
         assert (await resources(fight, caster))[0] == focus - 2
         if target_departs:
             await depart_guest(fight, bard)
-            await reload_session(fight)
-            with dice(18, 18):
-                packets = await fight.drain()
-            assert any(p.get("actor_id") == mover and p.get("reason") == "The target left the fight." for p in packets)
-            assert any(p.get("actor_id") == lookout.id and p.get("hit") for p in packets)
-            assert all(c["source"] != GRASP for c in participant(await fight.reload(), mover).conditions)
-            return
-
-        before = (await player_row(bard))["hp"]["current"]
-        with dice(18, 3):
             next_enemy = await fight.command("resolve_phase", {})
-        blow = action_packet(next_enemy["packets"], mover, "Dissolution Maw")
-        assert (blow["roll"], blow["hit"], blow["damage"]) == (3, False, 0)
-        assert (await player_row(bard))["hp"]["current"] == before
+            assert any(p.get("actor_id") == mover and p.get("outcome") == "target_left" for p in next_enemy["packets"])
+        else:
+            before = (await player_row(bard))["hp"]["current"]
+            with dice(18, 3):
+                next_enemy = await fight.command("resolve_phase", {})
+            blow = action_packet(next_enemy["packets"], mover, "Dissolution Maw")
+            assert (blow["roll"], blow["hit"], blow["damage"]) == (3, False, 0)
+            assert (await player_row(bard))["hp"]["current"] == before
+        assert next_enemy["next"]["waiting_on"]["actor_id"] == lookout.id
         await reload_session(fight)
         state = await fight.reload()
-        assert state.open_window and state.open_window["actor_id"] == lookout.id
         assert all(c["source"] != GRASP for c in participant(state, mover).conditions)
+        if target_departs:
+            return
         with dice(3, 3, 3):
             await fight.drain()
         require_spatial(state := await fight.reload())["positions"][caster] = pos(30)

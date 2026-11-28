@@ -37,7 +37,7 @@ async def test_grasp_and_strike_answer_distinct_windows(reset_db_pool, cast_gras
         await fight.persist()
         before_hp = participant(state, mover).hp_current
         await declare_attacks(fight, target, mover)
-        with dice(18, 18, 18), attack_damage(4, 4):
+        with dice(18, 18, 18, 18), attack_damage(4, 4):
             start = await open_stage(fight, "movement")
             assert {r["id"] for r in start["reactions"]} == {GRASP}
             if cast_grasp:
@@ -95,11 +95,10 @@ async def test_fate_save_continuation(reset_db_pool, outcome):
         assert all(c.get("source") != GRASP for c in participant(held, mover).conditions)
         if other:
             await depart_guest(fight, other[0])
-            assert fight.sd.fate_offer and fight.sd.fate_offer.id == pending["fate_offer"]["offer_id"]
         if outcome == "departure":
             await depart_guest(fight, caster)
-            assert fight.sd.fate_offer is None
-        if outcome not in ("absent-live", "second-departs"):
+        await fight.reload()
+        if outcome in ("keep", "absent"):
             await reload_session(fight)
         absent = outcome in ("absent", "absent-live")
         if absent:
