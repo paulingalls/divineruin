@@ -136,6 +136,7 @@ async def test_town_filters_carried_stock_and_caps_new_stock(
         tier_3(HALF, "weekly", towns=True),
         tier_3(PLATE, "daily", towns=True),
         tier_3(ROTATION[1], "daily", towns=True),
+        tier_3(ROTATION[2], "weekly", rotation_group="weapons"),
     ]
     day = 8
     monkeypatch.setattr(db_mutations_merchant, "aethos_today", lambda: day)
