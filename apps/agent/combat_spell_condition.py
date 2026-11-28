@@ -12,13 +12,13 @@ from combat_condition_landing import land_condition_on_participant
 from combat_fate_rolls import PacketRolls, packet_save
 from combat_legendary_resistance import finalize_save, override_fields
 from combat_participant import CombatParticipant
-from combat_spell_profile import recipient_spec
+from combat_spell_profile import SaveConditionProfile, recipient_spec
 from combat_spell_recipients import select
 from combat_spell_save import spell_save_dc
 from combat_state import CombatState
 from combat_structures import require_line
 from condition_produce import resolve_effective_targets
-from declarations import Declaration
+from declarations import Declaration, DeclarationType
 from session_data import SessionData
 from spell_invisibility import reveal_invisible
 from spells import Spell, normalize_target_list
@@ -137,6 +137,39 @@ async def land_deliveries(
     packet["condition_targets"] = [result["target_id"] for result in results if "condition_inflicted" in result]
 
 
+async def land_natures_grasp(
+    session: SessionData,
+    state: CombatState,
+    caster: CombatParticipant,
+    target: CombatParticipant,
+    spell: Spell,
+    packet: dict,
+    *,
+    cast_packet: dict,
+    progress: PacketRolls | None,
+    conn,
+) -> None:
+    profile: SaveConditionProfile = {
+        "save": "strength",
+        "attribute": "wisdom",
+        "condition": "restrained",
+        "resave": None,
+    }
+    await _land_one(
+        session,
+        state,
+        caster,
+        Declaration(DeclarationType.ABILITY, spell.id),
+        replace(spell, save_condition=profile),
+        target,
+        packet,
+        cast_packet=cast_packet,
+        progress=progress,
+        conn=conn,
+        duration=1,
+    )
+
+
 async def _land_one(
     session: SessionData,
     state: CombatState,
@@ -149,6 +182,7 @@ async def _land_one(
     cast_packet: dict,
     progress: PacketRolls | None,
     conn,
+    duration: int | None = None,
 ) -> None:
     profile = spell.save_condition
     assert profile is not None
@@ -221,6 +255,7 @@ async def _land_one(
         condition,
         spell.id,
         packet=packet,
+        duration=duration,
         originating_participant_id=caster.id,
         tick_save=resave[:3] if (resave := profile["resave"]) is not None else None,
     ):

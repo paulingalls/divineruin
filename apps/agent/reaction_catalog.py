@@ -5,9 +5,12 @@ from dataclasses import dataclass
 import abilities
 import spells
 
+NATURES_GRASP = "primal_natures_grasp"
+OPPORTUNITY_STRIKE = "warrior_opportunity_strike"
 SHIELD_OF_FAITH = "divine_shield_of_faith"
 
 SPELL_TWINS = {
+    NATURES_GRASP: frozenset(),
     SHIELD_OF_FAITH: frozenset({"cleric_shield_of_faith", "oracle_shield_of_faith", "paladin_shield_of_faith"}),
     "arcane_shield_spell": frozenset({"mage_shield_spell"}),
     "primal_bark_skin": frozenset({"druid_bark_skin", "warden_bark_skin"}),

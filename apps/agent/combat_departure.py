@@ -121,6 +121,12 @@ def _drop_reactions(state: "CombatState", player_id: str) -> bool:
     cancelled_roll = False
     spend = state.reactions_available.pop(player_id, {})
     for head in state.held_actions:
+        route = head.get("opportunity_approach", {})
+        if "spends" in route:
+            departed = next((entry for entry in route["spends"] if entry["actor_id"] == player_id), None)
+            if departed is not None:
+                cancelled_roll |= departed is route["spends"][0]
+                route["spends"].remove(departed)
         if continuation := head.get("counter_settlement"):
             continuation["packets"] = _remaining_reaction_packets(continuation["packets"], player_id)
         elif reaction_spend.intercepts_damage(spend) and spend["held_seq"] == head["seq"]:
@@ -153,8 +159,9 @@ def _without(items: list, player_id: str, key: str | None = None) -> list:
 
 def cancel_held_strike(state: "CombatState", head: dict, target_id: str) -> dict:
     from combat_multiattack import strike_summary
+    from combat_natures_grasp import finish_held
 
-    state.held_actions.pop(0)
+    finish_held(state)
     receipt = strike_summary(head, target_left_receipt(head["actor_id"], target_id))
     receipt["target_id"] = target_id
     receipt["execution_id"] = head["execution_id"]

@@ -13,6 +13,7 @@ import conditions
 import reaction_catalog
 import reaction_spend
 import reaction_windows
+import terrain
 from ability_voice_rules import DISSONANT_WHISPER, IMPLANT_DOUBT
 from combat_ability import _find_action
 from combat_spatial import distance, inside, position, require_spatial
@@ -185,22 +186,32 @@ def _validate_for_window(
 
     if catalog_window == reaction_windows.ENEMY_MOVE:
         if window["stage"] != reaction_windows.MOVEMENT:
-            raise ReactionUnavailable("Opportunity Strike requires a movement window")
+            raise ReactionUnavailable("Enemy movement reactions require a movement window")
         mover = state.get_participant(window["actor_id"])
         assert mover is not None
         if mover.is_fallen or mover.is_ally:
-            raise ReactionUnavailable("Opportunity Strike requires a standing hostile")
-        if actor_id not in window["reactors"]:
-            raise ReactionUnavailable(f"{actor_id!r} has no Opportunity Strike at this exit")
-        weapon = window["reactors"][actor_id]
-        if not combat_melee_approach.is_melee(weapon["action"]):
-            raise ReactionUnavailable("Opportunity Strike requires a melee weapon")
-        reach = weapon["reach"]
-        separation = distance(position(state.spatial, actor_id), position(state.spatial, mover.id))
-        if separation > reach and not math.isclose(separation, reach, rel_tol=1e-12):
-            raise ReactionUnavailable("Opportunity Strike target is beyond melee reach")
-        if blocker := line_blocker(state, actor_id, mover.id, melee=True):
-            raise ReactionUnavailable(blocked_reason(blocker))
+            raise ReactionUnavailable("Enemy movement reactions require a standing hostile")
+        if ability_id == reaction_catalog.NATURES_GRASP:
+            if window.get("before_movement") is not True:
+                raise ReactionUnavailable("Nature's Grasp requires the start of a move")
+            if state.terrain is None:
+                raise ValueError("Nature's Grasp requires cached combat terrain")
+            if not terrain.is_natural(state.terrain):
+                raise ReactionUnavailable("Nature's Grasp requires natural terrain")
+            if distance(position(state.spatial, actor_id), window["endpoint"]) > 30:
+                raise ReactionUnavailable("Nature's Grasp requires an endpoint within 30 ft")
+        if ability_id == reaction_catalog.OPPORTUNITY_STRIKE:
+            if actor_id not in window["reactors"]:
+                raise ReactionUnavailable(f"{actor_id!r} has no Opportunity Strike at this exit")
+            weapon = window["reactors"][actor_id]
+            if not combat_melee_approach.is_melee(weapon["action"]):
+                raise ReactionUnavailable("Opportunity Strike requires a melee weapon")
+            reach = weapon["reach"]
+            separation = distance(position(state.spatial, actor_id), position(state.spatial, mover.id))
+            if separation > reach and not math.isclose(separation, reach, rel_tol=1e-12):
+                raise ReactionUnavailable("Opportunity Strike target is beyond melee reach")
+            if blocker := line_blocker(state, actor_id, mover.id, melee=True):
+                raise ReactionUnavailable(blocked_reason(blocker))
 
     if ability_id == DISSONANT_WHISPER:
         from combat_hold_actions import _attack_action

@@ -97,7 +97,9 @@ async def defense_fight(
                 fight.encounter_id,
                 json.dumps(template),
             )
-            await fight.command("enter_mode", {"mode": "combat", "encounter_id": fight.encounter_id})
+            fight.roster = (await fight.command("enter_mode", {"mode": "combat", "encounter_id": fight.encounter_id}))[
+                "participants"
+            ]
             state = await fight.reload()
             combat_spatial.require_spatial(state)["positions"].update(
                 {actor: pos(index % 2 * 5, index // 2 * 5) for index, actor in enumerate(fight.players)}
