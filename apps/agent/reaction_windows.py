@@ -34,6 +34,7 @@ POST_REACTION_MISS = "post_reaction_miss"
 
 MOVEMENT = "movement"
 ENEMY_MOVE = "on_enemy_move"
+SPELL_CAST = "on_spell_cast"
 STRIKE_STAGES = (PRE_ROLL, POST_ROLL, POST_REACTION_MISS)
 STAGES = (MOVEMENT, *STRIKE_STAGES)
 
@@ -43,9 +44,12 @@ def pre_roll_triggers(action: dict) -> tuple[str, ...]:
 
     Targeting and catch-all windows precede the outcome needed by `on_condition_imposed`.
     """
-    if classify_action(action) in ("healing", "prepare_attack", "summon_constructs"):
-        return (CATCH_ALL,)
-    return ("on_targeted", "on_ally_targeted", CATCH_ALL)
+    triggers = (CATCH_ALL,)
+    if classify_action(action) not in ("healing", "prepare_attack", "summon_constructs"):
+        triggers = ("on_targeted", "on_ally_targeted", *triggers)
+    if "spell_focus_cost" in action:
+        triggers = (*triggers, SPELL_CAST)
+    return triggers
 
 
 def post_roll_triggers(action: dict, *, hit: bool) -> tuple[str, ...]:

@@ -5,7 +5,7 @@ The [catalog](../../content/spells.json) supplies the IDs. The [magic design](..
 
 ## Classification
 
-The 87 spells include **29 engine**, **4 narrated**, **54 unwired** and **0 uncertified**.
+The 87 spells include **30 engine**, **4 narrated**, **53 unwired** and **0 uncertified**.
 
 - **engine** — The named function resolves the effect and the linked committed test asserts the outcome.
 - **narrated** — The design assigns the result to the DM’s narration.
@@ -14,7 +14,7 @@ The 87 spells include **29 engine**, **4 narrated**, **54 unwired** and **0 unce
 
 A RUN label identifies the story’s saved tool receipts, player rows, combat snapshots and events. Each RUN below returned a successful cast receipt. The Focus amounts reflect the observed debit. The damage and heal results come from settlement. The generic cast packet repeats the catalog’s mechanics text. Settlement packets and saved state show which effects landed.
 
-The dead-reactions sprint is changing the archetype `mage_shield_spell`, which has a separate reaction ID from the catalog spell. Counterspell keeps its existing follow-up. Sprint wild-shape reclassified `primal_wild_shape` as engine on 2026-11-26. The ledger records `mage_shield_spell` at the baseline above.
+The dead-reactions sprint is changing the archetype `mage_shield_spell`, which has a separate reaction ID from the catalog spell. Sprint wild-shape reclassified `primal_wild_shape` as engine on 2026-11-26. The ledger records `mage_shield_spell` at the baseline above.
 
 ## Catalog
 
@@ -33,7 +33,7 @@ The dead-reactions sprint is changing the archetype `mage_shield_spell`, which h
 | `arcane_arcane_lock` | unwired | RUN `arcane_arcane_lock` (2 Focus). The cast targeted a door in the scene. The packet reported no seal or changed access DC. [M14.1](14_engine_completeness.md#spell-arcane_arcane_lock). |
 | `arcane_elemental_burst` | engine | `combat_spell_recipients.select + combat_spell_damage.land`. [`test_authored_shapes_land_on_union_once`](../../apps/agent/tests/combat/test_area_spell_recipients.py). The Elemental Burst case checks cold damage and the 15 ft sphere boundary. |
 | `arcane_hold_person` | engine | `combat_spell_condition.land` resolves the humanoid’s Wisdom save and paralysis, `combat_wrap._roll_tick_save` rolls the clearing save, and `concentration_break.remove_owned_spell_conditions` clears the caster’s hold when concentration ends. [Phase and reload coverage](../../apps/agent/tests/acceptance/test_spell_hostile_conditions.py) and [concentration coverage](../../apps/agent/tests/acceptance/test_spell_condition_caster_guard.py). |
-| `arcane_counterspell` | unwired | RUN `arcane_counterspell` (3 Focus). Ordinary cast succeeded with no contest or cancellation. Enemy spell casting has no reaction-window producer in this baseline. [Counterspell reaction window](14_engine_completeness.md#spell-counterspell). |
+| `arcane_counterspell` | engine | `combat_reaction_effect._counterspell` checks INT against DC 10 + the enemy spell’s Focus cost. A success stops the cast before its attack or save. [Registered offer, spend and reload coverage](../../apps/agent/tests/acceptance/test_spell_counterspell.py). |
 | `arcane_dispel_magic` | unwired | RUN `arcane_dispel_magic` (3 Focus). The target kept its active spell and 4 Resonance. No dispel check appeared. [M14.1](14_engine_completeness.md#spell-arcane_dispel_magic). |
 | `arcane_fly` | unwired | RUN `arcane_fly` (3 Focus). Concentration started. The same 10 ft flying move succeeded both before and after casting. No spell-granted movement state appeared. [M14.1](14_engine_completeness.md#spell-arcane_fly). |
 | `arcane_invisibility` | engine | Grants Stealth advantage and disadvantage on incoming attacks to one willing ally. Attacks and hostile spells remove invisibility, and loss of the caster’s concentration releases it. [Combat rolls and breaks](../../apps/agent/tests/acceptance/test_spell_marks.py) and [exploration and companion coverage](../../apps/agent/tests/acceptance/test_spell_marks_guards.py). |

@@ -101,6 +101,7 @@ interface EncounterActionBase {
 
 // An attack deals `damage`; condition and half-damage fields select its post-hit or save-only shape.
 export interface EncounterAttackAction extends EncounterActionBase {
+  spell_focus_cost?: number;
   magical?: boolean;
   auto_hit?: true;
   bonus_damage?: import("./action_contracts").DamageRider;
@@ -249,11 +250,18 @@ const MARK_FORBIDDEN_FIELDS = ["damage", "damage_type", "applies_condition"] as 
 
 // Mirrors encounter_actions.validate_encounter_actions.
 export function validateEncounterActionKind(
-  action: ActionExtensions & { name?: unknown; kind?: unknown },
+  action: ActionExtensions & { name?: unknown; kind?: unknown; spell_focus_cost?: unknown },
   enemy: string,
 ): void {
   const kind = encounterActionKind(action);
   validateActionExtensions(action, enemy.replace(/^enemy '(.*)'$/, "$1"));
+  if ("spell_focus_cost" in action) {
+    const cost = action.spell_focus_cost;
+    if (typeof cost !== "number" || !Number.isInteger(cost) || cost < 0)
+      throw new Error(
+        `${enemy} ${pythonRepr(action.name)}.spell_focus_cost: expected a nonnegative integer`,
+      );
+  }
   if (kind !== "command" && kind !== "accusation") return;
   const carried = MARK_FORBIDDEN_FIELDS.filter((key) => key in action);
   if (carried.length)

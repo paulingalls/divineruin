@@ -152,6 +152,11 @@ def _validate_for_window(
             f"{window['id']!r} offers {window['triggers']}"
         )
 
+    if catalog_window == reaction_windows.SPELL_CAST:
+        spatial = require_spatial(state)
+        if not inside(position(spatial, actor_id), position(spatial, window["actor_id"]), 60):
+            raise ReactionUnavailable("Counterspell requires being within 60 ft of the caster")
+
     if ability_id == reaction_spend.INTERCEPT:
         target = state.get_participant(window["target_id"])
         assert target is not None

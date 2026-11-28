@@ -37,6 +37,7 @@ async def defense_fight(
     ally_archetype: str = "guardian",
     extra_archetypes: tuple[str, ...] = (),
     gear: str | None = None,
+    encounter: str | None = None,
     library: tuple[tuple[int, str], ...] = (),
 ) -> AsyncIterator[MawlingHarness]:
     fight = MawlingHarness()
@@ -66,7 +67,7 @@ async def defense_fight(
             origin = positions[owner]
             positions[fight.players[0]] = {**origin, "x": origin["x"] + 5}
             positions[fight.players[1]] = {**origin, "x": origin["x"] + 10}
-        else:
+        elif encounter is None:
             fight.encounter_id = f"defense_{uuid4().hex}"
             fight.owns_template = True
             fight.enemies = [enemy, "lookout"] if enemy in (BANDIT, "hollow_warden", "hollow_knight") else [enemy]
@@ -97,10 +98,15 @@ async def defense_fight(
                 fight.encounter_id,
                 json.dumps(template),
             )
+        else:
+            fight.encounter_id = encounter
+        if enemy != "still":
             fight.roster = (await fight.command("enter_mode", {"mode": "combat", "encounter_id": fight.encounter_id}))[
                 "participants"
             ]
             state = await fight.reload()
+            if encounter is not None:
+                fight.enemies = [actor["id"] for actor in fight.roster if actor["type"] == "enemy"]
             combat_spatial.require_spatial(state)["positions"].update(
                 {actor: pos(index % 2 * 5, index // 2 * 5) for index, actor in enumerate(fight.players)}
             )
@@ -126,12 +132,19 @@ async def defense_fight(
 
 
 async def spend(
-    fight: MawlingHarness, ability: str, *, stage: str, actor: str | None = None, cost: int | None = None
+    fight: MawlingHarness,
+    ability: str,
+    *,
+    stage: str,
+    actor: str | None = None,
+    cost: int | None = None,
+    opening: dict | None = None,
 ) -> list[dict]:
     packets = []
     actor = fight.players[0] if actor is None else actor
     for _ in range(8):
-        result = await fight.command("resolve_phase", {})
+        result = opening if opening is not None else await fight.command("resolve_phase", {})
+        opening = None
         if offer := result.get("fate_offer"):
             packets.extend(result["packets"])
             result = await keep_original(fight, offer)

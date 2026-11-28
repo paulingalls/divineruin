@@ -19,11 +19,17 @@ def action_kind(action: dict) -> str:
 
 
 def validate_encounter_actions(enemies: list[dict]) -> None:
-    """Fail loud at combat start on an unknown kind, or on a mark action carrying a strike field."""
+    """Validate authored action kinds, extensions and spell costs at combat start."""
     for enemy in enemies:
         for action in enemy.get("action_pool", []):
             kind = action_kind(action)
             validate_action_extensions(action, enemy.get("id", "action"))
+            if "spell_focus_cost" in action:
+                cost = action["spell_focus_cost"]
+                if type(cost) is not int or cost < 0:
+                    raise ValueError(
+                        f"enemy {enemy.get('id')!r} {action.get('name')!r}.spell_focus_cost: expected a nonnegative integer"
+                    )
             if kind not in ("command", "accusation"):
                 continue
             carried = [field for field in _MARK_FORBIDDEN_FIELDS if field in action]
