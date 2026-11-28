@@ -267,8 +267,8 @@ Content/spec divergence: spec uses **Thornwatch + Merchant Guild** as worked exa
 - Authored Tier 2 ranges for Hamlet, Village, Town and City already include size scaling. Capital scales the city roll by 4/3. Keldaran Hold uses city stock policy.
 - Stock and gold use the authored economy trait modifiers. Frontier carries the spec’s Isolated policy, and Corrupt carries Cursed. Capital and Trade Hub are economy inputs.
 - M6.2 location schema supplies `settlement_tier` and `personality`; policy also accepts composed personality traits.
-- `merchant_state` table: `current_inventory`, `current_gold`, `max_gold`, `last_restock_tick`, `buyback_history`, `consigned_items` (Redis + PostgreSQL backing)
-- Daily gold allocations derive from the trade location’s settlement tier and personality, and the bound pool’s merchant kind and buying rules. Merchant purses and buyback counts refresh on the first eligible sale after Aethos dawn.
+- PostgreSQL `merchant_state` stores `current_inventory`, `current_gold_sp`, `max_gold_sp`, `last_restock_day`, `buyback_history` and `consigned_items`.
+- Daily gold allocations derive from the trade location’s settlement tier and personality, and the bound pool’s merchant kind and buying rules. The first successful merchant visit after Aethos dawn refreshes that merchant’s finite stock and purse and clears its buyback counts.
 - Daily full-price buyback limits per item: three common weapons, armor or shields, five other common goods, two uncommon goods, or one rare or legendary good. One more unit can be offered at half price.
 - Consignment at Friendly+ disposition (1d4 day delivery, 10% commission)
 - Traveling merchant entity type (1-2 day visits, +10% buy / -10% sell)
@@ -281,8 +281,8 @@ Content/spec divergence: spec uses **Thornwatch + Merchant Guild** as worked exa
 - [x] `inventory_pool` field populated on every merchant NPC in `content/npcs.json`. The lead scoped this criterion to Grimjaw, Selene, Maren and Dara. `apps/agent/tests/test_inventory_pools.py` and `apps/server/src/inventory_pools.test.ts` pin the four bindings. `apps/agent/tests/acceptance/test_seed_atomic.py` exercises both reseed validators.
 - [x] Location.size + Location.personality schema extensions; all settlements in `content/locations.json` populated using the M6.2 vocabulary.
 - [x] The 5×6 size and personality matrix matches the stock and gold spec. Python checks stock, including the Tier 3 access and slot rules. Python and TypeScript check each gold allocation and reject malformed modifiers on reseed.
-- [ ] `merchant_state` table reads/writes for current_inventory + current_gold + buyback_history + consigned_items
-- [ ] `daily_restock_at_dawn` resets all merchants per spec algorithm; matches deterministic output for fixed seed
+- [x] Registered ledger, sale and consignment tests exercise PostgreSQL reads and writes of `current_inventory`, `current_gold_sp`, `buyback_history` and `consigned_items`. Legacy rows initialize stock once.
+- [x] `daily_restock_at_dawn` matches pinned daily and weekly stock. Registered ledger reads at 11:00 UTC contend for the same merchant row and write one refresh. A second merchant keeps its prior stock and purse until its own first read after dawn (`test_merchant_restock.py`).
 - [ ] `attempt_purchase` enforces stock check + gold check + capacity check; emits sink_event (M9.8 dep)
 - [x] The `attempt_sale` path in `sell_item` enforces the daily buyback limit and merchant purse. Friendly or trusted merchants who cannot afford eligible goods offer consignment within the full-price buyback cap. Placement requires confirmation of that option’s offer ID.
 - [x] Consignments sell at dawn 1d4 Aethos days after placement and pay the consignor 90% of the quote. The first merchant read on or after the seventh dawn following the sale returns unclaimed goods.
@@ -304,7 +304,7 @@ Content/spec divergence: spec uses **Thornwatch + Merchant Guild** as worked exa
 
 The seven spec pools and temple supplies ship in `inventory_pools` with tiered availability and settlement-keyed quantities. Grimjaw, Selene, Maren and Dara each bind one pool. Both seeders check item IDs and merchant bindings, and the reseed retires the three superseded pool rows in the same transaction as the replacement catalog.
 
-Remaining stock work includes daily inventory restock, player purchases, and traveling merchants.
+Remaining stock work includes player purchases and traveling merchants.
 
 ---
 

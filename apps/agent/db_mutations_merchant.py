@@ -1,6 +1,7 @@
 """Lazy merchant state and settlement writes on the caller's transaction."""
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import cast
@@ -11,7 +12,9 @@ from livekit.agents.llm import ToolError
 import db_mutations
 from aethos_clock import aethos_day
 from consignment import Consignment, expires_on, read_ledger
+from inventory_pools import InventoryPool
 from merchant_purse import MerchantState
+from merchant_restock import daily_restock_at_dawn
 
 
 @dataclass
@@ -27,7 +30,28 @@ def aethos_today() -> int:
     return aethos_day(datetime.now(UTC))
 
 
-async def lock_merchant(npc_id: str, allocation: int, player_id: str, *, conn: asyncpg.Connection) -> LockedMerchant:
+def _check_inventory(inventory: dict[str, int], pool: InventoryPool) -> None:
+    stocked_ids = {entry["item_id"] for entry in [*pool["tier_2_items"], *pool["tier_3_items"]]}
+    for item_id, count in inventory.items():
+        if item_id not in stocked_ids:
+            raise ValueError(f"Untracked inventory item {item_id!r} for pool {pool['id']}")
+        if type(count) is not int:
+            raise ValueError(f"Inventory count for {item_id!r} must be an integer: {count!r}")
+        if count < 0:
+            raise ValueError(f"Inventory count for {item_id!r} must be nonnegative: {count}")
+
+
+async def lock_merchant(
+    npc_id: str,
+    allocation: int,
+    player_id: str,
+    *,
+    pool: InventoryPool,
+    size: str,
+    traits: Sequence[str],
+    pricing: dict,
+    conn: asyncpg.Connection,
+) -> LockedMerchant:
     inserted = await conn.fetchval(
         """
         INSERT INTO merchant_state (npc_id, data) VALUES ($1, '{}'::jsonb)
@@ -41,6 +65,12 @@ async def lock_merchant(npc_id: str, allocation: int, player_id: str, *, conn: a
 
     today = aethos_today()
     state = cast(MerchantState, json.loads(raw))
+    needs_stock = "current_inventory" not in state
+    previous = None
+    if not needs_stock:
+        inventory = state["current_inventory"]
+        _check_inventory(inventory, pool)
+        previous = (state["last_restock_day"], inventory)
     entries = [] if inserted else read_ledger(state["consigned_items"])
     remaining: list[Consignment] = []
     expired: list[Consignment] = []
@@ -57,7 +87,9 @@ async def lock_merchant(npc_id: str, allocation: int, player_id: str, *, conn: a
     if missing := owners - locked_ids:
         raise ValueError(f"Consignors missing from players: {sorted(missing)}")
 
-    restock = inserted or state["last_restock_day"] < today
+    restock = inserted is not None or state["last_restock_day"] < today
+    if restock or needs_stock:
+        state["current_inventory"] = daily_restock_at_dawn(pool, size, traits, npc_id, today, previous, pricing=pricing)
     if restock:
         state.update(current_gold_sp=allocation, max_gold_sp=allocation, last_restock_day=today, buyback_history={})
     for entry in expired:
@@ -73,7 +105,7 @@ async def lock_merchant(npc_id: str, allocation: int, player_id: str, *, conn: a
     if other_returns:
         state["unreported_returns"] = other_returns
     state["consigned_items"] = remaining
-    if restock or expired or returned:
+    if restock or needs_stock or expired or returned:
         await write_merchant(npc_id, state, conn=conn)
 
     revision = await conn.fetchval("SELECT inventory_revision FROM players WHERE player_id = $1", player_id)

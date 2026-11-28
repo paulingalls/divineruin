@@ -83,17 +83,20 @@ async def test_confirmed_consignment(
 
 
 async def test_wait_for_sale_dawn_and_collect_exactly_once(reset_db_pool: str, monkeypatch: pytest.MonkeyPatch) -> None:
-    day = db_mutations_merchant.aethos_today()
+    day = 8
     monkeypatch.setattr(db_mutations_merchant, "aethos_today", lambda: day)
+    monkeypatch.setattr(consignment, "roll", partial(dice.roll, rng=Random(2)))
     async with merchant_session(npc=MAREN, location=INN, disposition="friendly", held=1, guest=True) as sale:
         pool = await db.get_pool()
         await seed_gold(pool, sale.player_id, 7.6)
-        await fund_merchant(MAREN, 13)
+        await fund_merchant(MAREN, 13, current_inventory={"healers_kit": 2})
         result = await consign(sale)
         entry_id = result["consignment_id"]
         day = result["sale_day"] - 1
         assert receipt_data(await sale.ledger(MAREN))["entries"][0]["status"] == "pending"
         assert (await sale.collect(MAREN, entry_id)).is_error
+        pending, *_ = await merchant_row(MAREN) or ({},)
+        assert pending["current_inventory"] == {"healers_kit": 2}
         day += 1
         await db_mutations.set_npc_disposition(MAREN, sale.player_id, "unfriendly", "fixture", conn=pool)
         (entry,) = receipt_data(await sale.ledger(MAREN))["entries"]
@@ -103,6 +106,8 @@ async def test_wait_for_sale_dawn_and_collect_exactly_once(reset_db_pool: str, m
             day,
             49.5,
         )
+        ready, *_ = await merchant_row(MAREN) or ({},)
+        assert ready["current_inventory"] == {"healers_kit": 1, "lantern_hooded": 1, "tent_two": 1, "holy_symbol": 1}
         assert receipt_data(await sale.collect(MAREN, entry_id))["status"] == "collected"
         assert (await sale.collect(MAREN, entry_id)).is_error
         assert (
@@ -112,6 +117,7 @@ async def test_wait_for_sale_dawn_and_collect_exactly_once(reset_db_pool: str, m
         assert (await rows(sale.primary_id))[0]["gold"] == 7
         state, *_ = await merchant_row(MAREN) or ({},)
         assert state["consigned_items"] == []
+        assert state["current_inventory"] == ready["current_inventory"]
         _, (packet, snapshot) = sale.publications
         assert packet["type"] == E.CURRENCY_GAINED
         assert (packet["player_id"], packet["amount"], packet["new_balance"], packet["source"]) == (
@@ -125,13 +131,14 @@ async def test_wait_for_sale_dawn_and_collect_exactly_once(reset_db_pool: str, m
 
 @pytest.mark.parametrize("read", ["ledger", "owner_ledger", "collect", "sale"])
 async def test_expiry_restores_inventory_once(reset_db_pool: str, monkeypatch: pytest.MonkeyPatch, read: str) -> None:
-    day = db_mutations_merchant.aethos_today()
+    day = 8
     monkeypatch.setattr(db_mutations_merchant, "aethos_today", lambda: day)
+    monkeypatch.setattr(consignment, "roll", partial(dice.roll, rng=Random(2)))
     async with (
         merchant_session(npc=MAREN, location=INN, disposition="friendly", held=2) as owner,
         merchant_session(npc=MAREN, location=INN, own_merchant=False, held=1) as visitor,
     ):
-        await fund_merchant(MAREN, 13)
+        await fund_merchant(MAREN, 13, current_inventory={"healers_kit": 2})
         entry = await consign(owner, 2)
         if read == "ledger":
             await stock(owner.player_id, SWORD, 1, equipped=True)
@@ -171,6 +178,7 @@ async def test_expiry_restores_inventory_once(reset_db_pool: str, monkeypatch: p
         assert after_player["inventory_revision"] > before_player["inventory_revision"]
         assert await rows(visitor.player_id) == visitor_before
         state, *_ = await merchant_row(MAREN) or ({},)
+        assert state["current_inventory"] == {"healers_kit": 1, "lantern_hooded": 1, "tent_two": 1, "grappling_hook": 1}
         assert all(item["consignment_id"] != entry["consignment_id"] for item in state["consigned_items"])
         publications = reader.publications[previous_packets:]
         assert len(publications) == (2 if read == "sale" else 1)
@@ -186,6 +194,8 @@ async def test_expiry_restores_inventory_once(reset_db_pool: str, monkeypatch: p
             assert receipt_data(await owner.ledger(MAREN)) == {"npc_id": MAREN, "entries": [], "returned": came_back}
         assert "returned" not in receipt_data(await owner.ledger(MAREN))
         assert (await owner.collect(MAREN, entry["consignment_id"])).is_error
+        final, *_ = await merchant_row(MAREN) or ({},)
+        assert final["current_inventory"] == state["current_inventory"]
         assert await rows(owner.player_id) == (after_player, after_inventory)
         assert reader.publications[previous_packets:] == publications
 
