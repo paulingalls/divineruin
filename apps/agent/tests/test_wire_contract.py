@@ -1,11 +1,15 @@
 """The shared event fixture anchors both languages; neither side may invent the other publisher or parser shape."""
 
 import json
+from collections.abc import Awaitable, Callable
+from decimal import Decimal
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
 
+import asyncpg
 import pytest
-from sample_fixtures import _WARRIOR_MILESTONES, GUILD_PLAYER, _milestones_mod_for
+from sample_fixtures import _WARRIOR_MILESTONES, GUILD_PLAYER, _milestones_mod_for, make_mock_room
 
 import combat_events
 import combat_rewards
@@ -20,6 +24,7 @@ from check_resolution import SkillCheckResult
 from check_resolution_attack import AttackResult
 from check_resolution_save import SavingThrowResult
 from combat_resolution import DeathSaveResult
+from db_mutations_inventory import credit_player_gold, debit_player_gold
 from dice import DiceResult
 from dice_roll_payloads import (
     build_attack_dice_roll_payload,
@@ -28,6 +33,7 @@ from dice_roll_payloads import (
     build_saving_throw_dice_roll_payload,
     build_skill_dice_roll_payload,
 )
+from game_events import publish_game_event
 from hollow_echo import HollowEchoResult
 from progression_tools import _award_divine_favor_core, _award_xp_core
 from session_data import CompanionState
@@ -60,6 +66,47 @@ def test_fixture_event_types_match_python_constants() -> None:
     assert FIXTURE["events"]["combat_attack_hit"]["type"] == event_types.DICE_ROLL
     assert FIXTURE["events"]["combat_attack_miss"]["type"] == event_types.DICE_ROLL
     assert FIXTURE["events"]["companion_cue"]["type"] == event_types.COMPANION_CUE
+
+
+@pytest.mark.parametrize("large_balance", [False, True], ids=["fixture-balance", "large-balance"])
+@pytest.mark.parametrize(
+    ("event_type", "mutation", "direction"),
+    [(event_types.CURRENCY_GAINED, credit_player_gold, 1), (event_types.CURRENCY_SPENT, debit_player_gold, -1)],
+)
+async def test_currency_mutation_serializes_to_fixture(
+    dev_db_pool: asyncpg.Pool,
+    event_type: str,
+    mutation: Callable[..., Awaitable[dict]],
+    direction: int,
+    large_balance: bool,
+) -> None:
+    player_id = f"currency_wire_{uuid4().hex}"
+    expected = {**FIXTURE["events"][event_type], "player_id": player_id}
+    assert expected["type"] == event_type
+    amount = Decimal(str(expected["amount"]))
+    start = Decimal(str(expected["new_balance"])) - direction * amount
+    if large_balance:
+        start = Decimal("9007199254740992.03")
+        expected["new_balance"] = float(start + direction * amount)
+    await dev_db_pool.execute(
+        "INSERT INTO players (player_id, data) VALUES ($1, jsonb_build_object('gold', $2::numeric))", player_id, start
+    )
+    try:
+        async with dev_db_pool.acquire() as conn, conn.transaction():
+            await conn.fetchval("SELECT player_id FROM players WHERE player_id=$1 FOR UPDATE", player_id)
+            payload = await mutation(player_id, amount, source=expected["source"], conn=conn)
+        room = make_mock_room()
+        await publish_game_event(room, event_type, payload)
+        room.local_participant.publish_data.assert_awaited_once()
+        packet = json.loads(room.local_participant.publish_data.await_args.args[0])
+        balance = await dev_db_pool.fetchval(
+            "SELECT (data->>'gold')::numeric FROM players WHERE player_id=$1", player_id
+        )
+        assert packet["amount"] == float(direction * (balance - start))
+        assert packet["new_balance"] == float(balance)
+        assert packet == expected
+    finally:
+        await dev_db_pool.execute("DELETE FROM players WHERE player_id=$1", player_id)
 
 
 def test_disposition_changed_serializes_to_fixture() -> None:

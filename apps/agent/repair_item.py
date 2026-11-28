@@ -142,7 +142,7 @@ async def _repair_item_impl(
         await inv_mutations_mod.update_item_durability(player_id, item_id, max_h, conn=conn)
         context.userdata.validate_acting_player(player_id)
         try:
-            balance = await inv_mutations_mod.debit_player_gold(player_id, price_gp, conn=conn)
+            currency = await inv_mutations_mod.debit_player_gold(player_id, price_gp, source="repair", conn=conn)
         except InsufficientGold as exc:
             gold = player.get("gold", 0)
             raise ToolError(f"Not enough gold: repairing {name} costs {price_gp:.1f}gp and you have {gold}gp.") from exc
@@ -151,13 +151,7 @@ async def _repair_item_impl(
         await publish_game_event(
             context.userdata.room,
             E.CURRENCY_SPENT,
-            {
-                "player_id": player_id,
-                "amount": price_gp,
-                "currency": "gold",
-                "source": "repair",
-                "new_balance": balance,
-            },
+            currency,
             event_bus=context.userdata.event_bus,
         )
     logger.info("repair_item: player=%s npc=%s item=%s restored_to=%d", player_id, npc_id, item_id, max_h)

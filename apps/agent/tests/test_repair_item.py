@@ -39,7 +39,7 @@ def _repair_kwargs(*, item, disposition="neutral", crafting_tier="master", gold=
     queries.get_npc_disposition = AsyncMock(return_value=disposition)
     inv_mutations = MagicMock()
     inv_mutations.update_item_durability = AsyncMock()
-    inv_mutations.debit_player_gold = AsyncMock(return_value=14.8)
+    inv_mutations.debit_player_gold = AsyncMock(return_value={"new_balance": 14.8})
     content = MagicMock()
     content.get_npc = AsyncMock(return_value=None)
     # Pricing comes from the DB-loaded SSOT (story-011); inject the economy values

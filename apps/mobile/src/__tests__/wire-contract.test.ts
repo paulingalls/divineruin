@@ -2,6 +2,7 @@ import { panelStore } from "@/stores/panel-store";
 import { parsePatronSnapshot } from "@/audio/patron-abilities";
 import { handleGameEventMessage } from "@/audio/game-event-handler";
 import { test, expect, beforeEach, spyOn } from "bun:test";
+import { Participant, ParticipantKind } from "livekit-client";
 
 import FIXTURE from "../../../../packages/shared/fixtures/event_wire.json";
 import * as E from "@/audio/event-types";
@@ -23,7 +24,7 @@ import { HOLLOW_ECHO_DISPLAY, hudStore, type ResonanceState } from "@/stores/hud
 import { portraitStore } from "@/stores/portrait-store";
 import { parseSpellRows } from "@/utils/spell-display";
 
-import { captureTimers, resetStores, SAMPLE_CHARACTER } from "./use-game-events.helpers";
+import { captureTimers, encode, resetStores, SAMPLE_CHARACTER } from "./use-game-events.helpers";
 
 // packages/shared/fixtures/event_wire.json is the cross-language SSOT wire shape. The
 // Python lane (apps/agent/tests/test_wire_contract.py) asserts each publisher serializes
@@ -53,8 +54,40 @@ test("fixture event types match the TS wire constants", () => {
   }
   expect(EVENTS.discover_reveal_cue.type).toBe(E.PLAY_SOUND);
   expect(EVENTS.party_yield_combat.type).toBe(E.COMBAT_UI_UPDATE);
-  expect(Object.keys(EVENTS)).toHaveLength(40);
+  expect(EVENTS.currency_gained.type).toBe(E.CURRENCY_GAINED);
+  expect(EVENTS.currency_spent.type).toBe(E.CURRENCY_SPENT);
+  expect(Object.keys(EVENTS)).toHaveLength(42);
 });
+
+test.each(["currency_gained", "currency_spent"] as const)(
+  "%s fixture updates only the recipient's initialized purse",
+  (eventType) => {
+    const event = EVENTS[eventType];
+    authStore.setState({ playerId: event.player_id });
+    const agent = new Participant(
+      "agent",
+      "dm",
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      ParticipantKind.AGENT,
+    );
+    const sendCurrency = (playerId: string) =>
+      handleGameEventMessage({ from: agent, payload: encode({ ...event, player_id: playerId }) });
+
+    sendCurrency(event.player_id);
+    expect(panelStore.getState().characterDetail).toBeNull();
+    handleGameEvent({
+      type: "session_init",
+      character: { player_id: event.player_id, name: "Kael", class: "warrior", gold: 50 },
+    });
+    sendCurrency("other_player");
+    expect(panelStore.getState().characterDetail?.gold).toBe(50);
+    sendCurrency(event.player_id);
+    expect(panelStore.getState().characterDetail?.gold).toBe(event.new_balance);
+  },
+);
 
 test("recipient-scoped session end and cancellation use the Python wire fixture", () => {
   authStore.setState({ playerId: EVENTS.session_end_guest.player_id });

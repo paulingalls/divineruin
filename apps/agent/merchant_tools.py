@@ -42,25 +42,13 @@ class MerchantVisit:
     currency: tuple[str, dict] | None = None
 
     async def credit(self, amount: Decimal | float, source: str) -> None:
-        balance = await db_mutations_inventory.credit_player_gold(self.player_id, amount, conn=self.conn)
-        self._record_currency(E.CURRENCY_GAINED, amount, source, balance)
+        payload = await db_mutations_inventory.credit_player_gold(self.player_id, amount, source=source, conn=self.conn)
+        self.currency = E.CURRENCY_GAINED, payload
 
     async def debit(self, amount: Decimal, source: str) -> float:
-        balance = await db_mutations_inventory.debit_player_gold(self.player_id, amount, conn=self.conn)
-        self._record_currency(E.CURRENCY_SPENT, amount, source, balance)
-        return balance
-
-    def _record_currency(self, event: str, amount: Decimal | float, source: str, balance: float) -> None:
-        self.currency = (
-            event,
-            {
-                "player_id": self.player_id,
-                "amount": float(amount),
-                "currency": "gold",
-                "source": source,
-                "new_balance": balance,
-            },
-        )
+        payload = await db_mutations_inventory.debit_player_gold(self.player_id, amount, source=source, conn=self.conn)
+        self.currency = E.CURRENCY_SPENT, payload
+        return payload["new_balance"]
 
 
 @asynccontextmanager

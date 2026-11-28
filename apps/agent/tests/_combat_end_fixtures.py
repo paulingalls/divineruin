@@ -69,7 +69,17 @@ def default_player_row(request, monkeypatch):
     if {"dev_db_pool", "reset_db_pool"}.intersection(request.fixturenames):
         return
     monkeypatch.setattr(
-        db_mutations_inventory, "credit_player_gold", AsyncMock(side_effect=lambda _pid, amount, **_kw: float(amount))
+        db_mutations_inventory,
+        "credit_player_gold",
+        AsyncMock(
+            side_effect=lambda pid, amount, *, source, conn: {
+                "player_id": pid,
+                "amount": float(amount),
+                "currency": "gold",
+                "source": source,
+                "new_balance": float(amount),
+            }
+        ),
     )
     monkeypatch.setattr(
         db_queries,

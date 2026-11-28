@@ -12,6 +12,7 @@ from acceptance.merchant_harness import (
     GRIMJAW,
     SWORD,
     fund_merchant,
+    merchant_player_gold,
     merchant_row,
     merchant_scope,
     merchant_session,
@@ -55,7 +56,9 @@ async def test_sale_commits_receipt_and_snapshots(
             primary_before = await rows(sale.primary_id)
         before_player, before_inventory = await rows(sale.player_id)
 
+        before_gold = await merchant_player_gold(sale.player_id)
         receipt = await sale.sell(SWORD, npc, 2)
+        after_gold = await merchant_player_gold(sale.player_id)
 
         after_player, after_inventory = await rows(sale.player_id)
         assert after_player["gold"] == before_player["gold"] + total / 10
@@ -84,10 +87,10 @@ async def test_sale_commits_receipt_and_snapshots(
                 {
                     "type": E.CURRENCY_GAINED,
                     "player_id": sale.player_id,
-                    "amount": total / 10,
+                    "amount": float(after_gold - before_gold),
                     "currency": "gold",
                     "source": "sale",
-                    "new_balance": after_player["gold"],
+                    "new_balance": float(after_gold),
                 },
                 (after_player, after_inventory),
             ),

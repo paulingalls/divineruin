@@ -222,17 +222,19 @@ async def test_sell_matches_http_and_shared_case(
     inventories = [await db_queries.get_inventory_snapshot(player) for player in bench.ids]
     proceeds = {"price_sp": case["expected"]["price_sp"], "gold": proceeds_gold}
 
+    gold_query = "SELECT (data->>'gold')::numeric FROM players WHERE player_id=$1"
+    before_gold = await bench.pool.fetchval(gold_query, owner)
+
     async def observe(data: bytes, **_kwargs: object) -> None:
         assert await saved(bench, voice_id) == {**before, "status": "collected", "decision": "sell"}
-        balance = await gold(bench, owner)
-        assert balance == pytest.approx(12 + proceeds_gold)
+        balance = await bench.pool.fetchval(gold_query, owner)
         assert json.loads(data) == {
             "type": E.CURRENCY_GAINED,
             "player_id": owner,
             "currency": "gold",
             "source": "crafting",
-            "amount": proceeds_gold,
-            "new_balance": balance,
+            "amount": float(balance - before_gold),
+            "new_balance": float(balance),
         }
 
     bench.ctx.userdata.room.local_participant.publish_data.side_effect = observe

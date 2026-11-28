@@ -164,7 +164,7 @@ class TestQueryAvailableWorkspaces:
 
         db_mod, _ = make_db_mod()
         mutations = MagicMock()
-        inventory = MagicMock(debit_player_gold=AsyncMock(return_value=14.8))
+        inventory = MagicMock(debit_player_gold=AsyncMock(return_value={"new_balance": 14.8}))
         mutations.create_workspace_rental = AsyncMock(return_value="rent_quote_parity")
         rental = json.loads(
             await _rent_workspace_impl(
@@ -211,7 +211,7 @@ class TestRentWorkspace:
         db_mod, _ = make_db_mod()
         queries = _queries(disposition="neutral", player={"player_id": "player_1", "gold": 15})
         mutations = MagicMock()
-        inventory = MagicMock(debit_player_gold=AsyncMock(return_value=14.8))
+        inventory = MagicMock(debit_player_gold=AsyncMock(return_value={"new_balance": 14.8}))
         mutations.create_workspace_rental = AsyncMock(return_value="rent_abc")
         result = json.loads(
             await _rent_workspace_impl(
@@ -234,7 +234,7 @@ class TestRentWorkspace:
     async def test_friendly_discount_rounds_away_for_workshop(self):
         db_mod, _ = make_db_mod()
         mutations = MagicMock()
-        inventory = MagicMock(debit_player_gold=AsyncMock(return_value=14.8))
+        inventory = MagicMock(debit_player_gold=AsyncMock(return_value={"new_balance": 14.8}))
         mutations.create_workspace_rental = AsyncMock(return_value="rent_x")
         result = json.loads(
             await _rent_workspace_impl(
@@ -269,7 +269,7 @@ class TestRentWorkspace:
     async def test_absent_npc_refuses_before_debit(self):
         db_mod, _ = make_db_mod()
         mutations = MagicMock()
-        inventory = MagicMock(debit_player_gold=AsyncMock(return_value=14.8))
+        inventory = MagicMock(debit_player_gold=AsyncMock(return_value={"new_balance": 14.8}))
         mutations.create_workspace_rental = AsyncMock()
         with pytest.raises(ToolError):
             await _rent_workspace_impl(
