@@ -49,6 +49,16 @@ def published_payloads(room):
     return [json.loads(call[0][0]) for call in room.local_participant.publish_data.call_args_list]
 
 
+def directed_hp_packets(room):
+    return [
+        (call.kwargs["destination_identities"], payload)
+        for call, payload in zip(
+            room.local_participant.publish_data.call_args_list, published_payloads(room), strict=True
+        )
+        if payload["type"] == "hp_changed"
+    ]
+
+
 def published_types(room):
     """Event types published to a mock room's data channel, in order."""
     return [payload["type"] for payload in published_payloads(room)]

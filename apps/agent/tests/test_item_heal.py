@@ -3,7 +3,7 @@ import json
 import pytest
 from _item_heal_fixtures import BERRY, GOODBERRY, POTION, heal_roll
 from _item_heal_fixtures import item_heal_walk as item_heal_walk
-from sample_fixtures import published_payloads
+from sample_fixtures import directed_hp_packets, published_payloads
 from test_wire_contract import FIXTURE
 
 import db_mutations
@@ -12,10 +12,13 @@ import event_types as E
 import spells
 
 
-@pytest.mark.parametrize("hp,kaelen,healed,maximum", [(5, False, 7, 20), (19, False, 1, 20), (23, True, 2, 25)])
-async def test_consume_from_registered_inventory_query(walk, hp, kaelen, healed, maximum):
+@pytest.mark.parametrize("hp,healed,maximum", [(5, 7, 20), (19, 1, 20), (23, 2, 25), (14, 3, 17)])
+async def test_consume_from_registered_inventory_query(walk, hp, healed, maximum):
     await walk.patch(
-        hp={"current": hp, "max": 20}, divine_favor={"patron": "kaelen", "level": 40, "max": 100} if kaelen else None
+        hp={"current": hp, "max": 20},
+        divine_favor={"patron": "kaelen", "level": 40, "max": 100} if maximum == 25 else None,
+        maxhp_override=-3 if maximum == 17 else 0,
+        temp_hp=3,
     )
     await walk.put()
     inventory = await walk.command("query_info", {"kind": "inventory"})
@@ -37,11 +40,10 @@ async def test_consume_from_registered_inventory_query(walk, hp, kaelen, healed,
         }
     ]
     assert (await walk.row())["hp"] == {"current": hp + healed, "max": 20}
-    assert {p["type"] for p in published_payloads(walk.sd.room)} >= {E.HP_CHANGED, E.INVENTORY_UPDATED}
-    assert any(
-        call.kwargs.get("destination_identities") == [walk.player]
-        for call in walk.sd.room.local_participant.publish_data.await_args_list
-    )
+    assert directed_hp_packets(walk.sd.room) == [
+        ([walk.player], {"type": E.HP_CHANGED, "current": hp + healed, "max": maximum, "temp_hp": 3})
+    ]
+    assert E.INVENTORY_UPDATED in {p["type"] for p in published_payloads(walk.sd.room)}
 
 
 async def test_goodberry_grants_items_then_the_caster_feeds_an_ally(walk):

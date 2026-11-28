@@ -10,6 +10,7 @@ import db
 import db_mutations
 import db_queries
 import event_types as E
+import hp_changed_payload
 import oath_breach
 import oath_timed
 import patron_combat_edges
@@ -19,7 +20,6 @@ from combat_state import CombatState
 from combat_ui_update import build_combat_ui_update
 from game_events import publish_game_event
 from patron_favor import get_patron_tier
-from patron_passives import effective_hp
 
 if TYPE_CHECKING:
     from session_data import SessionData
@@ -182,7 +182,7 @@ async def _prepare_shield(
     updated, response = await patron_combat_edges.community_shield(
         session.combat_state, actor, target, players[actor], players[target], conn=conn
     )
-    health = {**effective_hp(players[target]), "temp_hp": response["temp_hp"]} if updated is None else None
+    health = hp_changed_payload.from_player(players[target], temporary=response["temp_hp"]) if updated is None else None
     return ability, updated, response, health
 
 

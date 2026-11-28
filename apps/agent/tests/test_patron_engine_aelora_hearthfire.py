@@ -16,11 +16,13 @@ from _aelora_hearthfire_fixtures import (
     snapshot,
 )
 from _mortaen_threshold_fixtures import FOE, active, declare, drain, events, fight
+from _patron_engine_fixtures import configure
 from _unbound_path_fixtures import row
 from _unbound_path_fixtures import world as world
 from _zhael_fate_fixtures import game_tools
 from acceptance._capstone_helpers import _d20
 from asyncpg import Connection
+from sample_fixtures import directed_hp_packets
 from test_patron_engine_valdris import checkpoint, reload_state
 from voice_condition_fixtures import participant
 
@@ -145,6 +147,31 @@ async def test_round_heals_once_to_cap_and_tracks_current_occupants_until_expiry
             )
         assert participant(active(world), COMPANION).hp_current == 21
         assert participant(active(world), FOE).hp_current == 1
+
+
+@pytest.mark.parametrize("patron,override,maximum", [("veythar", -3, 17), ("kaelen", 0, 25)])
+async def test_hearthfire_publishes_effective_hp(
+    world: SimpleNamespace, patron: str, override: int, maximum: int
+) -> None:
+    async with hearth(world) as call:
+        guest = world.ids[1]
+        hp = maximum - 2
+        await configure(
+            world, patron, "warrior", index=1, hp={"current": hp, "max": 20}, maxhp_override=override, temp_hp=3
+        )
+        target = participant(active(world), guest)
+        target.hp_current, target.hp_max, target.temp_hp = hp, maximum, 3
+        active(world).spatial["positions"][guest] = point(10)
+        await checkpoint(world)
+        await call("activate", id=GIFT)
+        await declare(world, call)
+        with healing_rolls(4):
+            await drain(world, call)
+
+        assert (await row(world, 1))["hp"] == {"current": maximum, "max": 20}
+        assert [packet for dest, packet in directed_hp_packets(world.ctx.userdata.room) if dest == [guest]] == [
+            {"type": E.HP_CHANGED, "current": maximum, "max": maximum, "temp_hp": 3}
+        ]
 
 
 async def test_wrap_raises_every_recoverable_fallen_ally_before_death_saves(world: SimpleNamespace) -> None:

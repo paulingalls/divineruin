@@ -62,7 +62,7 @@ async def test_victory_resurrects_destroyed_echo_primary_only(monkeypatch):
                 type="temporary_hollowed",
                 initiative=15,
                 hp_current=0,
-                hp_max=20,
+                hp_max=23,
                 ac=14,
                 is_fallen=True,
             ),  # destroyed echo-primary
@@ -88,10 +88,10 @@ async def test_victory_resurrects_destroyed_echo_primary_only(monkeypatch):
     assert ("p2", 1) in hp_calls  # the ally is stabilized, not resurrected
     # The destroyed echo is a revived player again, so its HUD gets the revived HP (a guest gets no session-init).
     assert [
-        (event.destination_identities, event.payload["current"])
+        (event.destination_identities, event.payload["current"], event.payload["max"])
         for event in sink.captured
         if event.event_type == "hp_changed"
-    ] == [(["p1"], 20), (["p2"], 1)]
+    ] == [(["p1"], 20, 20), (["p2"], 1, 20)]
     assert end_data.get("death_context") is not None  # the primary's death context is surfaced
 
 

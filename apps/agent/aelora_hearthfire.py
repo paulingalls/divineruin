@@ -12,6 +12,7 @@ import combat_spatial
 import combat_spell_heal
 import dice
 import event_types as E
+import hp_changed_payload
 from combat_down import is_terminally_down
 from combat_movement_cost import AXES
 from combat_participant import CombatParticipant
@@ -201,7 +202,7 @@ async def heal_round(
                 await sink.emit(
                     session.room,
                     E.HP_CHANGED,
-                    {"current": target.hp_current, "max": target.hp_max, "temp_hp": target.temp_hp},
+                    hp_changed_payload.from_participant(target),
                     event_bus=session.event_bus,
                     destination_identities=[target.id],
                 )

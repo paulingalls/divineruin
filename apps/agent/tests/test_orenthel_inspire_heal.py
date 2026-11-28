@@ -201,16 +201,16 @@ SCENARIOS = {HEAL: ("patron_synergy_heal:inspire_heal", inspire_healing, [("comb
 
 
 @pytest.mark.parametrize("surface", ["combat", "exploration"])
-@pytest.mark.parametrize("hp", [14, 15])
+@pytest.mark.parametrize("hp", [14, 17])
 async def test_effective_maximum(world: SimpleNamespace, surface: str, hp: int) -> None:
-    async with party(world, surface, hp=hp, override=-5) as song:
-        await heal(song, hp, 15)
+    async with party(world, surface, hp=hp, override=-3) as song:
+        await heal(song, hp, 17)
 
 
 @pytest.mark.parametrize("surface", ["combat", "exploration"])
 async def test_orenthel_guest_heals(world: SimpleNamespace, surface: str) -> None:
-    async with party(world, surface, singer=1) as song:
-        await heal(song, 4, 25)
+    async with party(world, surface, singer=1, hp=23) as song:
+        await heal(song, 23, 25)
 
 
 @pytest.mark.parametrize("surface", ["combat", "exploration"])
