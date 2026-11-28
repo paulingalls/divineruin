@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.92.1
+
+Release subscribed LiveKit tracks before closing acceptance-test rooms to prevent intermittent teardown failures.
+
+Release steps: none.
+
 ## 0.92.0
 
 Shopkeepers buy from a daily purse and have a daily limit for each item. They can offer their remaining silver or a reduced price, and wait for the player to accept before taking the goods.
