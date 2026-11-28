@@ -7,10 +7,9 @@ from typing import TypeGuard
 import check_resolution_save
 import concentration_break
 import conditions
-import encounter_facts
 from combat_condition_landing import land_condition_on_participant
 from combat_fate_rolls import PacketRolls, packet_save
-from combat_legendary_resistance import finalize_save, override_fields
+from combat_legendary_resistance import finalize_save
 from combat_participant import CombatParticipant
 from combat_spell_profile import recipient_spec
 from combat_spell_recipients import select
@@ -201,16 +200,9 @@ async def _land_one(
             return
         target.conditions = conditions.remove_conditions(target.conditions, save.consumed_conditions)
         save = finalize_save(state, target, save, failed_conditions=(condition,))
-        packet["save"] = {
-            "attribute": save.save_type,
-            "roll": save.roll,
-            "total": save.total,
-            "dc": save.dc,
-            "success": save.success,
-            **override_fields(save),
-            **save.oath_fields(),
-            **encounter_facts.rally_receipt(target.id, save.rally_sources),
-        }
+        save_fields = save.receipt_fields(target.id)
+        save_fields["attribute"] = save_fields.pop("save_type")
+        packet["save"] = save_fields
         if save.success:
             _refuse(packet, "resisted", save.narrative_hint if save.success_override else f"{target.name} resisted.")
             return

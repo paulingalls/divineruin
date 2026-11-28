@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 from _patron_engine_fixtures import configure
 from _unbound_path_fixtures import world as world
-from _zhael_marshal_rally_fixtures import pending, save_action
+from _zhael_marshal_rally_fixtures import bonus, pending, save_action
 from acceptance._capstone_helpers import _d20, _damage_die
 from acceptance._promised_hour_fixtures import manual_save, oath_record, promised_fight, select_oath, wrap
 from acceptance.test_paladin_oath_swear import timed
@@ -45,7 +45,15 @@ async def test_automatic_effect_save(world, kind) -> None:
             await update_player_concentration(f.hero, "divine_bless")
             packets = await f.round(goblin_strike(GOBLIN, f.hero), faces=(19, 9))
             receipt = next(packet["concentration_save"] for packet in packets if "concentration_save" in packet)
-            assert (receipt["total"], receipt["success"]) == (10, True)
+            assert {key: value for key, value in receipt.items() if key != "oath_timed"} == {
+                "roll": 9,
+                "total": 10,
+                "dc": 10,
+                "success": True,
+                "combat_id": f.combat_id,
+                "round_number": 3,
+            }
+            assert receipt["oath_timed"]["modifier"] == 1
             assert f.session.member_state(f.hero).concentration.spell_id == "divine_bless"
         else:
             with patch("combat_enemy_action.dice_roll", return_value=_damage_die(4)):
@@ -67,12 +75,13 @@ async def test_final_round_clearing_save(world, held: bool) -> None:
         hero.conditions = apply_condition([], "frightened", source=GOBLIN, duration=3)
         if held:
             hero.conditions = apply_condition(hero.conditions, "paralyzed", source=GOBLIN, duration=3)
-            await configure(world, "zhael", "paladin", patron_gifts={})
+            pending(state, f.hero, f.ally)
+            await configure(world, "zhael", "paladin", patron_gifts={"zhael_fates_thread": {"spent": True}})
         await f.declare()
         await f.call("resolve_phase")
-        result = await wrap(f, 9)
+        result = await wrap(f, 9, 20) if held else await wrap(f, 9)
         if held:
-            assert result["fate_offer"]["offer_id"]
+            assert result["fate_offer"]["die"] == 20
             assert (await oath_record(f))["status"] == "active"
             fresh, call = await _reloaded(f.session, f.combat_id, f.hero)
             await configure(
@@ -86,8 +95,17 @@ async def test_final_round_clearing_save(world, held: bool) -> None:
             assert fresh.combat_state.round_number == 4
         saves = result["oath_saves"]
         assert len(saves) == (2 if held else 1)
+        if held:
+            assert result["rally_saves"] == [saves[0]]
+            assert saves[0]["rally_bonuses"] == [bonus(f.ally, f.hero)]
+            assert "rally_bonuses" not in saves[1]
+        else:
+            assert "rally_saves" not in result
+        assert [(save["condition"], save["roll"], save["total"]) for save in saves] == (
+            [("frightened", 9, 11), ("paralyzed", 20, 21)] if held else [("frightened", 9, 10)]
+        )
         for save in saves:
-            assert (save["round_number"], save["total"], save["success"]) == (3, 10, True)
+            assert (save["actor_id"], save["round_number"], save["dc"], save["success"]) == (f.hero, 3, 10, True)
             assert save["oath_timed"]["oath_id"] == oath["oath_id"]
         [change] = result["oath_changes"]
         assert (change["new_status"], change["round_number"]) == ("fulfilled", 3)

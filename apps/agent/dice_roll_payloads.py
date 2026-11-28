@@ -60,17 +60,13 @@ def build_skill_dice_roll_payload(
     return payload
 
 
-def build_saving_throw_dice_roll_payload(result: SavingThrowResult, *, roll_type: str, **fields: object) -> dict:
-    return {
-        **result.oath_fields(),
-        **fields,
-        "roll_type": roll_type,
-        "save_type": result.save_type,
-        "roll": result.roll,
-        "modifier": result.modifier,
-        "total": result.total,
-        "success": result.success,
-    }
+def build_saving_throw_dice_roll_payload(
+    result: SavingThrowResult, *, roller_id: str, roll_type: str, **fields: object
+) -> dict:
+    receipt = result.receipt_fields(roller_id)
+    del receipt["dc"]
+    core = {key: receipt[key] for key in ("save_type", "roll", "total", "success")}
+    return {**receipt, **fields, **core, "roll_type": roll_type, "modifier": result.modifier}
 
 
 def build_narrative_dice_roll_payload(result: DiceResult) -> dict:

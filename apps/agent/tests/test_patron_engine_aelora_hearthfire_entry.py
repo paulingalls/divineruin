@@ -64,7 +64,19 @@ async def test_entry_refusal(world: SimpleNamespace, melee: bool) -> None:
         assert require_spatial(state)["positions"][FOE]["x"] == pytest.approx(20)
         assert movement["moved_ft"] == pytest.approx(10)
         assert movement["movement_spent_ft"] == pytest.approx(10)
-        assert movement["hearthfire_entries"][0]["success"] is False
+        [receipt] = movement["hearthfire_entries"]
+        assert (receipt["roll"], receipt["success"]) == (2, False)
+        assert set(receipt) == {
+            "source_id",
+            "mover_id",
+            "dc",
+            "roll",
+            "total",
+            "success",
+            "dm_cue",
+            "combat_id",
+            "round_number",
+        }
         assert state.hearthfire_zones[0]["failed_rounds"] == {FOE: 1}
         if melee:
             assert movement["attack_resolved"] is False

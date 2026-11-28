@@ -5,7 +5,6 @@ from functools import partial
 import check_resolution_save
 import db_queries
 import durability
-import encounter_facts
 from combat_ability import _find_action
 from combat_durability import _accrue_durability
 from combat_fate_rolls import packet_save
@@ -114,15 +113,7 @@ async def resolve_rider(
     )
     if result is None:
         return
-    outcome.update(
-        save_type=result.save_type,
-        save_roll=result.roll,
-        save_total=result.total,
-        save_dc=result.dc,
-        save_success=result.success,
-        **result.oath_fields(),
-        **encounter_facts.rally_receipt(target.id, result.rally_sources),
-    )
+    outcome.update(result.receipt_fields(target.id, prefix="save_"))
     if result.success:
         outcome["reason"] = "save_succeeded"
         return

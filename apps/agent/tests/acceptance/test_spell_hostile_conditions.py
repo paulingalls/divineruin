@@ -79,6 +79,7 @@ async def test_hold_person_skips_enemy_action_and_turns_melee_hit_into_crit(spel
     assert any(p["actor_id"] == "foe" and "paralyzed" in p.get("reason", "") for p in packets)
     assert participant(held, player).hp_current == participant(control_state, player).hp_current
     assert cast["save"]["attribute"] == "wisdom" and not cast["save"]["success"]
+    assert set(cast["save"]) == {"attribute", "roll", "total", "dc", "success", "combat_id", "round_number"}
     assert participant(held, "foe").conditions == [instance("paralyzed", HOLD, player, "wis")]
     assert (await saved_player(player))["focus"]["current"] == before["focus"]["current"] - 3
 

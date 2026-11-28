@@ -5,7 +5,6 @@ from functools import partial
 
 import check_resolution_save
 import db_queries
-import encounter_facts
 import spells
 from choir_effects import suppressed
 from combat_fate_rolls import packet_save
@@ -61,20 +60,10 @@ async def effective_declaration(
             )
             if save is None:
                 return None
-            if receipts is not None and (
-                save.rally_sources or save.oath_justice is not None or save.oath_timed is not None
-            ):
-                receipts.append(
-                    {
-                        "target_id": target.id,
-                        "roll": save.roll,
-                        "total": save.total,
-                        "dc": save.dc,
-                        "success": save.success,
-                        **save.oath_fields(),
-                        **encounter_facts.rally_receipt(caster.id, save.rally_sources),
-                    }
-                )
+            if receipts is not None and save.has_receipt():
+                receipt = save.receipt_fields(caster.id)
+                del receipt["save_type"]
+                receipts.append({"target_id": target.id, **receipt})
             if not save.success:
                 target_id = caster.id
         redirected.append(target_id)

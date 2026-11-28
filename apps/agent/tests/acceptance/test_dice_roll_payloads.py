@@ -45,7 +45,8 @@ async def test_choir_turn_start_publishes_the_aura_save(started) -> None:
         "success": save.success,
         "concentration_broken": None,
         "cue": "Lost voices tug at your focus.",
-        **save.oath_fields(),
+        "combat_id": session.combat_state.combat_id,
+        "round_number": 1,
     }
 
 

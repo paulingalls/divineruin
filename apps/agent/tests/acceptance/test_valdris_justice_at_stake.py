@@ -192,7 +192,7 @@ async def test_discovery_retry_composes_automatic_bonus_and_explicit_context(wor
 async def test_redirected_spell_checks_the_resolved_target(world) -> None:
     async with fight(world, "valdris", archetype="paladin", ally_hp=20) as f:
         registered(f)
-        await swear(f.session)
+        oath = await swear(f.session)
         await character_spells.record_learned(f.hero, "arcane_bolt", "training", is_prepared=True, conn=world.pool)
         await f.round(goblin_strike(GOBLIN, f.hero), faces=(1,))
         state = f.session.combat_state
@@ -202,7 +202,24 @@ async def test_redirected_spell_checks_the_resolved_target(world) -> None:
         target.choir_reaction = spec["choir_reaction"]
         packets = await f.round(ability(f.hero, "arcane_bolt", GOBLIN), faces=(1, 19))
         cast = next(p["cast"] for p in packets if p["actor_id"] == f.hero)
-        assert cast["harmonic_shield_saves"][0]["oath_justice"]["source_id"] == GOBLIN
+        assert cast["harmonic_shield_saves"] == [
+            {
+                "target_id": GOBLIN,
+                "roll": 1,
+                "total": 3,
+                "dc": 16,
+                "success": False,
+                "combat_id": f.combat_id,
+                "round_number": 2,
+                "oath_justice": {
+                    "oath_id": oath["oath_id"],
+                    "context": "save",
+                    "source_id": GOBLIN,
+                    "modifier": 2,
+                    "reason": "aggression",
+                },
+            }
+        ]
         attack_packet = cast["damage_result"]
         assert attack_packet["target_id"] == f.hero
         assert attack_packet["attack_total"] == 20

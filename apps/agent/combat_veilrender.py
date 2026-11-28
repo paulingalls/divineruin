@@ -143,14 +143,14 @@ async def turn_start(
             if save is None:
                 return None
             encounter_facts.record_party_attack(state, source, actor)
+            save_fields = save.receipt_fields(actor.id, prefix="save_")
+            del save_fields["save_type"], save_fields["save_roll"], save_fields["save_total"]
             effect = {
                 "actor_id": actor.id,
                 "source_id": source.id,
                 "effect": "corruption_field",
-                "save_success": save.success,
+                **save_fields,
                 "save_dc": spec["dc"],
-                **save.oath_fields(),
-                **encounter_facts.rally_receipt(actor.id, save.rally_sources),
             }
             if scope is not None:
                 scope.steps["effect"] = effect

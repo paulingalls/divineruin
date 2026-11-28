@@ -153,10 +153,15 @@ def test_other_dice_rolls_serialize_to_fixtures() -> None:
     death = DeathSaveResult(11, True, False, False, 1, 0, False, False, "")
     payloads = {
         "ordinary_save": build_saving_throw_dice_roll_payload(
-            ordinary, roll_type="saving_throw", dramatic=ordinary.dramatic, context=ordinary.context
+            ordinary,
+            roller_id="player_1",
+            roll_type="saving_throw",
+            dramatic=ordinary.dramatic,
+            context=ordinary.context,
         ),
         "choir_aura_save": build_saving_throw_dice_roll_payload(
             choir,
+            roller_id="player_1",
             roll_type="choir_aura",
             actor_id="player_1",
             dc=15,

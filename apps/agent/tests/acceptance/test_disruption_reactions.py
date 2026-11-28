@@ -39,6 +39,7 @@ async def test_dissonant_whisper(reset_db_pool, save_face, saved):
             -2,
         )
         assert (effect["save_total"], effect["save_success"]) == (save_face - 2, saved)
+        assert {"rally_bonuses", "success_override"}.isdisjoint(effect)
         assert hit["roll"] == (18 if saved else 4)
         assert await hp(fight) == ([93, 100] if saved else [100, 100])
         assert await focus(fight) == remaining

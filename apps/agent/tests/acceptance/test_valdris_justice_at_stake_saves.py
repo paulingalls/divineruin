@@ -94,8 +94,19 @@ async def test_automatic_save_uses_its_effect_owner(world, resolution) -> None:
             with dice(8):
                 result = await f.call("resolve_phase")
             [receipt] = result["oath_saves"]
-            assert (receipt["total"], receipt["success"]) == (10, True)
+            assert {key: value for key, value in receipt.items() if key != "oath_justice"} == {
+                "actor_id": f.hero,
+                "condition": "frightened",
+                "roll": 8,
+                "total": 10,
+                "dc": 10,
+                "success": True,
+                "combat_id": f.combat_id,
+                "round_number": 2,
+            }
             assert receipt["oath_justice"]["source_id"] == GOBLIN
+            assert (receipt["oath_justice"]["oath_id"], receipt["oath_justice"]["modifier"]) == (oath["oath_id"], 2)
+            assert "rally_saves" not in result
             assert not participant(await f.reload(), f.hero).conditions
             return
 
@@ -110,6 +121,15 @@ async def test_automatic_save_uses_its_effect_owner(world, resolution) -> None:
         if resolution in {"condition", "combined", "critical"}:
             assert not hero.conditions
         elif resolution == "concentration":
+            assert {key: value for key, value in receipt.items() if key != "oath_justice"} == {
+                "roll": 8,
+                "total": 10,
+                "dc": 10,
+                "success": True,
+                "combat_id": f.combat_id,
+                "round_number": 2,
+            }
+            assert receipt["oath_justice"]["modifier"] == 2
             assert f.session.member_state(f.hero).concentration.spell_id == "divine_bless"
         else:
             assert receipt["applied"] is False

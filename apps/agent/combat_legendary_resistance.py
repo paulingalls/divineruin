@@ -44,8 +44,3 @@ def finalize_save(
         narrative_hint=f"{target.name} succeeds using {action['name']}.",
         success_override=action["name"],
     )
-
-
-def override_fields(result: SavingThrowResult) -> dict[str, str]:
-    override = getattr(result, "success_override", None)
-    return {"success_override": override} if override is not None else {}

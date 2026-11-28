@@ -296,10 +296,10 @@ async def _finish_save(session, player_id, result, conditions_mutations, db_mod,
         E.DICE_ROLL,
         build_saving_throw_dice_roll_payload(
             result,
+            roller_id=player_id,
             roll_type="saving_throw",
             dramatic=result.dramatic,
             context=result.context,
-            **encounter_facts.rally_receipt(player_id, result.rally_sources),
         ),
         event_bus=session.event_bus,
     )
@@ -307,15 +307,12 @@ async def _finish_save(session, player_id, result, conditions_mutations, db_mod,
     outcome = "success" if result.success else "failure"
     session.record_event(f"Saving throw ({result.save_type} DC {result.dc}): {outcome}")
 
+    save_fields = result.receipt_fields(player_id)
+    del save_fields["success"]
     response = {
         "outcome": outcome,
-        **result.oath_fields(),
-        **encounter_facts.rally_receipt(player_id, result.rally_sources),
-        "save_type": result.save_type,
-        "roll": result.roll,
+        **save_fields,
         "modifier": result.modifier,
-        "total": result.total,
-        "dc": result.dc,
         "margin": result.margin,
         "effect_applied": result.effect_applied,
         "narrative_hint": result.narrative_hint,
