@@ -21,7 +21,6 @@ async def resolve(
             attacker,
             target,
             [action],
-            sum(p.type == "enemy" and not p.is_fallen for p in state.participants),
             not state.first_attack_resolved,
             **{**attack_deps, "attack_cursor": {}},
         )
@@ -77,7 +76,6 @@ async def resolve_multi_target(session, state, packet, attacker, player, attack_
         attacker,
         anchor,
         [weapon] * len(targets),
-        sum(p.type == "enemy" and not p.is_fallen for p in state.participants),
         not state.first_attack_resolved,
         **{**attack_deps, "attack_cursor": cursor},
     )

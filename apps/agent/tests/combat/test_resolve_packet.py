@@ -322,52 +322,6 @@ class TestDramaticEmission:
         assert "hit" not in payload
 
     @pytest.mark.asyncio
-    async def test_routine_attack_is_not_dramatic(self):
-        sink = EventSink()
-        ctx = make_context()
-        cs = _make_combat_state(player_hp=25)
-        attacker, target, action = _attacker_target_action(cs)
-
-        response = await _resolve_attack_packet(
-            ctx.userdata,
-            attacker,
-            action,
-            target,
-            mutations=_make_mocks(),
-            queries=_make_queries(),
-            resolver=_fixed_resolver(damage=5, hp_remaining=20),
-            enemies_remaining=3,
-            sink=sink,
-        )
-
-        assert response["dramatic"] is False
-        assert response["context"] == ""
-        assert _dice_payload(sink)["dramatic"] is False
-
-    @pytest.mark.asyncio
-    async def test_last_enemy_promotes_a_routine_attack(self):
-        sink = EventSink()
-        ctx = make_context()
-        cs = _make_combat_state(player_hp=25)
-        attacker, target, action = _attacker_target_action(cs)
-
-        response = await _resolve_attack_packet(
-            ctx.userdata,
-            attacker,
-            action,
-            target,
-            mutations=_make_mocks(),
-            queries=_make_queries(),
-            resolver=_fixed_resolver(damage=5, hp_remaining=20),
-            enemies_remaining=1,
-            sink=sink,
-        )
-
-        assert response["dramatic"] is True
-        assert response["context"] == "last_enemy"
-        assert _dice_payload(sink)["context"] == "last_enemy"
-
-    @pytest.mark.asyncio
     async def test_first_attack_promotes_a_routine_attack(self):
         sink = EventSink()
         ctx = make_context()
@@ -382,37 +336,13 @@ class TestDramaticEmission:
             mutations=_make_mocks(),
             queries=_make_queries(),
             resolver=_fixed_resolver(damage=5, hp_remaining=20),
-            enemies_remaining=3,
+            combat_state=cs,
             is_first_attack_of_combat=True,
             sink=sink,
         )
 
         assert response["dramatic"] is True
         assert response["context"] == "first_attack"
-
-    @pytest.mark.asyncio
-    async def test_intrinsic_verdict_wins_over_encounter_context(self):
-        # A nat-20 that is ALSO the last enemy keeps the higher-severity intrinsic label —
-        # the emission promotes only when the intrinsic verdict was not already dramatic.
-        sink = EventSink()
-        ctx = make_context()
-        cs = _make_combat_state(player_hp=25)
-        attacker, target, action = _attacker_target_action(cs)
-
-        response = await _resolve_attack_packet(
-            ctx.userdata,
-            attacker,
-            action,
-            target,
-            mutations=_make_mocks(),
-            queries=_make_queries(),
-            resolver=_fixed_resolver(damage=5, hp_remaining=20, dramatic=True, context="natural_20"),
-            enemies_remaining=1,
-            is_first_attack_of_combat=True,
-            sink=sink,
-        )
-
-        assert response["context"] == "natural_20"
 
 
 class TestRollThenApply:

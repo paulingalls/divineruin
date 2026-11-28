@@ -175,11 +175,7 @@ async def _reroll(
         damage_mult=attacker.damage_mult,
         target_conditions=target.conditions,
     )
-    result = promote_attack(
-        result,
-        sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen),
-        not state.first_attack_resolved,
-    )
+    result = promote_attack(result, state, not state.first_attack_resolved)
     head["roll"] = serialize_roll(result, ac)
     # The damage resolver can now publish the kept result after reductions and redirection.
     head["roll_published"] = False

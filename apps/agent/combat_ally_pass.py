@@ -128,7 +128,6 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
                     attacker,
                     target,
                     attack["actions"],
-                    attack["enemies_remaining"],
                     attack["is_first_attack"],
                     attack_cursor=attack,
                     progress=progress,

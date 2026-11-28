@@ -11,7 +11,7 @@ import db_queries
 import dice
 import spells
 import thyra_seasons
-from combat_attack_roll import attack_roll_inputs
+from combat_attack_roll import attack_roll_inputs, promote_attack
 from combat_spell_condition import land_damage_rider
 from combat_spell_profile import DICE, scaled
 from combat_spell_save import roll_save_damage
@@ -278,6 +278,7 @@ async def _land_attack(
             target,
             weapon_attack=False,
             target_ac_bonus=ac_bonus,
+            is_first_attack_of_combat=not state.first_attack_resolved,
             resolver=resolver,
             **deps,
         )
@@ -293,9 +294,11 @@ async def _land_attack(
             damage_mult=caster.damage_mult,
             target_conditions=target.conditions,
         )
+        rolled = promote_attack(rolled, state, not state.first_attack_resolved)
         result = await apply_rolled_attack(session, caster, action, target, rolled, prepared.d20.dc, **deps)
     if progress is not None and progress.paused:
         return None
+    state.first_attack_resolved = True
     return result
 
 
