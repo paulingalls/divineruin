@@ -23,6 +23,7 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import check_resolution
+import check_skill
 import concentration_lifetime
 import condition_voice_rules
 import conditions
@@ -40,7 +41,6 @@ import still_scene
 import travel as travel_engine
 from action_sound_content import publish_action_sound
 from caster_state import ConcentrationState
-from combat_terrain import skill_natural_terrain
 from condition_consume import persist_combat_consumption, serialize_combat_check
 from db_errors import db_tool, validated_player_conditions
 from dice_roll_payloads import build_skill_dice_roll_payload
@@ -148,8 +148,8 @@ async def _travel_impl(
             dc,
             rng,
             ally_present=session.allies_present_for(speaker_id),
-            natural_terrain=await skill_natural_terrain(session, player, _NAV_SKILL, content_mod=content),
             hearing_only=False,
+            **await check_skill.skill_context(session, player, _NAV_SKILL, player_id=speaker_id, content_mod=content),
         )
 
     write_conditions = partial(

@@ -4,16 +4,15 @@ from dataclasses import replace
 from functools import partial
 
 import check_resolution
+import check_skill
 import condition_voice_rules
 import db_queries
 import event_types as E
 from combat_damage_affinity import DAMAGE_TYPES
 from combat_events import emit_or_publish
 from combat_fate_rolls import packet_save
-from combat_terrain import skill_natural_terrain
 from declarations import DeclarationType
 from dice_roll_payloads import build_saving_throw_dice_roll_payload
-from patron_location import check_first_stay
 from patron_synergy_combat import spell_damage_type_override
 
 SEARCH_TARGET = "choir_sound"
@@ -174,9 +173,10 @@ async def search(session, state, actor, declaration, *, queries, conn, progress=
             skill,
             18,
             ally_present=session.allies_present_for(actor.id),
-            natural_terrain=await skill_natural_terrain(session, player, skill, combat_state=state),
             hearing_only=skill == "perception",
-            first_stay=await check_first_stay(player, session, skill, player_id=actor.id, conn=conn),
+            **await check_skill.skill_context(
+                session, player, skill, player_id=actor.id, conn=conn, combat_state=state
+            ),
         )
 
     result = await progress.skill(session, actor.id, roll) if progress is not None else await roll()

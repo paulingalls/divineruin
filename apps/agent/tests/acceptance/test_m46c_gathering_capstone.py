@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 import pytest
+from acceptance._capstone_helpers import _d20
 from acceptance.seeds import seed_player
 from livekit.agents.llm import ToolError
 from sample_fixtures import FixedRng, make_context, make_mock_room, published_payloads
@@ -14,6 +15,7 @@ import db_mutations
 import db_queries
 import event_types as E
 import gathering_tools
+from check_resolution import skill_modifier
 from check_tools import _check_impl
 
 # Ambient stage: wilderness with a resource_table and NO fixed node (story-002 content).
@@ -61,26 +63,10 @@ async def test_m46c_ambient_forage_grants_materials_and_emits_dice_roll(
     await _set_skill_tier(pool, player_id, "survival", "expert")
 
     ctx = make_context(player_id, location_id=_AMBIENT, room=make_mock_room())
-    resolve = gathering_tools.check_resolution.resolve_skill_check_dc
-
-    rolls = []
-
-    def fixed_resolve(player, skill, dc, _rng=None, *, ally_present, natural_terrain, hearing_only, first_stay=False):
-        roll = resolve(
-            player,
-            skill,
-            dc,
-            FixedRng(face),
-            ally_present=ally_present,
-            natural_terrain=natural_terrain,
-            hearing_only=hearing_only,
-            first_stay=first_stay,
-        )
-
-        rolls.append(roll)
-        return roll
-
-    monkeypatch.setattr(gathering_tools.check_resolution, "resolve_skill_check_dc", fixed_resolve)
+    player = await db_queries.get_player(player_id, conn=pool)
+    assert player is not None
+    modifier = skill_modifier(player, "survival", ally_present=ctx.userdata.allies_present_for(player_id)).value
+    monkeypatch.setattr("check_resolution.dice_roll", lambda *_args, **_kwargs: _d20(face))
     result = json.loads(await _check_impl(ctx, "gather", target=""))
 
     assert result["outcome"] == "success" and result["result"] == tier
@@ -98,10 +84,10 @@ async def test_m46c_ambient_forage_grants_materials_and_emits_dice_roll(
 
     dice = [e for e in published_payloads(ctx.userdata.room) if e.get("type") == E.DICE_ROLL]
     [packet] = dice
-    [roll] = rolls
-    assert roll.success is (tier != "partial")
     assert packet["roll_type"] == "gathering_check" and packet["success"] is True
-    assert (packet["roll"], packet["modifier"], packet["total"]) == (face, roll.modifier, roll.total)
+    assert (packet["roll"], packet["modifier"], packet["total"]) == (face, modifier, face + modifier)
+    assert (result["roll"], result["total"]) == (face, face + modifier)
+    assert (result["total"] >= result["dc"]) is (tier != "partial")
     assert (packet["dramatic"], packet["context"]) == (result["dramatic"], result["context"])
 
 
