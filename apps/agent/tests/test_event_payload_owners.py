@@ -80,6 +80,7 @@ INVENTORY_INJECTION = {
 Scope = ast.Module | ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda | ast.ClassDef | ast.comprehension
 Binding = ast.AST | str | None
 FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
+_MUTATORS = {"update", "setdefault", "pop", "popitem", "clear", "__setitem__", "__delitem__"}
 COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
 
 
@@ -222,7 +223,7 @@ class _Source:
             call = value.value if isinstance(value, ast.Await) else value
             if isinstance(call, ast.Call):
                 identities = self.identities(call.func)
-                if None not in identities and identities and identities <= owners:
+                if identities and identities <= owners:
                     yield None
                     return
             yield _binding_description(value)
@@ -231,8 +232,28 @@ class _Source:
         scope, values = self._binding(name)
         return values if values and isinstance(scope, FUNCTIONS) else [name]
 
+    def _mutated(self, name: ast.Name) -> bool:
+        scope = self._binding(name)[0]
+
+        def same(node: ast.expr) -> bool:
+            return isinstance(node, ast.Name) and node.id == name.id and self._binding(node)[0] is scope
+
+        return any(
+            (isinstance(node, ast.Subscript) and isinstance(node.ctx, (ast.Store, ast.Del)) and same(node.value))
+            or (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr in _MUTATORS
+                and same(node.func.value)
+            )
+            for node in self.scopes
+        )
+
     def invalid_payload(self, payload: ast.expr, owners: tuple[str, ...]) -> str | None:
         if isinstance(payload, ast.Name):
+            # An owner's payload edited after the call is hand-built on top of it.
+            if self._mutated(payload):
+                return f"{payload.id} (mutated after its owner call)"
             values = self._payload_bindings(payload)
         elif isinstance(payload, (ast.Call, ast.Await)):
             values = [payload]
