@@ -7,6 +7,8 @@ from typing import cast
 from unittest.mock import patch
 
 import pytest
+from _zhael_fate_fixtures import game_tools
+from _zhael_fate_skills_fixtures import SKILL
 from _zhael_unravel_fixtures import activate, opening, patch_player
 from _zhael_unravel_fixtures import unravel as unravel
 from acceptance import test_departed_member_leaves_fight as departure
@@ -37,10 +39,12 @@ from test_aelora_gift import _live_party
 
 import ability_persistence
 import db_mutations
+from check_tools import check
 from combat_spatial import require_spatial
 from combat_state import CombatState
 from db_mutations_concentration import update_player_concentration
 from participant_lifecycle import _setup_party_join
+from query_tools import query_info
 
 
 async def riposte(run: Run) -> None:
@@ -205,6 +209,20 @@ async def test_departure_of_a_late_joiner_leaves_the_fight_untouched(unravel: Fi
     await leave_unravel_guest(unravel, joiner)
     assert not unravel.session.party.contains(joiner)
     assert await unravel.reload() == before
+
+
+async def test_noncombat_departure_keeps_the_fate_cancellation_receipt(unravel: Fight) -> None:
+    _, guest = unravel.ids
+    spell = "arcane_haste"
+    await update_player_concentration(guest, spell, conn=unravel.pool)
+    unravel.session.member_state(guest).concentration.spell_id = spell
+    call = game_tools(unravel.session, check, query_info)
+    with patch("check_resolution.dice_roll", return_value=_d20(20)):
+        held = await unravel.invoke(call, "check", actor=guest, roll=SKILL)
+    assert held["fate_offer"]["roller_id"] == guest
+    await leave_unravel_guest(unravel, guest)
+    query = await unravel.invoke(call, "query_info", kind="inventory")
+    assert query["settled_fate"]["outcome"] == "cancelled"
 
 
 @pytest.mark.parametrize("ids", ["x", [1], [" "], ["guest", "guest"]], ids=["shape", "type", "blank", "duplicate"])
