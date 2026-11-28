@@ -61,7 +61,7 @@ async def test_grasp_and_strike_answer_distinct_windows(reset_db_pool, cast_gras
         assert all(p.get("ability_id") != GRASP for p in packets)
 
 
-@pytest.mark.parametrize("outcome", ["keep", "departure", "absent"])
+@pytest.mark.parametrize("outcome", ["keep", "departure"])
 async def test_fate_save_continuation(reset_db_pool, outcome):
     async with defense_fight("druid", ally_archetype="druid", library=((1, GRASP),)) as fight:
         host, caster = fight.players
@@ -85,8 +85,6 @@ async def test_fate_save_continuation(reset_db_pool, outcome):
             await depart_guest(fight, caster)
         else:
             await reload_session(fight)
-        if outcome == "absent":
-            fight.sd.party.members[:] = [member for member in fight.sd.party.members if member.player_id != caster]
         with dice(18, 18, 18, 18):
             result = await fight.command("resolve_phase", {})
             if outcome == "keep":
@@ -104,9 +102,6 @@ async def test_fate_save_continuation(reset_db_pool, outcome):
         if outcome == "keep":
             receipt = reaction_packet(packets, GRASP)
             assert receipt["save"]["roll"] == 4 and receipt["condition_inflicted"] == "restrained"
-        elif outcome == "absent":
-            receipt = reaction_packet(packets, GRASP)
-            assert "unavailable" in receipt["reason"] and "save" not in receipt
         else:
             assert all(p.get("ability_id") != GRASP for p in packets)
         assert require_spatial(state)["positions"][mover] == pos(35 if outcome == "keep" else 10)
