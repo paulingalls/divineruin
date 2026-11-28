@@ -36,19 +36,31 @@ class MerchantVisit:
     pool: InventoryPool
     pools: dict[str, InventoryPool]
     pricing: dict
+    traits: tuple[str, ...]
     merchant: db_mutations_merchant.LockedMerchant
     player_id: str
-    currency: dict | None = None
+    currency: tuple[str, dict] | None = None
 
     async def credit(self, amount: Decimal | float, source: str) -> None:
         balance = await db_mutations_inventory.credit_player_gold(self.player_id, amount, conn=self.conn)
-        self.currency = {
-            "player_id": self.player_id,
-            "amount": float(amount),
-            "currency": "gold",
-            "source": source,
-            "new_balance": balance,
-        }
+        self._record_currency(E.CURRENCY_GAINED, amount, source, balance)
+
+    async def debit(self, amount: Decimal, source: str) -> float:
+        balance = await db_mutations_inventory.debit_player_gold(self.player_id, amount, conn=self.conn)
+        self._record_currency(E.CURRENCY_SPENT, amount, source, balance)
+        return balance
+
+    def _record_currency(self, event: str, amount: Decimal | float, source: str, balance: float) -> None:
+        self.currency = (
+            event,
+            {
+                "player_id": self.player_id,
+                "amount": float(amount),
+                "currency": "gold",
+                "source": source,
+                "new_balance": balance,
+            },
+        )
 
 
 @asynccontextmanager
@@ -75,22 +87,24 @@ async def merchant_visit(
         allocation = merchant_gold_allocation(pool, location, pricing, location_id=location_id)
         location_ctx = f"locations[{location_id}]"
         location_data = parse_dict(location, location_ctx)
+        traits = economy_traits(location_data.get("personality"), location_ctx)
         merchant = await db_mutations_merchant.lock_merchant(
             npc_id,
             allocation,
             player_id,
             pool=pool,
             size=economy_size(location_data.get("settlement_tier"), location_ctx),
-            traits=economy_traits(location_data.get("personality"), location_ctx),
+            traits=traits,
             pricing=pricing,
             conn=conn,
         )
-        visit = MerchantVisit(conn, npc, pool, pools, pricing, merchant, player_id)
+        visit = MerchantVisit(conn, npc, pool, pools, pricing, traits, merchant, player_id)
         yield visit
         session.validate_acting_player(player_id)
 
     if visit.currency is not None:
-        await publish_game_event(session.room, E.CURRENCY_GAINED, visit.currency, event_bus=session.event_bus)
+        event, payload = visit.currency
+        await publish_game_event(session.room, event, payload, event_bus=session.event_bus)
     for owner in sorted(merchant.inventory_owners):
         await publish_game_event(
             session.room,

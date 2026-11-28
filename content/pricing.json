@@ -12,6 +12,14 @@
       "trusted": 1.2
     },
     "crafted_sale_rate": 0.8,
+    "purchase_disposition_multipliers": {
+      "hostile": 1.2,
+      "unfriendly": 1.1,
+      "neutral": 1.0,
+      "friendly": 0.9,
+      "trusted": 0.8
+    },
+    "purchase_frontier_multiplier": 1.25,
     "merchant_gold_sp": {
       "hamlet": { "general": 10, "specialist": null, "exotic": null, "black_market": null },
       "village": { "general": 25, "specialist": 50, "exotic": null, "black_market": null },

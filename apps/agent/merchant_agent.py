@@ -3,11 +3,13 @@ from livekit.agents.llm import ChatContext
 from base_agent import BaseGameAgent
 from merchant_tools import collect_consignment, conclude_trade, query_merchant_inventory, query_merchant_ledger
 from mode_prompts import MERCHANT_SYSTEM_PROMPT
+from purchase_item import purchase_item
 from query_tools import query_info
 from sell_item import sell_item
 
 MERCHANT_TOOLS = [
     sell_item,
+    purchase_item,
     query_info,
     query_merchant_inventory,
     query_merchant_ledger,

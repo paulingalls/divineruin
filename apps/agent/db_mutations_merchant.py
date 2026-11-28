@@ -15,6 +15,7 @@ from consignment import Consignment, expires_on, read_ledger
 from inventory_pools import InventoryPool
 from merchant_purse import MerchantState
 from merchant_restock import daily_restock_at_dawn
+from purchase_pricing import PurchaseQuote
 
 
 @dataclass
@@ -118,6 +119,15 @@ async def record_sale(
     state["current_gold_sp"] -= total_sp
     history = state["buyback_history"]
     history[item_id] = history.get(item_id, 0) + quantity
+    await write_merchant(npc_id, state, conn=conn)
+
+
+async def record_purchase(
+    npc_id: str, state: MerchantState, item_id: str, quantity: int, quote: PurchaseQuote, *, conn: asyncpg.Connection
+) -> None:
+    if quote.stock_count is not None:
+        state["current_inventory"][item_id] = quote.stock_count - quantity
+    state["current_gold_sp"] += quote.total_price_sp
     await write_merchant(npc_id, state, conn=conn)
 
 

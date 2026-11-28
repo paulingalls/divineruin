@@ -283,7 +283,7 @@ Content/spec divergence: spec uses **Thornwatch + Merchant Guild** as worked exa
 - [x] The 5×6 size and personality matrix matches the stock and gold spec. Python checks stock, including the Tier 3 access and slot rules. Python and TypeScript check each gold allocation and reject malformed modifiers on reseed.
 - [x] Registered ledger, sale and consignment tests exercise PostgreSQL reads and writes of `current_inventory`, `current_gold_sp`, `buyback_history` and `consigned_items`. Legacy rows initialize stock once.
 - [x] `daily_restock_at_dawn` matches pinned daily and weekly stock. Registered ledger reads at 11:00 UTC contend for the same merchant row and write one refresh. A second merchant keeps its prior stock and purse until its own first read after dawn (`test_merchant_restock.py`).
-- [ ] `attempt_purchase` enforces stock check + gold check + capacity check; emits sink_event (M9.8 dep)
+- [x] `attempt_purchase` checks pool stock and exact funds. MerchantAgent quotes the price by voice and settles after the player consents to the returned offer. Settlement updates the shelf, purse, player gold, inventory and one sink row in one transaction. `test_buy_from_merchant.py` and `test_buy_from_merchant_guards.py` exercise the registered path. [Decision 134](../game_mechanics/game_mechanics_decisions.md#carrying-capacity-decision-134) leaves carrying unbounded until M14.2 ships the rule.
 - [x] The `attempt_sale` path in `sell_item` enforces the daily buyback limit and merchant purse. Friendly or trusted merchants who cannot afford eligible goods offer consignment within the full-price buyback cap. Placement requires confirmation of that option’s offer ID.
 - [x] Consignments sell at dawn 1d4 Aethos days after placement and pay the consignor 90% of the quote. The first merchant read on or after the seventh dawn following the sale returns unclaimed goods.
 - [ ] Traveling merchant entity instantiates with 1-2 day visit + rotating feature item
@@ -304,7 +304,7 @@ Content/spec divergence: spec uses **Thornwatch + Merchant Guild** as worked exa
 
 The seven spec pools and temple supplies ship in `inventory_pools` with tiered availability and settlement-keyed quantities. Grimjaw, Selene, Maren and Dara each bind one pool. Both seeders check item IDs and merchant bindings, and the reseed retires the three superseded pool rows in the same transaction as the replacement catalog.
 
-Remaining stock work includes player purchases and traveling merchants.
+Traveling merchant visits and rotating stock remain.
 
 ---
 
@@ -398,11 +398,11 @@ What does NOT ship: 0 of 15 economic events; 0 phase transitions; 0 multiplier-s
 
 <!-- see audit/phase-9-gold-sink.md -->
 
-**Status: NOT_SHIPPED.** This is a **consolidation audit** — most sinks inherit NOT_SHIPPED from their source subsystems (Phase 5 durability, Phase 6 mentors, M9.5 faction donations, M9.6 consignment + traveling merchant, M9.2 NPC services + workspace + commissions).
+**Status: Partial.** Migration 072 adds `sink_event_log`. Merchant purchases write one row in the settlement transaction. Other sinks and category aggregation remain.
 
-What ships beyond inherited substrate: `player.gold: int` field set at creation (`creation_rules.py:257`) but **never mutated** by any code (zero increment/decrement matches). `apps/agent/rest_mechanics.py` ships pure-function `apply_short_rest` / `apply_long_rest` / `apply_rest` — rest itself BUILT — but **lodging-cost gating NOT_SHIPPED**: rest takes no `lodging_quality` parameter and emits no sink event. 6 consumable items in `content/items.json` (healing_potion, antidote_basic, holy_water, rations_basic, millhaven_provisions, restoration_salve) — content exists but **no `consume_item` hook fires sink emission** when one is used.
+Character creation sets `player.gold` and merchant settlement debits it. `apps/agent/rest_mechanics.py` ships pure-function `apply_short_rest` / `apply_long_rest` / `apply_rest` — rest itself BUILT — but **lodging-cost gating NOT_SHIPPED**: rest takes no `lodging_quality` parameter and emits no sink event. 6 consumable items in `content/items.json` (healing_potion, antidote_basic, holy_water, rations_basic, millhaven_provisions, restoration_salve) — content exists but **no `consume_item` hook fires sink emission** when one is used.
 
-What does NOT ship: 0 sink_event_log table; 0 of 8 category constants; 0 magnitude analysis aggregator; 0 of 5 gap additions (companion gear / bribery / tolls / NPC gifts / property which is Phase 2+); 0 of 9 decisions 105-113 encoded.
+What does NOT ship: 0 of 8 category constants; 0 magnitude analysis aggregator; 0 of 5 gap additions (companion gear / bribery / tolls / NPC gifts / property which is Phase 2+); 0 of 9 decisions 105-113 encoded.
 
 ---
 
@@ -504,7 +504,7 @@ Phase 1 supporting infrastructure (the only Phase 9 surface in scope):
 1. **Item provenance — DESIGNED↔aspirational.** `transact(item_id, delta, source: str)` BUILT in `apps/agent/inventory_tools.py` with free-text source on gains (examples: "looted from goblin", "purchased from merchant"). Structured trail + per-instance UUID NOT_SHIPPED. The current DM verb is `transact`.
 2. **Atomic transaction primitives — DESIGNED↔aspirational.** Asyncpg `conn` parameter plumbing BUILT across 22 mutation sites in `apps/agent/db_mutations.py`. `atomic_p2p_transfer` primitive itself NOT_SHIPPED.
 3. **Settlement-aware APIs — NOT_SHIPPED.** Player→location BUILT (`update_player_location` writes `players.data->location_id`); `Location.settlement_id` field absent (cross-ref M9.6 honesty note).
-4. **Transaction logging schema — NOT_SHIPPED.** Inherits M9.8 + M9.9 — neither sink_event_log nor faucet_event_log ships.
+4. **Transaction logging schema — NOT_SHIPPED.** P2P transfer events still need to be wired into the M9.8/M9.9 ledger.
 
 Phase 2+ trade mechanics intentionally NOT_SHIPPED. 0 of 7 decisions 122-128 encoded. **No multiplayer infrastructure exists** in code (0 grep matches).
 
