@@ -23,7 +23,7 @@ NAME = "The Scale's Verdict"
 
 
 def _living(participant: CombatParticipant) -> bool:
-    return participant.hp_current > 0 and not participant.is_fallen and not participant.is_dead
+    return participant.is_standing
 
 
 def _judged_foe(state: CombatState, target_id: str) -> CombatParticipant:

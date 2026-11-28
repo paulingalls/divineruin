@@ -223,14 +223,7 @@ def cleave_targets(decl: Declaration) -> list[str]:
 
 
 def standing_foe(target: CombatParticipant | None) -> bool:
-    return (
-        target is not None
-        and not target.is_ally
-        and not target.is_structure
-        and not target.is_fallen
-        and not target.is_dead
-        and target.hp_current > 0
-    )
+    return target is not None and not target.is_ally and not target.is_structure and target.is_standing
 
 
 def reach_refusal(state: CombatState, actor: CombatParticipant, target_id: str, weapon: dict) -> str | None:
@@ -262,15 +255,7 @@ def skip_swing(target_id: str, reason: str) -> dict:
 
 def _study_target(state: CombatState, decl: Declaration) -> CombatParticipant | None:
     target = state.get_participant(decl.target_id) if decl.target_id else None
-    if (
-        target is None
-        or target.is_ally
-        or target.is_structure
-        or target.hp_current <= 0
-        or damage_target_unavailable(target)
-    ):
-        return None
-    return target
+    return target if standing_foe(target) else None
 
 
 async def exploit_weakness(

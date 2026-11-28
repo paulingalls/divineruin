@@ -28,7 +28,7 @@ async def accrue_death(session, state, target, *, conn, queries):
     if delta == 0:
         return
     for participant in state.participants:
-        if participant.type != "player" or participant.is_fallen or participant.is_dead or participant.hp_current <= 0:
+        if participant.type != "player" or not participant.is_standing:
             continue
         if not combat_spatial.inside(origin, combat_spatial.position(spatial, participant.id), 60):
             continue

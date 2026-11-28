@@ -36,7 +36,7 @@ def mark_radiant(target, action, result):
 
 
 def living(actor):
-    return actor.hp_current > 0 and not actor.is_fallen and not actor.is_dead
+    return actor.is_standing
 
 
 def absorb_spell(state, caster, declaration, packet):

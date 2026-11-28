@@ -162,6 +162,10 @@ class CombatParticipant:
         return self.type == "structure"
 
     @property
+    def is_standing(self) -> bool:
+        return self.hp_current > 0 and not self.is_fallen and not self.is_dead
+
+    @property
     def is_ally(self) -> bool:
         """True when this participant sits on the player's side (player or companion).
 

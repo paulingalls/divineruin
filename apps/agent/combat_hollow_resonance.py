@@ -8,11 +8,7 @@ def cast_generation(state, caster, spell, generated):
     auras = []
     origin = None
     if state is not None:
-        sources = [
-            p
-            for p in state.participants
-            if p.type == "enemy" and p.hollow is not None and not p.is_dead and not p.is_fallen and p.hp_current > 0
-        ]
+        sources = [p for p in state.participants if p.type == "enemy" and p.hollow is not None and p.is_standing]
         if sources:
             spatial = combat_spatial.require_spatial(state)
             origin = combat_spatial.position(spatial, caster.player_id)

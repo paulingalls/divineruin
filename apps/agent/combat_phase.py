@@ -238,7 +238,7 @@ def consume_legendary_action(
         raise ValueError(f"{boss.name} ({boss.id}) is {blocked[0]} and cannot take a legendary action")
     require_boundary(next_state, authored=boss.legendary is not None)
     if boss.legendary is not None:
-        if boss.is_fallen or boss.is_dead or boss.hp_current <= 0:
+        if not boss.is_standing:
             raise ValueError(f"{boss.name} is unavailable to take a legendary action")
         prepare(next_state, boss, action_id, target_id, reshape, concealed=concealed)
         return next_state

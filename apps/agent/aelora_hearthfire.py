@@ -56,13 +56,7 @@ def place(state: CombatState | None, actor: str, *, target_id: str | None) -> tu
     if state.wrap_continuation is not None:
         raise ToolError("Finish the partially resolved round before using Hearthfire.")
     follower = state.get_participant(actor)
-    if (
-        follower is None
-        or follower.type != "player"
-        or follower.is_fallen
-        or follower.hp_current <= 0
-        or is_terminally_down(follower)
-    ):
+    if follower is None or follower.type != "player" or not follower.is_standing or is_terminally_down(follower):
         raise ToolError("Hearthfire requires a standing player in this fight.")
 
     updated = deepcopy(state)

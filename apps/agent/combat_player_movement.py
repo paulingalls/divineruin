@@ -22,9 +22,7 @@ from session_data import CombatParticipant, CombatState, SessionData
 def _melee_actions(state: CombatState, actor: CombatParticipant) -> list[dict]:
     if (
         actor.type != "enemy"
-        or actor.is_fallen
-        or actor.is_dead
-        or actor.hp_current <= 0
+        or not actor.is_standing
         or cannot_act(actor.conditions)
         or no_reactions(actor.conditions)
         or reaction_spend.is_spent(state.reactions_available.get(actor.id))

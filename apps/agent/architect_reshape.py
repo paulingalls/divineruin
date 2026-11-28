@@ -44,7 +44,7 @@ def proposed_state(state: CombatState, actor_id: str, operations: list[dict]) ->
     actor = state.get_participant(actor_id)
     if not architect_encounter.is_owner(state, actor_id):
         raise ValueError("Only the Architect can Reshape")
-    if actor is None or actor.is_fallen or actor.is_dead or actor.hp_current <= 0 or cannot_act(actor.conditions):
+    if actor is None or not actor.is_standing or cannot_act(actor.conditions):
         raise ValueError("The Architect is unavailable to Reshape")
     available = remaining(state, actor)
     if len(operations) > available:

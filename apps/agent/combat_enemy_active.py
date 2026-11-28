@@ -44,9 +44,7 @@ def resolve_active(state, actor, action, declaration):
             if ally.type == "enemy"
             and ally.is_ally == actor.is_ally
             and ally.creature_id in ("bandit", "bandit_captain")
-            and not ally.is_fallen
-            and not ally.is_dead
-            and ally.hp_current > 0
+            and ally.is_standing
             and combat_spatial.inside(origin, combat_spatial.position(spatial, ally.id), reach)
             and line_blocker(state, actor.id, ally.id) is None
         }
