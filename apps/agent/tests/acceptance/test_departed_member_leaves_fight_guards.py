@@ -27,7 +27,7 @@ from acceptance.disruption_reactions_harness import DOUBT, ambush, attack_damage
 from acceptance.mawling_harness import MawlingHarness
 from acceptance.test_architect_fight import WORKS, enter, pos
 from acceptance.test_architect_terrain import set_favor
-from acceptance.test_departed_member_leaves_fight import GUEST, PRIMARY, THIRD, Row, Run, run_row, team
+from acceptance.test_departed_member_leaves_fight import GUEST, PRIMARY, THIRD, Row, Run, depart_guest, run_row, team
 from acceptance.test_guardian_intercept import SWORD, tool_receipt
 from acceptance.test_martial_core_kit import weapon_attack
 from acceptance.test_paladin_oath_swear import patch_player as patch_player_record
@@ -35,7 +35,7 @@ from acceptance.test_slippery_restrain import advance
 from acceptance.test_slippery_restrain import declare as declare_entomb
 from acceptance.test_slippery_restrain import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_spell_bless_lifecycle import leave
-from acceptance.test_spell_natures_grasp import GRASP, depart_guest
+from acceptance.test_spell_natures_grasp import GRASP
 from acceptance.test_taunt import TAUNT
 from acceptance.test_valdris_party_yield import ability_action
 from acceptance.turn_undead_harness import TurnFight

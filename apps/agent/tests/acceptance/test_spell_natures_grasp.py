@@ -1,6 +1,6 @@
 """Nature's Grasp through the registered combat and activation tools."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from acceptance.defensive_reactions_harness import (
@@ -13,14 +13,13 @@ from acceptance.defensive_reactions_harness import (
 )
 from acceptance.disruption_reactions_harness import dice
 from acceptance.test_architect_fight import pos
+from acceptance.test_departed_member_leaves_fight import depart_guest
 from acceptance.test_guardian_intercept import SWORD
 from acceptance.test_opportunity_strike import participant
 from acceptance.test_slippery_restrain import mock_combat_agent_factory as mock_combat_agent_factory
-from acceptance.test_spell_bless_lifecycle import leave
 from acceptance.test_spell_reaction_offers import resources
 from acceptance.test_still_anchors import strike
 from creature_combat_helpers import participant as catalog_participant
-from test_aelora_gift import _live_party
 
 from check_resolution import D20Roll
 from combat_spatial import require_spatial
@@ -28,18 +27,6 @@ from creature_catalog import query_creature_by_id
 from creature_combat import translate_creature
 
 GRASP = "primal_natures_grasp"
-
-
-async def depart_guest(fight, guest: str) -> None:
-    previous_owner = fight.sd.multiplayer_owner
-    lifecycle = _live_party(fight.sd, *fight.players)
-    try:
-        await lifecycle.authorize(guest)
-        await leave(fight.sd, guest, room_io=MagicMock())
-        fight.players.remove(guest)
-    finally:
-        await lifecycle.aclose()
-        fight.sd.multiplayer_owner = previous_owner
 
 
 @pytest.mark.parametrize(

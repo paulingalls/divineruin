@@ -40,6 +40,18 @@ def assert_departed(state: CombatState, guest: str) -> None:
     assert guest not in state.spatial["speeds"]
 
 
+async def depart_guest(fight: MawlingHarness, guest: str) -> None:
+    previous_owner = fight.sd.multiplayer_owner
+    lifecycle = _live_party(fight.sd, *fight.players)
+    try:
+        assert await lifecycle.authorize(guest)
+        await leave(fight.sd, guest, room_io=MagicMock())
+        fight.players.remove(guest)
+    finally:
+        await lifecycle.aclose()
+        fight.sd.multiplayer_owner = previous_owner
+
+
 def team(
     classes: tuple[str, ...] = ("warrior", "guardian"), **options: Any
 ) -> Callable[[], AbstractAsyncContextManager[MawlingHarness]]:

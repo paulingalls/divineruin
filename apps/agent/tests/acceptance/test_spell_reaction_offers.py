@@ -15,6 +15,7 @@ from acceptance.defensive_reactions_harness import (
     reload_session,
 )
 from acceptance.disruption_reactions_harness import open_stage
+from acceptance.test_departed_member_leaves_fight import assert_departed, depart_guest
 from acceptance.test_guardian_intercept import SWORD, tool_receipt
 from acceptance.test_opportunity_strike import participant
 from acceptance.test_slippery_restrain import mock_combat_agent_factory as mock_combat_agent_factory
@@ -223,17 +224,20 @@ async def test_spent_catalog_shield_follows_combat_lifecycle(reset_db_pool, exit
                 assert held["next"]["waiting_on"]["target_id"] == host
                 packets.extend(held["packets"])
                 assert participant(await fight.reload(), caster).shield_spell_active
-                fight.sd.party.members = [member for member in fight.sd.party.members if member.player_id != caster]
+                await depart_guest(fight, caster)
             packets.extend(await fight.drain())
         reaction_packet(packets, SHIELD)
         assert action_packet(packets, enemy, SWORD)["target_ac"] == 19
         state = await fight.reload()
-        assert participant(state, caster).shield_spell_active
-        assert not state.reactions_available.get(caster, {}).get("spent")
         assert (await player_row(caster))["focus"] == before["focus"]
         if exit_kind == "depart":
+            assert_departed(state, caster)
+            assert caster not in state.reactions_available
+            assert action_packet(packets, fight.enemies[1], SWORD)["attack_resolved"]
             assert (await player_row(caster))["resonance"] == before["resonance"]
         else:
+            assert participant(state, caster).shield_spell_active
+            assert not state.reactions_available.get(caster, {}).get("spent")
             await fight.command("end_combat", {"outcome": "fled"})
             await fight.command("enter_mode", {"mode": "combat", "encounter_id": fight.encounter_id})
             state = await fight.reload()

@@ -15,10 +15,11 @@ from acceptance.disruption_reactions_harness import attack_damage, dice, open_st
 from acceptance.test_architect_fight import pos
 from acceptance.test_architect_terrain import set_favor
 from acceptance.test_bark_skin import keep_original
+from acceptance.test_departed_member_leaves_fight import depart_guest
 from acceptance.test_guardian_intercept import tool_receipt
 from acceptance.test_opportunity_strike import STRIKE, participant
 from acceptance.test_slippery_restrain import mock_combat_agent_factory as mock_combat_agent_factory
-from acceptance.test_spell_natures_grasp import GRASP, depart_guest
+from acceptance.test_spell_natures_grasp import GRASP
 from acceptance.test_spell_reaction_offers import resources
 from acceptance.test_still_anchors import strike
 
