@@ -66,7 +66,7 @@ async def fight(
             stamina={"current": 10, "max": 10},
             resonance={"current": 0},
             equipment={"main_hand": SWORD},
-            attributes={"strength": 10, "intelligence": 18, "dexterity": 10},
+            attributes={"strength": 10, "intelligence": 18, "dexterity": 10, "wisdom": 10},
             divine_favor={"patron": deity, "level": favor if index == 0 else guest_favor, "max": 100},
             patron_gifts=gifts if index == 0 else {},
             conditions=list(conditions) if index == 0 else [],

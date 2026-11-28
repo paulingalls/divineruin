@@ -18,7 +18,6 @@ from combat_movement_cost import AXES
 from combat_participant import CombatParticipant
 from combat_state import CombatState
 from healing_dice import maximum_healing, shared_roll
-from rules_engine import attribute_modifier, proficiency_bonus
 
 if TYPE_CHECKING:
     from combat_events import EventSink
@@ -112,7 +111,10 @@ def _along(origin: dict, delta: dict, fraction: float) -> dict:
 
 
 def _entry_dc(follower: CombatParticipant) -> int:
-    return 8 + proficiency_bonus(follower.level) + attribute_modifier(follower.attributes.get("wisdom", 10))
+    # Fate's roll helpers import Hearthfire while loading the shared save path.
+    from combat_ability_save import player_ability_dc
+
+    return player_ability_dc(follower, "wisdom")
 
 
 def freeze_source(state: CombatState, follower: CombatParticipant) -> None:
