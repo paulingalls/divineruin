@@ -182,8 +182,7 @@ async def _prepare_shield(
     updated, response = await patron_combat_edges.community_shield(
         session.combat_state, actor, target, players[actor], players[target], conn=conn
     )
-    health = hp_changed_payload.from_player(players[target], temporary=response["temp_hp"]) if updated is None else None
-    return ability, updated, response, health
+    return ability, updated, response, players[target] if updated is None else None
 
 
 async def _spend_activation(conn, session, actor, ability_id, target_id, condition, destination: dict | None):
@@ -201,9 +200,9 @@ async def _spend_activation(conn, session, actor, ability_id, target_id, conditi
         await _write_spend(conn, session, actor, ability_id)
         return ability, updated, response, None
 
-    health = None
+    shield_target_row = None
     if ability_id == patron_combat_edges.COMMUNITY_SHIELD:
-        ability, updated, response, health = await _prepare_shield(conn, session, actor, target_id)
+        ability, updated, response, shield_target_row = await _prepare_shield(conn, session, actor, target_id)
     else:
         ability = await _locked_ability(conn, actor, ability_id)
         if ability_id == veythar_wellspring.ECHO:
@@ -224,7 +223,7 @@ async def _spend_activation(conn, session, actor, ability_id, target_id, conditi
     await _write_spend(conn, session, actor, ability_id)
     if updated is not None:
         await db_mutations.save_combat_state(updated.combat_id, updated.to_dict(), conn=conn)
-    return ability, updated, response, health
+    return ability, updated, response, shield_target_row
 
 
 async def _activate_combat_damage(
@@ -315,8 +314,13 @@ async def activate(
     actor = session.acting_player_id
     async with session.combat_state_lock:
         async with db.transaction() as conn:
-            ability, updated, response, health = await _spend_activation(
+            ability, updated, response, shield_target_row = await _spend_activation(
                 conn, session, actor, ability_id, target_id, condition, destination
+            )
+            health = (
+                hp_changed_payload.from_player(shield_target_row, temporary=response["temp_hp"])
+                if shield_target_row is not None
+                else None
             )
         if updated is not None:
             session.combat_state = updated
