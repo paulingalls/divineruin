@@ -19,11 +19,11 @@ import db_mutations
 import db_mutations_divine
 import elective_choices
 import event_types as E
+import favor_rules
 import milestone_tools
 import milestones
 import rules_engine
 from companion_profiles import get_companion_profile, select_companion_for_archetype
-from favor_rules import apply_favor_delta
 from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
 
 logger = logging.getLogger("divineruin.tools")
@@ -221,7 +221,7 @@ async def _award_divine_favor_core(
 
     current_level = favor.get("level", 0)
     max_level = favor.get("max", 100)
-    new_level = apply_favor_delta(current_level, max_level, amount)
+    new_level = favor_rules.apply_favor_delta(current_level, max_level, amount)
     actual_delta = new_level - current_level
     if actual_delta > 0:
         await mutations.update_divine_favor(
@@ -233,26 +233,16 @@ async def _award_divine_favor_core(
     pending_events.append(
         (
             E.DIVINE_FAVOR_CHANGED,
-            {
-                "new_level": new_level,
-                "previous_level": current_level,
-                "patron_id": favor["patron"],
-                "last_whisper_level": favor.get("last_whisper_level", 0),
-                # The REAL gain, never the amount ASKED for: a grant that hits the patron's max
-                # moves the bar less than the reward declared, and the mobile handler pops its
-                # "+N favor" toast off this field alone. Publishing the request made a player at
-                # max favor watch a "+5" celebrate a bar that never moved — while update_quest's
-                # own rewards_applied entry reported the honest 0 to the DM.
-                "amount": actual_delta,
-                "requested_amount": amount,
-                "reason": reason,
-                # `max` is the favor bar's DENOMINATOR: the mobile handler reads it and falls back
-                # to 100, so dropping it (as this payload used to) fabricated the bar's scale for
-                # any patron whose cap is not 100. `player_id` is the RECIPIENT — quest favor is
-                # party-wide, so without it a teammate's grant moves every client's bar.
-                "max": max_level,
-                "player_id": player_id,
-            },
+            favor_rules.build_divine_favor_changed_payload(
+                player_id=player_id,
+                patron_id=favor["patron"],
+                previous_level=current_level,
+                new_level=new_level,
+                max_level=max_level,
+                last_whisper_level=favor.get("last_whisper_level", 0),
+                reason=reason,
+                requested_amount=amount,
+            ),
         )
     )
     logger.info(

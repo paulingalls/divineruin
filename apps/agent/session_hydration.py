@@ -32,12 +32,12 @@ import db_mutations_resonance
 import db_mutations_veil_ward
 import db_queries
 import event_types as E
+import favor_rules
 import game_events
 import oath_breach
 import patron_gift_tools
 import player_session
 import racial_resonance
-from favor_rules import apply_favor_delta, neglect_decay
 from session_data import ConcentrationState, SessionData
 from veil_ward import WardScope
 
@@ -76,23 +76,22 @@ async def _decay_locked(session: SessionData, player_id: str, connection, now: d
         if "last_served_at" not in favor and "last_decay_at" not in favor:
             await db_mutations_divine.initialize_favor_clock(player_id, now.isoformat(), conn=connection)
             return
-        amount = neglect_decay(favor, now)
+        amount = favor_rules.neglect_decay(favor, now)
         if not amount:
             return
         previous = favor["level"]
-        new_level = apply_favor_delta(previous, favor["max"], -amount)
+        new_level = favor_rules.apply_favor_delta(previous, favor["max"], -amount)
         await db_mutations_divine.persist_favor_decay(player_id, new_level, now.isoformat(), conn=connection)
         if new_level != previous:
-            payload = {
-                "new_level": new_level,
-                "previous_level": previous,
-                "amount": new_level - previous,
-                "max": favor["max"],
-                "patron_id": favor["patron"],
-                "player_id": player_id,
-                "last_whisper_level": favor["last_whisper_level"],
-                "reason": "neglect",
-            }
+            payload = favor_rules.build_divine_favor_changed_payload(
+                player_id=player_id,
+                patron_id=favor["patron"],
+                previous_level=previous,
+                new_level=new_level,
+                max_level=favor["max"],
+                last_whisper_level=favor["last_whisper_level"],
+                reason="neglect",
+            )
     if payload is not None:
         if player_id == session.primary_player_id:
             session.favor_loss = (payload["patron_id"], -payload["amount"])

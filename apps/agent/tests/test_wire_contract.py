@@ -16,6 +16,7 @@ import combat_rewards
 import companion_cue_events
 import db_session_queries
 import event_types
+import favor_rules
 import hollow_echo
 import hollow_echo_events
 import resonance_events
@@ -364,8 +365,11 @@ async def _favor_core_pending_events() -> dict[str, dict]:
 
 @pytest.mark.asyncio
 async def test_divine_favor_changed_serializes_to_fixture() -> None:
-    # player_id names the recipient; party-wide favor is filtered by each client.
-    wire = await _favor_core_pending_events()
+    with patch.object(
+        favor_rules, "build_divine_favor_changed_payload", wraps=favor_rules.build_divine_favor_changed_payload
+    ) as build_payload:
+        wire = await _favor_core_pending_events()
+    build_payload.assert_called_once()
     assert wire[event_types.DIVINE_FAVOR_CHANGED] == FIXTURE["events"]["divine_favor_changed"]
 
 

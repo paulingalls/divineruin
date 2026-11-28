@@ -17,6 +17,7 @@ import condition_voice_rules
 import conditions
 import db_queries
 import event_types as E
+import resource_costs
 import social_resolution
 from combat_events import emit_or_publish
 from condition_restrictions import cannot_act
@@ -49,20 +50,12 @@ def eligible_argument_targets(state, speaker_id):
     return eligible
 
 
-def _gate_deescalation(player: dict, state, *, round_counter: int | None = None) -> None:
-    """Pre-resolution fail-loud gate for de_escalate: round cap + 3 Focus, with NO state writes.
-
-    Mirrors spell_casting._gate_spell's pre-resolution discipline — validate with NO state writes so
-    a bad attempt never rolls back a phase that already resolved other actors. The Tier-3 scene runs
-    multiple rounds (M15 story-002), so the once-per-encounter MVP lockout becomes a per-round cap:
-    once the scene has run MAX_DEESCALATION_ROUNDS rounds the group won't hear more. Focus is still
-    spent (and gated) per round."""
+def _gate_deescalation(player: dict, state, *, round_counter: int | None = None) -> int | None:
+    """Return the Focus left after one argument. Prevalidation can check without spending it."""
     current_round = state.deescalation_scene.round_counter if round_counter is None else round_counter
     if current_round >= MAX_DEESCALATION_ROUNDS:
         raise ToolError("The enemies have stopped listening — no more arguments will land.")
-    have = (player.get("focus") or {}).get("current", 0)
-    if have < _DEESCALATE_FOCUS_COST:
-        raise ToolError(f"De-escalate costs {_DEESCALATE_FOCUS_COST} Focus; you have {have}.")
+    return resource_costs.gate_pool(player, "focus", _DEESCALATE_FOCUS_COST, label="De-escalate")
 
 
 def _validate_argument_type(decl) -> str | None:
@@ -96,7 +89,7 @@ async def _resolve_deescalation_packet(
     """Resolve ONE round of a Tier-3 GROUP de-escalation in combat (M15 story-002).
 
     A Diplomat argues the WHOLE living enemy group at once: Focus + the round cap are pre-validated
-    at declare time (_gate_deescalation); here we spend the 3 Focus, roll ONE persuasion total for
+    before resolution writes (combat_packet_gate prevalidation, via _gate_deescalation); here we spend the 3 Focus, roll ONE persuasion total for
     the round, then apply that same argument to EACH living enemy INDEPENDENTLY — every enemy's
     disposition shifts by its own resistance profile (combat_resolution.resolve_argument_round),
     accumulating per enemy across rounds in ``state.deescalation_scene``. When the whole living group
@@ -148,9 +141,8 @@ async def _resolve_deescalation_packet(
         current_player = await queries.get_player(attacker.id, for_update=True, conn=conn)
         if current_player is None:
             raise ToolError(f"Unknown player: {attacker.id}")
-        _gate_deescalation(current_player, state, round_counter=pre_phase_round)
-        have = current_player["focus"]["current"]
-        await persistence.update_player_resources(attacker.id, focus=have - _DEESCALATE_FOCUS_COST, conn=conn)
+        focus = _gate_deescalation(current_player, state, round_counter=pre_phase_round)
+        await persistence.update_player_resources(attacker.id, focus=focus, conn=conn)
         return check_resolution.resolve_skill_check_dc(
             condition_voice_rules.roll_data(current_player, state, attacker.id),
             "persuasion",

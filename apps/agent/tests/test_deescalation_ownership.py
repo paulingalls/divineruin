@@ -9,10 +9,12 @@ from _unbound_path_fixtures import row
 from _unbound_path_fixtures import world as world
 from _zhael_fate_skills_fixtures import argument
 from livekit.agents.llm import ToolError
+from sample_fixtures import published_payloads
 from test_encounter_facts_damage import fight
 from voice_condition_fixtures import participant
 
 import db_mutations
+import resource_costs
 
 ABILITY_ID = "diplomat_de_escalate"
 
@@ -44,9 +46,39 @@ async def test_unlearned_deescalation_reopens_declaration(world: SimpleNamespace
         assert (await f.reload()).to_dict() == reopened
 
 
+async def test_diplomat_with_insufficient_focus_reopens_declaration(world: SimpleNamespace) -> None:
+    async with fight(world, "aelora", archetype="diplomat") as f:
+        await configure(world, "aelora", "diplomat", level=1, focus={"current": 2, "max": 10})
+        state = f.session.combat_state
+        participant(state, f.hero).level = 1
+        before = state.to_dict()
+        player_before = await row(world, 0)
+        await db_mutations.save_combat_state(f.combat_id, before)
+        event_offset = len(published_payloads(f.session.room))
+
+        await f.declare(argument(f.hero))
+        assert f.session.combat_state.beat == "resolution"
+        reopened = {**before, "reactions_available": f.session.combat_state.to_dict()["reactions_available"]}
+        with patch.object(resource_costs, "gate_pool", wraps=resource_costs.gate_pool) as gate:
+            with pytest.raises(ToolError) as refusal:
+                await f.call("resolve_phase")
+
+        assert str(refusal.value) == (
+            "Not enough Focus for De-escalate: costs 3, you have 2. "
+            "Every declaration was cleared; re-declare the whole phase."
+        )
+        gate.assert_called_once_with(player_before, "focus", 3, label="De-escalate")
+        assert await row(world, 0) == player_before
+        assert all(
+            event.get("roll_type") != "de_escalate" for event in published_payloads(f.session.room)[event_offset:]
+        )
+        assert f.session.combat_state.to_dict() == reopened
+        assert (await f.reload()).to_dict() == reopened
+
+
 async def test_level_one_diplomat_can_deescalate_for_three_focus(world: SimpleNamespace) -> None:
     async with fight(world, "aelora", archetype="diplomat") as f:
-        await configure(world, "aelora", "diplomat", level=1, focus={"current": 10, "max": 10})
+        await configure(world, "aelora", "diplomat", level=1, focus={"current": 3, "max": 10})
         state = f.session.combat_state
         participant(state, f.hero).level = 1
         await db_mutations.save_combat_state(f.combat_id, state.to_dict())
@@ -57,4 +89,4 @@ async def test_level_one_diplomat_can_deescalate_for_three_focus(world: SimpleNa
 
         assert any(packet.get("action") == "de_escalate" and packet["resolved"] for packet in packets)
         assert f.session.combat_state.deescalation_scene.round_counter == 1
-        assert (await row(world, 0))["focus"]["current"] == 7
+        assert (await row(world, 0))["focus"]["current"] == 0

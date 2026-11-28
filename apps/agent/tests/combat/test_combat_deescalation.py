@@ -119,15 +119,6 @@ class TestGateDeescalation:
         with pytest.raises(ToolError, match="stopped listening"):
             _gate_deescalation(_DIPLOMAT, state)
 
-    def test_insufficient_focus_fails_loud(self):
-        state = _make_combat_state()
-        broke = {**_DIPLOMAT, "focus": {"current": 2}}
-        with pytest.raises(ToolError, match="Focus"):
-            _gate_deescalation(broke, state)
-
-    def test_affordable_first_round_passes(self):
-        _gate_deescalation(_DIPLOMAT, _make_combat_state())  # round_counter 0 -> no raise
-
 
 class TestResolveDeescalationPacket:
     @pytest.mark.asyncio
