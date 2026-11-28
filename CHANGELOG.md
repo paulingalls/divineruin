@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.94.1
+
+Choir capstone voice test timeouts report the missing turn's last observed stage, transcript, SDK events, and pending tasks.
+
+Release steps: none.
+
 ## 0.94.0
 
 Reaction spells from the spell library now work in combat. A caster who has learned Shield or Barkskin can cast it the moment an attack comes in, as long as their class doesn't already have its own version of the spell. Shield of Faith lets a divine caster turn a hit on an ally within 30 feet into a miss after the roll, and the ally keeps +2 armour class until the caster's next turn. Shield of Faith stacks with Barkskin, but two casters' Shield of Faith on one ally does not stack. Nature's Grasp lets a druid on natural ground root an enemy that moves into reach: it stops moving and its remaining attacks that turn have disadvantage. Counterspell lets a mage, or anyone who has learned it, stop an enemy's spell before it lands. The cult leader's Hold Person, Shadow Bolt and Dark Pulse can now be countered, with a check against DC 10 plus the spell's Focus cost.
