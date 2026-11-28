@@ -131,6 +131,9 @@ def runtime_inputs(inventory, runtime):
             # Fixtures call seed(), but only main() launches the Bun validators.
             callers = {ACCEPTANCE + "test_seed_atomic.py", ACCEPTANCE + "test_seed_content_cache.py"}
             readers.setdefault(path, set()).update(callers if module == "scripts/seed_catalogs.py" else {module})
+    # The crafting boundary test exercises the server producer through real HTTP.
+    for path in ("apps/server/src/activity_create.ts", "apps/server/src/activity_crafting_patron.ts"):
+        readers[path].add(ACCEPTANCE + "test_common_bond_crafting.py")
     media = {
         str(p)
         for root in ("apps/mobile/assets", "apps/audio", "assets")

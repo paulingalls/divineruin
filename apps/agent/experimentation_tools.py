@@ -32,7 +32,11 @@ import experimentation_db
 import materials as materials_module
 import recipe_validation
 import recipes
+import thyra_seasons
+from check_skill_modifier import CRAFTING_ACTIVITY_SKILL
+from combat_terrain import skill_natural_terrain
 from inventory_refresh import publish_inventory
+from patron_location import check_first_stay
 from session_data import SessionData
 from tool_support import _validate_id
 
@@ -100,7 +104,18 @@ async def _experiment_with_materials_impl(
             await mutations_mod.consume_player_materials(
                 player_id, alloc.by_id, allow_tainted=match["tainted_materials"], conn=conn
             )
-            outcome = experimentation.resolve_experimentation(player, match["crafting_dc"], rng=rng)
+            session = context.userdata
+            outcome = experimentation.resolve_experimentation(
+                player,
+                match["crafting_dc"],
+                ally_present=session.allies_present_for(player_id),
+                first_stay=await check_first_stay(
+                    player, session, CRAFTING_ACTIVITY_SKILL, player_id=player_id, conn=conn
+                ),
+                natural_terrain=await skill_natural_terrain(session, player, CRAFTING_ACTIVITY_SKILL),
+                season=await thyra_seasons.skill_season(player, CRAFTING_ACTIVITY_SKILL, conn=conn),
+                rng=rng,
+            )
             roll_details: dict[str, object] = {
                 "roll": outcome.roll,
                 "dc": outcome.dc,

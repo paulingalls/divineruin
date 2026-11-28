@@ -23,7 +23,7 @@ from session_data import CombatParticipant, CombatState, SessionData
 # one worker's cleanup deletes reads back as None in another's test.
 _WORKER = uuid.uuid4().hex[:8]
 _PLAYER_ID = f"s002_combat_end_loot_player_{_WORKER}"
-_ITEM_ID = f"s002_loot_test_residue_{_WORKER}"
+_ITEM_ID = "hide_pelt_t1"
 _MATERIAL_ID = f"s002_loot_test_material_{_WORKER}"
 
 
@@ -43,32 +43,12 @@ class FakeRng(random.Random):
         return self._chance
 
 
-def _content_stub() -> MagicMock:
-    async def _get_item(item_id: str) -> dict | None:
-        if item_id == _ITEM_ID:
-            return {"id": _ITEM_ID, "name": "Cured Hide", "description": "Supple.", "rarity": "uncommon"}
-        return None
-
-    content = MagicMock()
-    content.get_item = AsyncMock(side_effect=_get_item)
-    content.get_material_definition = AsyncMock(side_effect=db_content_queries.get_material_definition)
-    return content
-
-
 async def _seed_player(pool, gold: int) -> None:
     await pool.execute(
         "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb) "
         "ON CONFLICT (player_id) DO UPDATE SET data = $2::jsonb",
         _PLAYER_ID,
         json.dumps({"player_id": _PLAYER_ID, "level": 3, "gold": gold}),
-    )
-
-
-async def _seed_item(pool) -> None:
-    await pool.execute(
-        "INSERT INTO items (id, data) VALUES ($1, $2::jsonb) ON CONFLICT (id) DO UPDATE SET data = $2::jsonb",
-        _ITEM_ID,
-        json.dumps({"id": _ITEM_ID, "name": "Test Residue", "type": "material"}),
     )
 
 
@@ -83,7 +63,6 @@ async def _seed_material(pool) -> None:
 async def _cleanup(pool) -> None:
     await pool.execute("DELETE FROM player_inventory WHERE player_id = $1", _PLAYER_ID)
     await pool.execute("DELETE FROM players WHERE player_id = $1", _PLAYER_ID)
-    await pool.execute("DELETE FROM items WHERE id = $1", _ITEM_ID)
     await pool.execute("DELETE FROM materials_catalog WHERE id = $1", _MATERIAL_ID)
 
 
@@ -120,11 +99,13 @@ def _victory_state(item_id: str) -> CombatState:
 async def test_victory_grants_role_loot_and_currency(dev_db_pool, material):
     pool = dev_db_pool
     await _seed_player(pool, gold=5)
-    if material:
-        await _seed_material(pool)
-    else:
-        await _seed_item(pool)
     try:
+        if material:
+            await _seed_material(pool)
+            definition = await db_content_queries.get_material_definition(_MATERIAL_ID)
+        else:
+            definition = await db_content_queries.get_item(_ITEM_ID)
+        assert definition is not None and definition["description"]
         session = SessionData(player_id=_PLAYER_ID, location_id="loc_test", room=None)
         cs = _victory_state(_MATERIAL_ID if material else _ITEM_ID)
         sink = EventSink()
@@ -137,7 +118,7 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool, material):
                 queries=db_queries,
                 conn=conn,
                 sink=sink,
-                content=_content_stub(),
+                content=db_content_queries,
                 rng=FakeRng(die=4),
             )
 
@@ -174,9 +155,9 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool, material):
         # name/description/rarity, so an id-only payload draws a blank card.
         assert item_events[0].payload == {
             "item_id": _MATERIAL_ID if material else _ITEM_ID,
-            "name": "Raw Ore" if material else "Cured Hide",
-            "description": "Heavy ore." if material else "Supple.",
-            "rarity": "rare" if material else "uncommon",
+            "name": definition["name"],
+            "description": definition["description"],
+            "rarity": definition["rarity"],
             "quantity": 1,
             "source": "combat_loot",
             "player_id": _PLAYER_ID,
@@ -223,7 +204,6 @@ async def test_missing_or_ambiguous_loot_row_raises_before_grant(ambiguous):
 async def test_minion_only_victory_grants_no_currency(dev_db_pool):
     pool = dev_db_pool
     await _seed_player(pool, gold=5)
-    await _seed_item(pool)
     try:
         session = SessionData(player_id=_PLAYER_ID, location_id="loc_test", room=None)
         enemy = CombatParticipant(
@@ -258,7 +238,7 @@ async def test_minion_only_victory_grants_no_currency(dev_db_pool):
                 queries=db_queries,
                 conn=conn,
                 sink=sink,
-                content=_content_stub(),
+                content=db_content_queries,
                 rng=FakeRng(die=4),
             )
 
@@ -305,7 +285,7 @@ async def _run_end(cs, reputation_mutations, *, outcome="victory"):
             queries=db_queries,
             conn=conn,
             sink=sink,
-            content=_content_stub(),
+            content=db_content_queries,
             reputation_mutations=reputation_mutations,
             rng=FakeRng(die=4),
         )

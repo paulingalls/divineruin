@@ -3,7 +3,9 @@
 import random
 from dataclasses import asdict
 
+import thyra_seasons
 from async_rules import resolve_crafting
+from check_skill_modifier import CRAFTING_ACTIVITY_SKILL
 from db_content_queries import get_item
 from pricing_queries import get_economy_pricing
 from quality_outcomes import get_quality_outcomes
@@ -28,6 +30,7 @@ async def resolve_crafting_outcome(activity: dict, player_data: dict, *, rng: ra
         workspace_access=parameters.get("workspace_access"),
         crafting_tier=parameters.get("crafting_tier"),
         quality_tables=quality_tables,
+        season=await thyra_seasons.skill_season(player_data, CRAFTING_ACTIVITY_SKILL),
         rng=rng,
     )
     result = asdict(outcome)

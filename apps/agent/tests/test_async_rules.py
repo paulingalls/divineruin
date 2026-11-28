@@ -9,6 +9,8 @@ from async_rules import (
 )
 
 SAMPLE_PLAYER = {
+    "class": "warrior",
+    "divine_favor": {"patron": "valdris", "level": 0, "max": 100},
     "level": 3,
     "attributes": {
         "strength": 14,
