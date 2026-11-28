@@ -55,15 +55,8 @@ async def resolve_crafted_decision(context: RunContext[SessionData], activity_id
             await db_mutations.add_inventory_item(player_id, item_id, quantity=1, tainted=False, conn=conn)
             receipt["item_id"] = item_id
         elif proceeds is not None:
-            balance = await credit_player_gold(player_id, proceeds["gold"], conn=conn)
+            currency = await credit_player_gold(player_id, proceeds["gold"], source="crafting", conn=conn)
             receipt["proceeds"] = proceeds
-            currency = {
-                "player_id": player_id,
-                "amount": proceeds["gold"],
-                "currency": "gold",
-                "source": "crafting",
-                "new_balance": balance,
-            }
         await db_mutations.update_activity(activity_id, {"status": "collected", "decision": decision}, conn=conn)
 
     if decision == "keep":

@@ -127,7 +127,7 @@ async def test_guest_repairs_own_item_at_own_price():
             else []
         )
     )
-    inventory = module(update_item_durability=None, debit_player_gold=14.8)
+    inventory = module(update_item_durability=None, debit_player_gold={"new_balance": 14.8})
     with actor:
         result = json.loads(
             await _repair_item_impl(
@@ -251,7 +251,7 @@ async def test_stale_repair_gold_debit():
             else []
         )
     )
-    inventory = module(update_item_durability=None, debit_player_gold=14.8)
+    inventory = module(update_item_durability=None, debit_player_gold={"new_balance": 14.8})
     revoke_after(inventory.update_item_durability, revocation)
     tx_db, tx_state = transaction_probe()
     with actor, pytest.raises(RuntimeError, match="stale generation"):

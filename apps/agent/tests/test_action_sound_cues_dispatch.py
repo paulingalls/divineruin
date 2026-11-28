@@ -435,7 +435,7 @@ async def test_real_begin_writes_before_router_cue(kind):
         from test_crafting_tools_workspaces import _pricing, _queries
 
         mutations = MagicMock()
-        inventory = MagicMock(debit_player_gold=AsyncMock(return_value=14.5))
+        inventory = MagicMock(debit_player_gold=AsyncMock(return_value={"new_balance": 14.5}))
 
         async def create_workspace(*_args, **call_kwargs):
             assert call_kwargs["conn"] is conn

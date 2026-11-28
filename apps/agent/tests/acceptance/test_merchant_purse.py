@@ -8,6 +8,7 @@ from acceptance.merchant_harness import (
     GRIMJAW,
     SWORD,
     fund_merchant,
+    merchant_player_gold,
     merchant_row,
     merchant_scope,
     merchant_session,
@@ -18,6 +19,7 @@ from acceptance.merchant_harness import (
 
 import db
 import db_mutations_merchant
+import event_types as E
 from aethos_clock import aethos_day
 
 MAREN = "innkeeper_maren"
@@ -101,6 +103,7 @@ async def test_maren_partial_offer(reset_db_pool: str, standing: str | None, ord
         if standing not in (None, "neutral"):
             return
 
+        before_gold = await merchant_player_gold(sale.player_id)
         settled = await sale.sell(SWORD, MAREN, 1, partial["offer_id"])
         assert not settled.is_error and json.loads(settled.output)["total_price_sp"] == 13, settled.output
         player, inventory = await rows(sale.player_id)
@@ -108,6 +111,15 @@ async def test_maren_partial_offer(reset_db_pool: str, standing: str | None, ord
         state = await purse(MAREN)
         assert (state["current_gold_sp"], state["buyback_history"]) == (0, {SWORD: 1})
         assert len(sale.publications) == 2
+        after_gold = await merchant_player_gold(sale.player_id)
+        assert sale.publications[0][0] == {
+            "type": E.CURRENCY_GAINED,
+            "player_id": sale.player_id,
+            "amount": float(after_gold - before_gold),
+            "currency": "gold",
+            "source": "sale",
+            "new_balance": float(after_gold),
+        }
         assert all(snapshot == (player, inventory) for _, snapshot in sale.publications)
         assert any(packet.get("sound_name") == "action_sell_item" for packet in sale.packets)
 

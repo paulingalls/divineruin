@@ -55,8 +55,12 @@ class GoldSession:
             instructions="Settle the encounter or service.", tools=[combat_end.end_combat, repair_item, begin_activity]
         )
 
-    async def gold(self, pid: str) -> Decimal:
-        return await self.pool.fetchval("SELECT (data->>'gold')::numeric FROM players WHERE player_id=$1", pid)
+    async def gold(self, pid: str, *, conn: asyncpg.Connection | None = None) -> Decimal:
+        balance = await (conn or self.pool).fetchval(
+            "SELECT (data->>'gold')::numeric FROM players WHERE player_id=$1", pid
+        )
+        assert isinstance(balance, Decimal)
+        return balance
 
     async def snapshot(self, pid: str) -> tuple[Decimal, int | None, list[asyncpg.Record]]:
         hits = await self.pool.fetchval(
@@ -173,6 +177,11 @@ async def test_combat_rewards_accumulate_exactly(
             await run.victory(amount)
         for pid, start in zip(run.players, starts, strict=True):
             assert await run.gold(pid) == Decimal(start) + fights * amount
+        previous = {pid: Decimal(start) for pid, start in zip(run.players, starts, strict=True)}
+        for packet, (balance, *_) in run.packets:
+            pid = packet["player_id"]
+            assert packet["amount"] == float(balance - previous[pid])
+            previous[pid] = balance
         expected = [
             (currency_packet(GAINED, pid, amount, "combat", balance), balance)
             for fight in range(1, fights + 1)
@@ -183,7 +192,7 @@ async def test_combat_rewards_accumulate_exactly(
 
 
 async def assert_service(
-    run: GoldSession, receipt: llm.FunctionCallOutput, service: str, price_sp: int, gold: str
+    run: GoldSession, receipt: llm.FunctionCallOutput, service: str, price_sp: int, gold: str, before: Decimal
 ) -> None:
     assert not receipt.is_error, receipt.output
     result = json.loads(receipt.output)
@@ -209,7 +218,7 @@ async def assert_service(
         assert not run.packets
         return
     source = "repair" if service == "repair" else "workspace_rental"
-    assert run.packets == [(currency_packet(SPENT, run.actor, Decimal(price_sp) / 10, source, Decimal(gold)), snapshot)]
+    assert run.packets == [(currency_packet(SPENT, run.actor, before - balance, source, balance), snapshot)]
 
 
 @pytest.mark.parametrize(
@@ -220,7 +229,8 @@ async def test_fractional_debit_commits_stored_balance(
 ) -> None:
     async with gold_session(monkeypatch, start) as run:
         await run.damaged_item()
-        await assert_service(run, await run.debit(service), service, 2, remaining)
+        before = await run.gold(run.actor)
+        await assert_service(run, await run.debit(service), service, 2, remaining, before)
 
 
 async def test_exact_price_after_fractional_rewards(reset_db_pool: str, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -236,7 +246,7 @@ async def test_exact_price_after_fractional_rewards(reset_db_pool: str, monkeypa
         )
         credited = await run.gold(run.actor)
         run.packets.clear()
-        await assert_service(run, await run.debit("repair"), "repair", 3, "0")
+        await assert_service(run, await run.debit("repair"), "repair", 3, "0", credited)
         assert credited == Decimal("0.3")
 
 
@@ -279,10 +289,11 @@ async def test_concurrent_credit_is_preserved(
         monkeypatch.setattr(db_queries, "get_player", signal_read)
         async with asyncio.timeout(10), asyncio.TaskGroup() as tasks:
             async with db.transaction() as conn:
-                await credit_player_gold(run.actor, 0.2, conn=conn)
+                await credit_player_gold(run.actor, 0.2, source="fixture", conn=conn)
+                credited = await run.gold(run.actor, conn=conn)
                 debit = tasks.create_task(run.debit(service))
                 await read_attempted.wait()
-        await assert_service(run, debit.result(), service, 2, "0.1")
+        await assert_service(run, debit.result(), service, 2, "0.1", credited)
 
 
 @pytest.mark.parametrize("service,starts", [("repair", ("7", "0.3")), ("rental", ("0.3",))])
@@ -310,7 +321,8 @@ async def test_failed_debit_transaction_publishes_nothing(
 async def test_free_rental_publishes_no_spend(reset_db_pool: str, monkeypatch: pytest.MonkeyPatch) -> None:
     async with gold_session(monkeypatch, "0.3") as run:
         await run.damaged_item(disposition="trusted")
-        await assert_service(run, await run.debit("rental"), "rental", 0, "0.3")
+        before = await run.gold(run.actor)
+        await assert_service(run, await run.debit("rental"), "rental", 0, "0.3", before)
 
 
 @pytest.mark.parametrize("service", ["repair", "rental"])

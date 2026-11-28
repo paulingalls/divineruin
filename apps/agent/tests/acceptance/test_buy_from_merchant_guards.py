@@ -8,6 +8,7 @@ from acceptance.merchant_harness import (
     catalog_override,
     fund_merchant,
     location_override,
+    merchant_player_gold,
     merchant_row,
     merchant_scope,
     merchant_session,
@@ -16,7 +17,7 @@ from acceptance.merchant_harness import (
     wait_for_merchant_readers,
 )
 from acceptance.seeds import seed_gold
-from acceptance.test_buy_from_merchant import CUE, SPEAR, gold, result, sink_rows, snapshot
+from acceptance.test_buy_from_merchant import CUE, SPEAR, result, sink_rows, snapshot
 
 import db
 import db_mutations
@@ -63,7 +64,7 @@ async def test_last_unit_settles_once(reset_db_pool: str) -> None:
             count = len(await sink_rows(buyer.player_id))
             inventory = (await rows(buyer.player_id))[1]
             if receipt["status"] == "purchased":
-                assert (count, await gold(buyer.player_id), inventory[SPEAR, False]["quantity"]) == (
+                assert (count, await merchant_player_gold(buyer.player_id), inventory[SPEAR, False]["quantity"]) == (
                     1,
                     Decimal("6.9"),
                     1,
@@ -75,7 +76,7 @@ async def test_last_unit_settles_once(reset_db_pool: str) -> None:
                 ]
             else:
                 assert receipt["reason"] == "out_of_stock" and "offer_id" not in receipt
-                assert (count, await gold(buyer.player_id), inventory, buyer.packets) == (0, 7, {}, [])
+                assert (count, await merchant_player_gold(buyer.player_id), inventory, buyer.packets) == (0, 7, {}, [])
         merchant = await merchant_row(GRIMJAW)
         assert merchant is not None
         assert (merchant[0]["current_inventory"], merchant[0]["current_gold_sp"]) == ({SPEAR: 0}, 601)

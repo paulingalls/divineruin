@@ -11,6 +11,7 @@ from acceptance.merchant_harness import (
     SaleSession,
     catalog_override,
     fund_merchant,
+    merchant_player_gold,
     merchant_row,
     merchant_session,
     rows,
@@ -108,22 +109,21 @@ async def test_wait_for_sale_dawn_and_collect_exactly_once(reset_db_pool: str, m
         )
         ready, *_ = await merchant_row(MAREN) or ({},)
         assert ready["current_inventory"] == {"healers_kit": 1, "lantern_hooded": 1, "tent_two": 1, "holy_symbol": 1}
+        before_gold = await merchant_player_gold(sale.player_id)
         assert receipt_data(await sale.collect(MAREN, entry_id))["status"] == "collected"
         assert (await sale.collect(MAREN, entry_id)).is_error
-        assert (
-            str(await pool.fetchval("SELECT (data->>'gold')::numeric FROM players WHERE player_id=$1", sale.player_id))
-            == "12.55"
-        )
+        after_gold = await merchant_player_gold(sale.player_id)
+        assert str(after_gold) == "12.55"
         assert (await rows(sale.primary_id))[0]["gold"] == 7
         state, *_ = await merchant_row(MAREN) or ({},)
         assert state["consigned_items"] == []
         assert state["current_inventory"] == ready["current_inventory"]
         _, (packet, snapshot) = sale.publications
-        assert packet["type"] == E.CURRENCY_GAINED
+        assert (packet["type"], packet["currency"]) == (E.CURRENCY_GAINED, "gold")
         assert (packet["player_id"], packet["amount"], packet["new_balance"], packet["source"]) == (
             sale.player_id,
-            4.95,
-            12.55,
+            float(after_gold - before_gold),
+            float(after_gold),
             "consignment",
         )
         assert snapshot == await rows(sale.player_id)
