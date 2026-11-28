@@ -47,6 +47,18 @@ async def test_m46a_social_check_shifts_and_persists_disposition(reset_db_pool: 
     bus = listen(ctx.userdata)
     check = next(tool for tool in EXPLORATION_TOOLS if tool.__name__ == "check")
     roll = SocialCheck(kind="social", npc_id=_NPC_ID, skill="persuasion", difficulty="easy", synergy_context="none")
+    with patch("check_resolution.dice_roll", return_value=_d20(8)):
+        rebuffed = json.loads(await check(ctx, roll))
+    assert rebuffed["outcome"] == "failure" and rebuffed["total"] == 12 and rebuffed["dc"] == 14
+    [failed_roll] = [p for p in published_payloads(ctx.userdata.room) if p.get("roll_type") == "social_check"]
+    assert (failed_roll["roll"], failed_roll["modifier"], failed_roll["total"], failed_roll["success"]) == (
+        8,
+        4,
+        12,
+        False,
+    )
+    assert (failed_roll["dramatic"], failed_roll["context"]) == (rebuffed["dramatic"], rebuffed["context"])
+    ctx.userdata.room.local_participant.publish_data.reset_mock()
     with patch("check_resolution.dice_roll", return_value=_d20(20)):
         result = json.loads(await check(ctx, roll))
 
@@ -55,6 +67,9 @@ async def test_m46a_social_check_shifts_and_persists_disposition(reset_db_pool: 
     assert result["new_disposition"] != "hostile", "a landed persuasion should soften a hostile NPC"
     assert result["disposition_shift"] > 0
     assert result["narrative_cue"]
+    [packet] = [p for p in published_payloads(ctx.userdata.room) if p.get("roll_type") == "social_check"]
+    assert (packet["roll"], packet["modifier"], packet["total"], packet["success"]) == (20, 4, 24, True)
+    assert (packet["dramatic"], packet["context"]) == (result["dramatic"], result["context"])
 
     # The clamped new disposition round-trips to the npc_dispositions SSOT.
     row = await pool.fetchrow(

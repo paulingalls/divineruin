@@ -69,10 +69,14 @@ async def test_death_save_holds_revive_and_counters(world):
         with patch("combat_resolution.dice_roll", side_effect=[_d20(1), _d20(20)]):
             offer = (await call("request_death_save"))["fate_offer"]
             assert offer["die"] == 1 and "dead" not in offer
+            assert not [e for e in published_payloads(session.room) if e["type"] == "dice_roll"]
             assert required_player(session.combat_state, pid).death_save_failures == 2
             await call("activate", id="zhael_fates_thread", offer_id=offer["offer_id"])
             kept = await call("activate", id="zhael_fates_thread", offer_id=offer["offer_id"], keep="reroll")
         assert kept["revived"]
+        [packet] = [e for e in published_payloads(session.room) if e["type"] == "dice_roll"]
+        assert packet["roll_type"] == "death_save"
+        assert (packet["roll"], packet["modifier"], packet["total"], packet["success"]) == (20, 0, 20, True)
         assert (await row(world, 0))["hp"]["current"] == 1
         stored = await db_mutations.load_combat_state(state.combat_id)
         assert required_player(stored, pid).death_save_failures == 0

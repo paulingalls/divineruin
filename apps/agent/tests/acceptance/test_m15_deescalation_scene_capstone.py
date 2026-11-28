@@ -10,6 +10,7 @@ from acceptance.seeds import seed_player, seed_player_with_pools
 from sample_fixtures import make_context, make_mock_room
 from voice_condition_fixtures import place_actors
 
+import check_resolution
 import combat_turn
 import db
 import db_mutations
@@ -119,9 +120,21 @@ async def test_m15_group_deescalation_stabilizes_fallen_ally(reset_db_pool: str)
         result = None
         rounds = 0
         shifts_mid_scene: dict[str, int] | None = None
+        arguments = []
+        resolve_skill = check_resolution.resolve_skill_check_dc
+
+        def capture_argument(*args, **kwargs):
+            argument = resolve_skill(*args, **kwargs)
+            if argument.skill == "persuasion":
+                arguments.append(argument)
+            return argument
+
         for _round in range(_MAX_ROUNDS):
             await combat_turn._declare_phase_impl(ctx, decls)
-            with patch("check_resolution.dice_roll", return_value=_d20(20)):
+            with (
+                patch("check_resolution.dice_roll", return_value=_d20(20)),
+                patch.object(check_resolution, "resolve_skill_check_dc", side_effect=capture_argument),
+            ):
                 result = await _resolve_round(ctx)
             rounds += 1
             if isinstance(result, tuple):
@@ -154,8 +167,19 @@ async def test_m15_group_deescalation_stabilizes_fallen_ally(reset_db_pool: str)
 
         # M4.5: the de-escalation surfaced as an always-dramatic de_escalate moment on the HUD.
         deesc = [e for e in _dice_events(ctx.userdata.room) if e.get("roll_type") == "de_escalate"]
-        assert deesc, "a de_escalate DICE_ROLL was published"
-        assert deesc[0]["dramatic"] is True and deesc[0]["context"] == "de_escalate"
+        assert len(deesc) == len(arguments) == rounds
+        for scene_round, (packet, argument) in enumerate(zip(deesc, arguments, strict=True), start=1):
+            assert (packet["roll"], packet["modifier"], packet["total"], packet["success"]) == (
+                argument.roll,
+                argument.modifier,
+                argument.total,
+                argument.success,
+            )
+            assert argument.success is True
+            assert (packet["actor"], packet["round"], packet["living"]) == (primary_part.name, scene_round, 2)
+            assert packet["ends_combat"] is (scene_round == rounds)
+            assert packet["surrendered"] == (2 if packet["ends_combat"] else 1)
+            assert packet["dramatic"] is True and packet["context"] == "de_escalate"
 
         # The combat SSOT was torn down.
         assert ctx.userdata.combat_state is None

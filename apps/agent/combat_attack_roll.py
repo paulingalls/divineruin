@@ -307,37 +307,6 @@ def deserialize_roll(data: dict) -> tuple:
     return check_resolution_attack.AttackResult(**fields), data["effective_ac"]
 
 
-def build_attack_dice_roll_payload(attacker, attack_result) -> dict:
-    payload = {
-        "roll_type": "attack",
-        "attacker": attacker.name,
-        "roll": attack_result.roll,
-        "modifier": attack_result.attack_modifier,
-        "total": attack_result.attack_total,
-        "success": attack_result.hit,
-        "narrative": attack_result.narrative_hint,
-        "damage": attack_result.damage,
-        "critical": attack_result.critical_success,
-        "dramatic": attack_result.dramatic,
-        "context": attack_result.context,
-    }
-    if attack_result.oath_justice is not None:
-        payload["oath_justice"] = attack_result.oath_justice
-    if attack_result.sneak_attack_dice is not None:
-        payload.update(
-            damage_type=attack_result.damage_type,
-            sneak_attack_dice=attack_result.sneak_attack_dice,
-            sneak_attack_raw_damage=attack_result.sneak_attack_raw_damage,
-        )
-    if attack_result.synergy_damage_type is not None:
-        payload.update(
-            synergy_damage=attack_result.synergy_damage, synergy_damage_type=attack_result.synergy_damage_type
-        )
-    if attack_result.synergy_clause_id is not None:
-        payload["synergy_clause_id"] = attack_result.synergy_clause_id
-    return payload
-
-
 def held_reaction_ac(head: dict) -> int:
     contribution = head.get("reaction_ac_bonus")
     if type(contribution) is not int or contribution not in (0, 2):

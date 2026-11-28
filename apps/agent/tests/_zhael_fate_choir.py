@@ -5,6 +5,7 @@ from _unbound_path_fixtures import row
 from _zhael_fate_fixtures import attack, defend, game_tools
 from acceptance._capstone_helpers import _build_state, _d20, _damage_die, _enemy, _player
 from acceptance.test_kaelen_iron_resolve_capstone import required_player
+from sample_fixtures import published_payloads
 
 import choir_encounter
 import db_mutations
@@ -55,10 +56,18 @@ async def aura_and_search(world):
         with patch("check_resolution.dice_roll", side_effect=[_d20(9), _d20(20)]) as dice:
             aura = (await call("resolve_phase"))["fate_offer"]
             assert aura["roll_kind"] == "save" and aura["die"] == 9
+            assert not [e for e in published_payloads(session.room) if e.get("roll_type") == "choir_aura"]
             assert session.concentration.spell_id == "divine_bless"
             search = (await _keep(call, aura))["fate_offer"]
             assert search["roll_kind"] == "skill" and search["die"] == 20
             assert session.concentration.spell_id is None
+            [packet] = [e for e in published_payloads(session.room) if e.get("roll_type") == "choir_aura"]
+            assert (packet["roll"], packet["modifier"], packet["total"], packet["success"]) == (
+                9,
+                aura["total"] - 9,
+                aura["total"],
+                False,
+            )
             assert session.combat_state.choir_encounter["phase"] == "search"
             result = await _keep(call, search)
             assert dice.call_count == 2

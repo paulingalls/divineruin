@@ -12,7 +12,6 @@ from ability_voice_rules import DISSONANT_WHISPER, IMPLANT_DOUBT
 from check_resolution_save import roll_participant_save
 from combat_ability_save import player_ability_dc
 from combat_attack_roll import (
-    build_attack_dice_roll_payload,
     deserialize_roll,
     promote_attack,
     serialize_roll,
@@ -20,6 +19,7 @@ from combat_attack_roll import (
 from combat_fate_rolls import PacketRolls, PhaseRolls, packet_save
 from combat_legendary_resistance import finalize_save, override_fields
 from combat_state import CombatState
+from dice_roll_payloads import build_attack_dice_roll_payload
 from reaction_windows import POST_ROLL, PRE_ROLL
 from session_data import SessionData
 

@@ -31,6 +31,7 @@ import social_resolution
 import zhael_foretold_words
 from condition_consume import consume_beneficial_conditions, serialize_combat_check
 from db_errors import validated_player_conditions
+from dice_roll_payloads import build_skill_dice_roll_payload
 from disposition import build_disposition_changed_payload, resolve_disposition, resolve_disposition_target
 from game_events import publish_game_event
 from patron_synergy import has_engine_synergy
@@ -251,15 +252,13 @@ async def _finish_social(
         await publish_game_event(
             session.room,
             E.DICE_ROLL,
-            {
-                "roll_type": "social_check",
-                "skill": skill,
-                "roll": roll.roll,
-                "total": roll.total,
-                "success": outcome.success,
-                "dramatic": outcome.dramatic,
-                "context": outcome.context,
-            },
+            build_skill_dice_roll_payload(
+                roll,
+                roll_type="social_check",
+                success=outcome.success,
+                dramatic=outcome.dramatic,
+                context=outcome.context,
+            ),
             event_bus=session.event_bus,
         )
         if disposition_payload is not None:

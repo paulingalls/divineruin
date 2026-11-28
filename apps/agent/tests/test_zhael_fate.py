@@ -128,6 +128,7 @@ async def test_ally_save_repeats_disadvantage_and_keeps_one_bonus(world, keep, k
             with session._bind_authenticated_actor(guest, 1, lifecycle.require_authorized):
                 offer = (await call("check", roll=SAVE))["fate_offer"]
             assert offer["die"] == 4 and offer["total"] == 7
+            assert not dice_events(world)
             args = dict(id="zhael_fates_thread", offer_id=offer["offer_id"])
             with session._bind_authenticated_actor(host, 1, lifecycle.require_authorized):
                 shown = await call("activate", **args)
@@ -137,9 +138,14 @@ async def test_ally_save_repeats_disadvantage_and_keeps_one_bonus(world, keep, k
             assert dice.call_count == 4 and bonus.call_count == 1
         assert chosen["roll"] == kept_die and chosen["effect_applied"] == applied
         assert [c["type"] for c in (await row(world, 1))["conditions"]] == ["hollowed"]
-        assert [event["roll"] for event in published_payloads(session.room) if event["type"] == "dice_roll"] == [
-            kept_die
-        ]
+        [packet] = dice_events(world)
+        assert packet["roll_type"] == "saving_throw"
+        assert (packet["roll"], packet["modifier"], packet["total"], packet["success"]) == (
+            kept_die,
+            3,
+            kept_die + 3,
+            applied is None,
+        )
     finally:
         await lifecycle.aclose()
 

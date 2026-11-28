@@ -1,5 +1,5 @@
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from livekit.agents.llm import ToolError
@@ -7,6 +7,7 @@ from sample_fixtures import make_db_mod
 
 import event_types as E
 from check_tools import _check_dice_impl, _check_impl, _check_save_impl, _check_skill_impl
+from dice import DiceResult
 from tools._helpers import SAMPLE_PLAYER, _make_context, _make_mock_room, _save_mocks, _skill_mocks
 
 
@@ -116,11 +117,22 @@ class TestCheckSave:
     async def test_publishes_event(self):
         queries = _save_mocks()
         room = _make_mock_room()
-        await _check_save_impl(_make_context(room=room), "wisdom", 12, "frightened", queries=queries)
+        with patch("check_resolution.dice_roll", return_value=DiceResult("d20", [8], [], 8)):
+            await _check_save_impl(_make_context(room=room), "strength", 15, "held", queries=queries)
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
         assert call_data["type"] == E.DICE_ROLL
-        assert call_data["roll_type"] == "saving_throw"
+        assert call_data == {
+            "type": E.DICE_ROLL,
+            "roll_type": "saving_throw",
+            "save_type": "strength",
+            "roll": 8,
+            "modifier": 3,
+            "total": 11,
+            "success": False,
+            "dramatic": False,
+            "context": "",
+        }
 
 
 class TestCheckDice:
@@ -137,12 +149,25 @@ class TestCheckDice:
             await _check_dice_impl(_make_context(), "banana")
 
     @pytest.mark.asyncio
-    async def test_publishes_event(self):
+    @pytest.mark.parametrize(
+        ("notation", "faces", "roll", "modifier", "total"),
+        [("2d6+3", [2, 4], 6, 3, 9), ("4d6kh3-2", [1, 2, 3, 4], 9, -2, 7), ("d20", [11], 11, 0, 11)],
+    )
+    async def test_publishes_event(self, notation, faces, roll, modifier, total):
         room = _make_mock_room()
-        await _check_dice_impl(_make_context(room=room), "d20")
+        with patch("dice.random.SystemRandom") as random:
+            random.return_value.randint.side_effect = faces
+            await _check_dice_impl(_make_context(room=room), notation)
         room.local_participant.publish_data.assert_called_once()
         call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["roll_type"] == "narrative"
+        assert call_data == {
+            "type": E.DICE_ROLL,
+            "roll_type": "narrative",
+            "notation": notation,
+            "roll": roll,
+            "modifier": modifier,
+            "total": total,
+        }
 
 
 class TestCheckDispatch:

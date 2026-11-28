@@ -51,8 +51,9 @@ async def _node_data(pool, node_id: str) -> dict:
     return json.loads(row["data"])
 
 
+@pytest.mark.parametrize(("face", "tier"), [(20, "rich_find"), (2, "partial")])
 async def test_m46c_ambient_forage_grants_materials_and_emits_dice_roll(
-    reset_db_pool: str, monkeypatch: pytest.MonkeyPatch
+    reset_db_pool: str, monkeypatch: pytest.MonkeyPatch, face: int, tier: str
 ) -> None:
     pool = await db.get_pool()
     player_id = "cap_m46c_ambient"
@@ -62,22 +63,27 @@ async def test_m46c_ambient_forage_grants_materials_and_emits_dice_roll(
     ctx = make_context(player_id, location_id=_AMBIENT, room=make_mock_room())
     resolve = gathering_tools.check_resolution.resolve_skill_check_dc
 
+    rolls = []
+
     def fixed_resolve(player, skill, dc, _rng=None, *, ally_present, natural_terrain, hearing_only, first_stay=False):
-        return resolve(
+        roll = resolve(
             player,
             skill,
             dc,
-            FixedRng(20),
+            FixedRng(face),
             ally_present=ally_present,
             natural_terrain=natural_terrain,
             hearing_only=hearing_only,
             first_stay=first_stay,
         )
 
+        rolls.append(roll)
+        return roll
+
     monkeypatch.setattr(gathering_tools.check_resolution, "resolve_skill_check_dc", fixed_resolve)
     result = json.loads(await _check_impl(ctx, "gather", target=""))
 
-    assert result["outcome"] == "success"
+    assert result["outcome"] == "success" and result["result"] == tier
     assert result["node_revealed"] is None  # no fixed node at the ambient stage
     assert result["materials"]  # a passing forage yields material
     assert result["inventory_updated"] is True
@@ -91,7 +97,12 @@ async def test_m46c_ambient_forage_grants_materials_and_emits_dice_roll(
         assert item is not None and item["quantity"] == qty
 
     dice = [e for e in published_payloads(ctx.userdata.room) if e.get("type") == E.DICE_ROLL]
-    assert dice and dice[0]["roll_type"] == "gathering_check"
+    [packet] = dice
+    [roll] = rolls
+    assert roll.success is (tier != "partial")
+    assert packet["roll_type"] == "gathering_check" and packet["success"] is True
+    assert (packet["roll"], packet["modifier"], packet["total"]) == (face, roll.modifier, roll.total)
+    assert (packet["dramatic"], packet["context"]) == (result["dramatic"], result["context"])
 
 
 async def test_m46c_rich_find_discovers_and_depletes_node(reset_db_pool: str) -> None:

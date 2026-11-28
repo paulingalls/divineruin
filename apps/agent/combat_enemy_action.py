@@ -25,6 +25,7 @@ from combat_fate_rolls import packet_save, saved_throw, store_throw
 from combat_legendary_resistance import finalize_save, override_fields
 from combat_support import _resolve_attack_packet
 from dice import roll as dice_roll
+from dice_roll_payloads import build_saving_throw_dice_roll_payload
 from session_data import CombatParticipant, SessionData
 
 if TYPE_CHECKING:
@@ -303,19 +304,15 @@ async def resolve_save_damage_action(
             sink,
             session.room,
             E.DICE_ROLL,
-            {
-                **result.oath_fields(),
+            build_saving_throw_dice_roll_payload(
+                result,
+                roll_type="saving_throw",
+                dramatic=result.dramatic,
+                context=result.context,
+                damage=damage_result.damage,
                 **override_fields(result),
                 **encounter_facts.rally_receipt(target.id, result.rally_sources),
-                "roll_type": "saving_throw",
-                "save_type": result.save_type,
-                "roll": result.roll,
-                "total": result.total,
-                "success": result.success,
-                "dramatic": result.dramatic,
-                "context": result.context,
-                "damage": damage_result.damage,
-            },
+            ),
             event_bus=session.event_bus,
         )
     summary = await apply_attack_result(

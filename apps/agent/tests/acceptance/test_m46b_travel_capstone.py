@@ -89,7 +89,10 @@ async def test_m46b_forced_march_failure_is_lost_and_exhausts(reset_db_pool: str
 
     # dense_forest has a DC, so the navigation roll surfaced on the HUD as a failed check.
     nav = [e for e in published_payloads(ctx.userdata.room) if e.get("type") == E.DICE_ROLL]
-    assert nav and nav[0]["roll_type"] == "navigation_check" and nav[0]["success"] is False
+    [packet] = nav
+    assert packet["roll_type"] == "navigation_check" and packet["success"] is False
+    assert (packet["roll"], packet["modifier"], packet["total"]) == (1, result["total"] - 1, result["total"])
+    assert (packet["dramatic"], packet["context"]) == (result["dramatic"], result["context"])
 
 
 async def test_m46b_exhaustion_accrues_across_segments_and_respects_iron_cap(reset_db_pool: str) -> None:

@@ -43,6 +43,7 @@ from caster_state import ConcentrationState
 from combat_terrain import skill_natural_terrain
 from condition_consume import persist_combat_consumption, serialize_combat_check
 from db_errors import db_tool, validated_player_conditions
+from dice_roll_payloads import build_skill_dice_roll_payload
 from game_events import publish_game_event
 from inventory_refresh import publish_inventory
 from movement_tools import party_level_warning, write_arrival
@@ -397,15 +398,13 @@ async def _publish_travel_result(
         await publish_game_event(
             session.room,
             E.DICE_ROLL,
-            {
-                "roll_type": "navigation_check",
-                "skill": _NAV_SKILL,
-                "roll": roll.roll,
-                "total": roll.total,
-                "success": result.success,
-                "dramatic": result.dramatic,
-                "context": result.context,
-            },
+            build_skill_dice_roll_payload(
+                roll,
+                roll_type="navigation_check",
+                success=result.success,
+                dramatic=result.dramatic,
+                context=result.context,
+            ),
             event_bus=session.event_bus,
         )
 

@@ -20,6 +20,7 @@ import social_resolution
 from combat_events import emit_or_publish
 from condition_restrictions import cannot_act
 from declarations import DeclarationType
+from dice_roll_payloads import build_skill_dice_roll_payload
 from session_data import CombatParticipant, CombatState, SessionData
 from skill_fate import SkillScope, StaleSkillOperation
 
@@ -276,16 +277,18 @@ async def _finish_argument(session, state, attacker, targets, living, argument, 
         sink,
         session.room,
         E.DICE_ROLL,
-        {
-            "roll_type": "de_escalate",
-            "actor": attacker.name,
-            "round": scene.round_counter,
-            "surrendered": surrendered_count,
-            "living": len(living),
-            "ends_combat": state.deescalated,
-            "dramatic": True,
-            "context": "de_escalate",
-        },
+        build_skill_dice_roll_payload(
+            argument,
+            roll_type="de_escalate",
+            success=argument.success,
+            dramatic=True,
+            context="de_escalate",
+            actor=attacker.name,
+            round=scene.round_counter,
+            surrendered=surrendered_count,
+            living=len(living),
+            ends_combat=state.deescalated,
+        ),
         event_bus=session.event_bus,
     )
     session.record_event(
