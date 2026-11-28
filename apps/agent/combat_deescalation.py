@@ -91,7 +91,8 @@ async def _resolve_deescalation_packet(
     A Diplomat argues the WHOLE living enemy group at once: Focus + the round cap are pre-validated
     before resolution writes (combat_packet_gate prevalidation, via _gate_deescalation); here we
     spend the 3 Focus, roll ONE persuasion total for the round, then apply that same argument to
-    EACH living enemy INDEPENDENTLY — every enemy's disposition shifts by its own resistance profile (combat_resolution.resolve_argument_round),
+    EACH living enemy INDEPENDENTLY — every enemy's disposition shifts by its own resistance
+    profile (combat_resolution.resolve_argument_round),
     accumulating per enemy across rounds in ``state.deescalation_scene``. When the whole living group
     has crossed the surrender threshold, ``state.deescalated`` flips and the phase _wrap ends combat
     "deescalated"; a partial group leaves it False and the scene rides to the next round.
