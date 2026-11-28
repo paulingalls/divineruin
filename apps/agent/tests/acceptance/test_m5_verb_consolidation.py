@@ -16,7 +16,7 @@ from check_tools import check
 from choice_tools import select
 from inventory_tools import _transact_impl, transact
 from llm_config import MAX_STRICT_TOOLS
-from merchant_tools import collect_consignment, conclude_trade, query_merchant_ledger
+from merchant_tools import collect_consignment, conclude_trade, query_merchant_inventory, query_merchant_ledger
 from mode_tools import enter_mode
 from patron_action_tools import record_patron_action
 from query_tools import query_info
@@ -36,6 +36,7 @@ VERB_PRESENCE = [
     (check, "check", {"exploration", "combat", "onboarding", "dispatch"}),
     (enter_mode, "enter_mode", {"exploration"}),
     (sell_item, "sell_item", {"merchant"}),
+    (query_merchant_inventory, "query_merchant_inventory", {"merchant"}),
     (query_merchant_ledger, "query_merchant_ledger", {"merchant"}),
     (collect_consignment, "collect_consignment", {"merchant"}),
     (conclude_trade, "conclude_trade", {"merchant"}),

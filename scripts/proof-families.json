@@ -10,7 +10,7 @@
   {
     "name": "merchant-sales",
     "tests": [
-      "apps/agent/tests/acceptance/test_(?:sell_to_merchant|merchant_purse|merchant_restock|consignment)(?:_guards)?\\.py"
+      "apps/agent/tests/acceptance/test_(?:sell_to_merchant|shop_browse|merchant_purse|merchant_restock|consignment)(?:_guards)?\\.py"
     ],
     "owns": [
       "apps/agent/(?:merchant_agent|merchant_tools|sale_pricing|sell_item|merchant_purse|merchant_restock|db_mutations_merchant|consignment)\\.py"
