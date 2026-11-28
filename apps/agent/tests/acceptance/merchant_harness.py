@@ -3,6 +3,7 @@ import json
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, nullcontext
+from decimal import Decimal
 from uuid import uuid4
 
 from acceptance.first_episode_harness import EpisodeModel
@@ -23,7 +24,7 @@ GRIMJAW = "grimjaw_blacksmith"
 SWORD = "shortsword_basic"
 MAREN = "innkeeper_maren"
 INN = "millhaven_inn"
-SALE_EVENTS = (E.CURRENCY_GAINED, E.INVENTORY_UPDATED)
+TRADE_EVENTS = (E.CURRENCY_GAINED, E.CURRENCY_SPENT, E.INVENTORY_UPDATED)
 
 
 async def wait_for_merchant_readers(count: int) -> None:
@@ -187,7 +188,7 @@ class SaleSession:
         self.packets.append(packet)
         if packet["type"] == E.INVENTORY_UPDATED:
             self.inventory_destinations[packet["player_id"]] = kwargs.get("destination_identities")
-        if packet["type"] in SALE_EVENTS:
+        if packet["type"] in TRADE_EVENTS:
             self.publications.append((packet, await rows(packet["player_id"])))
 
     async def sell(self, item: str, npc: str, quantity: int, offer_id: str = "") -> llm.FunctionCallOutput:
@@ -202,7 +203,10 @@ class SaleSession:
     async def collect(self, npc: str, consignment_id: str) -> llm.FunctionCallOutput:
         return await self.command("collect_consignment", npc_id=npc, consignment_id=consignment_id)
 
-    async def command(self, name: str, **arguments: str | int) -> llm.FunctionCallOutput:
+    async def purchase(self, item: str, npc: str, quantity: int | float, offer_id: str = "") -> llm.FunctionCallOutput:
+        return await self.command("purchase_item", item_id=item, npc_id=npc, quantity=quantity, offer_id=offer_id)
+
+    async def command(self, name: str, **arguments: str | int | float) -> llm.FunctionCallOutput:
         self.model.commands.append((name, arguments))
         with self.data._bind_authenticated_actor(self.player_id, 1, lambda *_: None):
             await self.session.run(user_input="I'd like to trade.")
@@ -223,6 +227,7 @@ async def merchant_session(
     tainted: int = 0,
     guest: bool = False,
     own_merchant: bool = True,
+    gold: Decimal | int = 7,
 ) -> AsyncIterator[SaleSession]:
     from merchant_agent import MerchantAgent
 
@@ -232,7 +237,7 @@ async def merchant_session(
     try:
         for player_id in dict.fromkeys((pid, primary)):
             await seed_player(pool, player_id=player_id, location_id=location)
-            await seed_gold(pool, player_id, 7)
+            await seed_gold(pool, player_id, gold)
         if disposition is not None:
             await db_mutations.set_npc_disposition(npc, pid, disposition, "fixture", conn=pool)
         if held:

@@ -30,7 +30,7 @@ class InsufficientGold(ValueError):
     """The locked player balance cannot cover a charge."""
 
 
-async def debit_player_gold(player_id: str, amount: float, *, conn: asyncpg.Connection) -> float:
+async def debit_player_gold(player_id: str, amount: Decimal | float, *, conn: asyncpg.Connection) -> float:
     """Charge a player already locked by the caller and return the resulting balance."""
     balance = await conn.fetchval(
         """
