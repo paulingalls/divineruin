@@ -21,7 +21,7 @@
         "description": "Sells common supplies, rations, rope, torches, tools."
       }
     ],
-    "inventory_pool": "market_general",
+    "inventory_pool": "general_supplies",
     "price_modifier": 1.0,
     "combat_stats": null
   },
@@ -59,7 +59,7 @@
         "description": "Repairs damaged equipment."
       }
     ],
-    "inventory_pool": "grimjaw_weapons",
+    "inventory_pool": "weapons_armor_quality",
     "price_modifier": 1.05,
     "combat_stats": null
   },
@@ -93,7 +93,7 @@
         "description": "Creates a custom alchemical mixture."
       }
     ],
-    "inventory_pool": "alchemical_supplies",
+    "inventory_pool": "alchemical_supplies_common",
     "price_modifier": 1.1,
     "combat_stats": null
   },
@@ -120,7 +120,7 @@
         "description": "Appraises gem or jewelry value."
       }
     ],
-    "inventory_pool": "jeweler_wares",
+    "inventory_pool": "jeweler_goods",
     "price_modifier": 1.2,
     "combat_stats": null
   },
@@ -184,7 +184,7 @@
         "description": "Shares rumors from the road (free knowledge)."
       }
     ],
-    "inventory_pool": "traveling_stock",
+    "inventory_pool": null,
     "price_modifier": 1.15,
     "combat_stats": null
   },
@@ -217,7 +217,7 @@
         "description": "Sells restricted items, poisons, unpurified Hollow materials."
       }
     ],
-    "inventory_pool": "black_market_goods",
+    "inventory_pool": "black_market",
     "price_modifier": 1.5,
     "combat_stats": null
   },
@@ -260,7 +260,7 @@
         "description": "Crafts a Tier 3 item (cities / Keldaran holds only)."
       }
     ],
-    "inventory_pool": "grimjaw_weapons",
+    "inventory_pool": "weapons_armor_basic",
     "price_modifier": 1.0,
     "combat_stats": {
       "level": 2,
@@ -320,7 +320,7 @@
         "description": "Food and drink; rumors and message board."
       }
     ],
-    "inventory_pool": "millhaven_supplies",
+    "inventory_pool": "general_supplies",
     "price_modifier": 1.0,
     "combat_stats": null
   },
@@ -470,7 +470,7 @@
         "description": "Buys a Hollow research sample (they pay you; tier-dependent)."
       }
     ],
-    "inventory_pool": "scholar_supplies",
+    "inventory_pool": null,
     "price_modifier": 1.0,
     "combat_stats": null
   },
@@ -877,7 +877,7 @@
         "description": "Sells restricted items, poison, shadow-economy access."
       }
     ],
-    "inventory_pool": "black_market_goods",
+    "inventory_pool": "black_market",
     "price_modifier": 1.4,
     "combat_stats": {
       "level": 2,
@@ -930,7 +930,7 @@
         "description": "Animal boarding and pack-animal hire; beast companion care (Beastcaller service point)."
       }
     ],
-    "inventory_pool": "stable_stock",
+    "inventory_pool": null,
     "price_modifier": 1.0,
     "combat_stats": null
   },

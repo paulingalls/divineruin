@@ -3,7 +3,8 @@
 import math
 
 from catalog_parse import parse_dict
-from sale_pricing import MERCHANT_KINDS, SALE_DISPOSITIONS, SETTLEMENT_PERSONALITIES
+from inventory_pools import MERCHANT_KINDS
+from sale_pricing import SALE_DISPOSITIONS, SETTLEMENT_PERSONALITIES
 from workspace import SettlementSize
 
 MAX_DISPOSITION_MULTIPLIER = 1e304

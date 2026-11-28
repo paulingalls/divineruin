@@ -41,7 +41,7 @@ class NPCStatBlock(CreatureStatBlock):
     schedule: dict[str, str]     # {"06:00-20:00": "market_square", "20:00-06:00": "home"}
     
     # === ECONOMY ===
-    inventory_pool: str | None   # Links to inventory template: "weapons_common", "alchemical_supplies"
+    inventory_pool: str | None   # Links to inventory template: "weapons_armor_basic", "alchemical_supplies_common"
     services: list[str]          # What this NPC offers: ["buy", "sell", "repair", "train", "heal"]
     price_modifier: float        # 1.0 = standard. Adjusted by disposition and faction rep
     

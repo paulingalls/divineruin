@@ -15,12 +15,14 @@ import db_mutations_inventory
 import db_mutations_merchant
 import db_queries
 import event_types as E
+import inventory_pools
 import pricing_queries
-import sale_pricing
 from consignment import Consignment, expires_on, proceeds_sp
 from db_errors import db_tool
 from game_events import publish_game_event
+from inventory_pools import InventoryPool
 from inventory_refresh import inventory_payload
+from sale_pricing import merchant_gold_allocation
 from session_data import SessionData
 from tool_preconditions import require_npc_present
 from tool_support import _validate_id
@@ -30,8 +32,8 @@ from tool_support import _validate_id
 class MerchantVisit:
     conn: asyncpg.Connection
     npc: dict
-    pool: sale_pricing.InventoryPool
-    pools: dict[str, sale_pricing.InventoryPool]
+    pool: InventoryPool
+    pools: dict[str, InventoryPool]
     pricing: dict
     merchant: db_mutations_merchant.LockedMerchant
     player_id: str
@@ -54,7 +56,8 @@ async def merchant_visit(context: RunContext[SessionData], npc_id: str) -> Async
     context.disallow_interruptions()
     session = context.userdata
     player_id = session.acting_player_id
-    await require_npc_present(session.location_id, npc_id, suffix=" to trade")
+    location_id = session.location_id
+    await require_npc_present(location_id, npc_id, suffix=" to trade")
     async with db.transaction() as conn:
         npc = await db_content_queries.get_npc(npc_id, conn=conn)
         if npc is None:
@@ -62,11 +65,11 @@ async def merchant_visit(context: RunContext[SessionData], npc_id: str) -> Async
         pool_id = npc["inventory_pool"]
         if pool_id is None:
             raise ToolError(f"{npc['name']} doesn't buy goods.")
-        pools = await sale_pricing.get_inventory_pools(conn=conn)
+        pools = await inventory_pools.get_inventory_pools(conn=conn)
         pool = pools[pool_id]
         pricing = await pricing_queries.get_economy_pricing(conn=conn)
-        location = await db_content_queries.get_location(pool["location"], conn=conn)
-        allocation = sale_pricing.merchant_gold_allocation(pool, location, pricing)
+        location = await db_content_queries.get_location(location_id, conn=conn)
+        allocation = merchant_gold_allocation(pool, location, pricing, location_id=location_id)
         merchant = await db_mutations_merchant.lock_merchant(npc_id, allocation, player_id, conn=conn)
         visit = MerchantVisit(conn, npc, pool, pools, pricing, merchant, player_id)
         yield visit

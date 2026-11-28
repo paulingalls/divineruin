@@ -346,15 +346,17 @@ def test_seed_rejects_unknown_wild_shape_creature(fresh_migrated_db, tmp_path, m
 
 @pytest.mark.parametrize("gate", ["python", "typescript"])
 @pytest.mark.parametrize(
-    "file,entity,field,bad_value",
+    "file,entity,path,bad_value",
     [
-        ("inventory_pools.json", "grimjaw_weapons", "buys", ["unknown_item_type"]),
-        ("npcs.json", "grimjaw_blacksmith", "inventory_pool", "missing_pool"),
-        ("pricing.json", "economy", "merchant_gold_sp", "invalid"),
+        ("inventory_pools.json", "weapons_armor_basic", ("buys",), ["unknown_item_type"]),
+        ("inventory_pools.json", "weapons_armor_basic", ("tier_2_items", 0, "item_id"), "missing_item"),
+        ("role_archetypes.json", "blacksmith", ("inventory_pool",), "missing_pool"),
+        ("npcs.json", "grimjaw_blacksmith", ("inventory_pool",), "missing_pool"),
+        ("pricing.json", "economy", ("merchant_gold_sp",), "invalid"),
     ],
 )
 def test_production_reseed_rejects_sale_catalog(
-    fresh_migrated_db, tmp_path, monkeypatch, capfd, gate, file, entity, field, bad_value
+    fresh_migrated_db, tmp_path, monkeypatch, capfd, gate, file, entity, path, bad_value
 ):
     monkeypatch.setenv("DATABASE_URL", fresh_migrated_db)
     monkeypatch.setenv("SEED_PRODUCTION", "1")
@@ -363,6 +365,8 @@ def test_production_reseed_rejects_sale_catalog(
         (tmp_path / name).write_bytes((ROOT / "content" / name).read_bytes())
 
     asyncio.run(seed_content.main())
+    if path[0] == "tier_2_items":
+        asyncio.run(install_legacy_pools(fresh_migrated_db))
     before = asyncio.run(rows(fresh_migrated_db))
     assert before["inventory_pools"] and before["npcs"]
     capfd.readouterr()
@@ -373,14 +377,18 @@ def test_production_reseed_rejects_sale_catalog(
 
         monkeypatch.setattr(importlib.import_module("seed_catalogs"), "_validate_typescript", accept_typescript)
 
-    path = tmp_path / file
-    catalog = json.loads(path.read_text())
-    next(row for row in catalog if row["id"] == entity)[field] = bad_value
-    path.write_text(json.dumps(catalog))
-    path = tmp_path / "pricing.json"
-    pricing = json.loads(path.read_text())
+    content = tmp_path / file
+    catalog = json.loads(content.read_text())
+    target = next(row for row in catalog if row["id"] == entity)
+    *parents, field = path
+    for key in parents:
+        target = target[key]
+    target[field] = bad_value
+    content.write_text(json.dumps(catalog))
+    content = tmp_path / "pricing.json"
+    pricing = json.loads(content.read_text())
     pricing[0]["repair_cost_sp"]["common"] += 1
-    path.write_text(json.dumps(pricing))
+    content.write_text(json.dumps(pricing))
 
     with pytest.raises(ValueError) as refusal:
         asyncio.run(seed_content.main())
@@ -388,3 +396,43 @@ def test_production_reseed_rejects_sale_catalog(
     assert any(entity in line and field in line for line in diagnostics.splitlines()), diagnostics
     assert ("TypeScript runtime catalog validation failed" in str(refusal.value)) == (gate == "typescript")
     assert asyncio.run(rows(fresh_migrated_db)) == before
+
+
+POOL_FIXTURES = ROOT / "packages/shared/fixtures"
+
+
+async def install_legacy_pools(dsn: str) -> None:
+    legacy = json.loads((POOL_FIXTURES / "legacy-inventory-pools.json").read_text())
+    conn = await asyncpg.connect(dsn)
+    try:
+        async with conn.transaction():
+            await conn.execute("DELETE FROM inventory_pools")
+            await conn.executemany(
+                "INSERT INTO inventory_pools(id, data) VALUES ($1, $2::jsonb)",
+                [(row["id"], json.dumps(row)) for row in legacy["pools"]],
+            )
+            for table, bindings in (("npcs", legacy["npc_bindings"]), ("role_archetypes", legacy["role_bindings"])):
+                await conn.executemany(
+                    f"UPDATE {table} SET data=jsonb_set(data, '{{inventory_pool}}', $2::jsonb) WHERE id=$1",
+                    [(entity, json.dumps(binding)) for entity, binding in bindings.items()],
+                )
+    finally:
+        await conn.close()
+
+
+def test_production_reseed_upgrades_flat_inventory_pools(fresh_migrated_db, monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", fresh_migrated_db)
+    monkeypatch.setenv("SEED_PRODUCTION", "1")
+    asyncio.run(seed_content.main())
+    asyncio.run(install_legacy_pools(fresh_migrated_db))
+    asyncio.run(seed_content.main())
+
+    expected = json.loads((POOL_FIXTURES / "inventory-pool-cases.json").read_text())
+    after = asyncio.run(rows(fresh_migrated_db))
+    assert {row["id"]: row["data"] for row in after["inventory_pools"]} == {row["id"]: row for row in expected["pools"]}
+    assert {row["id"]: row["data"]["inventory_pool"] for row in after["npcs"] if row["data"]["inventory_pool"]} == (
+        expected["npc_bindings"]
+    )
+    assert {row["id"]: row["data"]["inventory_pool"] for row in after["role_archetypes"]} == expected["role_bindings"]
+    asyncio.run(seed_content.main())
+    assert asyncio.run(rows(fresh_migrated_db)) == after

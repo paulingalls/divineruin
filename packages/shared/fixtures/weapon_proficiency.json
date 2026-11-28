@@ -5,6 +5,11 @@
       "weapon_range": "melee",
       "weapon_kind": "shortsword"
     },
+    "drathian_ceremonial_blade": {
+      "weapon_category": "martial",
+      "weapon_range": "melee",
+      "weapon_kind": "longsword"
+    },
     "longsword_guild": {
       "weapon_category": "martial",
       "weapon_range": "melee",
@@ -164,6 +169,7 @@
   "proficiency": {
     "warrior": {
       "shortsword_basic": true,
+      "drathian_ceremonial_blade": true,
       "longsword_guild": true,
       "dagger_balanced": true,
       "mace_common": true,
@@ -198,6 +204,7 @@
     },
     "guardian": {
       "shortsword_basic": true,
+      "drathian_ceremonial_blade": true,
       "longsword_guild": true,
       "dagger_balanced": true,
       "mace_common": true,
@@ -232,6 +239,7 @@
     },
     "skirmisher": {
       "shortsword_basic": true,
+      "drathian_ceremonial_blade": true,
       "longsword_guild": true,
       "dagger_balanced": true,
       "mace_common": true,
@@ -266,6 +274,7 @@
     },
     "mage": {
       "shortsword_basic": false,
+      "drathian_ceremonial_blade": false,
       "longsword_guild": false,
       "dagger_balanced": true,
       "mace_common": false,
@@ -300,6 +309,7 @@
     },
     "artificer": {
       "shortsword_basic": false,
+      "drathian_ceremonial_blade": false,
       "longsword_guild": false,
       "dagger_balanced": true,
       "mace_common": true,
@@ -334,6 +344,7 @@
     },
     "seeker": {
       "shortsword_basic": false,
+      "drathian_ceremonial_blade": false,
       "longsword_guild": false,
       "dagger_balanced": true,
       "mace_common": true,
@@ -368,6 +379,7 @@
     },
     "druid": {
       "shortsword_basic": false,
+      "drathian_ceremonial_blade": false,
       "longsword_guild": false,
       "dagger_balanced": false,
       "mace_common": false,
@@ -402,6 +414,7 @@
     },
     "beastcaller": {
       "shortsword_basic": false,
+      "drathian_ceremonial_blade": false,
       "longsword_guild": false,
       "dagger_balanced": true,
       "mace_common": true,
@@ -436,6 +449,7 @@
     },
     "warden": {
       "shortsword_basic": false,
+      "drathian_ceremonial_blade": false,
       "longsword_guild": false,
       "dagger_balanced": true,
       "mace_common": true,
@@ -470,6 +484,7 @@
     },
     "cleric": {
       "shortsword_basic": false,
+      "drathian_ceremonial_blade": false,
       "longsword_guild": false,
       "dagger_balanced": false,
       "mace_common": true,
@@ -504,6 +519,7 @@
     },
     "paladin": {
       "shortsword_basic": true,
+      "drathian_ceremonial_blade": true,
       "longsword_guild": true,
       "dagger_balanced": true,
       "mace_common": true,
@@ -538,6 +554,7 @@
     },
     "oracle": {
       "shortsword_basic": false,
+      "drathian_ceremonial_blade": false,
       "longsword_guild": false,
       "dagger_balanced": true,
       "mace_common": true,
@@ -572,6 +589,7 @@
     },
     "rogue": {
       "shortsword_basic": true,
+      "drathian_ceremonial_blade": false,
       "longsword_guild": false,
       "dagger_balanced": true,
       "mace_common": false,
@@ -606,6 +624,7 @@
     },
     "spy": {
       "shortsword_basic": true,
+      "drathian_ceremonial_blade": false,
       "longsword_guild": false,
       "dagger_balanced": true,
       "mace_common": false,
@@ -640,6 +659,7 @@
     },
     "whisper": {
       "shortsword_basic": true,
+      "drathian_ceremonial_blade": false,
       "longsword_guild": false,
       "dagger_balanced": true,
       "mace_common": false,
@@ -674,6 +694,7 @@
     },
     "bard": {
       "shortsword_basic": true,
+      "drathian_ceremonial_blade": true,
       "longsword_guild": true,
       "dagger_balanced": true,
       "mace_common": false,
@@ -708,6 +729,7 @@
     },
     "diplomat": {
       "shortsword_basic": false,
+      "drathian_ceremonial_blade": false,
       "longsword_guild": false,
       "dagger_balanced": true,
       "mace_common": true,
@@ -742,6 +764,7 @@
     },
     "marshal": {
       "shortsword_basic": true,
+      "drathian_ceremonial_blade": true,
       "longsword_guild": true,
       "dagger_balanced": false,
       "mace_common": false,

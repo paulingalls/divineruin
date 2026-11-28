@@ -1,4 +1,8 @@
-import { SETTLEMENT_PERSONALITY_VALUES, SETTLEMENT_SIZE_VALUES } from "@divineruin/shared";
+import {
+  MERCHANT_KIND_VALUES,
+  SETTLEMENT_PERSONALITY_VALUES,
+  SETTLEMENT_SIZE_VALUES,
+} from "@divineruin/shared";
 import { sql } from "./db.ts";
 import { asRecord } from "./parse-helpers.ts";
 
@@ -145,11 +149,7 @@ function parseMerchantGold(data: Record<string, unknown>) {
   const matrix = requireFields(data.merchant_gold_sp, SETTLEMENT_SIZE_VALUES, ctx);
   const merchantGoldSp: EconomyPricing["merchantGoldSp"] = {};
   for (const [tier, cells] of Object.entries(matrix)) {
-    const row = requireFields(
-      cells,
-      ["general", "specialist", "exotic", "black_market"],
-      `${ctx}.${tier}`,
-    );
+    const row = requireFields(cells, MERCHANT_KIND_VALUES, `${ctx}.${tier}`);
     merchantGoldSp[tier] = {};
     for (const [kind, value] of Object.entries(row)) {
       if (

@@ -43,12 +43,11 @@ SERVER_TABLES = (
 
 
 async def validate_runtime_catalogs(conn) -> None:
+    from catalog_parse import parse_dict, parse_str
     from economy_pricing import parse_economy_pricing
-    from sale_pricing import (
-        merchant_gold_allocation,
-        parse_inventory_pools,
-        validate_npc_pool_bindings,
-    )
+    from inventory_pools import bound_inventory_pools, parse_inventory_pools
+    from role_archetypes import validate_role_pool_binding
+    from sale_pricing import merchant_gold_allocation
 
     tables = set(SERVER_TABLES) | {row[0] for row in PYTHON_CATALOGS}
     snapshot = {}
@@ -59,7 +58,7 @@ async def validate_runtime_catalogs(conn) -> None:
         snapshot[table] = [{"id": row["id"], "data": json.loads(row["data"])} for row in rows]
     await _validate_typescript(snapshot)
     pools = parse_inventory_pools(snapshot["inventory_pools"], snapshot["items"])
-    validate_npc_pool_bindings(snapshot["npcs"], pools)
+    merchant_pools = bound_inventory_pools(snapshot["npcs"], pools)
     economy = next((row["data"] for row in snapshot["pricing"] if row["id"] == "economy"), None)
     if economy is None:
         raise ValueError("pricing: no 'economy' row")
@@ -67,15 +66,20 @@ async def validate_runtime_catalogs(conn) -> None:
     locations = {row["id"]: row["data"] for row in snapshot["locations"]}
     for npc in snapshot["npcs"]:
         if binding := npc["data"]["inventory_pool"]:
-            pool = pools[binding]
-            merchant_gold_allocation(pool, locations.get(pool["location"]), pricing)
+            pool = merchant_pools[binding]
+            ctx = f"npcs[{npc['id']}].schedule"
+            schedule = parse_dict(npc["data"].get("schedule"), ctx)
+            for location_id in {parse_str(value, ctx) for value in schedule.values()}:
+                merchant_gold_allocation(pool, locations.get(location_id), pricing, location_id=location_id)
     spells = importlib.import_module("spells")
     creatures = [{"id": row["id"], "category": row["data"]["category"]} for row in snapshot["creatures"]]
     spells.set_spells(spells.parse_spell_catalog(snapshot["spells"], creatures))
     for table, name, parser in PYTHON_CATALOGS:
         module = importlib.import_module(name)
         for row in snapshot[table]:
-            getattr(module, parser)(row["id"], row["data"])
+            parsed = getattr(module, parser)(row["id"], row["data"])
+            if table == "role_archetypes":
+                validate_role_pool_binding(parsed, pools)
 
 
 async def _validate_typescript(snapshot: dict) -> None:

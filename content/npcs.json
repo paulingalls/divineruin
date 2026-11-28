@@ -261,7 +261,7 @@
       "threatened_local": -4,
       "helped_townsfolk": 2
     },
-    "inventory_pool": "millhaven_supplies",
+    "inventory_pool": "general_supplies",
     "secrets": [
       "she's been watering down the spirits to make them last — supply runs have stopped"
     ],
@@ -380,7 +380,7 @@
       "rushed_the_work": -3,
       "brought_rare_materials": 3
     },
-    "inventory_pool": "grimjaw_weapons",
+    "inventory_pool": "weapons_armor_basic",
     "secrets": [
       "he kept one Hollow-alloy blade hidden under the forge — it hums at night and he can't bring himself to destroy it"
     ],
@@ -753,7 +753,7 @@
       "focused_only_on_artifacts": -1,
       "defended_millhaven": 3
     },
-    "inventory_pool": "market_general",
+    "inventory_pool": "general_supplies",
     "secrets": [
       "she's been quietly stockpiling emergency rations in a warehouse — if anyone finds out, it will cause a panic"
     ],
