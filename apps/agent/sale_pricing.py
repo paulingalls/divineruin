@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
-import json
-from typing import Literal, TypedDict
+from collections.abc import Sequence
+from typing import TypedDict, cast
 
-import asyncpg
-
-from catalog_parse import parse_dict, parse_int, parse_str, parse_str_list
+from catalog_parse import parse_dict
+from inventory_pools import InventoryPool
 from workspace import SettlementSize, whole_silver
 
 SALE_DISPOSITIONS = ("unfriendly", "neutral", "friendly", "trusted")
 
 
-MERCHANT_KINDS = ("general", "specialist", "exotic", "black_market")
-SETTLEMENT_PERSONALITIES = (
+ECONOMY_SIZES = (*tuple(SettlementSize), "capital")
+ECONOMY_TRAITS = (
     "prosperous",
     "struggling",
     "military",
@@ -23,44 +22,42 @@ SETTLEMENT_PERSONALITIES = (
     "devout",
     "frontier",
     "refuge",
+    "trade_hub",
 )
 
 
-def merchant_gold_allocation(pool: InventoryPool, location: dict | None, pricing: dict) -> int:
-    ctx = f"locations[{pool['location']}]"
+def economy_size(raw: object, ctx: str) -> str:
+    if raw not in ECONOMY_SIZES:
+        raise ValueError(f"{ctx}.settlement_tier is unknown: {raw!r}")
+    return cast(str, raw)
+
+
+def economy_traits(raw: object, ctx: str) -> tuple[str, ...]:
+    traits = tuple(raw) if isinstance(raw, Sequence) and not isinstance(raw, str) else (raw,)
+    if not traits:
+        raise ValueError(f"{ctx}.personality must contain a trait")
+    for trait in traits:
+        if trait not in ECONOMY_TRAITS:
+            raise ValueError(f"{ctx}.personality is unknown: {trait!r}")
+    return cast(tuple[str, ...], traits)
+
+
+def merchant_gold_allocation(pool: InventoryPool, location: dict | None, pricing: dict, *, location_id: str) -> int:
+    ctx = f"locations[{location_id}]"
     data = parse_dict(location, ctx)
-    tier = data.get("settlement_tier")
-    if tier not in tuple(SettlementSize):
-        raise ValueError(f"{ctx}.settlement_tier is unknown: {tier!r}")
-    personality = data.get("personality")
-    if personality not in SETTLEMENT_PERSONALITIES:
-        raise ValueError(f"{ctx}.personality is unknown: {personality!r}")
-    buys = pool["buys"]
-    kind = "general" if buys == "all" else "specialist"
+    tier = economy_size(data.get("settlement_tier"), ctx)
+    traits = economy_traits(data.get("personality"), ctx)
+    kind = pool["merchant_kind"]
     base = pricing["merchant_gold_sp"][tier][kind]
     if base is None:
         raise ValueError(f"merchant_gold_sp.{tier}.{kind} is unavailable")
-    multiplier = pricing["merchant_gold_personality_multipliers"][personality]
-    if personality == "military":
-        multiplier = multiplier["arms" if buys != "all" and ("weapon" in buys or "armor" in buys) else "other"]
-    return whole_silver(int(base), multiplier)
-
-
-class InventoryPoolStock(TypedDict):
-    item_id: str
-    quantity: int
-    price: int
-
-
-class InventoryPool(TypedDict):
-    id: str
-    name: str
-    location: str
-    type: str
-    restock_interval_hours: int
-    items: list[InventoryPoolStock]
-    buys: Literal["all"] | list[str]
-    buys_rarities: list[str]
+    buys = pool["buys"]
+    military_kind = "arms" if buys != "all" and ("weapon" in buys or "armor" in buys) else "other"
+    multipliers = pricing["merchant_gold_personality_multipliers"]
+    return whole_silver(
+        int(base),
+        *(multipliers[trait][military_kind] if trait == "military" else multipliers[trait] for trait in traits),
+    )
 
 
 class SaleQuote(TypedDict):
@@ -68,95 +65,6 @@ class SaleQuote(TypedDict):
     price_sp: int
     reason: str
     merchant_kind: str | None
-
-
-def _buying_list(raw: object, vocabulary: set[str], ctx: str) -> list[str]:
-    values = parse_str_list(raw, ctx)
-    if not values:
-        raise ValueError(f"{ctx} must not be empty")
-    for value in values:
-        if value not in vocabulary:
-            raise ValueError(f"{ctx} contains unknown value {value!r}")
-    return values
-
-
-def _parse_stock(raw: object, ctx: str) -> list[InventoryPoolStock]:
-    if not isinstance(raw, list):
-        raise ValueError(f"{ctx} is not a list")
-    items: list[InventoryPoolStock] = []
-    for i, stock in enumerate(raw):
-        entry = f"{ctx}[{i}]"
-        data = parse_dict(stock, entry)
-        items.append(
-            InventoryPoolStock(
-                item_id=parse_str(data.get("item_id"), f"{entry}.item_id"),
-                quantity=parse_int(data.get("quantity"), f"{entry}.quantity"),
-                price=parse_int(data.get("price"), f"{entry}.price"),
-            )
-        )
-    return items
-
-
-def parse_inventory_pools(rows: list[dict], item_rows: list[dict]) -> dict[str, InventoryPool]:
-    if not item_rows:
-        raise ValueError("items produced no rows")
-    if not rows:
-        raise ValueError("inventory_pools produced no rows")
-    types: set[str] = set()
-    rarities: set[str] = set()
-    for row in item_rows:
-        ctx = f"items[{row['id']}]"
-        data = parse_dict(row["data"], ctx)
-        types.add(parse_str(data.get("type"), f"{ctx}.type"))
-        rarities.add(parse_str(data.get("rarity"), f"{ctx}.rarity"))
-
-    pools: dict[str, InventoryPool] = {}
-    for row in rows:
-        pool_id = row["id"]
-        ctx = f"inventory_pools[{pool_id}]"
-        data = parse_dict(row["data"], ctx)
-        raw_buys = data.get("buys")
-        buys: Literal["all"] | list[str] = "all" if raw_buys == "all" else _buying_list(raw_buys, types, f"{ctx}.buys")
-        pools[pool_id] = InventoryPool(
-            id=pool_id,
-            name=parse_str(data.get("name"), f"{ctx}.name"),
-            location=parse_str(data.get("location"), f"{ctx}.location"),
-            type=parse_str(data.get("type"), f"{ctx}.type"),
-            restock_interval_hours=parse_int(data.get("restock_interval_hours"), f"{ctx}.restock_interval_hours"),
-            items=_parse_stock(data.get("items"), f"{ctx}.items"),
-            buys=buys,
-            buys_rarities=_buying_list(data.get("buys_rarities"), rarities, f"{ctx}.buys_rarities"),
-        )
-    return pools
-
-
-def validate_npc_pool_bindings(rows: list[dict], pools: dict[str, InventoryPool]) -> None:
-    for row in rows:
-        ctx = f"npcs[{row['id']}].inventory_pool"
-        data = parse_dict(row["data"], f"npcs[{row['id']}]")
-        if "inventory_pool" not in data:
-            raise ValueError(f"{ctx} is required")
-        pool_id = data["inventory_pool"]
-        if pool_id is None:
-            continue
-        pool_id = parse_str(pool_id, ctx)
-        if pool_id not in pools:
-            raise ValueError(f"{ctx} references unknown pool {pool_id!r}")
-
-
-async def get_inventory_pools(
-    *,
-    conn: asyncpg.Connection | asyncpg.Pool | None = None,
-) -> dict[str, InventoryPool]:
-    import db
-
-    reader = conn if conn is not None else await db.get_pool()
-    pools = await reader.fetch("SELECT id, data FROM inventory_pools ORDER BY id")
-    items = await reader.fetch("SELECT id, data FROM items ORDER BY id")
-    return parse_inventory_pools(
-        [{"id": row["id"], "data": json.loads(row["data"])} for row in pools],
-        [{"id": row["id"], "data": json.loads(row["data"])} for row in items],
-    )
 
 
 def _buys_type(pool: InventoryPool, item_type: str) -> bool:
@@ -184,7 +92,7 @@ def quote_sale(
     pool: InventoryPool | None = None,
     pools: dict[str, InventoryPool] | None = None,
 ) -> SaleQuote:
-    """Quote a single item. Merchant inputs come from the validated pool catalog."""
+    """Quote a single item. Merchant suggestions come from NPC-bound pools."""
     if disposition != "hostile" and disposition not in SALE_DISPOSITIONS:
         raise ValueError(f"unknown sale disposition {disposition!r}")
     merchant = None

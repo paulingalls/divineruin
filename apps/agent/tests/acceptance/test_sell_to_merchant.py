@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -27,8 +28,8 @@ import db_content_queries
 import db_mutations
 import db_queries
 import event_types as E
+import inventory_pools
 import pricing_queries
-import sale_pricing
 from creation_rules import build_character_data
 from exploration_agent import ExplorationAgent
 from session_data import SessionData
@@ -92,6 +93,59 @@ async def test_sale_commits_receipt_and_snapshots(
             ),
             ({"type": E.INVENTORY_UPDATED, **snapshot}, (after_player, after_inventory)),
         ]
+
+
+async def test_masterwork_sales_pay_each_variant_value(reset_db_pool: str) -> None:
+    root = Path(__file__).resolve().parents[4]
+    fixture = json.loads((root / "packages/shared/fixtures/inventory-pool-cases.json").read_text())
+    pricing = json.loads((root / "content/pricing.json").read_text())[0]
+    sale_rate = pricing["sale_rate"] * pricing["sale_disposition_multipliers"]["neutral"]
+    variants = fixture["spec_encodings"]["aliases"]["rotations"]["Quality / masterwork variant"]
+    assert len(set(variants)) == len(variants) == 15
+    for item_id in variants:
+        async with merchant_session(item=item_id, held=1) as sale:
+            before, inventory = await rows(sale.player_id)
+            assert inventory[(item_id, False)]["quantity"] == 1
+            receipt = await sale.sell(item_id, GRIMJAW, 1)
+            assert not receipt.is_error, (item_id, receipt.output)
+            result = json.loads(receipt.output)
+            expected_sp = int(fixture["items"][item_id]["value_base"] * sale_rate)
+            assert (result["status"], result["item_id"], result["unit_price_sp"], result["total_price_sp"]) == (
+                "sold",
+                item_id,
+                expected_sp,
+                expected_sp,
+            )
+            after, inventory = await rows(sale.player_id)
+            assert after["gold"] == before["gold"] + expected_sp / 10
+            assert (item_id, False) not in inventory
+
+
+async def test_sale_allocates_at_actual_trade_location(reset_db_pool: str) -> None:
+    location = "grimjaw_quarters"
+    pool = await db.get_pool()
+    redis = await db.get_redis()
+    cache_key = os.environ.get("CONTENT_CACHE_PREFIX", "") + f"location:{location}"
+    original = await pool.fetchval("SELECT data FROM locations WHERE id=$1", location)
+    try:
+        await pool.execute(
+            "UPDATE locations SET data=data || $2::jsonb WHERE id=$1",
+            location,
+            json.dumps({"settlement_tier": "town", "personality": "scholarly"}),
+        )
+        await redis.delete(cache_key)
+        async with merchant_session(location=location, held=1) as sale:
+            receipt = await sale.sell(SWORD, GRIMJAW, 1)
+            assert not receipt.is_error, receipt.output
+            assert json.loads(receipt.output)["total_price_sp"] == 50
+            state = await merchant_row(GRIMJAW)
+            assert state is not None and state[0]["max_gold_sp"] == 150
+            assert (SWORD, False) not in (await rows(sale.player_id))[1]
+            assert sale.publications[0][0]["type"] == E.CURRENCY_GAINED
+            assert sale.publications[0][0]["new_balance"] == 12
+    finally:
+        await pool.execute("UPDATE locations SET data=$2::jsonb WHERE id=$1", location, original)
+        await redis.delete(cache_key)
 
 
 async def test_fractional_sale_preserves_exact_gold(reset_db_pool: str) -> None:
@@ -177,7 +231,7 @@ async def test_invalid_quantity_reads_nothing(monkeypatch: pytest.MonkeyPatch, q
         (db_queries, "get_inventory_item"),
         (db_content_queries, "get_npc"),
         (db_content_queries, "get_item"),
-        (sale_pricing, "get_inventory_pools"),
+        (inventory_pools, "get_inventory_pools"),
         (pricing_queries, "get_economy_pricing"),
     ):
         monkeypatch.setattr(mod, name, unexpected_io)

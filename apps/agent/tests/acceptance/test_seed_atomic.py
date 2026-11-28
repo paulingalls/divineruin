@@ -304,17 +304,19 @@ def test_invalid_weapon_catalog_rolls_back(fresh_migrated_db, tmp_path, monkeypa
         FIXTURE["malformed_proficiencies"]["valid_then_unknown"],
         "weapon_proficiencies",
     )
-    for args in (invalid_item, invalid_archetype):
+    invalid_bonus = ("items.json", "quality_longsword", {"set": {"damage_bonus": 0}, "delete": []}, "damage_bonus")
+    for args in (invalid_item, invalid_archetype, invalid_bonus):
         check_refusal(*args)
         assert not any(asyncio.run(row_counts(fresh_migrated_db)).values())
     if gate == "python":
-        assert len(typescript_calls) == 2
+        assert len(typescript_calls) == 3
     if gate == "both" and mode == "":
         asyncio.run(seed_content.main())
         before = asyncio.run(rows(fresh_migrated_db))
         assert before["items"] and before["archetypes"]
-        check_refusal(*invalid_item)
-        assert asyncio.run(rows(fresh_migrated_db)) == before
+        for args in (invalid_item, invalid_bonus):
+            check_refusal(*args)
+            assert asyncio.run(rows(fresh_migrated_db)) == before
 
 
 @pytest.mark.parametrize("gate", ["python", "typescript"])
@@ -346,15 +348,19 @@ def test_seed_rejects_unknown_wild_shape_creature(fresh_migrated_db, tmp_path, m
 
 @pytest.mark.parametrize("gate", ["python", "typescript"])
 @pytest.mark.parametrize(
-    "file,entity,field,bad_value",
+    "file,entity,path,bad_value",
     [
-        ("inventory_pools.json", "grimjaw_weapons", "buys", ["unknown_item_type"]),
-        ("npcs.json", "grimjaw_blacksmith", "inventory_pool", "missing_pool"),
-        ("pricing.json", "economy", "merchant_gold_sp", "invalid"),
+        ("inventory_pools.json", "weapons_armor_basic", ("buys",), ["unknown_item_type"]),
+        ("inventory_pools.json", "weapons_armor_basic", ("tier_2_items", 0, "item_id"), "missing_item"),
+        ("role_archetypes.json", "blacksmith", ("inventory_pool",), "missing_pool"),
+        ("npcs.json", "grimjaw_blacksmith", ("inventory_pool",), "missing_pool"),
+        ("pricing.json", "economy", ("merchant_gold_sp",), "invalid"),
+        ("pricing.json", "economy", ("stock_modifiers", "trade_hub", "tier_3_allowed"), "yes"),
+        ("pricing.json", "economy", ("stock_modifiers", "military", "quantity_multiplier"), "missing_pool_key"),
     ],
 )
 def test_production_reseed_rejects_sale_catalog(
-    fresh_migrated_db, tmp_path, monkeypatch, capfd, gate, file, entity, field, bad_value
+    fresh_migrated_db, tmp_path, monkeypatch, capfd, gate, file, entity, path, bad_value
 ):
     monkeypatch.setenv("DATABASE_URL", fresh_migrated_db)
     monkeypatch.setenv("SEED_PRODUCTION", "1")
@@ -363,28 +369,88 @@ def test_production_reseed_rejects_sale_catalog(
         (tmp_path / name).write_bytes((ROOT / "content" / name).read_bytes())
 
     asyncio.run(seed_content.main())
+    if path[0] == "tier_2_items":
+        asyncio.run(install_legacy_pools(fresh_migrated_db))
     before = asyncio.run(rows(fresh_migrated_db))
     assert before["inventory_pools"] and before["npcs"]
     capfd.readouterr()
+    validators = importlib.import_module("seed_catalogs")
     if gate == "python":
 
         async def accept_typescript(_snapshot: dict) -> None:
             return None
 
-        monkeypatch.setattr(importlib.import_module("seed_catalogs"), "_validate_typescript", accept_typescript)
+        monkeypatch.setattr(validators, "_validate_typescript", accept_typescript)
+    else:
+        monkeypatch.setattr(validators, "_validate_python", lambda _snapshot: None)
 
-    path = tmp_path / file
-    catalog = json.loads(path.read_text())
-    next(row for row in catalog if row["id"] == entity)[field] = bad_value
-    path.write_text(json.dumps(catalog))
-    path = tmp_path / "pricing.json"
-    pricing = json.loads(path.read_text())
+    content = tmp_path / file
+    catalog = json.loads(content.read_text())
+    target = next(row for row in catalog if row["id"] == entity)
+    *parents, field = path
+    for key in parents:
+        target = target[key]
+    if bad_value == "missing_pool_key":
+        del target[field]["black_market"]
+    else:
+        target[field] = bad_value
+    content.write_text(json.dumps(catalog))
+    content = tmp_path / "pricing.json"
+    pricing = json.loads(content.read_text())
     pricing[0]["repair_cost_sp"]["common"] += 1
-    path.write_text(json.dumps(pricing))
+    content.write_text(json.dumps(pricing))
 
-    with pytest.raises(ValueError) as refusal:
+    refusal = None
+    try:
         asyncio.run(seed_content.main())
-    diagnostics = f"{refusal.value}\n{capfd.readouterr().err}"
-    assert any(entity in line and field in line for line in diagnostics.splitlines()), diagnostics
-    assert ("TypeScript runtime catalog validation failed" in str(refusal.value)) == (gate == "typescript")
+    except ValueError as error:
+        refusal = error
     assert asyncio.run(rows(fresh_migrated_db)) == before
+    assert refusal is not None
+    diagnostics = f"{refusal}\n{capfd.readouterr().err}"
+    assert any(entity in line and field in line for line in diagnostics.splitlines()), diagnostics
+    assert ("TypeScript runtime catalog validation failed" in str(refusal)) == (gate == "typescript")
+
+
+POOL_FIXTURES = ROOT / "packages/shared/fixtures"
+
+
+async def install_legacy_pools(dsn: str) -> None:
+    legacy = json.loads((POOL_FIXTURES / "legacy-inventory-pools.json").read_text())
+    conn = await asyncpg.connect(dsn)
+    try:
+        async with conn.transaction():
+            await conn.execute("DELETE FROM inventory_pools")
+            await conn.executemany(
+                "INSERT INTO inventory_pools(id, data) VALUES ($1, $2::jsonb)",
+                [(row["id"], json.dumps(row)) for row in legacy["pools"]],
+            )
+            for table, bindings in (("npcs", legacy["npc_bindings"]), ("role_archetypes", legacy["role_bindings"])):
+                await conn.executemany(
+                    f"UPDATE {table} SET data=jsonb_set(data, '{{inventory_pool}}', $2::jsonb) WHERE id=$1",
+                    [(entity, json.dumps(binding)) for entity, binding in bindings.items()],
+                )
+    finally:
+        await conn.close()
+
+
+def test_production_reseed_upgrades_flat_inventory_pools(fresh_migrated_db, monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", fresh_migrated_db)
+    monkeypatch.setenv("SEED_PRODUCTION", "1")
+    asyncio.run(seed_content.main())
+    asyncio.run(install_legacy_pools(fresh_migrated_db))
+    asyncio.run(seed_content.main())
+
+    expected = json.loads((POOL_FIXTURES / "inventory-pool-cases.json").read_text())
+    after = asyncio.run(rows(fresh_migrated_db))
+    variant_ids = set(expected["masterwork_variants"].values())
+    assert {row["id"]: row["data"].get("damage_bonus") for row in after["items"] if row["id"] in variant_ids} == {
+        item_id: 1 for item_id in variant_ids
+    }
+    assert {row["id"]: row["data"] for row in after["inventory_pools"]} == {row["id"]: row for row in expected["pools"]}
+    assert {row["id"]: row["data"]["inventory_pool"] for row in after["npcs"] if row["data"]["inventory_pool"]} == (
+        expected["npc_bindings"]
+    )
+    assert {row["id"]: row["data"]["inventory_pool"] for row in after["role_archetypes"]} == expected["role_bindings"]
+    asyncio.run(seed_content.main())
+    assert asyncio.run(rows(fresh_migrated_db)) == after

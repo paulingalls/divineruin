@@ -2,7 +2,7 @@
   {
     "id": "neutral",
     "item": { "type": "weapon", "rarity": "common", "value_base": 101 },
-    "pool": "grimjaw_weapons",
+    "pool": "weapons_armor_basic",
     "disposition": "neutral",
     "kind": "merchant",
     "expected": { "available": true, "price_sp": 51, "reason": "", "merchant_kind": null }
@@ -10,7 +10,7 @@
   {
     "id": "unfriendly_single_round",
     "item": { "type": "weapon", "rarity": "common", "value_base": 101 },
-    "pool": "grimjaw_weapons",
+    "pool": "weapons_armor_basic",
     "disposition": "unfriendly",
     "kind": "merchant",
     "expected": { "available": true, "price_sp": 45, "reason": "", "merchant_kind": null }
@@ -18,7 +18,7 @@
   {
     "id": "friendly",
     "item": { "type": "weapon", "rarity": "common", "value_base": 101 },
-    "pool": "grimjaw_weapons",
+    "pool": "weapons_armor_basic",
     "disposition": "friendly",
     "kind": "merchant",
     "expected": { "available": true, "price_sp": 56, "reason": "", "merchant_kind": null }
@@ -26,7 +26,7 @@
   {
     "id": "trusted",
     "item": { "type": "weapon", "rarity": "common", "value_base": 101 },
-    "pool": "grimjaw_weapons",
+    "pool": "weapons_armor_basic",
     "disposition": "trusted",
     "kind": "merchant",
     "expected": { "available": true, "price_sp": 61, "reason": "", "merchant_kind": null }
@@ -34,7 +34,7 @@
   {
     "id": "half_silver_tie",
     "item": { "type": "weapon", "rarity": "common", "value_base": 5 },
-    "pool": "grimjaw_weapons",
+    "pool": "weapons_armor_basic",
     "disposition": "neutral",
     "kind": "merchant",
     "expected": { "available": true, "price_sp": 3, "reason": "", "merchant_kind": null }
@@ -42,7 +42,7 @@
   {
     "id": "zero_unit",
     "item": { "type": "weapon", "rarity": "common", "value_base": 1 },
-    "pool": "grimjaw_weapons",
+    "pool": "weapons_armor_basic",
     "disposition": "unfriendly",
     "kind": "merchant",
     "expected": {
@@ -55,7 +55,7 @@
   {
     "id": "zero_base",
     "item": { "type": "weapon", "rarity": "common", "value_base": 0 },
-    "pool": "grimjaw_weapons",
+    "pool": "weapons_armor_basic",
     "disposition": "neutral",
     "kind": "merchant",
     "expected": {
@@ -68,7 +68,7 @@
   {
     "id": "hostile",
     "item": { "type": "weapon", "rarity": "common", "value_base": 101 },
-    "pool": "grimjaw_weapons",
+    "pool": "weapons_armor_basic",
     "disposition": "hostile",
     "kind": "merchant",
     "expected": { "available": false, "price_sp": 0, "reason": "hostile", "merchant_kind": null }
@@ -89,7 +89,7 @@
   {
     "id": "wrong_type_temple",
     "item": { "type": "consumable", "rarity": "rare", "value_base": 101 },
-    "pool": "grimjaw_weapons",
+    "pool": "weapons_armor_basic",
     "disposition": "neutral",
     "kind": "merchant",
     "expected": {
@@ -102,7 +102,7 @@
   {
     "id": "wrong_rarity",
     "item": { "type": "material", "rarity": "uncommon", "value_base": 101 },
-    "pool": "market_general",
+    "pool": "general_supplies",
     "disposition": "neutral",
     "kind": "merchant",
     "expected": {
@@ -115,7 +115,7 @@
   {
     "id": "wrong_rarity_forge",
     "item": { "type": "weapon", "rarity": "uncommon", "value_base": 101 },
-    "pool": "millhaven_supplies",
+    "pool": "general_supplies",
     "disposition": "neutral",
     "kind": "merchant",
     "expected": {
@@ -149,7 +149,7 @@
   {
     "id": "quest_type",
     "item": { "type": "quest_item", "rarity": "common", "value_base": 101 },
-    "pool": "market_general",
+    "pool": "general_supplies",
     "disposition": "neutral",
     "kind": "merchant",
     "expected": { "available": false, "price_sp": 0, "reason": "quest_item", "merchant_kind": null }
@@ -157,7 +157,7 @@
   {
     "id": "quest_only",
     "item": { "type": "shield", "rarity": "common", "quest_only": true, "value_base": 101 },
-    "pool": "grimjaw_weapons",
+    "pool": "weapons_armor_basic",
     "disposition": "neutral",
     "kind": "merchant",
     "expected": { "available": false, "price_sp": 0, "reason": "quest_item", "merchant_kind": null }
@@ -165,7 +165,7 @@
   {
     "id": "missing_base",
     "item": { "type": "weapon", "rarity": "common" },
-    "pool": "grimjaw_weapons",
+    "pool": "weapons_armor_basic",
     "disposition": "neutral",
     "kind": "merchant",
     "expected": {
@@ -178,7 +178,7 @@
   {
     "id": "null_base",
     "item": { "type": "weapon", "rarity": "common", "value_base": null },
-    "pool": "grimjaw_weapons",
+    "pool": "weapons_armor_basic",
     "disposition": "neutral",
     "kind": "merchant",
     "expected": {
@@ -191,7 +191,7 @@
   {
     "id": "market_accessory",
     "item": { "type": "accessory", "rarity": "common", "value_base": 101 },
-    "pool": "market_general",
+    "pool": "general_supplies",
     "disposition": "neutral",
     "kind": "merchant",
     "expected": { "available": true, "price_sp": 51, "reason": "", "merchant_kind": null }
@@ -199,7 +199,7 @@
   {
     "id": "millhaven_material",
     "item": { "type": "material", "rarity": "common", "value_base": 101 },
-    "pool": "millhaven_supplies",
+    "pool": "general_supplies",
     "disposition": "neutral",
     "kind": "merchant",
     "expected": { "available": true, "price_sp": 51, "reason": "", "merchant_kind": null }
@@ -207,7 +207,7 @@
   {
     "id": "forge_armor",
     "item": { "type": "armor", "rarity": "uncommon", "value_base": 101 },
-    "pool": "grimjaw_weapons",
+    "pool": "weapons_armor_basic",
     "disposition": "neutral",
     "kind": "merchant",
     "expected": { "available": true, "price_sp": 51, "reason": "", "merchant_kind": null }
@@ -215,7 +215,7 @@
   {
     "id": "forge_shield",
     "item": { "type": "shield", "rarity": "rare", "value_base": 101 },
-    "pool": "grimjaw_weapons",
+    "pool": "weapons_armor_basic",
     "disposition": "neutral",
     "kind": "merchant",
     "expected": { "available": true, "price_sp": 51, "reason": "", "merchant_kind": null }
@@ -223,7 +223,7 @@
   {
     "id": "forge_ammunition",
     "item": { "type": "ammunition", "rarity": "legendary", "value_base": 101 },
-    "pool": "grimjaw_weapons",
+    "pool": "weapons_armor_basic",
     "disposition": "neutral",
     "kind": "merchant",
     "expected": { "available": true, "price_sp": 51, "reason": "", "merchant_kind": null }
@@ -284,40 +284,37 @@
   {
     "id": "allocation_grimjaw_blacksmith",
     "npc": "grimjaw_blacksmith",
+    "trade_location": "accord_forge",
     "expected_allocation_sp": 600
   },
   {
     "id": "allocation_temple_warden_selene",
     "npc": "temple_warden_selene",
+    "trade_location": "accord_temple_row",
     "expected_allocation_sp": 600
   },
   {
     "id": "allocation_aelora_guildmaster_dara",
     "npc": "aelora_guildmaster_dara",
+    "trade_location": "accord_guild_hall",
     "expected_allocation_sp": 300
   },
   {
     "id": "allocation_innkeeper_maren",
     "npc": "innkeeper_maren",
+    "trade_location": "millhaven_inn",
     "expected_allocation_sp": 13
   },
   {
-    "id": "allocation_binding_follows_pool_location",
+    "id": "allocation_follows_trade_location",
     "npc": "grimjaw_blacksmith",
     "expected_allocation_sp": 25,
-    "pool_location": "millhaven"
-  },
-  {
-    "id": "allocation_military",
-    "npc": "grimjaw_blacksmith",
-    "expected_allocation_sp": 800,
-    "location_fields": {
-      "personality": "military"
-    }
+    "trade_location": "millhaven"
   },
   {
     "id": "allocation_military_weapon_buyer",
     "npc": "grimjaw_blacksmith",
+    "trade_location": "accord_forge",
     "expected_allocation_sp": 800,
     "pool_buys": ["weapon"],
     "location_fields": {
@@ -327,6 +324,7 @@
   {
     "id": "allocation_military_armor_buyer",
     "npc": "grimjaw_blacksmith",
+    "trade_location": "accord_forge",
     "expected_allocation_sp": 800,
     "pool_buys": ["armor"],
     "location_fields": {
@@ -334,56 +332,9 @@
     }
   },
   {
-    "id": "allocation_scholarly",
-    "npc": "grimjaw_blacksmith",
-    "expected_allocation_sp": 400,
-    "location_fields": {
-      "personality": "scholarly"
-    }
-  },
-  {
-    "id": "allocation_corrupt",
-    "npc": "grimjaw_blacksmith",
-    "expected_allocation_sp": 100,
-    "location_fields": {
-      "personality": "corrupt"
-    }
-  },
-  {
-    "id": "allocation_devout",
-    "npc": "grimjaw_blacksmith",
-    "expected_allocation_sp": 400,
-    "location_fields": {
-      "personality": "devout"
-    }
-  },
-  {
-    "id": "allocation_frontier",
-    "npc": "grimjaw_blacksmith",
-    "expected_allocation_sp": 300,
-    "location_fields": {
-      "personality": "frontier"
-    }
-  },
-  {
-    "id": "allocation_refuge",
-    "npc": "grimjaw_blacksmith",
-    "expected_allocation_sp": 400,
-    "location_fields": {
-      "personality": "refuge"
-    }
-  },
-  {
-    "id": "allocation_military_general",
-    "npc": "aelora_guildmaster_dara",
-    "expected_allocation_sp": 200,
-    "location_fields": {
-      "personality": "military"
-    }
-  },
-  {
     "id": "allocation_military_temple",
     "npc": "temple_warden_selene",
+    "trade_location": "accord_temple_row",
     "expected_allocation_sp": 400,
     "location_fields": {
       "personality": "military"
@@ -392,15 +343,17 @@
   {
     "id": "allocation_unknown_tier",
     "npc": "grimjaw_blacksmith",
+    "trade_location": "accord_forge",
     "expected_allocation_sp": null,
     "location_fields": {
-      "settlement_tier": "capital"
+      "settlement_tier": "metropolis"
     },
     "error": "settlement_tier"
   },
   {
     "id": "allocation_missing_tier",
     "npc": "grimjaw_blacksmith",
+    "trade_location": "accord_forge",
     "expected_allocation_sp": null,
     "location_fields": {
       "settlement_tier": null
@@ -410,6 +363,7 @@
   {
     "id": "allocation_unknown_trait",
     "npc": "grimjaw_blacksmith",
+    "trade_location": "accord_forge",
     "expected_allocation_sp": null,
     "location_fields": {
       "personality": "isolated"
@@ -419,6 +373,7 @@
   {
     "id": "allocation_missing_trait",
     "npc": "grimjaw_blacksmith",
+    "trade_location": "accord_forge",
     "expected_allocation_sp": null,
     "location_fields": {
       "personality": null
@@ -426,28 +381,46 @@
     "error": "personality"
   },
   {
-    "id": "allocation_multiple_traits",
+    "id": "allocation_unknown_trait_after_valid_trait",
     "npc": "grimjaw_blacksmith",
-    "expected_allocation_sp": null,
-    "location_fields": {
-      "personality": ["devout"]
-    },
-    "error": "personality"
+    "trade_location": "accord_forge",
+    "location_fields": { "personality": ["struggling", "isolated"] },
+    "error": "isolated"
   },
   {
-    "id": "allocation_unavailable",
+    "id": "allocation_empty_traits",
     "npc": "grimjaw_blacksmith",
-    "expected_allocation_sp": null,
-    "location_fields": {
-      "settlement_tier": "hamlet"
-    },
-    "error": "merchant_gold_sp.hamlet.specialist"
+    "trade_location": "accord_forge",
+    "location_fields": { "personality": [] },
+    "error": "personality"
   },
   {
     "id": "allocation_missing_location",
     "npc": "grimjaw_blacksmith",
     "expected_allocation_sp": null,
-    "pool_location": "missing_location",
+    "trade_location": "missing_location",
     "error": "locations[missing_location]"
+  },
+  {
+    "id": "allocation_explicit_exotic_kind",
+    "npc": "aelora_guildmaster_dara",
+    "trade_location": "accord_market_square",
+    "pool_merchant_kind": "exotic",
+    "expected_allocation_sp": 900,
+    "location_fields": {
+      "settlement_tier": "city",
+      "personality": "prosperous"
+    }
+  },
+  {
+    "id": "allocation_explicit_black_market_kind",
+    "npc": "grimjaw_blacksmith",
+    "trade_location": "accord_forge",
+    "pool_merchant_kind": "black_market",
+    "expected_allocation_sp": 450,
+    "location_fields": {
+      "settlement_tier": "city",
+      "personality": "prosperous"
+    }
   }
 ]

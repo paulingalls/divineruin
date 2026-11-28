@@ -3,6 +3,7 @@ import json
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, nullcontext
+from decimal import Decimal
 from uuid import uuid4
 
 from acceptance.first_episode_harness import EpisodeModel
@@ -14,6 +15,7 @@ import db
 import db_mutations
 import db_mutations_merchant
 import event_types as E
+from inventory_pools import InventoryPool, get_inventory_pools
 from party_state import PartyState
 from session_data import SessionData
 
@@ -22,7 +24,7 @@ GRIMJAW = "grimjaw_blacksmith"
 SWORD = "shortsword_basic"
 MAREN = "innkeeper_maren"
 INN = "millhaven_inn"
-SALE_EVENTS = (E.CURRENCY_GAINED, E.INVENTORY_UPDATED)
+TRADE_EVENTS = (E.CURRENCY_GAINED, E.CURRENCY_SPENT, E.INVENTORY_UPDATED)
 
 
 async def wait_for_merchant_readers(count: int) -> None:
@@ -66,9 +68,10 @@ async def merchant_row(npc: str) -> tuple[dict, object, object] | None:
     return (json.loads(row["data"]), row["created_at"], row["updated_at"]) if row else None
 
 
-async def fund_merchant(npc: str, allocation: int, **overrides: object) -> None:
+async def fund_merchant(npc: str, allocation: int, *, legacy: bool = False, **overrides: object) -> None:
     pool = await db.get_pool()
     state = {
+        "current_inventory": {},
         "current_gold_sp": allocation,
         "max_gold_sp": allocation,
         "last_restock_day": db_mutations_merchant.aethos_today(),
@@ -76,6 +79,8 @@ async def fund_merchant(npc: str, allocation: int, **overrides: object) -> None:
         "consigned_items": [],
         **overrides,
     }
+    if legacy:
+        del state["current_inventory"]
     await pool.execute("INSERT INTO merchant_state(npc_id, data) VALUES ($1, $2::jsonb)", npc, json.dumps(state))
 
 
@@ -92,6 +97,65 @@ async def catalog_override(item: str, **changes: bool | int) -> AsyncIterator[No
     finally:
         await pool.execute("UPDATE items SET data=$2::jsonb WHERE id=$1", item, original)
         await redis.delete(key)
+
+
+@asynccontextmanager
+async def pool_override(pool_id: str, **changes: object) -> AsyncIterator[InventoryPool]:
+    pool = await db.get_pool()
+    original = await pool.fetchval("SELECT data FROM inventory_pools WHERE id=$1", pool_id)
+    try:
+        await pool.execute(
+            "UPDATE inventory_pools SET data=data || $2::jsonb WHERE id=$1", pool_id, json.dumps(changes)
+        )
+        async with db.transaction() as conn:
+            catalog = await get_inventory_pools(conn=conn)
+        yield catalog[pool_id]
+    finally:
+        await pool.execute("UPDATE inventory_pools SET data=$2::jsonb WHERE id=$1", pool_id, original)
+
+
+@asynccontextmanager
+async def location_override(location: str, **changes: str) -> AsyncIterator[None]:
+    pool = await db.get_pool()
+    redis = await db.get_redis()
+    key = os.environ.get("CONTENT_CACHE_PREFIX", "") + f"location:{location}"
+    original = await pool.fetchval("SELECT data FROM locations WHERE id=$1", location)
+    try:
+        await pool.execute("UPDATE locations SET data=data || $2::jsonb WHERE id=$1", location, json.dumps(changes))
+        await redis.delete(key)
+        yield
+    finally:
+        await pool.execute("UPDATE locations SET data=$2::jsonb WHERE id=$1", location, original)
+        await redis.delete(key)
+
+
+@asynccontextmanager
+async def audit_merchant_updates() -> AsyncIterator[None]:
+    pool = await db.get_pool()
+    await pool.execute("""
+        CREATE TABLE merchant_updates (npc_id text NOT NULL);
+        CREATE FUNCTION audit_merchant_update() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+            INSERT INTO merchant_updates VALUES (NEW.npc_id);
+            RETURN NEW;
+        END
+        $$;
+        CREATE TRIGGER audit_merchant_update AFTER UPDATE ON merchant_state
+        FOR EACH ROW EXECUTE FUNCTION audit_merchant_update();
+    """)
+    try:
+        yield
+    finally:
+        await pool.execute("""
+            DROP TRIGGER audit_merchant_update ON merchant_state;
+            DROP FUNCTION audit_merchant_update();
+            DROP TABLE merchant_updates;
+        """)
+
+
+async def merchant_updates(npc: str) -> int:
+    pool = await db.get_pool()
+    return await pool.fetchval("SELECT count(*) FROM merchant_updates WHERE npc_id=$1", npc)
 
 
 @asynccontextmanager
@@ -124,11 +188,14 @@ class SaleSession:
         self.packets.append(packet)
         if packet["type"] == E.INVENTORY_UPDATED:
             self.inventory_destinations[packet["player_id"]] = kwargs.get("destination_identities")
-        if packet["type"] in SALE_EVENTS:
+        if packet["type"] in TRADE_EVENTS:
             self.publications.append((packet, await rows(packet["player_id"])))
 
     async def sell(self, item: str, npc: str, quantity: int, offer_id: str = "") -> llm.FunctionCallOutput:
         return await self.command("sell_item", item_id=item, npc_id=npc, quantity=quantity, offer_id=offer_id)
+
+    async def browse(self, npc: str, item_name: str = "") -> llm.FunctionCallOutput:
+        return await self.command("query_merchant_inventory", npc_id=npc, item_name=item_name)
 
     async def ledger(self, npc: str) -> llm.FunctionCallOutput:
         return await self.command("query_merchant_ledger", npc_id=npc)
@@ -136,7 +203,10 @@ class SaleSession:
     async def collect(self, npc: str, consignment_id: str) -> llm.FunctionCallOutput:
         return await self.command("collect_consignment", npc_id=npc, consignment_id=consignment_id)
 
-    async def command(self, name: str, **arguments: str | int) -> llm.FunctionCallOutput:
+    async def purchase(self, item: str, npc: str, quantity: int | float, offer_id: str = "") -> llm.FunctionCallOutput:
+        return await self.command("purchase_item", item_id=item, npc_id=npc, quantity=quantity, offer_id=offer_id)
+
+    async def command(self, name: str, **arguments: str | int | float) -> llm.FunctionCallOutput:
         self.model.commands.append((name, arguments))
         with self.data._bind_authenticated_actor(self.player_id, 1, lambda *_: None):
             await self.session.run(user_input="I'd like to trade.")
@@ -157,6 +227,7 @@ async def merchant_session(
     tainted: int = 0,
     guest: bool = False,
     own_merchant: bool = True,
+    gold: Decimal | int = 7,
 ) -> AsyncIterator[SaleSession]:
     from merchant_agent import MerchantAgent
 
@@ -166,7 +237,7 @@ async def merchant_session(
     try:
         for player_id in dict.fromkeys((pid, primary)):
             await seed_player(pool, player_id=player_id, location_id=location)
-            await seed_gold(pool, player_id, 7)
+            await seed_gold(pool, player_id, gold)
         if disposition is not None:
             await db_mutations.set_npc_disposition(npc, pid, disposition, "fixture", conn=pool)
         if held:

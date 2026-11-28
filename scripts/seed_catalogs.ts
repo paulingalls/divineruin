@@ -8,16 +8,16 @@ import { parseItemRow } from "../apps/server/src/items.ts";
 import { parseArchetypeRow } from "../apps/server/src/archetypes.ts";
 import { parseAbilityRow } from "../apps/server/src/abilities.ts";
 import { parseMentorVariantRow } from "../apps/server/src/mentor_variants.ts";
-import { parseRoleArchetypeRow } from "../apps/server/src/role_archetypes.ts";
+import {
+  parseRoleArchetypeRow,
+  validateRolePoolBinding,
+} from "../apps/server/src/role_archetypes.ts";
 import { parseMilestoneRow } from "../apps/server/src/milestones.ts";
 import { parsePricingRow } from "../apps/server/src/pricing.ts";
-import {
-  merchantGoldAllocation,
-  parseInventoryPools,
-  validateNpcPoolBindings,
-} from "../apps/server/src/sale_pricing.ts";
+import { merchantGoldAllocation } from "../apps/server/src/sale_pricing.ts";
+import { boundInventoryPools, parseInventoryPools } from "../apps/server/src/inventory_pools.ts";
 
-import { asRecord } from "../apps/server/src/parse-helpers.ts";
+import { asRecord, parseString } from "../apps/server/src/parse-helpers.ts";
 
 const snapshot = JSON.parse(await Bun.stdin.text()) as Record<
   string,
@@ -50,7 +50,6 @@ const parsers: [string, (id: string, data: unknown) => unknown][] = [
   ["archetypes", parseArchetypeRow],
   ["archetype_abilities", parseAbilityRow],
   ["mentor_variants", parseMentorVariantRow],
-  ["role_archetypes", parseRoleArchetypeRow],
   ["archetype_milestones", parseMilestoneRow],
 ];
 for (const [table, parse] of parsers) {
@@ -58,16 +57,27 @@ for (const [table, parse] of parsers) {
 }
 
 const pools = parseInventoryPools(rows("inventory_pools"), rows("items"));
-validateNpcPoolBindings(rows("npcs"), pools);
+const merchantPools = boundInventoryPools(rows("npcs"), pools);
+const poolIds = new Set(pools.keys());
+for (const { id, data } of rows("role_archetypes")) {
+  validateRolePoolBinding(parseRoleArchetypeRow(id, data), poolIds);
+}
 
 const economy = rows("pricing").find(({ id }) => id === "economy");
 if (!economy) throw new Error("pricing: no 'economy' row");
-const pricing = parsePricingRow(economy.data);
+const pricing = parsePricingRow(economy.data, poolIds);
 const locations = new Map(rows("locations").map(({ id, data }) => [id, data]));
 for (const { id, data } of rows("npcs")) {
-  const binding = asRecord(data, `npcs[${id}]`).inventory_pool;
+  const npc = asRecord(data, `npcs[${id}]`);
+  const binding = npc.inventory_pool;
   if (typeof binding === "string") {
-    const pool = pools.get(binding)!;
-    merchantGoldAllocation(pool, locations.get(pool.location), pricing);
+    const pool = merchantPools.get(binding)!;
+    const field = `npcs[${id}].schedule`;
+    const schedule = asRecord(npc.schedule, field);
+    for (const locationId of new Set(
+      Object.values(schedule).map((value) => parseString(value, field)),
+    )) {
+      merchantGoldAllocation(pool, locations.get(locationId), pricing, locationId);
+    }
   }
 }

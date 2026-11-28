@@ -1,66 +1,739 @@
 [
   {
-    "id": "market_general",
-    "name": "Market Square Vendors",
-    "location": "accord_market_square",
+    "id": "general_supplies",
+    "name": "General Supplies",
     "type": "merchant",
+    "merchant_kind": "general",
+    "sink_category": "subsistence",
     "buys": "all",
     "buys_rarities": ["common"],
-    "restock_interval_hours": 24,
-    "items": [
-      {"item_id": "healing_potion", "quantity": 5, "price": 50},
-      {"item_id": "rations_basic", "quantity": 10, "price": 5},
-      {"item_id": "rope_hemp", "quantity": 3, "price": 10},
-      {"item_id": "torch_bundle", "quantity": 5, "price": 3},
-      {"item_id": "waterskin", "quantity": 4, "price": 8},
-      {"item_id": "shortsword_basic", "quantity": 2, "price": 100},
-      {"item_id": "leather_armor_basic", "quantity": 2, "price": 150}
+    "tier_1_items": [
+      "rations_basic",
+      "waterskin",
+      "torch_bundle",
+      "oil_flask",
+      "rope_hemp",
+      "bedroll",
+      "backpack"
+    ],
+    "tier_2_items": [
+      {
+        "item_id": "healers_kit",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [1, 1],
+          "town": [2, 2],
+          "city": [4, 4]
+        }
+      },
+      {
+        "item_id": "lantern_hooded",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [1, 1],
+          "town": [2, 2],
+          "city": [4, 4]
+        }
+      },
+      {
+        "item_id": "tent_two",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [1, 1],
+          "town": [2, 2],
+          "city": [3, 3]
+        }
+      },
+      {
+        "item_id": "grappling_hook",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 1],
+          "town": [1, 2],
+          "city": [2, 4]
+        }
+      },
+      {
+        "item_id": "climbing_kit",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 1],
+          "city": [1, 2]
+        }
+      },
+      {
+        "item_id": "ink_quill",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 1],
+          "city": [1, 2]
+        }
+      },
+      {
+        "item_id": "holy_symbol",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 1],
+          "town": [1, 1],
+          "city": [2, 3]
+        }
+      },
+      {
+        "item_id": "crystal_flask",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 1],
+          "city": [1, 2]
+        }
+      }
+    ],
+    "tier_3_items": []
+  },
+  {
+    "id": "weapons_armor_basic",
+    "name": "Basic Weapons and Armor",
+    "type": "blacksmith",
+    "merchant_kind": "specialist",
+    "sink_category": "progression",
+    "buys": ["weapon", "armor", "shield", "ammunition"],
+    "buys_rarities": ["common", "uncommon", "rare", "legendary"],
+    "tier_1_items": [],
+    "tier_2_items": [
+      {
+        "item_id": "spear_common",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [1, 3],
+          "town": [2, 5],
+          "city": [3, 8]
+        }
+      },
+      {
+        "item_id": "dagger_balanced",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [1, 2],
+          "town": [2, 4],
+          "city": [3, 6]
+        }
+      },
+      {
+        "item_id": "handaxe_common",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [1, 2],
+          "town": [2, 3],
+          "city": [3, 5]
+        }
+      },
+      {
+        "item_id": "mace_common",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 1],
+          "town": [1, 2],
+          "city": [2, 4]
+        }
+      },
+      {
+        "item_id": "shortsword_basic",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 1],
+          "town": [1, 2],
+          "city": [2, 3]
+        }
+      },
+      {
+        "item_id": "battleaxe_common",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 1],
+          "city": [1, 2]
+        }
+      },
+      {
+        "item_id": "longsword_guild",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 1],
+          "city": [1, 2]
+        }
+      },
+      {
+        "item_id": "shortbow_common",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 1],
+          "town": [1, 1],
+          "city": [2, 3]
+        }
+      },
+      {
+        "item_id": "crossbow_light",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 1],
+          "city": [1, 2]
+        }
+      },
+      {
+        "item_id": "padded_armor",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 1],
+          "town": [1, 2],
+          "city": [2, 3]
+        }
+      },
+      {
+        "item_id": "leather_armor_basic",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 1],
+          "town": [1, 2],
+          "city": [2, 3]
+        }
+      },
+      {
+        "item_id": "hide_armor",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 1],
+          "town": [1, 1],
+          "city": [1, 2]
+        }
+      },
+      {
+        "item_id": "shield_iron",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [1, 2],
+          "town": [2, 3],
+          "city": [3, 4]
+        }
+      }
+    ],
+    "tier_3_items": []
+  },
+  {
+    "id": "weapons_armor_quality",
+    "name": "Quality Weapons and Armor",
+    "type": "blacksmith",
+    "merchant_kind": "specialist",
+    "sink_category": "progression",
+    "buys": ["weapon", "armor", "shield", "ammunition"],
+    "buys_rarities": ["common", "uncommon", "rare", "legendary"],
+    "tier_1_items": [],
+    "tier_2_items": [
+      {
+        "item_id": "rapier_dueling",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 1],
+          "city": [1, 2]
+        }
+      },
+      {
+        "item_id": "greatsword_war",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 1],
+          "city": [1, 2]
+        }
+      },
+      {
+        "item_id": "warhammer_common",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 1],
+          "city": [1, 2]
+        }
+      },
+      {
+        "item_id": "longbow_common",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 1],
+          "city": [1, 2]
+        }
+      },
+      {
+        "item_id": "crossbow_heavy",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 0],
+          "city": [0, 1]
+        }
+      },
+      {
+        "item_id": "crossbow_hand",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 0],
+          "city": [0, 1]
+        }
+      },
+      {
+        "item_id": "studded_leather",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 1],
+          "city": [1, 2]
+        }
+      },
+      {
+        "item_id": "chain_shirt",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 1],
+          "city": [1, 2]
+        }
+      },
+      {
+        "item_id": "scale_mail",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 0],
+          "city": [0, 1]
+        }
+      },
+      {
+        "item_id": "chain_mail",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 0],
+          "city": [0, 1]
+        }
+      }
+    ],
+    "tier_3_items": [
+      {
+        "item_id": "half_plate",
+        "settlements": ["city", "capital"],
+        "presence_chance": 0.25,
+        "restock_check": "weekly"
+      },
+      {
+        "item_id": "plate_armor",
+        "settlements": ["city", "capital"],
+        "presence_chance": 0.1,
+        "restock_check": "weekly"
+      },
+      {
+        "item_id": "quality_longsword",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_spear",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_dagger",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_handaxe",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_mace",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_shortsword",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_battleaxe",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_shortbow",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_light_crossbow",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_rapier",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_greatsword",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_warhammer",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_longbow",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_heavy_crossbow",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      },
+      {
+        "item_id": "masterwork_hand_crossbow",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "masterwork_weapons"
+      }
     ]
   },
   {
-    "id": "grimjaw_weapons",
-    "name": "Grimjaw's Forge",
-    "location": "accord_forge",
-    "type": "blacksmith",
-    "buys": ["weapon", "armor", "shield", "ammunition"],
+    "id": "alchemical_supplies_common",
+    "name": "Common Alchemical Supplies",
+    "type": "alchemist",
+    "merchant_kind": "specialist",
+    "sink_category": "combat",
+    "buys": ["consumable", "equipment", "material"],
     "buys_rarities": ["common", "uncommon", "rare", "legendary"],
-    "restock_interval_hours": 48,
-    "items": [
-      {"item_id": "longsword_guild", "quantity": 1, "price": 200},
-      {"item_id": "shortsword_basic", "quantity": 2, "price": 100},
-      {"item_id": "dagger_balanced", "quantity": 3, "price": 50},
-      {"item_id": "chain_shirt", "quantity": 1, "price": 350},
-      {"item_id": "shield_iron", "quantity": 2, "price": 120}
+    "tier_1_items": ["crystal_flask", "dried_herbs"],
+    "tier_2_items": [
+      {
+        "item_id": "healing_potion_minor",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [1, 3],
+          "city": [3, 6]
+        }
+      },
+      {
+        "item_id": "antitoxin",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 1],
+          "city": [1, 2]
+        }
+      },
+      {
+        "item_id": "smelling_salts",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [1, 2],
+          "city": [2, 4]
+        }
+      },
+      {
+        "item_id": "alchemical_reagents",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [2, 4],
+          "city": [4, 8]
+        }
+      }
+    ],
+    "tier_3_items": [
+      {
+        "item_id": "healing_potion_standard",
+        "settlements": ["city", "capital"],
+        "presence_chance": 0.5,
+        "restock_check": "daily"
+      },
+      {
+        "item_id": "specialty_antidote",
+        "settlements": ["town", "city", "capital"],
+        "presence_chance": 0.25,
+        "restock_check": "weekly"
+      }
+    ]
+  },
+  {
+    "id": "exotic_goods",
+    "name": "Exotic Goods",
+    "type": "exotic",
+    "merchant_kind": "exotic",
+    "sink_category": "lifestyle",
+    "buys": "all",
+    "buys_rarities": ["common", "uncommon", "rare", "legendary"],
+    "tier_1_items": [],
+    "tier_2_items": [
+      {
+        "item_id": "imported_spices",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 0],
+          "city": [3, 6]
+        }
+      },
+      {
+        "item_id": "foreign_cultural_goods",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 0],
+          "city": [2, 4]
+        }
+      },
+      {
+        "item_id": "purified_hollow_materials",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 0],
+          "city": [1, 3]
+        }
+      },
+      {
+        "item_id": "rare_crafting_reagents",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 0],
+          "city": [1, 2]
+        }
+      }
+    ],
+    "tier_3_items": [
+      {
+        "item_id": "drathian_ceremonial_blade",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "exotic_features"
+      },
+      {
+        "item_id": "keldaran_mining_tool",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "exotic_features"
+      },
+      {
+        "item_id": "aelindran_star_chart",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "exotic_features"
+      },
+      {
+        "item_id": "sealed_temple_reliquary",
+        "settlements": ["city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "rotation_group": "exotic_features"
+      }
+    ]
+  },
+  {
+    "id": "jeweler_goods",
+    "name": "Jeweler Goods",
+    "type": "jeweler",
+    "merchant_kind": "specialist",
+    "sink_category": "lifestyle",
+    "buys": ["material", "accessory", "wondrous"],
+    "buys_rarities": ["common", "uncommon", "rare", "legendary"],
+    "tier_1_items": [],
+    "tier_2_items": [
+      {
+        "item_id": "common_gem",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 0],
+          "city": [5, 10]
+        }
+      },
+      {
+        "item_id": "quality_gem",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 0],
+          "city": [2, 4]
+        }
+      },
+      {
+        "item_id": "jewelry",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 0],
+          "city": [4, 8]
+        }
+      }
+    ],
+    "tier_3_items": [
+      {
+        "item_id": "rare_gem",
+        "settlements": ["city", "capital"],
+        "presence_chance": 0.3,
+        "restock_check": "weekly"
+      },
+      {
+        "item_id": "enchanted_trinket",
+        "settlements": ["city", "capital"],
+        "presence_chance": 0.15,
+        "restock_check": "weekly"
+      }
+    ]
+  },
+  {
+    "id": "black_market",
+    "name": "Black Market Goods",
+    "type": "black_market",
+    "merchant_kind": "black_market",
+    "sink_category": "lifestyle",
+    "buys": "all",
+    "buys_rarities": ["common", "uncommon", "rare", "legendary"],
+    "tier_1_items": [],
+    "tier_2_items": [
+      {
+        "item_id": "poison_contact",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [0, 2],
+          "city": [0, 2]
+        }
+      },
+      {
+        "item_id": "smuggled_goods",
+        "quantity_by_settlement": {
+          "hamlet": [0, 0],
+          "village": [0, 0],
+          "town": [2, 4],
+          "city": [2, 4]
+        }
+      }
+    ],
+    "tier_3_items": [
+      {
+        "item_id": "tainted_hollow_materials",
+        "settlements": ["town", "city", "capital"],
+        "presence_chance": 1,
+        "restock_check": "weekly",
+        "quantity": [1, 2]
+      },
+      {
+        "item_id": "forged_documents",
+        "settlements": ["town", "city", "capital"],
+        "presence_chance": 0.5,
+        "restock_check": "weekly"
+      },
+      {
+        "item_id": "ashmark_intelligence_report",
+        "settlements": ["town", "city", "capital"],
+        "presence_chance": 0.5,
+        "restock_check": "weekly"
+      }
     ]
   },
   {
     "id": "temple_supplies",
     "name": "Temple Row Provisions",
-    "location": "accord_temple_row",
     "type": "temple",
+    "merchant_kind": "specialist",
+    "sink_category": "combat",
     "buys": ["consumable"],
     "buys_rarities": ["common", "uncommon", "rare", "legendary"],
-    "restock_interval_hours": 12,
-    "items": [
-      {"item_id": "healing_potion", "quantity": 8, "price": 45},
-      {"item_id": "antidote_basic", "quantity": 3, "price": 30},
-      {"item_id": "holy_water", "quantity": 2, "price": 75},
-      {"item_id": "restoration_salve", "quantity": 2, "price": 60}
-    ]
-  },
-  {
-    "id": "millhaven_supplies",
-    "name": "Millhaven General Store",
-    "location": "millhaven",
-    "type": "general",
-    "buys": "all",
-    "buys_rarities": ["common"],
-    "restock_interval_hours": 72,
-    "items": [
-      {"item_id": "millhaven_provisions", "quantity": 3, "price": 5},
-      {"item_id": "healing_potion", "quantity": 1, "price": 60},
-      {"item_id": "torch_bundle", "quantity": 2, "price": 5},
-      {"item_id": "rope_hemp", "quantity": 1, "price": 15}
-    ]
+    "tier_1_items": [],
+    "tier_2_items": [
+      {
+        "item_id": "healing_potion",
+        "quantity_by_settlement": {
+          "hamlet": [8, 8],
+          "village": [8, 8],
+          "town": [8, 8],
+          "city": [8, 8]
+        }
+      },
+      {
+        "item_id": "antidote_basic",
+        "quantity_by_settlement": {
+          "hamlet": [3, 3],
+          "village": [3, 3],
+          "town": [3, 3],
+          "city": [3, 3]
+        }
+      },
+      {
+        "item_id": "holy_water",
+        "quantity_by_settlement": {
+          "hamlet": [2, 2],
+          "village": [2, 2],
+          "town": [2, 2],
+          "city": [2, 2]
+        }
+      },
+      {
+        "item_id": "restoration_salve",
+        "quantity_by_settlement": {
+          "hamlet": [2, 2],
+          "village": [2, 2],
+          "town": [2, 2],
+          "city": [2, 2]
+        }
+      }
+    ],
+    "tier_3_items": []
   }
 ]

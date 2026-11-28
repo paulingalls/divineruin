@@ -51,6 +51,7 @@ def attack_fields(attack_result: check_resolution_attack.AttackResult, effective
         attack_total=attack_result.attack_total,
         target_ac=effective_ac,
         critical=attack_result.critical_success,
+        item_damage_bonus=attack_result.item_damage_bonus,
         sneak_attack_dice=attack_result.sneak_attack_dice,
         sneak_attack_raw_damage=attack_result.sneak_attack_raw_damage,
         bonus_damage=attack_result.bonus_damage,

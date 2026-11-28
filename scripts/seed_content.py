@@ -20,6 +20,7 @@ from combat_spatial import validate_scene
 from creature_schema import validate_creature_stat_block
 from dice import roll
 from encounter_references import validate_encounter_references
+from merchant_stock_reseed import drop_stale_merchant_stock
 from rules_engine import SKILL_TIER_ORDER, SKILLS
 from terrain import region_type as terrain_region_type
 from world_effect_targets import is_valid_disposition_target
@@ -236,6 +237,10 @@ async def seed(conn: asyncpg.Connection, *, production: bool = False, catalog_on
         counts[table] = len(entities)
         print(f"  {table}: {len(entities)} entities")
 
+    await conn.execute(
+        "DELETE FROM inventory_pools WHERE id IN ('market_general', 'grimjaw_weapons', 'millhaven_supplies')"
+    )
+    await drop_stale_merchant_stock(conn)
     return counts
 
 

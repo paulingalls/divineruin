@@ -8,16 +8,6 @@ const ARCHETYPE_COUNT = 19;
 const ROLE_TYPE_COUNTS = { civilian: 11, military: 5, specialist: 3 };
 const COMBATANTS = ["guard", "soldier_ashmark", "assassin_rogue", "mage", "priest"];
 const NON_COMBATANTS = ["scholar_sage", "stablemaster"];
-const MERCHANT_SUBTYPES = [
-  "merchant_general_goods",
-  "merchant_weapons_armor",
-  "merchant_alchemist",
-  "merchant_jeweler",
-  "merchant_exotic",
-  "merchant_traveling",
-  "merchant_black_market",
-];
-
 async function loadArchetypes(): Promise<Record<string, unknown>[]> {
   const raw = (await Bun.file(ARCHETYPES_PATH).json()) as unknown;
   if (!Array.isArray(raw)) throw new Error("content/role_archetypes.json is not an array");
@@ -62,14 +52,5 @@ describe("content/role_archetypes.json — parseRoleArchetypeRow conformance", (
       expect(traits.length).toBeGreaterThanOrEqual(8);
       expect(new Set(traits).size).toBe(traits.length);
     }
-  });
-
-  test("merchant subtypes have distinct, non-null inventory pools", async () => {
-    const byId = new Map(
-      (await loadArchetypes()).map((r) => [String(r.id), parseRoleArchetypeRow(String(r.id), r)]),
-    );
-    const pools = MERCHANT_SUBTYPES.map((id) => byId.get(id)?.inventory_pool);
-    for (const p of pools) expect(typeof p).toBe("string");
-    expect(new Set(pools).size).toBe(MERCHANT_SUBTYPES.length);
   });
 });
