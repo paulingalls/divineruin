@@ -137,3 +137,25 @@ test("merchant gold composes without losing multiplier precision", () => {
     123_454,
   );
 });
+
+test("keldaran hold purses match city for every merchant kind and personality", () => {
+  const pools = parseInventoryPools(poolRows, itemRows);
+  const pricing = parsePricingRow(pricingRows[0]);
+  for (const poolId of [
+    "general_supplies",
+    "weapons_armor_basic",
+    "exotic_goods",
+    "black_market",
+  ]) {
+    for (const personality of [...columns, ...combinedGold.map((row) => row.traits)]) {
+      const allocate = (settlement_tier: string) =>
+        merchantGoldAllocation(
+          pools.get(poolId)!,
+          { settlement_tier, personality },
+          pricing,
+          settlement_tier,
+        );
+      expect(allocate("keldaran_hold")).toBe(allocate("city"));
+    }
+  }
+});

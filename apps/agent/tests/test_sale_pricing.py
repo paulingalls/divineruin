@@ -156,3 +156,15 @@ def test_merchant_gold_composes_without_losing_multiplier_precision():
     pricing = parse_economy_pricing(data)
     location = {"settlement_tier": "city", "personality": ["prosperous", "trade_hub"]}
     assert merchant_gold_allocation(pools["general_supplies"], location, pricing, location_id="city") == 123_454
+
+
+@pytest.mark.parametrize("pool_id", ["general_supplies", "weapons_armor_basic", "exotic_goods", "black_market"])
+@pytest.mark.parametrize("traits", [*STOCK_CASES["columns"], *(row["traits"] for row in STOCK_CASES["combinedGold"])])
+def test_keldaran_hold_gold_matches_city(pool_id, traits):
+    pools = parse_inventory_pools(catalog_rows(authored("inventory_pools.json")), catalog_rows(authored("items.json")))
+    pricing = parse_economy_pricing(authored("pricing.json")[0])
+    hold = {"settlement_tier": "keldaran_hold", "personality": traits}
+    city = {"settlement_tier": "city", "personality": traits}
+    assert merchant_gold_allocation(pools[pool_id], hold, pricing, location_id="hold") == merchant_gold_allocation(
+        pools[pool_id], city, pricing, location_id="city"
+    )
