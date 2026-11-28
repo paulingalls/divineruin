@@ -174,3 +174,5 @@ async def test_browse_tiers_and_spoken_names(reset_db_pool: str) -> None:
             "npc_id": GRIMJAW,
             **item("spear_common", "Spear", 2, False),
         }
+        refusal = await sale.browse("mentor_keldaran_forgemaster")
+        assert refusal.is_error and "doesn't trade goods" in refusal.output, refusal.output

@@ -52,7 +52,9 @@ class MerchantVisit:
 
 
 @asynccontextmanager
-async def merchant_visit(context: RunContext[SessionData], npc_id: str) -> AsyncIterator[MerchantVisit]:
+async def merchant_visit(
+    context: RunContext[SessionData], npc_id: str, *, no_pool_verb: str = "buy"
+) -> AsyncIterator[MerchantVisit]:
     _validate_id(npc_id, "npc_id")
     context.disallow_interruptions()
     session = context.userdata
@@ -65,7 +67,7 @@ async def merchant_visit(context: RunContext[SessionData], npc_id: str) -> Async
             raise ToolError(f"Unknown merchant: {npc_id}")
         pool_id = npc["inventory_pool"]
         if pool_id is None:
-            raise ToolError(f"{npc['name']} doesn't trade goods.")
+            raise ToolError(f"{npc['name']} doesn't {no_pool_verb} goods.")
         pools = await inventory_pools.get_inventory_pools(conn=conn)
         pool = pools[pool_id]
         pricing = await pricing_queries.get_economy_pricing(conn=conn)
@@ -151,7 +153,7 @@ async def query_merchant_inventory(context: RunContext[SessionData], npc_id: str
         npc_id: The merchant ID from the present NPCs shared at trade entry.
         item_name: Use "" for a brief shop overview, or pass the name the player asked for.
     """
-    async with merchant_visit(context, npc_id) as visit:
+    async with merchant_visit(context, npc_id, no_pool_verb="trade") as visit:
         pool = visit.pool
         finite_tiers = {
             **{entry["item_id"]: 3 for entry in pool["tier_3_items"]},
