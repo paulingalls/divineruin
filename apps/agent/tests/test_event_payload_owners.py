@@ -236,6 +236,8 @@ class _Source:
         scope = self._binding(name)[0]
 
         def same(node: ast.expr) -> bool:
+            while isinstance(node, (ast.Subscript, ast.Attribute)):
+                node = node.value
             return isinstance(node, ast.Name) and node.id == name.id and self._binding(node)[0] is scope
 
         return any(
