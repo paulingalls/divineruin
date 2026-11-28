@@ -1,6 +1,7 @@
 """The level-20 reference party beats the shipped Architect on at least twelve seeds."""
 
 import json
+import time
 from statistics import median
 from unittest.mock import AsyncMock
 
@@ -51,9 +52,14 @@ async def test_architect_balance(reset_db_pool, monkeypatch):
     resolved = set()
     for seed in SEEDS:
         assert seed not in results, f"Duplicate Architect seed {seed}"
+        started = time.monotonic()
         outcome, rounds, techniques = await reference_fight(pool, seed, creature)
         results[seed] = outcome, rounds
-        print(f"Architect seed {seed:2}: {outcome}, {rounds} rounds, {json.dumps(techniques)}", flush=True)
+        # Elapsed per seed tells a stalled fight from a uniformly slow machine when the suite times out.
+        elapsed = time.monotonic() - started
+        print(
+            f"Architect seed {seed:2}: {outcome}, {rounds} rounds, {elapsed:.1f}s, {json.dumps(techniques)}", flush=True
+        )
         for archetype, picks in ELECTIVE_PICKS.items():
             assert set(techniques[archetype]["held"]) == set(picks.values())
         for archetype, report in techniques.items():
