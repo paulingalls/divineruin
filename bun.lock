@@ -6,7 +6,7 @@
       "name": "divineruin",
       "devDependencies": {
         "@eslint/js": "^10.0.1",
-        "@pi-innovations/proof": "git+https://github.com/paulingalls/proof.git#v0.34.1",
+        "@pi-innovations/proof": "git+https://github.com/paulingalls/proof.git#v0.38.1",
         "@types/bun": "1.4.4",
         "eslint": "^10.15.0",
         "eslint-config-prettier": "^10.1.8",
@@ -531,7 +531,7 @@
 
     "@oxc-project/types": ["@oxc-project/types@0.154.0", "", {}, "sha512-KYOUGQFlLWR+s4QMV2Q9ko38TZm7EdO87Qm7rvZLqk/webse/cDjtyxKhg/47l0byCbs/k46LT8qc4PKjAikzA=="],
 
-    "@pi-innovations/proof": ["@pi-innovations/proof@github:paulingalls/proof#059e14b", { "hasInstallScript": true, "bin": { "proof": "src/cli.ts" } }, "paulingalls-proof-059e14b", "sha512-SPJre9sZW5HT2SQNVizF/oCPMvtntdvcISmd8BhmM7lGWSwFGB4doaJem3axBn5lzpJKt2obJrFS0O3ezuPNhw=="],
+    "@pi-innovations/proof": ["@pi-innovations/proof@github:paulingalls/proof#58de521", { "hasInstallScript": true, "bin": { "proof": "src/cli.ts" } }, "paulingalls-proof-58de521", "sha512-EViHpcr7rdvhVOi05wK/jk08/muQb2Rs9+GWJNsE5zbfgtbZTeQfR6Wpuk/oESGZU/nvlJBdOcNm8LPeS5SErg=="],
 
     "@protobufjs/aspromise": ["@protobufjs/aspromise@1.1.2", "", {}, "sha512-j+gKExEuLmKwvz3OgROXtrJ2UG2x8Ch2YZUxahh+s1F2HZ+wAceUNLkvy6zKCPVRkU++ZWQrdxsUeQXmcg4uoQ=="],
 

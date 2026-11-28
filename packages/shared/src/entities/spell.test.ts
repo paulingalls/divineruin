@@ -23,6 +23,7 @@ const SPELL_FIELDS = {
   narration_cue: true,
   verbal: true,
   hostile: true,
+  reaction_window: true,
   wild_shape: true,
   save_condition: true,
   max_targets: true,
@@ -31,6 +32,7 @@ const SPELL_FIELDS = {
 const readerSpell: Required<Spell> = {
   ...arcaneBolt,
   max_targets: 3,
+  reaction_window: "on_targeted",
   concentration_duration_seconds: 60,
   save_condition: { save: null, condition: "stunned", resave: "constitution" },
   wild_shape: { stamina_cost: 3, forms: [{ creature_id: "grey_wolf", min_level: 5 }] },

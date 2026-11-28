@@ -5,6 +5,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from reaction_catalog import get_reaction
 from reaction_windows import STRIKE_STAGES
 
 if TYPE_CHECKING:
@@ -258,6 +259,8 @@ def require_ability_delivery(
 
 
 def reaction_effect_eligible(state: CombatState, head: dict, spend: dict) -> bool:
+    if get_reaction(spend["ability_id"]).spell is not None:
+        return True
     requirement = policy(spend["ability_id"])
     if requirement not in (DeliveryPolicy.BOTH, DeliveryPolicy.HEARING):
         return True

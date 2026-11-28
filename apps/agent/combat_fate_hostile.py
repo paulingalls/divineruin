@@ -15,6 +15,7 @@ from combat_attack_roll import (
     record_beacon_attack,
     roll_attack,
     serialize_roll,
+    shield_of_faith_ac,
     spend_sneak_attack,
 )
 from combat_reaction_defense import miss
@@ -40,6 +41,7 @@ async def roll_hostile(session, state, head, declaration, action, contribution, 
         if can_implant_doubt:
             head["attack_context"] = stored
     else:
+        head["shield_of_faith_ac"] = shield_of_faith_ac(target.conditions)
         queries, conn = packet_deps["queries"], packet_deps["conn"]
         player = await attack_player(attacker, queries=queries, conn=conn)
         defender = await attack_player(target, queries=queries, conn=conn)

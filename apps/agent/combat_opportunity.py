@@ -1,9 +1,10 @@
-"""Interrupt a held melee approach at the boundary of a warrior's weapon reach."""
+"""Settle movement reactions on a held melee approach before traversing its next leg."""
 
 import math
 
 import combat_fate
 import combat_melee_approach as melee
+import combat_natures_grasp
 import combat_reaction_effect
 import reaction_gate
 import reaction_spend
@@ -15,10 +16,10 @@ from combat_spatial_declarations import in_pit
 from condition_restrictions import cannot_act
 from declarations import Declaration, DeclarationType
 from encounter_actions import action_kind
+from reaction_catalog import NATURES_GRASP
+from reaction_catalog import OPPORTUNITY_STRIKE as STRIKE
 from reaction_windows import ENEMY_MOVE, MOVEMENT, open_window_for
 from session_data import CombatParticipant, CombatState, SessionData
-
-STRIKE = "warrior_opportunity_strike"
 
 
 def reach_exits(origin: dict, endpoint: dict, reaches: dict[str, tuple[dict, float]]) -> list[dict]:
@@ -164,6 +165,11 @@ async def prepare_held(
         exits = await _find_exits(state, mover, route, packet_deps)
         route.update(facts=facts, budget=budget, exits=exits, next_exit=0)
         head["opportunity_approach"] = route
+        candidate = movement_candidate(state, head, action, {"reactors": []}, {}, -1)
+        candidate.update(before_movement=True, endpoint=route["endpoint"])
+        if reaction_gate.offers_for_window(state, candidate):
+            route["window"] = state.open_window = candidate
+            return None
 
     if window := route.get("window"):
         if "spends" not in route:
@@ -174,19 +180,25 @@ async def prepare_held(
         for spend in list(route["spends"]):
             if mover.is_fallen:
                 receipt = {
-                    "reaction": STRIKE,
+                    "reaction": spend["ability_id"],
                     "actor_id": spend["actor_id"],
                     "window_id": window["id"],
                     "target_id": mover.id,
                     "resolved": False,
                     "reason": "target already fell",
                 }
-            else:
+            elif spend["ability_id"] == NATURES_GRASP:
+                receipt = await combat_natures_grasp.settle(session, state, mover, spend, packet_deps, fate_rolls)
+                if receipt is None:
+                    return None
+            elif spend["ability_id"] == STRIKE:
                 weapon = window["reactors"][spend["actor_id"]]["action"]
                 strike_action = {key: value for key, value in weapon.items() if key != "durability_rider"}
                 receipt = await counter_strike(session, state, mover, strike_action, spend, packet_deps, fate_rolls)
                 if fate_rolls is not None and fate_rolls.pending is not None:
                     return None
+            else:
+                raise ValueError(f"Unknown movement reaction {spend['ability_id']!r}")
             summaries.append(receipt)
             route["spends"].pop(0)
         del route["window"], route["spends"]

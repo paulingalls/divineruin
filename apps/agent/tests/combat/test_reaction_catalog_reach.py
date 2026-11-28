@@ -27,6 +27,7 @@ _PRODUCIBLE = {
     "post_roll_hit": ("post_roll", "attack", "player_1", reaction_windows.post_roll_triggers({}, hit=True)),
     "post_roll_ally_hit": ("post_roll", "attack", "player_2", reaction_windows.post_roll_triggers({}, hit=True)),
     "post_roll_miss": ("post_roll", "attack", "player_1", reaction_windows.post_roll_triggers({}, hit=False)),
+    "pre_roll_spell": ("pre_roll", "attack", "player_1", reaction_windows.pre_roll_triggers({"spell_focus_cost": 0})),
     "post_roll_grapple": (
         "post_roll",
         "attack",
@@ -34,8 +35,6 @@ _PRODUCIBLE = {
         reaction_windows.post_roll_triggers({"properties": [reaction_windows.GRAPPLE_PROPERTY]}, hit=True),
     ),
 }
-
-NO_PRODUCER = {"on_spell_cast"}
 
 
 def _paused_state(shape):
@@ -99,8 +98,6 @@ async def test_every_queried_reaction_window_is_answered_by_a_real_open_window()
     states = _produced_states()
     reachable = {}
     for ability_id, window in (await _queried_reactions()).items():
-        if window in NO_PRODUCER:
-            continue
         answered = {
             name: state
             for name, state in states.items()
@@ -122,18 +119,6 @@ async def test_every_queried_reaction_window_is_answered_by_a_real_open_window()
 
 
 @pytest.mark.asyncio
-async def test_a_reaction_whose_window_has_no_producer_is_refused_at_every_window():
-    unreachable = {i: w for i, w in (await _queried_reactions()).items() if w in NO_PRODUCER}
-    assert unreachable.keys() == {"mage_counterspell"}
-
-    for ability_id, window in unreachable.items():
-        for state in _produced_states().values():
-            _own_reaction(state, ability_id)
-            with pytest.raises(ValueError, match=window):
-                validate_reaction_activation(state, "player_1", ability_id)
-
-
-@pytest.mark.asyncio
 async def test_the_two_window_vocabularies_are_one():
     import abilities
 
@@ -144,4 +129,4 @@ async def test_the_two_window_vocabularies_are_one():
     consumed = set((await _queried_reactions()).values())
 
     assert produced <= abilities.REACTION_WINDOWS
-    assert produced == consumed - NO_PRODUCER
+    assert produced == consumed

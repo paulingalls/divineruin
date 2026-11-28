@@ -43,7 +43,6 @@ HASTE = "arcane_haste"
 INVISIBILITY = "arcane_invisibility"
 BOLT = "arcane_bolt"
 MAGE_LIGHT = "arcane_mage_light"
-LIBRARY_SHIELD = "arcane_shield_spell"
 
 
 def ward(receipt: dict, recipient_id: str, before: int) -> None:
@@ -187,7 +186,7 @@ async def renewing_spark(_world: SimpleNamespace) -> None:
     await exercise_shield("orenthel", 0, 17, False)
 
 
-@pytest.mark.parametrize(("spell", "self_cast"), [(FLY, False), (HASTE, False), (LIBRARY_SHIELD, True)])
+@pytest.mark.parametrize(("spell", "self_cast"), [(FLY, False), (HASTE, False), (FLY, True)])
 async def test_direct_combat_cast_wards_both_stores(mage_party, spell, self_cast):
     ctx, mage, ally, control = mage_party
     assert ctx.userdata.in_combat
@@ -241,7 +240,7 @@ async def test_exploration_ward_follows_applied_condition_targets(mage_party):
 SCENARIOS = {CLAUSE: ("patron_synergy_heal:grant_mage_warding", renewing_spark, [()])}
 
 
-@pytest.mark.parametrize(("spell", "combat"), [(LIBRARY_SHIELD, False), (LIBRARY_SHIELD, True), (HASTE, True)])
+@pytest.mark.parametrize(("spell", "combat"), [(FLY, False), (FLY, True), (HASTE, True)])
 async def test_default_target_is_the_mage(mage_party, spell, combat):
     ctx, mage, ally, control = mage_party
     if combat:

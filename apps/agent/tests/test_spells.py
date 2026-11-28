@@ -297,6 +297,27 @@ def test_content_includes_caster_core_spells():
         assert core in names, f"M3.3 casting catalog must carry core spell {core!r}"
 
 
+def test_content_reaction_windows():
+    _seed_from_content()
+    windows = {}
+    for row in json.loads(CONTENT_PATH.read_text()):
+        if window := getattr(get_spell(row["id"]), "reaction_window", None):
+            windows[row["id"]] = window
+    assert windows == {
+        "arcane_shield_spell": "on_targeted",
+        "primal_bark_skin": "on_hit",
+        "divine_shield_of_faith": "on_ally_hit",
+        "primal_natures_grasp": "on_enemy_move",
+        "arcane_counterspell": "on_spell_cast",
+    }
+
+
+@pytest.mark.parametrize("window", ["invented", None, True, 1, [], {}])
+def test_reaction_window_rejects_invalid_values(window):
+    with pytest.raises(ValueError, match=r"arcane_fireball.*reaction_window"):
+        parse_spell_row("arcane_fireball", {**_FIREBALL_ROW, "reaction_window": window})
+
+
 class _FakePool:
     def __init__(self, rows):
         self._rows = rows

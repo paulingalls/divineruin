@@ -49,7 +49,7 @@ Candidate is the version selected in the committed graph. Registry columns show 
 | Project | Group | Dependency | Requested | Locked / installed | Candidate | Registry latest | Decision |
 |---|---|---|---|---|---|---|---|
 | . | devDependencies | @eslint/js | `^10.0.1` | 10.0.1 / 10.0.1 | 10.0.1 | 10.0.1 | Current |
-| . | devDependencies | @pi-innovations/proof | `git+https://github.com/paulingalls/proof.git#v0.34.1` | github:paulingalls/proof#059e14b / github:paulingalls/proof#059e14b | — | — | Git source pinned by the manifest and lock |
+| . | devDependencies | @pi-innovations/proof | `git+https://github.com/paulingalls/proof.git#v0.38.1` | github:paulingalls/proof#58de521 / github:paulingalls/proof#58de521 | — | — | Git source pinned by the manifest and lock |
 | . | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.5 | Held by package.json: The requested range `1.4.4` excludes 1.4.5. |
 | . | devDependencies | eslint | `^10.15.0` | 10.15.0 / 10.15.0 | 10.15.0 | 10.15.0 | Current |
 | . | devDependencies | eslint-config-prettier | `^10.1.8` | 10.1.8 / 10.1.8 | 10.1.8 | 10.1.8 | Current |

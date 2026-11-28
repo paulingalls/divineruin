@@ -10,10 +10,10 @@ Finding the journal grants it and completes the search atomically.
 Artifact choices persist once with their effects.
 Leave now requests a recap before disconnect, with a 15-second home fallback.
 
-**Position: 462 / 718 acceptance criteria — 64%** (the sum of the per-phase
-counts in `README.md`). **256 criteria remain unchecked.** The
-[spell ledger](03_spell_ledger.md) records 25 engine, 4 narrated, 58 unwired
-and 0 uncertified spells. The 58 effect gaps have owners in
+**Position: 467 / 718 acceptance criteria — 65%** (the sum of the per-phase
+counts in `README.md`). **251 criteria remain unchecked.** The
+[spell ledger](03_spell_ledger.md) records 30 engine, 4 narrated, 53 unwired
+and 0 uncertified spells. The 53 effect gaps have owners in
 [M14.1](14_engine_completeness.md#milestone-141--narrated-only-mechanics-and-voice-certification).
 
 M7.3 exercises the Knight and Veilrender turn and action mechanics, Absorb Magic,
@@ -70,8 +70,6 @@ the real `scripts/doc_index.py` CLI. The commit hook validates the index.
 open reaction window; the reaction-window census and activation boundary check
 its triggers and legal IDs. This does not certify natural spoken Beat-3 pauses.
 
-**02 · Arcane Shield Spell.** The spell catalog’s `arcane_shield_spell` is tracked by `free-spell-ledger`.
-
 **02 · Archetypes — Guardian Intercept.** A guardian within 5 ft of a struck
 ally can take the hit's damage. The remaining designs are Shield Mastery's
 1d8 damage reduction and Warden-Commander's 10-ft range
@@ -84,9 +82,6 @@ against the original roll and through the rest of the round. A natural 20 still
 hits. When Bark Skin turns a melee hit into a miss, an eligible skirmisher
 can Riposte in a separate reaction window for that strike.
 
-- **Primal Bark Skin spell:** `primal_bark_skin` has no registered reaction
-  producer. An ordinary cast spends Focus and generates Resonance without
-  applying the combat effect.
 - **Thornveld Guardian Shield:** the item has no producer for its designed
   once-per-long-rest free Bark Skin cast.
 
@@ -139,10 +134,10 @@ not schedules or measured implementation costs.
 | **11 · World Loop** | 11.1–11.6 | 46 | D-A–D-E; M11.4 needs Phase 9, M11.6 needs Phase 8 | ~4–6 sprints | Migrated `region_state`, `npc_state`, `world_events_log`, `god_agent_state`, `world_flags`; direct quest world effects; activity-worker reset harness. These do not establish a world scheduler or cascade. |
 | **12 · Story Content** | 12.1–12.7 | 34 | Phase 11 and blocking decisions D-F–D-L | ~5–7 sprints | Migrated `scenes` (013) and `story_moments` (012); scene-tool and settlement-generation boundaries. `gods.json` has authored secret-agenda text for Veythar and Syrath; a season director is not certified. |
 | **13 · First Share** | Sessions 1–3, session edges, cost, deployment and playtest | 4 | Remaining First Share checklist | Later work unsized | Session 1: 9/9. Session 2 has seven checked criteria. The walk from creation to a queued whisper and persisted rider re-entry run through real room transport; caster pools and no repeat after consumption and worker restart at favor zero pass; both silence hints, engine settlement on all offered outcomes, replay and rollback are exercised. The first fight pays 25 XP and the shared balance harness scores 20/19/19/20 wins. |
-| **14 · Engine Completeness** | [14.1–14.5](14_engine_completeness.md) | 90 | Earlier game systems, Phase 9 denominations, Phase 11 state and Phase 15 content | Unsized | Existing activation, audio, room and HUD paths are inputs. M14.1 tracks the 58 spell effect gaps, native Choir, spoken reaction timing, Thought Shield's mind-read block and Implant Doubt's design for enemy abilities without an attack roll. |
+| **14 · Engine Completeness** | [14.1–14.5](14_engine_completeness.md) | 85 | Earlier game systems, Phase 9 denominations, Phase 11 state and Phase 15 content | Unsized | Existing activation, audio, room and HUD paths are inputs. M14.1 tracks the 53 spell effect gaps, native Choir, spoken reaction timing, Thought Shield's mind-read block and Implant Doubt's design for enemy abilities without an attack roll. |
 | **15 · Content Coverage** | [15.1](15_content_coverage.md) | 11 | Phase 9 prices, Phase 11 events, Phase 12 story and Phase 14 gameplay | Unsized | The per-target census in M15.1 records existing authored data. |
 
-The table sums to 254. The other 2 open criteria are in phases outside this table. The Core residuals goal covers the work in §1 and §2 for Phases 0 and 1.
+The table sums to 249. The other 2 open criteria are in phases outside this table. The Core residuals goal covers the work in §1 and §2 for Phases 0 and 1.
 
 The table counts by phase file. The [area goal Measures](../../.xp/milestones.md)
 assign Phase 11 criteria beginning with `[P12]` to the Story machinery and

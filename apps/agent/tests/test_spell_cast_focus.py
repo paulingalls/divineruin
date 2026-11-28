@@ -75,8 +75,8 @@ class TestCastSpellRealCatalog:
         import spells as spells_mod
 
         packet, ctx, persistence, mutations, events = await _cast(
-            spells_mod.get_spell("arcane_shield_spell"),
-            player={**_player(focus=10), "hp": {"current": 28, "max": 28}},
+            spells_mod.get_spell("arcane_mage_hand"),
+            focus=10,
             start_resonance=0,
             spells_mod=spells_mod,
         )

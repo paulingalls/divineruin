@@ -134,6 +134,7 @@
   },
   {
     "id": "arcane_shield_spell",
+    "reaction_window": "on_targeted",
     "name": "Shield Spell",
     "source": "arcane",
     "spell_tier": "minor",
@@ -326,6 +327,7 @@
   },
   {
     "id": "arcane_counterspell",
+    "reaction_window": "on_spell_cast",
     "name": "Counterspell",
     "source": "arcane",
     "spell_tier": "standard",
@@ -871,6 +873,7 @@
   },
   {
     "id": "divine_shield_of_faith",
+    "reaction_window": "on_ally_hit",
     "name": "Shield of Faith",
     "source": "divine",
     "spell_tier": "minor",
@@ -1504,6 +1507,7 @@
   },
   {
     "id": "primal_bark_skin",
+    "reaction_window": "on_hit",
     "name": "Bark Skin",
     "source": "primal",
     "spell_tier": "minor",
@@ -1720,6 +1724,7 @@
   },
   {
     "id": "primal_natures_grasp",
+    "reaction_window": "on_enemy_move",
     "name": "Nature's Grasp",
     "source": "primal",
     "spell_tier": "standard",

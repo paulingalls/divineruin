@@ -25,6 +25,9 @@ from acceptance.test_slippery_restrain import mock_combat_agent_factory as mock_
 from acceptance.test_still_anchors import declare, strike
 
 from check_resolution import D20Roll
+from db_mutations_resonance import read_player_resonance
+
+LIBRARY_SHIELD = "arcane_shield_spell"
 
 
 @pytest.mark.parametrize(("incoming", "expected", "constitution"), [(9, 4, 14), (3, 0, 14), (9, 9, 2)])
@@ -70,9 +73,10 @@ async def test_shield_changes_trigger_and_followup(reset_db_pool, margin):
             assert await hp(fight) == ([100, 100] if use_reaction else [84, 100])
 
 
-@pytest.mark.parametrize("use_reaction", [False, True])
-async def test_shield_protects_followup_after_objection(reset_db_pool, use_reaction):
-    async with defense_fight("mage", ally_archetype="diplomat") as fight:
+@pytest.mark.parametrize("shield", [None, SHIELD, LIBRARY_SHIELD])
+async def test_shield_protects_followup_after_objection(reset_db_pool, shield):
+    library = ((0, shield),) if shield == LIBRARY_SHIELD else ()
+    async with defense_fight("artificer" if library else "mage", ally_archetype="diplomat", library=library) as fight:
         mage, diplomat = fight.players
         enemy, followup = fight.enemies
         await declare_attacks(fight, mage)
@@ -81,8 +85,8 @@ async def test_shield_protects_followup_after_objection(reset_db_pool, use_react
             patch("check_resolution_attack.dice_roll", return_value=_damage_die(8)),
             patch("combat_reaction_contest.random.randint", side_effect=[20, 1]),
         ):
-            if use_reaction:
-                packets = await spend(fight, SHIELD, stage="pre_roll")
+            if shield:
+                packets = await spend(fight, shield, stage="pre_roll")
             else:
                 await open_stage(fight, "pre_roll")
                 packets = []
@@ -91,11 +95,9 @@ async def test_shield_protects_followup_after_objection(reset_db_pool, use_react
             packets += await fight.drain()
         assert [packet["actor_id"] for packet in packets if packet.get("hesitated")] == [enemy]
         attack = action_packet(packets, followup, SWORD)
-        assert (attack["target_ac"], attack["hit"], attack["damage"]) == (
-            (19, False, 0) if use_reaction else (16, True, 8)
-        )
-        if use_reaction:
-            assert reaction_packet(packets, SHIELD)["ac_bonus"] == 3
+        assert (attack["target_ac"], attack["hit"], attack["damage"]) == ((19, False, 0) if shield else (16, True, 8))
+        if shield:
+            assert reaction_packet(packets, shield)["ac_bonus"] == 3
 
 
 @pytest.mark.parametrize(
@@ -213,12 +215,14 @@ async def test_brace_preserves_typed_bonus_damage(reset_db_pool):
     [
         ("warrior", BRACE, "bandit", SWORD, 4),
         ("mage", SHIELD, "bandit", SWORD, 8),
+        ("artificer", LIBRARY_SHIELD, "bandit", SWORD, 8),
         ("whisper", THOUGHT, "still", "Perfect Memory", 4),
         ("whisper", THOUGHT, "still", "Serenity's Touch", 4),
     ],
 )
 async def test_spent_defense_survives_fate_reload(reset_db_pool, archetype, ability, enemy_type, action, expected):
-    async with defense_fight(archetype, enemy_type, fate=True) as fight:
+    library = ((0, ability),) if ability == LIBRARY_SHIELD else ()
+    async with defense_fight(archetype, enemy_type, fate=True, library=library) as fight:
         enemy = fight.enemies[0]
         target = fight.players[0]
         round_number = (await fight.reload()).round_number
@@ -244,6 +248,10 @@ async def test_spent_defense_survives_fate_reload(reset_db_pool, archetype, abil
             )
             assert before_resume == ([100 - expected, 100] if expected_kind == "save" else [100, 100])
             await reload_session(fight)
+            if library:
+                assert participant(await fight.reload(), target).shield_spell_active
+                assert fight.sd.member_state(target).resonance.current == 1
+                assert (await read_player_resonance(target))["current"] == 1
             offer = None
             for _ in range(10):
                 result = await keep_original(fight, offer) if offer else await fight.command("resolve_phase", {})
@@ -258,10 +266,18 @@ async def test_spent_defense_survives_fate_reload(reset_db_pool, archetype, abil
         assert await hp(fight) == [100 - expected, 100]
         assert (
             reaction_packet(packets, ability)["mechanical_effect"]
-            == {BRACE: "damage_reduced", SHIELD: "target_ac_bonus", THOUGHT: "damage_halved"}[ability]
+            == {
+                BRACE: "damage_reduced",
+                SHIELD: "target_ac_bonus",
+                LIBRARY_SHIELD: "target_ac_bonus",
+                THOUGHT: "damage_halved",
+            }[ability]
         )
-        if ability == SHIELD:
+        if ability in (SHIELD, LIBRARY_SHIELD):
             assert attack["target_ac"] == 19
+        if library:
+            assert fight.sd.member_state(target).resonance.current == 0
+            assert (await read_player_resonance(target))["current"] == 0
         if action == "Serenity's Touch":
             assert attack["charmed"] and not attack["save_success"]
         assert attack["concentration_broken"] == SPELL

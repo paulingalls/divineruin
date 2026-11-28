@@ -8,6 +8,7 @@ import patron_synergy_combat
 import reaction_spend
 from combat_hold_actions import _attack_action
 from combat_multiattack import strike_summary
+from combat_natures_grasp import finish_held
 from combat_state import CombatState
 from patron_synergy_heal import grant_mage_warding
 from reaction_windows import POST_ROLL
@@ -38,10 +39,19 @@ async def close_window(
     await patron_synergy_combat.restore_guard_stamina(reaction_packets, queries=queries, conn=conn)
     reaction_packets = combat_reaction_effect.defer_thought_shield(head, reaction_packets)
     hesitation_reason = combat_reaction_contest.hesitation_reason(head)
-    if hesitation_reason is not None:
-        summaries.extend(
-            combat_reaction_disruption.defer(state, head, reaction_packets, hesitation_reason, attack_action)
-        )
+    counter = next((packet for packet in reaction_packets if "countered_spell" in packet), None)
+    stop_fields = {"hesitated": True} if hesitation_reason is not None else {}
+    reason = hesitation_reason
+    if counter is not None and reason is None:
+        reason = f"{counter['countered_spell']} was countered by {counter['actor_id']} using {counter['ability_id']}."
+        stop_fields = {
+            "countered": True,
+            "action": counter["countered_spell"],
+            "counterspell_id": counter["ability_id"],
+            "countered_by": counter["actor_id"],
+        }
+    if reason is not None:
+        summaries.extend(combat_reaction_disruption.defer(state, head, reaction_packets, reason, attack_action))
         summaries.extend(combat_reaction_effect.finish_thought_shield(head, {}))
         summaries.append(
             strike_summary(
@@ -51,12 +61,12 @@ async def close_window(
                     "actor_id": head["actor_id"],
                     "attack_resolved": False,
                     "resolved": False,
-                    "hesitated": True,
-                    "reason": hesitation_reason,
+                    **stop_fields,
+                    "reason": reason,
                 },
             )
         )
-        state.held_actions.pop(0)
+        finish_held(state)
     else:
         for packet in list(reaction_packets):
             if packet["ability_id"] == reaction_spend.SIDESTEP:

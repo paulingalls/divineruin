@@ -117,6 +117,16 @@ def _along(origin: dict, delta: dict, fraction: float) -> dict:
     return {axis: origin[axis] + fraction * delta[axis] for axis in AXES}
 
 
+def _entry_dc(follower: CombatParticipant) -> int:
+    return 8 + proficiency_bonus(follower.level) + attribute_modifier(follower.attributes.get("wisdom", 10))
+
+
+def freeze_source(state: CombatState, follower: CombatParticipant) -> None:
+    for zone in state.hearthfire_zones:
+        if zone["source_id"] == follower.id:
+            zone["source_save_dc"] = _entry_dc(follower)
+
+
 async def settle_entry(
     session: "SessionData | None",
     state: CombatState,
@@ -128,10 +138,14 @@ async def settle_entry(
 
     zone = state.hearthfire_zones[zone_index]
     source_id = zone["source_id"]
-    follower = state.get_participant(source_id)
-    if follower is None:
-        raise ValueError(f"Unknown Hearthfire source {source_id!r}")
-    dc = 8 + proficiency_bonus(follower.level) + attribute_modifier(follower.attributes.get("wisdom", 10))
+    active_source_id = None if source_id in state.departed_player_ids else source_id
+    if active_source_id is None:
+        dc = zone["source_save_dc"]
+    else:
+        follower = state.get_participant(active_source_id)
+        if follower is None:
+            raise ValueError(f"Unknown Hearthfire source {source_id!r}")
+        dc = _entry_dc(follower)
     receipt = {"source_id": source_id, "mover_id": mover.id, "dc": dc, "success": False}
     if zone["failed_rounds"].get(mover.id) == state.round_number:
         return {**receipt, "same_round": True, "dm_cue": f"Hearthfire still bars {mover.name}."}
@@ -146,7 +160,7 @@ async def settle_entry(
             "WIS",
             dc,
             GIFT,
-            originating_participant_id=source_id,
+            originating_participant_id=active_source_id,
             combat_state=state,
         ),
         state=state,

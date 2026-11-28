@@ -17,6 +17,7 @@ import encounter_facts
 from combat_condition_landing import _land_condition_on_one
 from combat_damage import apply_attack_result
 from combat_damage_results import AutomaticDamageResult
+from combat_departure import target_left_receipt
 from combat_fate_rolls import PacketRolls, packet_save
 from combat_legendary_resistance import finalize_save
 from combat_movement_cost import rectangle
@@ -252,16 +253,19 @@ async def resolve_operation(
     for index, target_id in enumerate(receipt["targets"][len(results) :], start=len(results)):
         key = str(index)
         scope = progress.scope(key) if progress is not None else None
-        result = await _floor_target(
-            session,
-            state,
-            actor,
-            target_id,
-            receipt["section_id"],
-            scope.steps if scope is not None else {},
-            scope,
-            damage_deps,
-        )
+        if target_id in state.departed_player_ids:
+            result = target_left_receipt(actor.id, target_id)
+        else:
+            result = await _floor_target(
+                session,
+                state,
+                actor,
+                target_id,
+                receipt["section_id"],
+                scope.steps if scope is not None else {},
+                scope,
+                damage_deps,
+            )
         if result is None:
             return False
         results.append(result)

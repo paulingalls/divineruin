@@ -4,6 +4,7 @@ import pytest
 from _zhael_fate_fixtures import attack, defend
 from _zhael_unravel_fixtures import activate, cached, durable, opening, patch_player
 from _zhael_unravel_fixtures import unravel as unravel
+from acceptance.test_departed_member_leaves_fight_guards import leave_unravel_guest
 from acceptance.test_paladin_oath_swear import stored, timed
 from livekit.agents.llm import ToolError
 from test_encounter_facts_damage import dice
@@ -105,8 +106,8 @@ async def test_transition_blocks_exactly_the_round_it_settled(unravel, event, co
     expected = "fulfilled" if event == "defeat" else "lapsed"
     assert (change["oath_id"], change["new_status"], change["round_number"]) == (oath["oath_id"], expected, 2)
     if control == "departed":
-        unravel.session.party.members = [m for m in unravel.session.party.members if m.player_id != owner]
         assert owner in state.round_checkpoints[-1]["players"]
+        await leave_unravel_guest(unravel, owner)
     book = await stored(owner)
     await assert_unchanged_refusal(unravel, "settled Promised Hour")
     if control == "other_encounter":

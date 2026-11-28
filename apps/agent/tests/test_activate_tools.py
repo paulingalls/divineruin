@@ -83,7 +83,7 @@ class TestSpellRouting:
     async def test_spell_id_dispatches_to_cast_spell_impl(self):
         mods, fns = _mocks()
         spells_mod = MagicMock()
-        spells_mod.get_spell = MagicMock(return_value=object())
+        spells_mod.get_spell = MagicMock(return_value=spells.get_spell("arcane_mage_hand"))
         ctx, result = await _call("firebolt", target_id="goblin_1", spells_mod=spells_mod, **mods)
         assert result == "spell-result"
         fns["cast_spell"].assert_awaited_once_with(ctx, "firebolt", target_id="goblin_1", target_ids=None)
@@ -91,7 +91,7 @@ class TestSpellRouting:
     async def test_spell_target_ids_pass_through(self):
         mods, fns = _mocks()
         spells_mod = MagicMock()
-        spells_mod.get_spell = MagicMock(return_value=object())
+        spells_mod.get_spell = MagicMock(return_value=spells.get_spell("arcane_mage_hand"))
         ctx, _result = await _call("bless", target_ids=["a", "b"], spells_mod=spells_mod, **mods)
         fns["cast_spell"].assert_awaited_once_with(ctx, "bless", target_id=None, target_ids=["a", "b"])
 
