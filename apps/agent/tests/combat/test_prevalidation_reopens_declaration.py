@@ -72,7 +72,7 @@ async def _seed(pool, player_id: str) -> None:
     [
         ("unowned", "warrior_unstoppable_charge", "hasn't learned Unstoppable Charge"),
         ("unknown", "invented_ability", "Unknown spell"),
-        ("unaffordable", "arcane_shield_spell", "Not enough Focus"),
+        ("unaffordable", "arcane_mage_hand", "Not enough Focus"),
     ],
 )
 async def test_prevalidation_refusal_reopens_persisted_phase_and_allows_retry(dev_db_pool, suffix, action, cause):
@@ -81,7 +81,7 @@ async def test_prevalidation_refusal_reopens_persisted_phase_and_allows_retry(de
     combat_id = f"combat_s051_reset_{suffix}"
     try:
         await _seed(pool, player_id)
-        if action == "arcane_shield_spell":
+        if action == "arcane_mage_hand":
             await character_spells.record_learned(player_id, action, "discovery", conn=pool)
         state = _state(combat_id, player_id, action)
         await db_mutations.save_combat_state(combat_id, state.to_dict(), conn=pool)

@@ -86,6 +86,7 @@ export interface CreatureStatBlock {
 }
 
 export interface Attack {
+  spell_focus_cost?: number;
   magical?: boolean;
   auto_hit?: true;
   bonus_damage?: DamageRider;

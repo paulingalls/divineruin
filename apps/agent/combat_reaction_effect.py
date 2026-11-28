@@ -1,40 +1,33 @@
-"""What a spent reaction does to the held blow it answered.
-
-Counterspell, the third outcome game_mechanics_combat.md:187 names, is NOT here and is not faked: its window is
-``on_spell_cast`` and no enemy in content casts a spell, so the window has no producer (debt
-08bc5548). ``tests/combat/test_reaction_catalog_reach.py`` pins it refused at every window the
-engine can open, rather than shipping a guard that certifies nothing.
-"""
+"""What a spent reaction does to the held blow it answered."""
 
 from __future__ import annotations
 
 import logging
 from typing import cast
 
-import abilities
 import ability_voice_rules
 import architect_entomb
+import check_resolution
 import combat_grapple
 import combat_reaction_contest
 import combat_structures
 import conditions
+import reaction_catalog
 import reaction_spend
 import reaction_windows
 from ability_voice_rules import IMPLANT_DOUBT
+from combat_ability import _find_action
 from combat_attack_roll import held_reaction_ac
 from combat_participant import SHIELD_SPELL_AC_BONUS
-from combat_reaction_defense import BRACE, SHIELD_SPELL, THOUGHT_SHIELD, apply_bark_skin, brace, halve
+from combat_reaction_defense import BRACE, SHIELD_SPELLS, THOUGHT_SHIELD, apply_bark_skin, brace, halve, recheck_ac
+from condition_catalog import CONDITION_CATALOG, SHIELD_OF_FAITH
 from declarations import resolve_declaration
-from session_data import CombatParticipant
+from session_data import CombatParticipant, CombatState
 
 logger = logging.getLogger("divineruin.tools")
 
-# The wired set, transcribed from content/archetype_abilities.json. Explicit ids rather than
-# prose-matching on the catalog's ``effect`` text: the rows carry no mechanical field, and adding
-# one is a cross-language content change this story does not own. Their honesty against the
-# catalog is pinned by test_reaction_resolution's drift guard, not by this comment.
 HALVES_DAMAGE = frozenset({"rogue_uncanny_dodge"})
-BARK_SKIN = frozenset({"druid_bark_skin", "warden_bark_skin"})
+BARK_SKIN = frozenset({"druid_bark_skin", "warden_bark_skin", "primal_bark_skin"})
 SHIELD_BEARING = frozenset({"guardian_retaliating_shield"})
 SLIPPERY_REACTIONS = frozenset({"rogue_slippery", "spy_slippery"})
 AC_BONUS = {
@@ -205,7 +198,7 @@ def _apply(
             return None
         return {"mechanical_effect": combat_reaction_contest.EFFECTS[ability_id]}
 
-    if window["stage"] == reaction_windows.PRE_ROLL and ability_id == SHIELD_SPELL:
+    if window["stage"] == reaction_windows.PRE_ROLL and ability_id in SHIELD_SPELLS:
         if attack_action is None:
             return {"reason": "Shield Spell only protects against attack rolls."}
         state.get_participant(spend["actor_id"]).shield_spell_active = True
@@ -225,6 +218,16 @@ def _apply(
     if ability_id in BARK_SKIN and target is not None and spend["actor_id"] == target.id:
         apply_bark_skin(head, target)
         return {"mechanical_effect": "round_ac_bonus"}
+
+    if ability_id == reaction_catalog.SHIELD_OF_FAITH:
+        assert target is not None
+        target.conditions = conditions.apply_condition(
+            target.conditions, SHIELD_OF_FAITH, originating_participant_id=spend["actor_id"]
+        )
+        bonus = CONDITION_CATALOG[SHIELD_OF_FAITH].ac_modifier
+        recheck_ac(head, target, bonus)
+        head["shield_of_faith_ac"] = bonus
+        return {"mechanical_effect": "target_ac_bonus", "target_id": target.id, "ac_bonus": bonus}
 
     if ability_id in HALVES_DAMAGE or ability_id == BRACE:
         if defer_damage_reductions:
@@ -266,6 +269,27 @@ def settle_disruption_defenses(state, head: dict) -> None:
                 packet["reason"] = "The attack misses, so there is no damage to reduce."
 
 
+def _counterspell(state: CombatState, head: dict, spend: dict, rng) -> dict:
+    caster = state.get_participant(head["actor_id"])
+    reactor = state.get_participant(spend["actor_id"])
+    assert caster is not None and reactor is not None
+    action = _find_action(caster, resolve_declaration(head["declaration"]).action)
+    assert action is not None
+    check = check_resolution.resolve_check(
+        reactor.attributes["intelligence"], reactor.level, "untrained", 10 + action["spell_focus_cost"], rng=rng
+    )
+    return {
+        "counterspell_check": {
+            "roll": check.roll,
+            "modifier": check.modifier,
+            "total": check.total,
+            "dc": check.dc,
+            "success": check.success,
+        },
+        **({"mechanical_effect": "spell_negated", "countered_spell": action["name"]} if check.success else {}),
+    }
+
+
 def close(state, head: dict, window: dict, *, attack_action: dict | None, contest_rng=None) -> list[dict]:
     """Apply what every reaction spent at ``window`` does to ``head``: one packet per spend.
 
@@ -298,17 +322,20 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None, contes
     )
     packets = []
     for spend, contest in zip(spends, contests, strict=True):
-        effects = _apply(
-            state, head, window, spend, attack_action, contest, ac_spend, hesitated, defer_damage_reductions
-        )
-        ability = abilities.get_ability(spend["ability_id"])
+        if spend["ability_id"] in reaction_catalog.COUNTERSPELLS:
+            effects = _counterspell(state, head, spend, contest_rng)
+        else:
+            effects = _apply(
+                state, head, window, spend, attack_action, contest, ac_spend, hesitated, defer_damage_reductions
+            )
+        reaction = reaction_catalog.get_reaction(spend["ability_id"])
         packet = {
             "actor_id": spend["actor_id"],
             "resolved": True,
             "declaration_type": "reaction",
-            "ability_id": ability.id,
-            "ability_name": ability.name,
-            "narration_cue": ability.narration_cue,
+            "ability_id": reaction.id,
+            "ability_name": reaction.name,
+            "narration_cue": reaction.narration_cue,
             "window_id": spend["window_id"],
             "stage": window["stage"],
             "against_actor_id": head["actor_id"],
@@ -333,7 +360,7 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None, contes
                 # (still held); only the holder's name is missing, so the DM says "something still
                 # has you". HeldActionUnresolvable is not importable here - combat_hold imports this
                 # module.
-                logger.error("reaction %s: %s is grappled with no source; holder unnamed", ability.id, target.id)
+                logger.error("reaction %s: %s is grappled with no source; holder unnamed", reaction.id, target.id)
             else:
                 packet["grappler_id"] = grappler_id
         packets.append(packet)

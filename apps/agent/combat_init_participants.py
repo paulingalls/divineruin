@@ -6,12 +6,15 @@ from livekit.agents.llm import ToolError
 
 import abilities
 import architect_scene
+import character_spells
 import choir_scene
 import combat_enhancers
 import combat_resolution
 import conditions
 import item_effects
+import reaction_catalog
 import rules_engine
+import spell_knowledge
 import still_scene
 import temp_hp
 from combat_init_validation import _validate_enemy_tiers, validate_enemy_action_shapes, validate_enemy_resistance_tags
@@ -107,7 +110,9 @@ def finalize_initiative(
     return summary
 
 
-async def assemble_participants(session, encounter, encounter_id, member_players, *, content, queries):
+async def assemble_participants(
+    session, encounter, encounter_id, member_players, *, content, queries, character_spells_mod=character_spells
+):
     initiative_inputs: list[dict] = [
         {
             "id": mid,
@@ -208,6 +213,12 @@ async def assemble_participants(session, encounter, encounter_id, member_players
         )
         player_level = row["level"]
         reaction_ids = class_reaction_ids(player_class, player_level)
+        library = await character_spells_mod.get_known(mid)
+        castable = spell_knowledge.castable_spell_ids(player_class, (entry["spell_id"] for entry in library))
+        class_reactions = set(reaction_ids)
+        for spell_id, twins in reaction_catalog.SPELL_TWINS.items():
+            if spell_id in castable and class_reactions.isdisjoint(twins):
+                reaction_ids.append(spell_id)
         participants.append(
             CombatParticipant(
                 id=mid,

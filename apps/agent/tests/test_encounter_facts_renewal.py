@@ -97,8 +97,8 @@ async def test_multiple_deaths_and_independent_pools(world: SimpleNamespace, sta
 @pytest.mark.parametrize("kill_first", [True, False])
 async def test_focus_spell_and_renewal_share_the_latest_row(world: SimpleNamespace, kill_first: bool) -> None:
     async with fight(world, "mortaen", archetype="druid", goblin_hp=5) as f:
-        await setup_recipient(world, "druid")
-        spell = "primal_bark_skin"
+        await setup_recipient(world, "druid", start=2)
+        spell = "primal_speak_with_animals"
         await seed_known_spells(world.pool, f.hero, (spell,))
         state = f.session.combat_state
         state.terrain = "forest"
@@ -110,7 +110,7 @@ async def test_focus_spell_and_renewal_share_the_latest_row(world: SimpleNamespa
         )
         actors = [p["actor_id"] for p in packets if "cast" in p or p.get("damage")]
         assert actors == state.initiative_order[:2]
-        before = 3 if kill_first else 1
+        before = 2 if kill_first else 1
         assert renewals(packets) == [receipt(f.hero, GOBLIN, before, before + 2)]
         assert await focus(world) == 3
 

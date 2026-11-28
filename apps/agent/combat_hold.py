@@ -4,9 +4,9 @@ decision 46 / game_mechanics_combat.md:182-187: the DM narrates each enemy actio
 reaction window, and the engine holds enemy damage until each window closes. Sprint 45 resolved
 every packet in one pass, so the blow was written before the DM spoke. This module is the hold.
 
-Movement can pause at a warrior's reach before the roll. Attack windows can
-pause before the roll or between its outcome and damage. A save-only restraint
-can open a window after it takes hold.
+Movement windows can pause a planned approach before it begins or at a warrior's
+reach exit. Attack windows can pause before the roll or between its outcome and
+damage. A save-only restraint can open a window after it takes hold.
 
 The queue is stepped by ``resolve_phase``, one pause per call — no new verb (the open window
 reaches the DM through the result's ``next`` field, ADR 0008 decision 4).
@@ -30,6 +30,7 @@ import reaction_spend
 import thyra_thornwall
 from combat_ability import _find_action
 from combat_attack_roll import deserialize_roll
+from combat_departure import cancel_held_strike, departed_target
 from combat_fate_hostile import roll_hostile
 from combat_fate_rolls import PacketRolls
 from combat_hold_actions import (
@@ -43,6 +44,7 @@ from combat_hold_actions import (
     _is_wasted as _is_wasted,
 )
 from combat_multiattack import held_declarations, strike_summary
+from combat_natures_grasp import finish_held
 from combat_packet import _resolve_one_packet
 from combat_reaction_closure import close_window
 from combat_reshape_packet import ReshapeRefused, resolve_reshape
@@ -166,24 +168,30 @@ async def pump(
     """
     summaries: list[dict] = []
     closed, state.open_window = state.open_window, None
-    reacted, reaction_packets = None, []
-    if closed is not None and closed["stage"] != MOVEMENT and state.held_actions:
-        reacted = state.held_actions[0]
-        reason = await concealed_target_reason(state, reacted, _held_declaration(reacted), packet_deps=packet_deps)
-        if reason is not None:
-            summaries.extend(combat_reaction_effect.finish_thought_shield(reacted, {}))
-            summaries.append(_concealed_summary(reacted, reason))
-            state.held_actions.pop(0)
-            reacted = None
-        else:
-            reaction_packets, paused = await close_window(state, reacted, closed, summaries, packet_deps, contest_rng)
-            if paused:
-                return summaries
-
     while state.held_actions:
         head = state.held_actions[0]
         if execution_id is not None and head.get("execution_id") != execution_id:
             break
+        window, closed = closed, None
+        if target := _uncommitted_departed_target(state, head):
+            if fate_rolls is not None:
+                fate_rolls.kept = None
+            summaries.append(cancel_held_strike(state, head, target))
+            continue
+        reacted, reaction_packets = None, []
+        if window is not None and window["stage"] != MOVEMENT:
+            reacted = head
+            reason = await concealed_target_reason(state, head, _held_declaration(head), packet_deps=packet_deps)
+            if reason is not None:
+                summaries.extend(combat_reaction_effect.finish_thought_shield(head, {}))
+                summaries.append(_concealed_summary(head, reason))
+                finish_held(state)
+                continue
+            reaction_packets, paused = await close_window(state, head, window, summaries, packet_deps, contest_rng)
+            if paused:
+                return summaries
+            if not state.held_actions or state.held_actions[0] is not head:
+                continue
         if continuation := head.get("counter_settlement"):
             if not await combat_counter_reactions.settle(session, state, head, summaries, packet_deps, fate_rolls):
                 return summaries
@@ -194,7 +202,7 @@ async def pump(
             continue
         if "completed_condition" in head:
             summaries.append(strike_summary(head, _with_reshape(head, head["completed_condition"])))
-            state.held_actions.pop(0)
+            finish_held(state)
             continue
         if execution_id is None:
             from combat_turn_start import start_held_packet
@@ -226,19 +234,19 @@ async def pump(
             if execution_id is not None:
                 raise
             summaries.append({"actor_id": head["actor_id"], "resolved": False, "reason": str(error)})
-            state.held_actions.pop(0)
+            finish_held(state)
             continue
         if not ready:
             return summaries
         if head.get("legendary_kind") in ("shift_wall", "reshape"):
             summaries.append(_with_reshape(head, {"actor_id": head["actor_id"], "resolved": True}))
-            state.held_actions.pop(0)
+            finish_held(state)
             continue
         if head is not reacted and (
             reason := await concealed_target_reason(state, head, declaration, packet_deps=packet_deps)
         ):
             summaries.append(_concealed_summary(head, reason))
-            state.held_actions.pop(0)
+            finish_held(state)
             continue
         summary_start = len(summaries)
         opens = not fleeing and ("opportunity_approach" in head or _opens_windows(state, head))
@@ -262,7 +270,7 @@ async def pump(
                 if movement is None:
                     return summaries
                 summaries.append(strike_summary(head, _with_reshape(head, movement)))
-                state.held_actions.pop(0)
+                finish_held(state)
                 continue
 
         try:
@@ -319,7 +327,7 @@ async def pump(
             summaries.extend(combat_reaction_effect.finish_thought_shield(head, summary))
             summaries.append(strike_summary(head, _with_reshape(head, summary)))
             assert_iteration_progress(state, head, summaries, summary_start)
-            state.held_actions.pop(0)
+            finish_held(state)
             continue
 
         if fate_rolls is not None and fate_rolls.pending is not None:
@@ -348,6 +356,12 @@ async def pump(
     return summaries
 
 
+def _uncommitted_departed_target(state, head: dict) -> str | None:
+    if "counter_settlement" in head or "completed_condition" in head:
+        return None
+    return head.get("departed_damage_recipient") or departed_target(state, _held_declaration(head))
+
+
 def _finish_strike(state, head: dict, action: dict | None, summary: dict, summaries: list[dict]) -> bool:
     summaries.extend(combat_reaction_effect.finish_thought_shield(head, summary))
     if action is not None and (candidate := combat_hold_conditions.window_for(state, head, action, summary)):
@@ -356,7 +370,7 @@ def _finish_strike(state, head: dict, action: dict | None, summary: dict, summar
         combat_hold_windows.open_window(state, candidate)
         return True
     summaries.append(strike_summary(head, _with_reshape(head, summary)))
-    state.held_actions.pop(0)
+    finish_held(state)
     return False
 
 
@@ -381,6 +395,7 @@ async def _resolve_held(
     action, an enemy condition packet, a DEFEND — resolves with the live resolver exactly as it
     would have in the single-pass phase.
     """
+    from combat_attack_roll import shield_of_faith_ac
     from combat_phase import ResolutionPacket
 
     declaration = _held_declaration(head)
@@ -397,11 +412,17 @@ async def _resolve_held(
     if fate_rolls is not None and (session.fate_lock.locked() or head.get("roll_steps")):
         deps["progress"] = PacketRolls(fate_rolls, head.setdefault("roll_steps", {}), deps["queries"], deps["conn"])
     damage_target = combat_reaction_effect.intercept_target(state, head)
+    reaction_ac_bonus = combat_reaction_effect.ac_bonus(state, head)
+    if "shield_of_faith_ac" in head:
+        # Departure ends the ward while the already-rolled strike retains its AC.
+        target = state.get_participant(declaration.target_id or "")
+        live_ward = shield_of_faith_ac(target.conditions if target is not None else [])
+        reaction_ac_bonus += head["shield_of_faith_ac"] - live_ward
     summary = await _resolve_one_packet(
         session,
         state,
         packet,
-        reaction_ac_bonus=combat_reaction_effect.ac_bonus(state, head),
+        reaction_ac_bonus=reaction_ac_bonus,
         reaction_save_advantage=combat_reaction_effect.save_advantage(
             state,
             head,

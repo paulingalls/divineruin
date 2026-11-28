@@ -2,6 +2,7 @@ import {
   CONDITION_NAMES,
   CREATURE_CATEGORIES,
   type Attributes,
+  type ReactionWindow,
   type SaveConditionProfile,
   type Spell,
   type SpellSource,
@@ -25,6 +26,18 @@ import { asRecord } from "./parse-helpers.ts";
 
 const SPELL_SOURCES = new Set<SpellSource>(["arcane", "divine", "primal"]);
 const SPELL_TIERS = new Set<SpellTier>(["cantrip", "minor", "standard", "major", "supreme"]);
+
+export const REACTION_WINDOWS = new Set<ReactionWindow>([
+  "on_hit",
+  "on_ally_hit",
+  "on_targeted",
+  "on_ally_targeted",
+  "on_enemy_miss",
+  "on_enemy_move",
+  "on_condition_imposed",
+  "on_spell_cast",
+  "on_enemy_action",
+]);
 
 // Runtime-loaded spells, keyed by spell id (populated by loadSpells at startup).
 let spells: ReadonlyMap<string, Spell> = new Map();
@@ -184,8 +197,17 @@ export function parseSpellRow(id: string, raw: unknown): Spell {
     if (typeof data[field] !== "boolean") throw new Error(`${ctx}.${field} is not a boolean`);
   }
 
+  const reactionWindow = data.reaction_window;
+  if (
+    "reaction_window" in data &&
+    (typeof reactionWindow !== "string" || !REACTION_WINDOWS.has(reactionWindow as ReactionWindow))
+  ) {
+    throw new Error(`${ctx}.reaction_window ${JSON.stringify(reactionWindow)} is invalid`);
+  }
+
   return {
     id,
+    ...("reaction_window" in data ? { reaction_window: reactionWindow as ReactionWindow } : {}),
     name: data.name,
     source: data.source as SpellSource,
     spell_tier: data.spell_tier as SpellTier,

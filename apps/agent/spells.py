@@ -28,7 +28,7 @@ import json
 import logging
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal, get_args
+from typing import TYPE_CHECKING, Literal, cast, get_args
 
 import conditions
 from catalog_parse import parse_int, parse_int_dict, parse_str
@@ -46,7 +46,7 @@ from wild_shape_profile import WildShapeProfile
 from wild_shape_profile import parse_profile as parse_wild_shape_profile
 
 if TYPE_CHECKING:
-    from abilities import Ability  # type-only: abilities.py imports spells, so never import at runtime
+    from abilities import Ability, ReactionWindow  # type-only: abilities.py imports spells, so never import at runtime
 
 logger = logging.getLogger("divineruin.spells")
 
@@ -111,6 +111,7 @@ class Spell:
     heal: HealProfile | None = None
     creates_item: ItemCreationProfile | None = None
     wild_shape: WildShapeProfile | None = None
+    reaction_window: ReactionWindow | None = None
 
 
 # Module-level runtime-loaded spells, keyed by spell id. Populated by load_spells()
@@ -131,8 +132,15 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
     ignored, so the loader stays forward-compatible for future schema additions. Generic
     field validation reuses the shared catalog_parse primitives.
     """
+    from abilities import REACTION_WINDOWS
+
     try:
         source = data["source"]
+        reaction_window = data.get("reaction_window")
+        if "reaction_window" in data and (
+            not isinstance(reaction_window, str) or reaction_window not in REACTION_WINDOWS
+        ):
+            raise ValueError(f"spell {spell_id!r} reaction_window {reaction_window!r} is invalid")
         if source not in _SPELL_SOURCES:
             raise ValueError(f"spell {spell_id!r} source {source!r} not in {sorted(_SPELL_SOURCES)}")
         spell_tier = data["spell_tier"]
@@ -200,6 +208,7 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
             save_condition=save_condition,
             creates_item=creates_item,
             wild_shape=parse_wild_shape_profile(spell_id, data),
+            reaction_window=cast("ReactionWindow | None", reaction_window),
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed spells row {spell_id!r}: {e}") from e

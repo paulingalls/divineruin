@@ -6,11 +6,12 @@ from uuid import uuid4
 from acceptance.mawling_harness import MawlingHarness
 from acceptance.test_architect_fight import pos
 from acceptance.test_bark_skin import keep_original
-from acceptance.test_guardian_intercept import BANDIT, SWORD
+from acceptance.test_guardian_intercept import BANDIT, SWORD, tool_receipt
 from acceptance.test_opportunity_strike import participant
 from acceptance.test_still_actions import reveal_and_wake
 from acceptance.test_still_anchors import fresh_session, strike
 
+import character_spells
 import combat_spatial
 import db_mutations_concentration
 import db_queries
@@ -36,6 +37,8 @@ async def defense_fight(
     ally_archetype: str = "guardian",
     extra_archetypes: tuple[str, ...] = (),
     gear: str | None = None,
+    encounter: str | None = None,
+    library: tuple[tuple[int, str], ...] = (),
 ) -> AsyncIterator[MawlingHarness]:
     fight = MawlingHarness()
     try:
@@ -51,6 +54,8 @@ async def defense_fight(
             row["class"] = class_
             row["attributes"]["constitution"] = constitution
             await fight.pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", actor, json.dumps(row))
+        for index, spell_id in library:
+            await character_spells.record_learned(fight.players[index], spell_id, "discovery", conn=fight.pool)
         if gear:
             await fight.command("transact", {"action": "exchange", "item_id": gear, "delta": 1})
             await fight.command("transact", {"action": "equip", "item_id": gear, "delta": 0})
@@ -62,7 +67,7 @@ async def defense_fight(
             origin = positions[owner]
             positions[fight.players[0]] = {**origin, "x": origin["x"] + 5}
             positions[fight.players[1]] = {**origin, "x": origin["x"] + 10}
-        else:
+        elif encounter is None:
             fight.encounter_id = f"defense_{uuid4().hex}"
             fight.owns_template = True
             fight.enemies = [enemy, "lookout"] if enemy in (BANDIT, "hollow_warden", "hollow_knight") else [enemy]
@@ -93,8 +98,15 @@ async def defense_fight(
                 fight.encounter_id,
                 json.dumps(template),
             )
-            await fight.command("enter_mode", {"mode": "combat", "encounter_id": fight.encounter_id})
+        else:
+            fight.encounter_id = encounter
+        if enemy != "still":
+            fight.roster = (await fight.command("enter_mode", {"mode": "combat", "encounter_id": fight.encounter_id}))[
+                "participants"
+            ]
             state = await fight.reload()
+            if encounter is not None:
+                fight.enemies = [actor["id"] for actor in fight.roster if actor["type"] == "enemy"]
             combat_spatial.require_spatial(state)["positions"].update(
                 {actor: pos(index % 2 * 5, index // 2 * 5) for index, actor in enumerate(fight.players)}
             )
@@ -119,22 +131,34 @@ async def defense_fight(
         await fight.close()
 
 
-async def spend(fight: MawlingHarness, ability: str, *, stage: str) -> list[dict]:
+async def spend(
+    fight: MawlingHarness,
+    ability: str,
+    *,
+    stage: str,
+    actor: str | None = None,
+    cost: int | None = None,
+    opening: dict | None = None,
+) -> list[dict]:
     packets = []
+    actor = fight.players[0] if actor is None else actor
     for _ in range(8):
-        result = await fight.command("resolve_phase", {})
+        result = opening if opening is not None else await fight.command("resolve_phase", {})
+        opening = None
         if offer := result.get("fate_offer"):
+            packets.extend(result["packets"])
             result = await keep_original(fight, offer)
         packets.extend(result["packets"])
         if window := result["next"]["waiting_on"]:
             if window["stage"] != stage:
                 continue
-            assert ability in {reaction["id"] for reaction in window["reactions"]}, window
-            target = fight.players[0]
+            assert (actor, ability) in {(r["actor_id"], r["id"]) for r in window["reactions"]}, window
             pool = "stamina" if ability == BRACE else "focus"
-            before = (await player_row(target))[pool]["current"]
-            await fight.command("activate", {"id": ability})
-            assert (await player_row(target))[pool]["current"] == before - (2 if ability == BRACE else 1)
+            before = (await player_row(actor))[pool]["current"]
+            receipt = await tool_receipt(fight, actor, "activate", {"id": ability})
+            assert not receipt.is_error, receipt.output
+            expected_cost = (2 if ability == BRACE else 1) if cost is None else cost
+            assert (await player_row(actor))[pool]["current"] == before - expected_cost
             return packets
     raise AssertionError(f"No {stage} window for {ability}")
 

@@ -8,13 +8,18 @@ import abilities
 import ability_voice_rules
 import combat_counter_reactions
 import combat_melee_approach
+import combat_voice_rules
+import conditions
+import reaction_catalog
 import reaction_spend
 import reaction_windows
+import terrain
 from ability_voice_rules import DISSONANT_WHISPER, IMPLANT_DOUBT
 from combat_ability import _find_action
 from combat_spatial import distance, inside, position, require_spatial
 from combat_structures import blocked_reason, line_blocker
 from communication_voice_rules import DeliveryRefused
+from condition_catalog import SHIELD_OF_FAITH
 from condition_restrictions import cannot_act, no_reactions
 from encounter_actions import ACTION_KINDS
 from session_data import CombatState
@@ -85,11 +90,13 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
     another in-place writer committed meanwhile (draethar_inner_fire mutates participants
     directly; it holds combat_state_lock now, but a snapshot still cannot see a write taken after
     it). The caller records the spend as one field write instead."""
-    _validate_for_window(state, actor_id, ability_id, state.open_window)
+    _validate_for_window(state, actor_id, reaction_catalog.get_reaction(ability_id), state.open_window)
 
 
-def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, window: dict | None) -> None:
-    delivery_policy = ability_voice_rules.policy(ability_id)
+def _validate_for_window(
+    state: CombatState, actor_id: str, reaction: reaction_catalog.Reaction, window: dict | None
+) -> None:
+    ability_id = reaction.id
     if window is not None:
         if not isinstance(window, dict) or window.get("stage") not in reaction_windows.STAGES:
             raise ValueError("Malformed reaction window")
@@ -138,12 +145,17 @@ def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, win
     if window is None:
         raise ReactionUnavailable("no reaction window is open; a reaction interrupts a held enemy action")
 
-    catalog_window = abilities.get_ability(ability_id).window
+    catalog_window = reaction.window
     if catalog_window not in window["triggers"]:
         raise ReactionUnavailable(
             f"reaction {ability_id!r} fires on {catalog_window!r}, but the open window "
             f"{window['id']!r} offers {window['triggers']}"
         )
+
+    if catalog_window == reaction_windows.SPELL_CAST:
+        spatial = require_spatial(state)
+        if not inside(position(spatial, actor_id), position(spatial, window["actor_id"]), 60):
+            raise ReactionUnavailable("Counterspell requires being within 60 ft of the caster")
 
     if ability_id == reaction_spend.INTERCEPT:
         target = state.get_participant(window["target_id"])
@@ -161,24 +173,50 @@ def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, win
         ):
             raise ReactionUnavailable("This hit was already intercepted")
 
+    if ability_id == reaction_catalog.SHIELD_OF_FAITH:
+        target = state.get_participant(window["target_id"])
+        assert target is not None
+        if not target.is_ally:
+            raise ReactionUnavailable("Shield of Faith protects allies")
+        if target.id == actor_id:
+            raise ReactionUnavailable("Shield of Faith protects another ally")
+        spatial = require_spatial(state)
+        if not inside(position(spatial, actor_id), position(spatial, target.id), 30):
+            raise ReactionUnavailable("Shield of Faith requires being within 30 ft of the struck ally")
+        pending_wards = {
+            entry["window_id"] for entry in state.reactions_available.values() if entry["ability_id"] == ability_id
+        }
+        if conditions.has_condition(target.conditions, SHIELD_OF_FAITH) or window["id"] in pending_wards:
+            raise ReactionUnavailable(f"{target.name} is already warded by Shield of Faith.")
+
     if catalog_window == reaction_windows.ENEMY_MOVE:
         if window["stage"] != reaction_windows.MOVEMENT:
-            raise ReactionUnavailable("Opportunity Strike requires a movement window")
+            raise ReactionUnavailable("Enemy movement reactions require a movement window")
         mover = state.get_participant(window["actor_id"])
         assert mover is not None
         if mover.is_fallen or mover.is_ally:
-            raise ReactionUnavailable("Opportunity Strike requires a standing hostile")
-        if actor_id not in window["reactors"]:
-            raise ReactionUnavailable(f"{actor_id!r} has no Opportunity Strike at this exit")
-        weapon = window["reactors"][actor_id]
-        if not combat_melee_approach.is_melee(weapon["action"]):
-            raise ReactionUnavailable("Opportunity Strike requires a melee weapon")
-        reach = weapon["reach"]
-        separation = distance(position(state.spatial, actor_id), position(state.spatial, mover.id))
-        if separation > reach and not math.isclose(separation, reach, rel_tol=1e-12):
-            raise ReactionUnavailable("Opportunity Strike target is beyond melee reach")
-        if blocker := line_blocker(state, actor_id, mover.id, melee=True):
-            raise ReactionUnavailable(blocked_reason(blocker))
+            raise ReactionUnavailable("Enemy movement reactions require a standing hostile")
+        if ability_id == reaction_catalog.NATURES_GRASP:
+            if window.get("before_movement") is not True:
+                raise ReactionUnavailable("Nature's Grasp requires the start of a move")
+            if state.terrain is None:
+                raise ValueError("Nature's Grasp requires cached combat terrain")
+            if not terrain.is_natural(state.terrain):
+                raise ReactionUnavailable("Nature's Grasp requires natural terrain")
+            if distance(position(state.spatial, actor_id), window["endpoint"]) > 30:
+                raise ReactionUnavailable("Nature's Grasp requires an endpoint within 30 ft")
+        if ability_id == reaction_catalog.OPPORTUNITY_STRIKE:
+            if actor_id not in window["reactors"]:
+                raise ReactionUnavailable(f"{actor_id!r} has no Opportunity Strike at this exit")
+            weapon = window["reactors"][actor_id]
+            if not combat_melee_approach.is_melee(weapon["action"]):
+                raise ReactionUnavailable("Opportunity Strike requires a melee weapon")
+            reach = weapon["reach"]
+            separation = distance(position(state.spatial, actor_id), position(state.spatial, mover.id))
+            if separation > reach and not math.isclose(separation, reach, rel_tol=1e-12):
+                raise ReactionUnavailable("Opportunity Strike target is beyond melee reach")
+            if blocker := line_blocker(state, actor_id, mover.id, melee=True):
+                raise ReactionUnavailable(blocked_reason(blocker))
 
     if ability_id == DISSONANT_WHISPER:
         from combat_hold_actions import _attack_action
@@ -220,13 +258,16 @@ def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, win
             except ValueError as error:
                 raise ReactionUnavailable(str(error)) from error
 
-    recipient_ids = []
-    if delivery_policy in (
-        ability_voice_rules.DeliveryPolicy.BOTH,
-        ability_voice_rules.DeliveryPolicy.HEARING,
-    ):
-        recipient_ids = [ability_voice_rules.reaction_recipient(ability_id, window)]
-    ability_voice_rules.require_ability_delivery(ability_id, state, actor_id, recipient_ids)
+    if reaction.spell is not None:
+        combat_voice_rules.guard_spell(state, actor_id, reaction.spell)
+    else:
+        recipient_ids = []
+        if ability_voice_rules.policy(ability_id) in (
+            ability_voice_rules.DeliveryPolicy.BOTH,
+            ability_voice_rules.DeliveryPolicy.HEARING,
+        ):
+            recipient_ids = [ability_voice_rules.reaction_recipient(ability_id, window)]
+        ability_voice_rules.require_ability_delivery(ability_id, state, actor_id, recipient_ids)
 
     if reaction_spend.is_spent(state.reactions_available.get(actor_id)):
         raise ReactionUnavailable(f"player {actor_id!r} already spent their reaction this round")
@@ -246,12 +287,12 @@ def offers_for_window(state: CombatState, window: dict | None) -> list[dict]:
     for participant in state.participants:
         for ability_id in participant.reaction_ids:
             # Outside the try: a stored id the catalog no longer knows is a defect, not an ineligible reaction.
-            ability = abilities.get_ability(ability_id)
+            reaction = reaction_catalog.get_reaction(ability_id)
             try:
-                _validate_for_window(state, participant.id, ability_id, window)
+                _validate_for_window(state, participant.id, reaction, window)
             except (ReactionUnavailable, DeliveryRefused):
                 continue
-            entry = {"actor_id": participant.id, "id": ability_id, "name": ability.name}
+            entry = {"actor_id": participant.id, "id": ability_id, "name": reaction.name}
             if ability_id == reaction_spend.SIDESTEP:
                 entry["destination"] = combat_counter_reactions.SIDESTEP_CUE
             offered.append(entry)

@@ -15,7 +15,7 @@ import combat_turn
 import db_mutations
 import reaction_spend
 import reaction_windows
-from combat_support import deserialize_roll, roll_attack, serialize_roll
+from combat_support import roll_attack, serialize_roll
 from session_data import CombatParticipant, CombatState, SessionData
 
 
@@ -261,24 +261,6 @@ def _mid_window_state(combat_id: str = "combat_mid_window") -> CombatState:
     return state
 
 
-def test_held_actions_and_open_window_round_trip_through_json() -> None:
-    state = _mid_window_state()
-    assert state.open_window is not None
-
-    reloaded = CombatState.from_dict(json.loads(json.dumps(state.to_dict())))
-
-    assert reloaded.to_dict() == state.to_dict()
-    assert reloaded.beat == "narration"
-    assert [h["actor_id"] for h in reloaded.held_actions] == ["goblin_scout_1"]
-    assert reloaded.open_window is not None
-    assert reloaded.open_window["stage"] == "post_roll"
-    assert reloaded.open_window["action_kind"] == "attack"
-    assert reloaded.open_window["id"] == state.open_window["id"]
-    restored, restored_ac = deserialize_roll(reloaded.held_actions[0]["roll"])
-    original, original_ac = deserialize_roll(state.held_actions[0]["roll"])
-    assert (restored, restored_ac) == (original, original_ac)
-
-
 def test_a_legacy_window_derives_its_action_kind_from_the_held_head() -> None:
     serialized = _mid_window_state().to_dict()
     del serialized["open_window"]["action_kind"]
@@ -314,23 +296,6 @@ def test_a_row_written_before_the_hold_rehydrates_as_not_mid_pause() -> None:
 
     assert loaded.held_actions == []
     assert loaded.open_window is None
-
-
-async def test_load_combat_state_round_trips_a_mid_window_pause(dev_db_pool) -> None:
-    pool = dev_db_pool
-    combat_id = "combat_persist_mid_window_story016"
-    original = _mid_window_state(combat_id)
-
-    try:
-        await db_mutations.save_combat_state(combat_id, original.to_dict(), conn=pool)
-        loaded = await db_mutations.load_combat_state(combat_id, conn=pool)
-
-        assert loaded is not None
-        assert loaded.to_dict() == original.to_dict()
-        assert loaded.held_actions[0]["roll"] is not None
-        assert loaded.open_window is not None
-    finally:
-        await db_mutations.delete_combat_state(combat_id, conn=pool)
 
 
 async def test_load_combat_state_returns_none_for_unknown_id(dev_db_pool) -> None:

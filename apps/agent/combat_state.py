@@ -147,6 +147,7 @@ class CombatState:
     encounter_facts: encounter_facts.EncounterFacts = field(default_factory=encounter_facts.empty)
 
     quick_fingers_wary: dict[str, dict[str, Wary]] = field(default_factory=dict)
+    departed_player_ids: list[str] = field(default_factory=list)
     round_checkpoints: list[dict] = field(default_factory=list)
     testimony: Testimony | None = None
     vessel: Literal["aboard_moving", "boarding"] | None = None
@@ -188,7 +189,16 @@ class CombatState:
 
         validate_snapshot(data)
 
+        departed = data.get("departed_player_ids", [])
+        if (
+            not isinstance(departed, list)
+            or any(not isinstance(pid, str) or not pid.strip() for pid in departed)
+            or len(set(departed)) != len(departed)
+        ):
+            raise ValueError("Invalid departed player IDs")
+
         state = cls(
+            departed_player_ids=departed,
             encounter_id=data.get("encounter_id", ""),
             vessel=data.get("vessel"),
             architect_encounter=data.get("architect_encounter"),

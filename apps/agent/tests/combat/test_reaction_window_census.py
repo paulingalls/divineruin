@@ -45,10 +45,10 @@ EXPECTED: dict[str, str] = {
     "rogue_slippery": "reachable",
     "spy_slippery": "reachable",
     "warrior_opportunity_strike": "reachable",
-    "mage_counterspell": "unproducible",  # on_spell_cast: no enemy casts (combat_ability.py:300)
+    "mage_counterspell": "reachable",
 }
 
-_TOTALS = {"reachable": 24, "inapplicable": 0, "unproducible": 1}
+_TOTALS = {"reachable": 25, "inapplicable": 0, "unproducible": 0}
 
 # The measured window census of the 25 rows. Pinned literally so a content edit that RE-LABELS a
 # row's window (rather than adding one) reds here instead of silently changing what is reachable.
@@ -73,8 +73,6 @@ _COMMAND_CARRIERS = [
     ("hollow_knight_boss", "hollowed_knight", "Command Lesser"),
 ]
 _ACCUSATION_CARRIERS = [("ashmark_patrol", "ashmark_sergeant", "Accusation")]
-
-_NO_PRODUCER = {"on_spell_cast"}
 
 
 def _reaction_rows() -> list[dict]:
@@ -228,7 +226,3 @@ def test_social_subject_carriers_are_pinned():
 
 def test_every_produced_trigger_is_a_member_of_the_closed_vocabulary():
     assert _produced_windows() <= abilities.REACTION_WINDOWS
-
-
-def test_unproducible_window_is_never_opened():
-    assert _produced_windows().isdisjoint(_NO_PRODUCER)
