@@ -6,6 +6,8 @@ import json
 import sys
 from pathlib import Path
 
+from creature_seed_connection import CreatureSeedConnection
+
 from creature_schema import validate_creature_stat_block
 from materials import parse_material_row
 
@@ -249,14 +251,6 @@ def test_spec_loot_and_seed():
                 )
                 parse_material_row(drop["item_id"], material)
 
-    class Connection:
-        def __init__(self):
-            self.creatures = set()
-
-        async def execute(self, query, key, data):
-            if "INSERT INTO creatures" in query:
-                self.creatures.add(key)
-
-    conn = Connection()
+    conn = CreatureSeedConnection()
     asyncio.run(seed_content.seed(conn))
     assert set(SPEC) <= conn.creatures

@@ -48,6 +48,7 @@ export interface Item extends Partial<WeaponProfile> {
   durability_tier?: "fragile" | "standard" | "reinforced" | "masterwork";
   current_hits?: number;
   damage_dice?: string;
+  damage_bonus?: number;
   properties?: string[];
   // Dual meaning, disambiguated by item `type`: BASE armor class when type==="armor",
   // AC BONUS when type==="shield". The SSOT for armor/shield AC — never duplicated into

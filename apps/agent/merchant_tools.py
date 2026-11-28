@@ -15,12 +15,15 @@ import db_mutations_inventory
 import db_mutations_merchant
 import db_queries
 import event_types as E
+import inventory_pools
 import pricing_queries
-import sale_pricing
+from catalog_parse import parse_dict
 from consignment import Consignment, expires_on, proceeds_sp
 from db_errors import db_tool
 from game_events import publish_game_event
+from inventory_pools import InventoryPool
 from inventory_refresh import inventory_payload
+from sale_pricing import economy_size, economy_traits, merchant_gold_allocation
 from session_data import SessionData
 from tool_preconditions import require_npc_present
 from tool_support import _validate_id
@@ -30,50 +33,78 @@ from tool_support import _validate_id
 class MerchantVisit:
     conn: asyncpg.Connection
     npc: dict
-    pool: sale_pricing.InventoryPool
-    pools: dict[str, sale_pricing.InventoryPool]
+    pool: InventoryPool
+    pools: dict[str, InventoryPool]
     pricing: dict
+    traits: tuple[str, ...]
     merchant: db_mutations_merchant.LockedMerchant
     player_id: str
-    currency: dict | None = None
+    currency: tuple[str, dict] | None = None
 
     async def credit(self, amount: Decimal | float, source: str) -> None:
         balance = await db_mutations_inventory.credit_player_gold(self.player_id, amount, conn=self.conn)
-        self.currency = {
-            "player_id": self.player_id,
-            "amount": float(amount),
-            "currency": "gold",
-            "source": source,
-            "new_balance": balance,
-        }
+        self._record_currency(E.CURRENCY_GAINED, amount, source, balance)
+
+    async def debit(self, amount: Decimal, source: str) -> float:
+        balance = await db_mutations_inventory.debit_player_gold(self.player_id, amount, conn=self.conn)
+        self._record_currency(E.CURRENCY_SPENT, amount, source, balance)
+        return balance
+
+    def _record_currency(self, event: str, amount: Decimal | float, source: str, balance: float) -> None:
+        self.currency = (
+            event,
+            {
+                "player_id": self.player_id,
+                "amount": float(amount),
+                "currency": "gold",
+                "source": source,
+                "new_balance": balance,
+            },
+        )
 
 
 @asynccontextmanager
-async def merchant_visit(context: RunContext[SessionData], npc_id: str) -> AsyncIterator[MerchantVisit]:
+async def merchant_visit(
+    context: RunContext[SessionData], npc_id: str, *, no_pool_verb: str = "buy"
+) -> AsyncIterator[MerchantVisit]:
     _validate_id(npc_id, "npc_id")
     context.disallow_interruptions()
     session = context.userdata
     player_id = session.acting_player_id
-    await require_npc_present(session.location_id, npc_id, suffix=" to trade")
+    location_id = session.location_id
+    await require_npc_present(location_id, npc_id, suffix=" to trade")
     async with db.transaction() as conn:
         npc = await db_content_queries.get_npc(npc_id, conn=conn)
         if npc is None:
             raise ToolError(f"Unknown merchant: {npc_id}")
         pool_id = npc["inventory_pool"]
         if pool_id is None:
-            raise ToolError(f"{npc['name']} doesn't buy goods.")
-        pools = await sale_pricing.get_inventory_pools(conn=conn)
+            raise ToolError(f"{npc['name']} doesn't {no_pool_verb} goods.")
+        pools = await inventory_pools.get_inventory_pools(conn=conn)
         pool = pools[pool_id]
         pricing = await pricing_queries.get_economy_pricing(conn=conn)
-        location = await db_content_queries.get_location(pool["location"], conn=conn)
-        allocation = sale_pricing.merchant_gold_allocation(pool, location, pricing)
-        merchant = await db_mutations_merchant.lock_merchant(npc_id, allocation, player_id, conn=conn)
-        visit = MerchantVisit(conn, npc, pool, pools, pricing, merchant, player_id)
+        location = await db_content_queries.get_location(location_id, conn=conn)
+        allocation = merchant_gold_allocation(pool, location, pricing, location_id=location_id)
+        location_ctx = f"locations[{location_id}]"
+        location_data = parse_dict(location, location_ctx)
+        traits = economy_traits(location_data.get("personality"), location_ctx)
+        merchant = await db_mutations_merchant.lock_merchant(
+            npc_id,
+            allocation,
+            player_id,
+            pool=pool,
+            size=economy_size(location_data.get("settlement_tier"), location_ctx),
+            traits=traits,
+            pricing=pricing,
+            conn=conn,
+        )
+        visit = MerchantVisit(conn, npc, pool, pools, pricing, traits, merchant, player_id)
         yield visit
         session.validate_acting_player(player_id)
 
     if visit.currency is not None:
-        await publish_game_event(session.room, E.CURRENCY_GAINED, visit.currency, event_bus=session.event_bus)
+        event, payload = visit.currency
+        await publish_game_event(session.room, event, payload, event_bus=session.event_bus)
     for owner in sorted(merchant.inventory_owners):
         await publish_game_event(
             session.room,
@@ -93,6 +124,77 @@ def receipt(visit: "MerchantVisit", payload: dict) -> str:
     if returned:
         payload["returned"] = returned
     return json.dumps(payload)
+
+
+def _alphanumeric(name: str) -> str:
+    return "".join(char for char in name.casefold() if char.isalnum())
+
+
+def _match_merchant_item(item_name: str, names: dict[str, str], merchant_name: str) -> str:
+    words = item_name.casefold().split()
+    matches = [item_id for item_id, name in names.items() if name.casefold().split() == words]
+    if not matches:
+        spoken = _alphanumeric(item_name)
+        for ending in ("", "s", "es"):
+            query = spoken.removesuffix(ending)
+            matches = [item_id for item_id, name in names.items() if query and query in _alphanumeric(name)]
+            if matches:
+                break
+
+    if not matches:
+        raise ToolError(f"{merchant_name} doesn't carry {item_name.strip()!r}.")
+    if len(matches) > 1:
+        choices = ", ".join(f"{names[item_id]} ({item_id})" for item_id in matches)
+        raise ToolError(f"Which item did the player mean? {choices}.")
+    return matches[0]
+
+
+def _everyday_supplies(item_ids: list[str], names: dict[str, str]) -> dict | None:
+    if not item_ids:
+        return None
+    mentioned = [{"item_id": item_id, "name": names[item_id]} for item_id in item_ids[:2]]
+    spoken = [entry["name"] for entry in mentioned]
+    line = ", ".join(spoken) + ", and other everyday supplies" if len(item_ids) > 2 else " and ".join(spoken)
+    return {"line": f"I carry {line}.", "items": mentioned}
+
+
+@function_tool()
+@db_tool
+async def query_merchant_inventory(context: RunContext[SessionData], npc_id: str, item_name: str = "") -> str:
+    """Call on entering a shop and when the player asks about a specific item.
+
+    Args:
+        npc_id: The merchant ID from the present NPCs shared at trade entry.
+        item_name: Use "" for a brief shop overview, or pass the name the player asked for.
+    """
+    async with merchant_visit(context, npc_id, no_pool_verb="trade") as visit:
+        pool = visit.pool
+        finite_tiers = {
+            **{entry["item_id"]: 3 for entry in pool["tier_3_items"]},
+            **{entry["item_id"]: 2 for entry in pool["tier_2_items"]},
+        }
+        tier_1 = pool["tier_1_items"]
+        tiers = {**finite_tiers, **dict.fromkeys(tier_1, 1)}
+        rows = await visit.conn.fetch("SELECT id, data->>'name' FROM items WHERE id = ANY($1)", list(tiers))
+        names = dict(rows)
+        inventory = visit.merchant.state["current_inventory"]
+        items = {
+            item_id: {
+                "item_id": item_id,
+                "name": names[item_id],
+                "tier": tier,
+                "in_stock": tier == 1 or inventory.get(item_id, 0) > 0,
+            }
+            for item_id, tier in tiers.items()
+        }
+        if item_name:
+            item_id = _match_merchant_item(item_name, names, visit.npc["name"])
+            return receipt(visit, {"npc_id": npc_id, **items[item_id]})
+
+        highlights = [items[item_id] for item_id in finite_tiers if items[item_id]["in_stock"]][:4]
+        return receipt(
+            visit, {"npc_id": npc_id, "highlights": highlights, "tier_1_summary": _everyday_supplies(tier_1, names)}
+        )
 
 
 def _ledger_entry(entry: Consignment, today: int) -> dict:

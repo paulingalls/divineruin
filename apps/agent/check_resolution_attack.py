@@ -86,6 +86,7 @@ class AttackResult:
     pincer_raw_damage: int = 0
     sacrifice_rider: SacrificePlayRider | None = None
     oath_justice: dict | None = None
+    item_damage_bonus: int = 0
 
 
 def _is_ranged(weapon: dict) -> bool:
@@ -273,6 +274,7 @@ def finish_attack(
     )
 
     damage = 0
+    item_damage_bonus = 0
     damage_type = attacker_data.get("damage_type_override", weapon.get("damage_type", "bludgeoning"))
     bonus_damage = 0
     bonus_damage_type: str | None = None
@@ -299,6 +301,8 @@ def finish_attack(
                 damage += dice_roll(damage_notation, rng=rng).total
             damage += thyra_seasons.damage_bonus(attacker_data, season, damage_type)
             damage += weapon.get("infusion_bonus", 0)
+            item_damage_bonus = weapon.get("damage_bonus", 0)
+            damage += item_damage_bonus
         damage += patron_synergy_combat.weapon_damage_bonus(attacker_data, critical, rng=rng)
         if weapon.get("attack_source") != "catalog" and weapon.get("damage_attribute", True) and damage_notation != "0":
             damage += weapon_attribute_modifier(attacker_data, weapon)
@@ -398,6 +402,7 @@ def finish_attack(
         attack_total=attack_total,
         target_ac=target_ac,
         damage=damage,
+        item_damage_bonus=item_damage_bonus,
         damage_type=damage_type,
         critical_success=critical,
         critical_failure=core.critical_failure and sacrifice_rider is None,

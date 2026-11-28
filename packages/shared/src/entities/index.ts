@@ -11,7 +11,14 @@ export type {
 
 export type { Npc, NpcKnowledge, NpcQuestKnowledge, NpcSchedule } from "./npc";
 
-export type { InventoryPool, InventoryPoolStock } from "./inventory_pool";
+export {
+  INVENTORY_POOL_SINK_VALUES,
+  MERCHANT_KIND_VALUES,
+  STOCK_SETTLEMENT_VALUES,
+  type InventoryPool,
+  type InventoryPoolTier2,
+  type InventoryPoolTier3,
+} from "./inventory_pool";
 
 export type { Item, ItemEffect, ItemArtTemplate, ItemAttunement } from "./item";
 

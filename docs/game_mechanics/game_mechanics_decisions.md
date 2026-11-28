@@ -353,3 +353,7 @@
 ## World Clock (Decision 133)
 
 133. **D-A adopts option (a), one global Aethos Standard Time at fixed UTC−5 year-round.** Day 1 begins at the shared epoch, 2026-01-01 at 00:00 Aethos (05:00 UTC). Dawn is 06:00 Aethos (11:00 UTC). The merchant day takes the civil day number of the most recent dawn, so it is 0 at the epoch and becomes 1 at the first dawn. Near the anchor timezone, evening play generally leads into in-game night. Players everywhere share the same world time. Local evening alignment varies by timezone and can shift seasonally where local clocks observe daylight saving time.
+
+## Carrying Capacity (Decision 134)
+
+134. **Players can carry any number of items until the carrying rule ships.** Merchant purchases use shelf availability and exact funds. Capacity cannot refuse a purchase in the interim. [M14.2 tracks designing and shipping the carrying rule](../milestones/14_engine_completeness.md#milestone-142--gameplay-systems).

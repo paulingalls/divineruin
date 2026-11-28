@@ -1,15 +1,7 @@
-import {
-  type InventoryPool,
-  SETTLEMENT_PERSONALITY_VALUES,
-  SETTLEMENT_SIZE_VALUES,
-} from "@divineruin/shared";
-import { asRecord, parseString, parseStringArray } from "./parse-helpers.ts";
+import type { InventoryPool } from "@divineruin/shared";
+import { ECONOMY_SIZES, ECONOMY_TRAITS } from "./economy-settlement.ts";
+import { asRecord } from "./parse-helpers.ts";
 import { type EconomyPricing, SALE_DISPOSITIONS, wholeSilver } from "./pricing.ts";
-
-interface CatalogRow {
-  id: string;
-  data: unknown;
-}
 
 interface SaleItem {
   type: string;
@@ -23,84 +15,6 @@ interface SaleQuote {
   price_sp: number;
   reason: string;
   merchant_kind: string | null;
-}
-
-function buyingList(raw: unknown, vocabulary: ReadonlySet<string>, ctx: string): string[] {
-  const values = parseStringArray(raw, ctx);
-  if (!values.length) throw new Error(`${ctx} must not be empty`);
-  for (const value of values) {
-    if (!vocabulary.has(value)) throw new Error(`${ctx} contains unknown value '${value}'`);
-  }
-  return values;
-}
-
-function parseInteger(raw: unknown, ctx: string): number {
-  if (typeof raw !== "number" || !Number.isInteger(raw)) throw new Error(`${ctx} is not an int`);
-  return raw;
-}
-
-function parseStock(raw: unknown, ctx: string): InventoryPool["items"] {
-  if (!Array.isArray(raw)) throw new Error(`${ctx} is not a list`);
-  return raw.map((stock, i) => {
-    const entry = `${ctx}[${i}]`;
-    const data = asRecord(stock, entry);
-    return {
-      item_id: parseString(data.item_id, `${entry}.item_id`),
-      quantity: parseInteger(data.quantity, `${entry}.quantity`),
-      price: parseInteger(data.price, `${entry}.price`),
-    };
-  });
-}
-
-export function parseInventoryPools(
-  rows: CatalogRow[],
-  itemRows: CatalogRow[],
-): ReadonlyMap<string, InventoryPool> {
-  if (!itemRows.length) throw new Error("items produced no rows");
-  if (!rows.length) throw new Error("inventory_pools produced no rows");
-  const types = new Set<string>();
-  const rarities = new Set<string>();
-  for (const { id, data } of itemRows) {
-    const ctx = `items[${id}]`;
-    const item = asRecord(data, ctx);
-    types.add(parseString(item.type, `${ctx}.type`));
-    rarities.add(parseString(item.rarity, `${ctx}.rarity`));
-  }
-
-  const pools = new Map<string, InventoryPool>();
-  for (const { id, data: raw } of rows) {
-    const ctx = `inventory_pools[${id}]`;
-    const data = asRecord(raw, ctx);
-    pools.set(id, {
-      id,
-      name: parseString(data.name, `${ctx}.name`),
-      location: parseString(data.location, `${ctx}.location`),
-      type: parseString(data.type, `${ctx}.type`),
-      restock_interval_hours: parseInteger(
-        data.restock_interval_hours,
-        `${ctx}.restock_interval_hours`,
-      ),
-      items: parseStock(data.items, `${ctx}.items`),
-      buys: data.buys === "all" ? "all" : buyingList(data.buys, types, `${ctx}.buys`),
-      buys_rarities: buyingList(data.buys_rarities, rarities, `${ctx}.buys_rarities`),
-    });
-  }
-  return pools;
-}
-
-export function validateNpcPoolBindings(
-  rows: CatalogRow[],
-  pools: ReadonlyMap<string, InventoryPool>,
-): void {
-  for (const { id, data } of rows) {
-    const ctx = `npcs[${id}].inventory_pool`;
-    const binding = asRecord(data, `npcs[${id}]`).inventory_pool;
-    if (binding === null) continue;
-    const poolId = parseString(binding, ctx);
-    if (!pools.has(poolId)) {
-      throw new Error(`${ctx} references unknown pool '${poolId}'`);
-    }
-  }
 }
 
 function buysType(pool: InventoryPool, itemType: string): boolean {
@@ -179,24 +93,28 @@ export function merchantGoldAllocation(
   pool: InventoryPool,
   location: unknown,
   pricing: EconomyPricing,
+  locationId: string,
 ): number {
-  const ctx = `locations[${pool.location}]`;
+  const ctx = `locations[${locationId}]`;
   const data = asRecord(location, ctx);
-  const tier = SETTLEMENT_SIZE_VALUES.find((value) => value === data.settlement_tier);
+  const tier = ECONOMY_SIZES.find((value) => value === data.settlement_tier);
   if (!tier)
     throw new Error(`${ctx}.settlement_tier is unknown: ${JSON.stringify(data.settlement_tier)}`);
-  const trait = SETTLEMENT_PERSONALITY_VALUES.find((value) => value === data.personality);
-  if (!trait) throw new Error(`${ctx}.personality is unknown: ${JSON.stringify(data.personality)}`);
-  const kind = pool.buys === "all" ? "general" : "specialist";
+  const traits: unknown[] = Array.isArray(data.personality) ? data.personality : [data.personality];
+  if (!traits.length) throw new Error(`${ctx}.personality must contain a trait`);
+  const militaryKind =
+    pool.buys !== "all" && (pool.buys.includes("weapon") || pool.buys.includes("armor"))
+      ? "arms"
+      : "other";
+  const [first, ...rest] = traits.map((raw) => {
+    const trait = ECONOMY_TRAITS.find((value) => value === raw);
+    if (!trait) throw new Error(`${ctx}.personality is unknown: ${JSON.stringify(raw)}`);
+    return trait === "military"
+      ? pricing.militaryMerchantGoldMultipliers[militaryKind]
+      : pricing.merchantGoldPersonalityMultipliers[trait]!;
+  });
+  const kind = pool.merchant_kind;
   const base = pricing.merchantGoldSp[tier]![kind];
   if (base == null) throw new Error(`merchant_gold_sp.${tier}.${kind} is unavailable`);
-  const multiplier =
-    trait === "military"
-      ? pricing.militaryMerchantGoldMultipliers[
-          pool.buys !== "all" && (pool.buys.includes("weapon") || pool.buys.includes("armor"))
-            ? "arms"
-            : "other"
-        ]
-      : pricing.merchantGoldPersonalityMultipliers[trait]!;
-  return wholeSilver(base, multiplier);
+  return wholeSilver(base, first!, ...rest);
 }

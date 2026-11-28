@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Iterator
 
 import httpx
@@ -31,6 +32,8 @@ def capstone_server(migrated_db: str) -> Iterator[dict[str, str]]:
 async def test_role_archetype_catalog_loads_from_real_db(reset_db_pool: str) -> None:
     await role_archetypes.load_role_archetypes()
     assert role_archetypes.is_loaded()
+    assert role_archetypes.get_role_archetype("blacksmith").inventory_pool is not None
+    assert role_archetypes.get_role_archetype("guard").inventory_pool is None
 
     pool = await db.get_pool()
     ids = [r["id"] for r in await pool.fetch("SELECT id FROM role_archetypes")]
@@ -125,3 +128,31 @@ async def test_role_archetypes_endpoint_round_trips_the_real_catalog(
     pool = await db.get_pool()
     db_ids = {r["id"] for r in await pool.fetch("SELECT id FROM role_archetypes")}
     assert served_ids == db_ids
+
+    bindings = {item["id"]: item["inventory_pool"] for item in body["items"]}
+    assert bindings["blacksmith"] is not None
+    assert bindings["guard"] is None
+
+
+@pytest.mark.parametrize("runtime", ["python", "typescript"])
+async def test_role_catalog_rejects_missing_inventory_pool(reset_db_pool: str, runtime: str) -> None:
+    pool = await db.get_pool()
+    await role_archetypes.load_role_archetypes()
+    previous = role_archetypes.get_role_archetype("blacksmith")
+    original = await pool.fetchval("SELECT data FROM role_archetypes WHERE id='blacksmith'")
+    await pool.execute("""
+        UPDATE role_archetypes SET data=jsonb_set(data, '{inventory_pool}', '"missing_pool"')
+        WHERE id='blacksmith'
+    """)
+    try:
+        diagnostic = "blacksmith.*inventory_pool.*missing_pool"
+        if runtime == "python":
+            with pytest.raises(ValueError, match=diagnostic):
+                await role_archetypes.load_role_archetypes()
+            assert role_archetypes.get_role_archetype("blacksmith") is previous
+        else:
+            with pytest.raises(RuntimeError, match=diagnostic):
+                with contextlib.contextmanager(start_server)(reset_db_pool):
+                    pytest.fail("server started with a dangling role pool")
+    finally:
+        await pool.execute("UPDATE role_archetypes SET data=$1::jsonb WHERE id='blacksmith'", original)
