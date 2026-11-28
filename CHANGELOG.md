@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.92.2
+
+Healing, wards, and combat recovery now use the same HUD health calculation, including max HP changes from fraying and Warrior's Endurance.
+
+Release steps: none.
+
 ## 0.92.1
 
 Release subscribed LiveKit tracks before closing acceptance-test rooms to prevent intermittent teardown failures.
