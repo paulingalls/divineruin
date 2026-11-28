@@ -13,6 +13,7 @@ import {
 
 const { military, ...traits } = authoredPricing[0]!.merchant_gold_personality_multipliers;
 const SALE = {
+  stock_modifiers: authoredPricing[0]!.stock_modifiers,
   merchant_gold_sp: authoredPricing[0]!.merchant_gold_sp,
   merchant_gold_personality_multipliers: authoredPricing[0]!.merchant_gold_personality_multipliers,
   sale_rate: 0.5,

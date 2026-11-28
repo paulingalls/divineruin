@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TypedDict
+from collections.abc import Sequence
+from typing import TypedDict, cast
 
 from catalog_parse import parse_dict
 from inventory_pools import InventoryPool
@@ -11,7 +12,8 @@ from workspace import SettlementSize, whole_silver
 SALE_DISPOSITIONS = ("unfriendly", "neutral", "friendly", "trusted")
 
 
-SETTLEMENT_PERSONALITIES = (
+ECONOMY_SIZES = (*tuple(SettlementSize), "capital")
+ECONOMY_TRAITS = (
     "prosperous",
     "struggling",
     "military",
@@ -20,27 +22,42 @@ SETTLEMENT_PERSONALITIES = (
     "devout",
     "frontier",
     "refuge",
+    "trade_hub",
 )
+
+
+def economy_size(raw: object, ctx: str) -> str:
+    if raw not in ECONOMY_SIZES:
+        raise ValueError(f"{ctx}.settlement_tier is unknown: {raw!r}")
+    return cast(str, raw)
+
+
+def economy_traits(raw: object, ctx: str) -> tuple[str, ...]:
+    traits = tuple(raw) if isinstance(raw, Sequence) and not isinstance(raw, str) else (raw,)
+    if not traits:
+        raise ValueError(f"{ctx}.personality must contain a trait")
+    for trait in traits:
+        if trait not in ECONOMY_TRAITS:
+            raise ValueError(f"{ctx}.personality is unknown: {trait!r}")
+    return cast(tuple[str, ...], traits)
 
 
 def merchant_gold_allocation(pool: InventoryPool, location: dict | None, pricing: dict, *, location_id: str) -> int:
     ctx = f"locations[{location_id}]"
     data = parse_dict(location, ctx)
-    tier = data.get("settlement_tier")
-    if tier not in tuple(SettlementSize):
-        raise ValueError(f"{ctx}.settlement_tier is unknown: {tier!r}")
-    personality = data.get("personality")
-    if personality not in SETTLEMENT_PERSONALITIES:
-        raise ValueError(f"{ctx}.personality is unknown: {personality!r}")
-    buys = pool["buys"]
+    tier = economy_size(data.get("settlement_tier"), ctx)
+    traits = economy_traits(data.get("personality"), ctx)
     kind = pool["merchant_kind"]
     base = pricing["merchant_gold_sp"][tier][kind]
     if base is None:
         raise ValueError(f"merchant_gold_sp.{tier}.{kind} is unavailable")
-    multiplier = pricing["merchant_gold_personality_multipliers"][personality]
-    if personality == "military":
-        multiplier = multiplier["arms" if buys != "all" and ("weapon" in buys or "armor" in buys) else "other"]
-    return whole_silver(int(base), multiplier)
+    buys = pool["buys"]
+    military_kind = "arms" if buys != "all" and ("weapon" in buys or "armor" in buys) else "other"
+    multipliers = pricing["merchant_gold_personality_multipliers"]
+    return whole_silver(
+        int(base),
+        *(multipliers[trait][military_kind] if trait == "military" else multipliers[trait] for trait in traits),
+    )
 
 
 class SaleQuote(TypedDict):

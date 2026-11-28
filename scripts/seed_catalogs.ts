@@ -65,7 +65,7 @@ for (const { id, data } of rows("role_archetypes")) {
 
 const economy = rows("pricing").find(({ id }) => id === "economy");
 if (!economy) throw new Error("pricing: no 'economy' row");
-const pricing = parsePricingRow(economy.data);
+const pricing = parsePricingRow(economy.data, poolIds);
 const locations = new Map(rows("locations").map(({ id, data }) => [id, data]));
 for (const { id, data } of rows("npcs")) {
   const npc = asRecord(data, `npcs[${id}]`);

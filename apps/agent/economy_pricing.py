@@ -4,8 +4,7 @@ import math
 
 from catalog_parse import parse_dict
 from inventory_pools import MERCHANT_KINDS
-from sale_pricing import SALE_DISPOSITIONS, SETTLEMENT_PERSONALITIES
-from workspace import SettlementSize
+from sale_pricing import ECONOMY_SIZES, ECONOMY_TRAITS, SALE_DISPOSITIONS
 
 MAX_DISPOSITION_MULTIPLIER = 1e304
 DISPOSITION_MULTIPLIER_CAP_RULE = f"must be <= {MAX_DISPOSITION_MULTIPLIER}"
@@ -50,14 +49,14 @@ def _require_fields(raw: object, fields: tuple[str, ...], ctx: str) -> dict:
 
 def _validate_merchant_pricing(data: dict) -> None:
     ctx = "pricing[economy].merchant_gold_sp"
-    matrix = _require_fields(data.get("merchant_gold_sp"), tuple(SettlementSize), ctx)
+    matrix = _require_fields(data.get("merchant_gold_sp"), ECONOMY_SIZES, ctx)
     for tier, row in matrix.items():
         for kind, value in _require_fields(row, MERCHANT_KINDS, f"{ctx}.{tier}").items():
             if value is not None and (type(value) not in (int, float) or not 0 <= value <= 2**53 - 1 or value % 1 != 0):
                 raise ValueError(f"{ctx}.{tier}.{kind} must be a non-negative safe integer or null")
 
     ctx = "pricing[economy].merchant_gold_personality_multipliers"
-    traits = _require_fields(data.get("merchant_gold_personality_multipliers"), SETTLEMENT_PERSONALITIES, ctx)
+    traits = _require_fields(data.get("merchant_gold_personality_multipliers"), ECONOMY_TRAITS, ctx)
     for trait, value in traits.items():
         field = f"{ctx}.{trait}"
         if trait == "military":
@@ -65,6 +64,29 @@ def _validate_merchant_pricing(data: dict) -> None:
                 _validate_multiplier(multiplier, f"{field}.{kind}", positive=True)
         else:
             _validate_multiplier(value, field, positive=True)
+
+
+def _validate_stock_modifiers(raw: object) -> None:
+    ctx = "pricing[economy].stock_modifiers"
+    traits = _require_fields(raw, ECONOMY_TRAITS, ctx)
+    for trait, value in traits.items():
+        field = f"{ctx}.{trait}"
+        row = _require_fields(value, ("quantity_multiplier", "tier_3_allowed", "tier_3_chance_bonus"), field)
+        quantity = row["quantity_multiplier"]
+        quantity_ctx = f"{field}.quantity_multiplier"
+        if trait == "military":
+            quantities = parse_dict(quantity, quantity_ctx)
+            if not quantities:
+                raise ValueError(f"{quantity_ctx} requires at least one pool")
+            for pool, multiplier in quantities.items():
+                _validate_multiplier(multiplier, f"{quantity_ctx}.{pool}", positive=True)
+        else:
+            _validate_multiplier(quantity, quantity_ctx, positive=True)
+        if not isinstance(row["tier_3_allowed"], bool):
+            raise ValueError(f"{field}.tier_3_allowed must be a boolean")
+        chance_ctx = f"{field}.tier_3_chance_bonus"
+        if _validate_multiplier(row["tier_3_chance_bonus"], chance_ctx) > 1:
+            raise ValueError(f"{chance_ctx} must be <= 1")
 
 
 def parse_economy_pricing(data: dict) -> dict:
@@ -89,4 +111,5 @@ def parse_economy_pricing(data: dict) -> dict:
         # Keep the composed rate on a whole basis point for both rounding implementations.
         _validate_multiplier(sale_rate * multiplier, f"{ctx} * sale_rate", positive=True)
     _validate_merchant_pricing(data)
+    _validate_stock_modifiers(data.get("stock_modifiers"))
     return data

@@ -43,12 +43,6 @@ SERVER_TABLES = (
 
 
 async def validate_runtime_catalogs(conn) -> None:
-    from catalog_parse import parse_dict, parse_str
-    from economy_pricing import parse_economy_pricing
-    from inventory_pools import bound_inventory_pools, parse_inventory_pools
-    from role_archetypes import validate_role_pool_binding
-    from sale_pricing import merchant_gold_allocation
-
     tables = set(SERVER_TABLES) | {row[0] for row in PYTHON_CATALOGS}
     snapshot = {}
     for table in sorted(tables):
@@ -57,12 +51,26 @@ async def validate_runtime_catalogs(conn) -> None:
             raise ValueError(f"{table} produced no rows")
         snapshot[table] = [{"id": row["id"], "data": json.loads(row["data"])} for row in rows]
     await _validate_typescript(snapshot)
+    _validate_python(snapshot)
+
+
+def _validate_python(snapshot: dict) -> None:
+    from catalog_parse import parse_dict, parse_str
+    from economy_pricing import parse_economy_pricing
+    from inventory_pools import bound_inventory_pools, parse_inventory_pools
+    from role_archetypes import validate_role_pool_binding
+    from sale_pricing import merchant_gold_allocation
+
     pools = parse_inventory_pools(snapshot["inventory_pools"], snapshot["items"])
     merchant_pools = bound_inventory_pools(snapshot["npcs"], pools)
     economy = next((row["data"] for row in snapshot["pricing"] if row["id"] == "economy"), None)
     if economy is None:
         raise ValueError("pricing: no 'economy' row")
     pricing = parse_economy_pricing(economy)
+    if pricing["stock_modifiers"]["military"]["quantity_multiplier"].keys() != pools.keys():
+        raise ValueError(
+            "pricing[economy].stock_modifiers.military.quantity_multiplier must match the inventory pool ids"
+        )
     locations = {row["id"]: row["data"] for row in snapshot["locations"]}
     for npc in snapshot["npcs"]:
         if binding := npc["data"]["inventory_pool"]:

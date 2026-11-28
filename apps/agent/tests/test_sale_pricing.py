@@ -1,5 +1,6 @@
 import json
 import re
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -106,3 +107,64 @@ def test_economy_parser_requires_all_merchant_pricing_fields(path, missing):
     data["unknown"] = 1
     with pytest.raises(ValueError, match=re.escape(path)):
         parse_economy_pricing(pricing)
+
+
+STOCK_CASES = json.loads((ROOT / "packages/shared/fixtures/stock-matrix-cases.json").read_text())
+
+
+def matrix_gold_cases() -> Iterator[tuple[str, str | list[str], int, int | None]]:
+    for size, row in STOCK_CASES["matrix"].items():
+        for trait, general, arms in zip(STOCK_CASES["columns"], row["generalGold"], row["armsGold"], strict=True):
+            yield size, trait, general, arms
+    for trait, row in STOCK_CASES["additionalM62Traits"].items():
+        yield "city", trait, row["generalGold"], row["armsGold"]
+    for row in STOCK_CASES["combinedGold"]:
+        yield "city", row["traits"], row["generalGold"], row["armsGold"]
+
+
+@pytest.mark.parametrize("size,traits,general,arms", list(matrix_gold_cases()))
+def test_merchant_gold_matrix(size, traits, general, arms):
+    pools = parse_inventory_pools(catalog_rows(authored("inventory_pools.json")), catalog_rows(authored("items.json")))
+    pricing = parse_economy_pricing(authored("pricing.json")[0])
+    location = {"settlement_tier": size, "personality": traits}
+    assert merchant_gold_allocation(pools["general_supplies"], location, pricing, location_id=size) == general
+    if arms is None:
+        with pytest.raises(ValueError, match=r"merchant_gold_sp\.hamlet\.specialist is unavailable"):
+            merchant_gold_allocation(pools["weapons_armor_basic"], location, pricing, location_id=size)
+    else:
+        assert merchant_gold_allocation(pools["weapons_armor_basic"], location, pricing, location_id=size) == arms
+
+
+def test_capital_specialty_purses():
+    pools = parse_inventory_pools(catalog_rows(authored("inventory_pools.json")), catalog_rows(authored("items.json")))
+    pricing = parse_economy_pricing(authored("pricing.json")[0])
+    location = {"settlement_tier": "capital", "personality": "scholarly"}
+    for pool_id, expected in [
+        ("general_supplies", 500),
+        ("weapons_armor_basic", 1000),
+        ("exotic_goods", 1500),
+        ("black_market", 800),
+    ]:
+        assert merchant_gold_allocation(pools[pool_id], location, pricing, location_id="capital") == expected
+
+
+def test_merchant_gold_composes_without_losing_multiplier_precision():
+    pools = parse_inventory_pools(catalog_rows(authored("inventory_pools.json")), catalog_rows(authored("items.json")))
+    data = authored("pricing.json")[0]
+    data["merchant_gold_sp"]["city"]["general"] = 100_000
+    data["merchant_gold_personality_multipliers"].update(prosperous=1.1111, trade_hub=1.1111)
+    pricing = parse_economy_pricing(data)
+    location = {"settlement_tier": "city", "personality": ["prosperous", "trade_hub"]}
+    assert merchant_gold_allocation(pools["general_supplies"], location, pricing, location_id="city") == 123_454
+
+
+@pytest.mark.parametrize("pool_id", ["general_supplies", "weapons_armor_basic", "exotic_goods", "black_market"])
+@pytest.mark.parametrize("traits", [*STOCK_CASES["columns"], *(row["traits"] for row in STOCK_CASES["combinedGold"])])
+def test_keldaran_hold_gold_matches_city(pool_id, traits):
+    pools = parse_inventory_pools(catalog_rows(authored("inventory_pools.json")), catalog_rows(authored("items.json")))
+    pricing = parse_economy_pricing(authored("pricing.json")[0])
+    hold = {"settlement_tier": "keldaran_hold", "personality": traits}
+    city = {"settlement_tier": "city", "personality": traits}
+    assert merchant_gold_allocation(pools[pool_id], hold, pricing, location_id="hold") == merchant_gold_allocation(
+        pools[pool_id], city, pricing, location_id="city"
+    )

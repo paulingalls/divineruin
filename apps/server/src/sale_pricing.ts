@@ -1,8 +1,5 @@
-import {
-  type InventoryPool,
-  SETTLEMENT_PERSONALITY_VALUES,
-  SETTLEMENT_SIZE_VALUES,
-} from "@divineruin/shared";
+import type { InventoryPool } from "@divineruin/shared";
+import { ECONOMY_SIZES, ECONOMY_TRAITS } from "./economy-settlement.ts";
 import { asRecord } from "./parse-helpers.ts";
 import { type EconomyPricing, SALE_DISPOSITIONS, wholeSilver } from "./pricing.ts";
 
@@ -100,21 +97,24 @@ export function merchantGoldAllocation(
 ): number {
   const ctx = `locations[${locationId}]`;
   const data = asRecord(location, ctx);
-  const tier = SETTLEMENT_SIZE_VALUES.find((value) => value === data.settlement_tier);
+  const tier = ECONOMY_SIZES.find((value) => value === data.settlement_tier);
   if (!tier)
     throw new Error(`${ctx}.settlement_tier is unknown: ${JSON.stringify(data.settlement_tier)}`);
-  const trait = SETTLEMENT_PERSONALITY_VALUES.find((value) => value === data.personality);
-  if (!trait) throw new Error(`${ctx}.personality is unknown: ${JSON.stringify(data.personality)}`);
+  const traits: unknown[] = Array.isArray(data.personality) ? data.personality : [data.personality];
+  if (!traits.length) throw new Error(`${ctx}.personality must contain a trait`);
+  const militaryKind =
+    pool.buys !== "all" && (pool.buys.includes("weapon") || pool.buys.includes("armor"))
+      ? "arms"
+      : "other";
+  const [first, ...rest] = traits.map((raw) => {
+    const trait = ECONOMY_TRAITS.find((value) => value === raw);
+    if (!trait) throw new Error(`${ctx}.personality is unknown: ${JSON.stringify(raw)}`);
+    return trait === "military"
+      ? pricing.militaryMerchantGoldMultipliers[militaryKind]
+      : pricing.merchantGoldPersonalityMultipliers[trait]!;
+  });
   const kind = pool.merchant_kind;
   const base = pricing.merchantGoldSp[tier]![kind];
   if (base == null) throw new Error(`merchant_gold_sp.${tier}.${kind} is unavailable`);
-  const multiplier =
-    trait === "military"
-      ? pricing.militaryMerchantGoldMultipliers[
-          pool.buys !== "all" && (pool.buys.includes("weapon") || pool.buys.includes("armor"))
-            ? "arms"
-            : "other"
-        ]
-      : pricing.merchantGoldPersonalityMultipliers[trait]!;
-  return wholeSilver(base, multiplier);
+  return wholeSilver(base, first!, ...rest);
 }

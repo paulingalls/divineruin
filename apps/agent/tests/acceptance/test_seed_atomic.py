@@ -355,6 +355,8 @@ def test_seed_rejects_unknown_wild_shape_creature(fresh_migrated_db, tmp_path, m
         ("role_archetypes.json", "blacksmith", ("inventory_pool",), "missing_pool"),
         ("npcs.json", "grimjaw_blacksmith", ("inventory_pool",), "missing_pool"),
         ("pricing.json", "economy", ("merchant_gold_sp",), "invalid"),
+        ("pricing.json", "economy", ("stock_modifiers", "trade_hub", "tier_3_allowed"), "yes"),
+        ("pricing.json", "economy", ("stock_modifiers", "military", "quantity_multiplier"), "missing_pool_key"),
     ],
 )
 def test_production_reseed_rejects_sale_catalog(
@@ -372,12 +374,15 @@ def test_production_reseed_rejects_sale_catalog(
     before = asyncio.run(rows(fresh_migrated_db))
     assert before["inventory_pools"] and before["npcs"]
     capfd.readouterr()
+    validators = importlib.import_module("seed_catalogs")
     if gate == "python":
 
         async def accept_typescript(_snapshot: dict) -> None:
             return None
 
-        monkeypatch.setattr(importlib.import_module("seed_catalogs"), "_validate_typescript", accept_typescript)
+        monkeypatch.setattr(validators, "_validate_typescript", accept_typescript)
+    else:
+        monkeypatch.setattr(validators, "_validate_python", lambda _snapshot: None)
 
     content = tmp_path / file
     catalog = json.loads(content.read_text())
@@ -385,19 +390,26 @@ def test_production_reseed_rejects_sale_catalog(
     *parents, field = path
     for key in parents:
         target = target[key]
-    target[field] = bad_value
+    if bad_value == "missing_pool_key":
+        del target[field]["black_market"]
+    else:
+        target[field] = bad_value
     content.write_text(json.dumps(catalog))
     content = tmp_path / "pricing.json"
     pricing = json.loads(content.read_text())
     pricing[0]["repair_cost_sp"]["common"] += 1
     content.write_text(json.dumps(pricing))
 
-    with pytest.raises(ValueError) as refusal:
+    refusal = None
+    try:
         asyncio.run(seed_content.main())
-    diagnostics = f"{refusal.value}\n{capfd.readouterr().err}"
-    assert any(entity in line and field in line for line in diagnostics.splitlines()), diagnostics
-    assert ("TypeScript runtime catalog validation failed" in str(refusal.value)) == (gate == "typescript")
+    except ValueError as error:
+        refusal = error
     assert asyncio.run(rows(fresh_migrated_db)) == before
+    assert refusal is not None
+    diagnostics = f"{refusal}\n{capfd.readouterr().err}"
+    assert any(entity in line and field in line for line in diagnostics.splitlines()), diagnostics
+    assert ("TypeScript runtime catalog validation failed" in str(refusal)) == (gate == "typescript")
 
 
 POOL_FIXTURES = ROOT / "packages/shared/fixtures"
