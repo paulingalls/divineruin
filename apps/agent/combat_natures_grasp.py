@@ -25,7 +25,7 @@ async def settle(
         "stage": spend["stage"],
     }
     if not session.party.contains(caster_id):
-        if fate_rolls is not None and "save" in spend.get("steps", {}):
+        if fate_rolls is not None:
             fate_rolls.kept = None
         return {**receipt, "resolved": False, "reason": "Nature's Grasp caster is unavailable."}
     caster = state.get_participant(caster_id)
