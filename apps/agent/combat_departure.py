@@ -32,7 +32,7 @@ def target_left_receipt(actor_id: str, target_id: str) -> dict:
 
 
 def forget_participant(state: "CombatState", player_id: str) -> bool:
-    if state.hearthfire_zones and (source := state.get_participant(player_id)) is not None:
+    if (source := state.get_participant(player_id)) is not None:
         from aelora_hearthfire import freeze_source
 
         freeze_source(state, source)
@@ -83,7 +83,7 @@ def _drop_orders(state: "CombatState", player_id: str) -> None:
 
 def _needs_departed_source(condition: dict, player_id: str) -> bool:
     kind = condition["type"]
-    if kind == TAUNTED or (kind == "frightened" and "turn_undead" in condition):
+    if kind == TAUNTED or "turn_undead" in condition:
         return condition.get("source") == player_id
     return condition.get("originating_participant_id") == player_id and (
         kind == GUIDING_LIGHT_MARK or CONDITION_CATALOG[kind].clearance == "start_of_caster_next_turn"

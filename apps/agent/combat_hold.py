@@ -357,7 +357,7 @@ async def pump(
 
 
 def _uncommitted_departed_target(state, head: dict) -> str | None:
-    if not state.departed_player_ids or "counter_settlement" in head or "completed_condition" in head:
+    if "counter_settlement" in head or "completed_condition" in head:
         return None
     return head.get("departed_damage_recipient") or departed_target(state, _held_declaration(head))
 

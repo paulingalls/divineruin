@@ -10,7 +10,8 @@ import pytest
 from _zhael_unravel_fixtures import activate, opening, patch_player
 from _zhael_unravel_fixtures import unravel as unravel
 from acceptance import test_departed_member_leaves_fight as departure
-from acceptance._capstone_helpers import _d20
+from acceptance._capstone_helpers import _d20, _damage_die
+from acceptance._enemy_opportunity_helpers import move
 from acceptance._spell_hostile_condition_helpers import dev_db_pool as dev_db_pool
 from acceptance.counter_reactions_harness import RIPOSTE, WEAPON, counter_fight
 from acceptance.defensive_reactions_harness import declare_attacks, defense_fight, player_row, reload_session
@@ -27,9 +28,13 @@ from acceptance.test_slippery_restrain import declare as declare_entomb
 from acceptance.test_slippery_restrain import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_spell_bless_lifecycle import leave
 from acceptance.test_spell_natures_grasp import GRASP, depart_guest
+from acceptance.test_taunt import TAUNT
+from acceptance.test_valdris_party_yield import ability_action
+from acceptance.turn_undead_harness import TurnFight
 from combat._round_checkpoint_helpers import Fight
 from livekit import rtc
 
+import ability_persistence
 import db_mutations
 from combat_spatial import require_spatial
 from combat_state import CombatState
@@ -220,3 +225,119 @@ async def test_later_caster_departure_keeps_the_current_approach_save(reset_db_p
         packets = query["settled_fate"]["packets"]
         (grasp,) = [p for p in packets if p.get("ability_id") == GRASP]
         assert (grasp["actor_id"], grasp["condition_inflicted"], grasp["save"]["roll"]) == (first, "restrained", 4)
+
+
+async def test_departure_preserves_the_surviving_warriors_taunt(reset_db_pool) -> None:
+    async with defense_fight("warrior") as fight:
+        warrior, guest = fight.players
+        enemy = fight.enemies[0]
+        await ability_persistence.set_elective_equipped(warrior, TAUNT, equipped=True, conn=fight.pool)
+        run = Run(fight, GUEST)
+        await run.declare(ability_action(warrior, TAUNT, enemy))
+        with patch("check_resolution.dice_roll", return_value=_d20(1)):
+            await run.resolve()
+        await depart_guest(fight, guest)
+        target = (await fight.reload()).get_participant(enemy)
+        assert target is not None
+        (taunt,) = [c for c in target.conditions if c["type"] == "taunted"]
+        assert taunt["source"] == warrior
+
+
+async def test_skeleton_still_fears_its_living_cleric(reset_db_pool) -> None:
+    fight = TurnFight()
+    try:
+        await fight.enter({"skeleton": ("undead", 4)}, ally=True)
+        with patch("check_resolution.dice_roll", return_value=_d20(2)):
+            effects = fight.cast(await fight.phase(cast=True))["turn_undead"]
+        (effect,) = [p for p in effects if p["target_id"] == "skeleton"]
+        assert effect["outcome"] == "frightened"
+        await depart_guest(fight, fight.players[GUEST])
+        skeleton = (await fight.reload()).get_participant("skeleton")
+        assert skeleton is not None
+        (fear,) = [c for c in skeleton.conditions if c["type"] == "frightened"]
+        assert fear["source"] == fight.caster and "turn_undead" in fear
+    finally:
+        await fight.close()
+        await fight.pool.execute("DELETE FROM creatures WHERE id=$1", fight.undead_id)
+
+
+async def test_departure_preserves_the_survivors_inner_fire_save(reset_db_pool) -> None:
+    async with defense_fight("mage", fate=True) as fight:
+        host, guest = fight.players
+        await patch_architect_player(host, race="draethar")
+        with patch("check_resolution.dice_roll", return_value=_d20(5)), patch("dice.roll", return_value=_damage_die(4)):
+            held = await fight.command("activate", {"id": "draethar_inner_fire"})
+        assert held["fate_offer"]["roller_id"] == host
+        await depart_guest(fight, guest)
+        cursor = (await fight.reload()).inner_fire_continuation
+        assert cursor is not None and cursor["player_id"] == host
+        query = await fight.command("query_info", {"kind": "combat"})
+        assert query["settled_fate"]["concentration_broken"] == "arcane_fly"
+
+
+@pytest.mark.parametrize("mover_seat", [PRIMARY, GUEST], ids=["survivor", "leaver"])
+async def test_departure_at_an_ally_movement_window(reset_db_pool, mover_seat: int) -> None:
+    async with defense_fight(
+        "artificer",
+        ally_archetype="artificer",
+        library=((PRIMARY, "arcane_shield_spell"), (GUEST, "arcane_shield_spell")),
+    ) as fight:
+        run = Run(fight, GUEST)
+        mover = run.players[mover_seat]
+        first, second = fight.enemies
+        state = await fight.reload()
+        require_spatial(state)["positions"].update({mover: pos(0), first: pos(-5), second: pos(-60)})
+        await fight.persist()
+        await run.declare(move(mover, 25))
+        window = await run.pause("pre_roll")
+        assert window["target_id"] == mover
+        await depart_guest(fight, run.guest)
+        saved = await fight.reload()
+        if mover == run.guest:
+            assert saved.open_window is None
+        else:
+            assert saved.open_window is not None and saved.open_window["id"] == window["window_id"]
+            await departure.finish(run)
+            assert require_spatial(await fight.reload())["positions"][mover] == pos(25)
+
+
+async def test_departure_clears_the_leavers_held_ally_attack(reset_db_pool) -> None:
+    async with defense_fight("warrior", fate=True) as fight:
+        run = Run(fight, PRIMARY)
+        await run.declare(weapon_attack(run.guest, fight.enemies[0], ""))
+        with patch("check_resolution.dice_roll", return_value=_d20(12)):
+            offer = await run.pause()
+        assert offer["roller_id"] == run.guest
+        before = (await fight.reload()).ally_continuation
+        assert before is not None and before["attack"]
+        await depart_guest(fight, run.guest)
+        after = (await fight.reload()).ally_continuation
+        assert after is not None and after["attack"] == {}
+        await departure.finish(run)
+        assert not run.hits(run.guest)
+
+
+async def pause_second_doubt(run: Run, first: str, second: str) -> dict:
+    with patch("check_resolution.dice_roll", run.roll):
+        run.faces(20, 19, 5, 16)
+        await run.pause("post_roll")
+        await run.react(first, DOUBT)
+        await run.react(second, DOUBT)
+        await run.pause()
+        offer = await run.pause()
+    entries = (await run.fight.reload()).held_actions[0]["disruptions"]
+    assert [(e["packet"]["actor_id"], bool(e.get("complete"))) for e in entries] == [(first, True), (second, False)]
+    assert offer["roll_kind"] == "save"
+    return offer
+
+
+async def test_other_departure_keeps_the_pending_disruption_save(reset_db_pool) -> None:
+    async with disruption() as fight:
+        run = Run(fight, THIRD)
+        offer = await pause_second_doubt(run, run.guest, run.host)
+        await depart_guest(fight, run.guest)
+        assert fight.sd.fate_offer is not None and fight.sd.fate_offer.id == offer["offer_id"]
+        with patch("check_resolution.dice_roll", run.roll):
+            await departure.finish(run)
+        (doubt,) = [p for p in run.packets if p.get("ability_id") == DOUBT]
+        assert (doubt["actor_id"], doubt["save_roll"], doubt["save_success"]) == (run.host, 5, False)
