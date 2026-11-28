@@ -17,12 +17,13 @@ import db_queries
 import event_types as E
 import inventory_pools
 import pricing_queries
+from catalog_parse import parse_dict
 from consignment import Consignment, expires_on, proceeds_sp
 from db_errors import db_tool
 from game_events import publish_game_event
 from inventory_pools import InventoryPool
 from inventory_refresh import inventory_payload
-from sale_pricing import merchant_gold_allocation
+from sale_pricing import economy_size, economy_traits, merchant_gold_allocation
 from session_data import SessionData
 from tool_preconditions import require_npc_present
 from tool_support import _validate_id
@@ -70,7 +71,18 @@ async def merchant_visit(context: RunContext[SessionData], npc_id: str) -> Async
         pricing = await pricing_queries.get_economy_pricing(conn=conn)
         location = await db_content_queries.get_location(location_id, conn=conn)
         allocation = merchant_gold_allocation(pool, location, pricing, location_id=location_id)
-        merchant = await db_mutations_merchant.lock_merchant(npc_id, allocation, player_id, conn=conn)
+        location_ctx = f"locations[{location_id}]"
+        location_data = parse_dict(location, location_ctx)
+        merchant = await db_mutations_merchant.lock_merchant(
+            npc_id,
+            allocation,
+            player_id,
+            pool=pool,
+            size=economy_size(location_data.get("settlement_tier"), location_ctx),
+            traits=economy_traits(location_data.get("personality"), location_ctx),
+            pricing=pricing,
+            conn=conn,
+        )
         visit = MerchantVisit(conn, npc, pool, pools, pricing, merchant, player_id)
         yield visit
         session.validate_acting_player(player_id)

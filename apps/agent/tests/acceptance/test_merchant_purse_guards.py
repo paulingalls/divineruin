@@ -68,6 +68,7 @@ async def test_inventory_failure_rolls_back_merchant_debit(
 async def test_confirmation_requires_the_current_offer(
     reset_db_pool: str, monkeypatch: pytest.MonkeyPatch, change: str
 ) -> None:
+    monkeypatch.setattr(db_mutations_merchant, "aethos_today", lambda: 8)
     async with (
         merchant_scope(GRIMJAW),
         merchant_session(npc=MAREN, location=INN, held=2) as first,
@@ -122,7 +123,11 @@ async def test_confirmation_requires_the_current_offer(
         merchant_after = await merchant_row(npc)
         assert merchant_before and merchant_after
         if change == "day":
-            assert merchant_after[0] == {**merchant_before[0], "last_restock_day": next_day}
+            assert merchant_after[0] == {
+                **merchant_before[0],
+                "last_restock_day": next_day,
+                "current_inventory": {"healers_kit": 1, "lantern_hooded": 1, "tent_two": 1, "holy_symbol": 1},
+            }
         else:
             assert merchant_after == merchant_before
 
