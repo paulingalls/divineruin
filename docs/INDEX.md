@@ -623,7 +623,7 @@ Recipe learning, crafting resolution, durability, item catalog.
 
 ---
 
-## game_mechanics/game_mechanics_decisions.md (355 lines)
+## game_mechanics/game_mechanics_decisions.md (359 lines)
 
 Master reference for numbered game mechanics decisions and their reasoning.
 
@@ -649,7 +649,8 @@ Additional topics: Async Activities: Decisions 58-61: errand models, concurrency
 | Inflation Targets & Controls (Decisions 114-121) | 290-309 | Phase 2+ inflation control, wealth curve, per-session targets, hidden god-agent levers |
 | Player-to-Player Trade (Decisions 122-128) | 310-325 | Deferred P2P trade under world rules, voice-first, provenance, atomic transactions |
 | Terrain (Decisions 129-132) | 326-352 | One closed terrain enum on Location; ten values and their derived properties |
-| World Clock (Decision 133) | 353-355 | Fixed UTC−5, shared epoch, and dawn-based merchant days |
+| World Clock (Decision 133) | 353-356 | Fixed UTC−5, shared epoch, and dawn-based merchant days |
+| Carrying Capacity (Decision 134) | 357-359 | Unbounded carrying until the M14.2 carry rule ships; no purchase capacity refusal |
 
 ---
 
@@ -943,7 +944,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/09_economy.md (536 lines)
+## milestones/09_economy.md (531 lines)
 
 ---
 
@@ -963,7 +964,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/14_engine_completeness.md (175 lines)
+## milestones/14_engine_completeness.md (176 lines)
 
 ---
 

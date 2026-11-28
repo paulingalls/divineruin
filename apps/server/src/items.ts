@@ -194,6 +194,13 @@ export function parseItemRow(id: string, raw: unknown): Item {
     value_base: data.value_base,
   };
 
+  if ("damage_bonus" in data) {
+    const bonus = data.damage_bonus as number;
+    if (item.type !== "weapon" || !Number.isInteger(bonus) || bonus <= 0) {
+      throw new Error(`${ctx}.damage_bonus must be a positive integer on a weapon`);
+    }
+    item.damage_bonus = bonus;
+  }
   if (item.type === "weapon") {
     Object.assign(item, parseWeaponProfile(data, ctx));
   } else if (data.subtype !== undefined) {

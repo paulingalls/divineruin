@@ -1,5 +1,7 @@
-import { SETTLEMENT_PERSONALITY_VALUES, SETTLEMENT_SIZE_VALUES } from "@divineruin/shared";
+import { type Disposition, MERCHANT_KIND_VALUES } from "@divineruin/shared";
+import { ECONOMY_SIZES, ECONOMY_TRAITS } from "./economy-settlement.ts";
 import { sql } from "./db.ts";
+import { DISPOSITION_ORDER } from "./dispositions.ts";
 import { asRecord } from "./parse-helpers.ts";
 
 export interface EconomyPricing {
@@ -9,6 +11,8 @@ export interface EconomyPricing {
   saleRate: number;
   saleDispositionMultipliers: Record<SaleDisposition, number>;
   craftedSaleRate: number;
+  purchaseDispositionMultipliers: Record<Disposition, number>;
+  purchaseFrontierMultiplier: number;
   merchantGoldSp: Record<string, Record<string, number | null>>;
   merchantGoldPersonalityMultipliers: Record<string, number>;
   militaryMerchantGoldMultipliers: { arms: number; other: number };
@@ -79,15 +83,20 @@ function multiplierRecord(raw: unknown, ctx: string): Record<string, number> {
   return obj as Record<string, number>;
 }
 
-export function wholeSilver(baseSp: number, multiplier: number): number {
+export function wholeSilver(baseSp: number, multiplier: number, ...additional: number[]): number {
   if (!Number.isInteger(baseSp)) {
     throw new Error("base_sp must be a non-negative integer");
   }
   if (baseSp < 0) {
     throw new Error("base_sp must be a non-negative integer");
   }
-  const basisPoints = Math.round(multiplier * 10_000);
-  const result = (2n * BigInt(baseSp) * BigInt(basisPoints) + 10_000n) / 20_000n;
+  let basisPoints = BigInt(Math.round(multiplier * 10_000));
+  let scale = 10_000n;
+  for (const extra of additional) {
+    basisPoints *= BigInt(Math.round(extra * 10_000));
+    scale *= 10_000n;
+  }
+  const result = (2n * BigInt(baseSp) * basisPoints + scale) / (2n * scale);
   if (result > BigInt(Number.MAX_SAFE_INTEGER)) {
     throw new Error("whole-silver result exceeds Number.MAX_SAFE_INTEGER");
   }
@@ -95,9 +104,9 @@ export function wholeSilver(baseSp: number, multiplier: number): number {
 }
 
 /** Fail-loud parse of the `economy` pricing row's JSONB (snake_case) into EconomyPricing. */
-export function parsePricingRow(raw: unknown): EconomyPricing {
+export function parsePricingRow(raw: unknown, poolIds?: ReadonlySet<string>): EconomyPricing {
   const d = asRecord(raw, "pricing[economy]");
-  return {
+  const pricing = {
     repairCostSp: repairCostRecord(d.repair_cost_sp, "pricing[economy].repair_cost_sp"),
     dispositionMultipliers: multiplierRecord(
       d.disposition_multipliers,
@@ -105,8 +114,11 @@ export function parsePricingRow(raw: unknown): EconomyPricing {
     ),
     silverPerGold: parseMultiplier(d.silver_per_gold, "pricing[economy].silver_per_gold", true),
     ...parseSaleRates(d),
+    ...parsePurchaseRates(d),
     ...parseMerchantGold(d),
   };
+  parseStockModifiers(d.stock_modifiers, poolIds);
+  return pricing;
 }
 
 function parseSaleRates(data: Record<string, unknown>) {
@@ -140,16 +152,62 @@ function requireFields(raw: unknown, fields: readonly string[], ctx: string) {
   return record;
 }
 
+function parsePurchaseRates(data: Record<string, unknown>) {
+  const ctx = "pricing[economy].purchase_disposition_multipliers";
+  const raw = requireFields(data.purchase_disposition_multipliers, DISPOSITION_ORDER, ctx);
+  for (const [disposition, value] of Object.entries(raw)) {
+    parseMultiplier(value, `${ctx}.${disposition}`, true);
+  }
+  return {
+    purchaseDispositionMultipliers: raw as Record<Disposition, number>,
+    purchaseFrontierMultiplier: parseMultiplier(
+      data.purchase_frontier_multiplier,
+      "pricing[economy].purchase_frontier_multiplier",
+      true,
+    ),
+  };
+}
+
+function parseStockModifiers(raw: unknown, poolIds: ReadonlySet<string> | undefined) {
+  const ctx = "pricing[economy].stock_modifiers";
+  const traits = requireFields(raw, ECONOMY_TRAITS, ctx);
+  for (const [trait, value] of Object.entries(traits)) {
+    const field = `${ctx}.${trait}`;
+    const row = requireFields(
+      value,
+      ["quantity_multiplier", "tier_3_allowed", "tier_3_chance_bonus"],
+      field,
+    );
+    const quantityCtx = `${field}.quantity_multiplier`;
+    if (trait === "military") {
+      const quantities = asRecord(row.quantity_multiplier, quantityCtx);
+      const keys = new Set(Object.keys(quantities));
+      if (!keys.size) throw new Error(`${quantityCtx} requires at least one pool`);
+      if (poolIds?.symmetricDifference(keys).size) {
+        throw new Error(`${quantityCtx} must match the inventory pool ids`);
+      }
+      for (const [pool, multiplier] of Object.entries(quantities)) {
+        parseMultiplier(multiplier, `${quantityCtx}.${pool}`, true);
+      }
+    } else {
+      parseMultiplier(row.quantity_multiplier, quantityCtx, true);
+    }
+    if (typeof row.tier_3_allowed !== "boolean") {
+      throw new Error(`${field}.tier_3_allowed must be a boolean`);
+    }
+    const chanceCtx = `${field}.tier_3_chance_bonus`;
+    if (parseMultiplier(row.tier_3_chance_bonus, chanceCtx) > 1) {
+      throw new Error(`${chanceCtx} must be <= 1`);
+    }
+  }
+}
+
 function parseMerchantGold(data: Record<string, unknown>) {
   const ctx = "pricing[economy].merchant_gold_sp";
-  const matrix = requireFields(data.merchant_gold_sp, SETTLEMENT_SIZE_VALUES, ctx);
+  const matrix = requireFields(data.merchant_gold_sp, ECONOMY_SIZES, ctx);
   const merchantGoldSp: EconomyPricing["merchantGoldSp"] = {};
   for (const [tier, cells] of Object.entries(matrix)) {
-    const row = requireFields(
-      cells,
-      ["general", "specialist", "exotic", "black_market"],
-      `${ctx}.${tier}`,
-    );
+    const row = requireFields(cells, MERCHANT_KIND_VALUES, `${ctx}.${tier}`);
     merchantGoldSp[tier] = {};
     for (const [kind, value] of Object.entries(row)) {
       if (
@@ -165,7 +223,7 @@ function parseMerchantGold(data: Record<string, unknown>) {
   const traitCtx = "pricing[economy].merchant_gold_personality_multipliers";
   const traits = requireFields(
     data.merchant_gold_personality_multipliers,
-    SETTLEMENT_PERSONALITY_VALUES,
+    ECONOMY_TRAITS,
     traitCtx,
   );
   const military = requireFields(traits.military, ["arms", "other"], `${traitCtx}.military`);

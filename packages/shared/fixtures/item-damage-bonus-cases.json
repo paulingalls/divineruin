@@ -1,0 +1,16 @@
+{
+  "invalid": [
+    { "id": "zero", "base": "dagger_balanced", "damage_bonus": 0 },
+    { "id": "negative", "base": "dagger_balanced", "damage_bonus": -1 },
+    { "id": "fraction", "base": "dagger_balanced", "damage_bonus": 1.5 },
+    { "id": "boolean", "base": "dagger_balanced", "damage_bonus": true },
+    { "id": "string", "base": "dagger_balanced", "damage_bonus": "1" },
+    { "id": "null", "base": "dagger_balanced", "damage_bonus": null },
+    { "id": "material", "base": "dried_herbs", "damage_bonus": 1 }
+  ],
+  "valid": [
+    { "id": "absent", "base": "dagger_balanced" },
+    { "id": "one", "base": "dagger_balanced", "damage_bonus": 1 },
+    { "id": "two", "base": "dagger_balanced", "damage_bonus": 2 }
+  ]
+}

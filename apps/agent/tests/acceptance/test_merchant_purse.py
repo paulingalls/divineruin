@@ -32,14 +32,17 @@ async def purse(npc: str) -> dict:
     return snapshot[0]
 
 
-async def test_first_sale_initializes_merchant(reset_db_pool: str) -> None:
+async def test_first_sale_initializes_merchant(reset_db_pool: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(db_mutations_merchant, "aethos_today", lambda: 8)
     async with merchant_session(item="club_wooden", held=1) as sale:
         assert await merchant_row(GRIMJAW) is None
         receipt = await sale.sell("club_wooden", GRIMJAW, 1)
         assert not receipt.is_error and json.loads(receipt.output)["total_price_sp"] == 3, receipt.output
         player, inventory = await rows(sale.player_id)
         assert (player["gold"], inventory) == (7.3, {})
-        assert await purse(GRIMJAW) == {
+        state = await purse(GRIMJAW)
+        assert state.pop("current_inventory")[SWORD] == 4
+        assert state == {
             "current_gold_sp": 597,
             "max_gold_sp": 600,
             "last_restock_day": db_mutations_merchant.aethos_today(),
@@ -238,7 +241,10 @@ async def test_two_sellers_share_one_dawn_refresh(reset_db_pool: str, monkeypatc
             assert inventory.get((SWORD, False), {}).get("quantity", 0) == held
             assert len(seller.publications) == 2
             assert all(snapshot == (player, inventory) for _, snapshot in seller.publications)
-        assert await purse(GRIMJAW) == {
+        state = await purse(GRIMJAW)
+        stock_at_dawn = state.pop("current_inventory")
+        assert stock_at_dawn[SWORD] == 4
+        assert state == {
             "current_gold_sp": 500,
             "max_gold_sp": 600,
             "last_restock_day": day + 1,
@@ -247,7 +253,11 @@ async def test_two_sellers_share_one_dawn_refresh(reset_db_pool: str, monkeypatc
         }
         await first.sell(SWORD, GRIMJAW, 1)
         state = await purse(GRIMJAW)
-        assert (state["current_gold_sp"], state["buyback_history"]) == (450, {SWORD: 3})
+        assert (state["current_gold_sp"], state["buyback_history"], state["current_inventory"]) == (
+            450,
+            {SWORD: 3},
+            stock_at_dawn,
+        )
         now += timedelta(days=4)
         await first.sell(SWORD, GRIMJAW, 1)
         state = await purse(GRIMJAW)

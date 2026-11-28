@@ -93,4 +93,5 @@ def with_weapon_magic(action: dict, profile: dict | None) -> dict:
         **action,
         "magical": weapon_effect(profile).get("magical", False),
         "infusion_bonus": profile.get("infusion_bonus", 0),
+        "damage_bonus": profile.get("damage_bonus", 0),
     }

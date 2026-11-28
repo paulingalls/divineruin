@@ -9,6 +9,7 @@ from workspace import whole_silver
 
 
 class MerchantState(TypedDict):
+    current_inventory: dict[str, int]
     current_gold_sp: int
     max_gold_sp: int
     last_restock_day: int

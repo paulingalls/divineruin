@@ -5,6 +5,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from creature_seed_connection import CreatureSeedConnection
+
 from creature_schema import validate_creature_stat_block
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -185,14 +187,6 @@ def test_authored_catalog_rows_match_spec_and_pins():
 
 
 def test_encounter_rows_are_submitted_by_seed():
-    class Connection:
-        def __init__(self):
-            self.creatures = set()
-
-        async def execute(self, query, key, data):
-            if "INSERT INTO creatures" in query:
-                self.creatures.add(key)
-
-    conn = Connection()
+    conn = CreatureSeedConnection()
     asyncio.run(seed_content.seed(conn))
     assert set(PINS) <= conn.creatures

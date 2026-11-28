@@ -128,6 +128,7 @@ Earlier phase checklists record the capabilities they exercised. This phase trac
 - [ ] Long journeys persist across sessions and let players check in at camp between voice sessions. See [Game Design § Macro Navigation](../game_design_doc.md#macro-navigation--between-regions-and-locations). <!-- B7 · 2026-11-26: production rg -li 'async.travel|travel.bridge|journey.*session|camp.*check' apps returns only unrelated rules_engine.py prose. -->
 - [ ] A bard's own spoken or sung performance can drive the performance mechanic. See [MVP § Nice to Have](../mvp_spec.md#nice-to-have-include-if-resources-allow). <!-- B8 · 2026-11-26: production rg -li 'bard.*performance|performance.*voice' apps returns zero paths. -->
 - [ ] Player resonance uses raw voice features such as RMS and energy, adds named-entity and repeated-content signals, adapts companion responses and calibrates thresholds in playtests. See [Player Resonance § Phases B–D](../player_resonance_system.md#phase-b-audio-feature-extraction-add-to-milestone-53--audio-engine). <!-- B9 · 2026-11-26: rg -n 'planning|confusion|style|transcript|RMS|pcm' apps/agent/affect_analyzer.py shows transcript-only classification and baselines, including planning, confusion and style. -->
+- [ ] Design and ship a carrying rule that the inventory system and merchant purchases enforce. See [Decision 134](../game_mechanics/game_mechanics_decisions.md#carrying-capacity-decision-134).
 
 **Key references:** The quest hint map and culture-specific scenes are authored in M15.1. This milestone consumes them in play.
 

@@ -22,6 +22,7 @@ contract, and a malformed row must reject identically on both sides.
 import json
 import logging
 import re
+from collections.abc import Collection
 from dataclasses import asdict, dataclass
 from typing import Literal
 
@@ -356,6 +357,11 @@ def create_npc_from_archetype(role: str, overrides: dict | None = None) -> dict:
     return _jsonable(stat_block)  # type: ignore[return-value]
 
 
+def validate_role_pool_binding(role: RoleArchetype, pool_ids: Collection[str]) -> None:
+    if role.inventory_pool is not None and role.inventory_pool not in pool_ids:
+        raise ValueError(f"role_archetypes[{role.id}].inventory_pool references unknown pool {role.inventory_pool!r}")
+
+
 async def load_role_archetypes() -> None:
     """Load the role archetype catalog from the DB into _role_archetypes.
 
@@ -367,11 +373,18 @@ async def load_role_archetypes() -> None:
     import db
 
     pool = await db.get_pool()
-    rows = await pool.fetch("SELECT id, data FROM role_archetypes")
+    rows = await pool.fetch("""
+        SELECT role.id, role.data, inventory.id AS pool_id
+        FROM role_archetypes AS role
+        LEFT JOIN inventory_pools AS inventory ON inventory.id = role.data->>'inventory_pool'
+    """)
+    pool_ids = {row["pool_id"] for row in rows if row["pool_id"] is not None}
     loaded: dict[str, RoleArchetype] = {}
     for row in rows:
         data = json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]
-        loaded[row["id"]] = parse_role_archetype_row(row["id"], data)
+        role = parse_role_archetype_row(row["id"], data)
+        validate_role_pool_binding(role, pool_ids)
+        loaded[role.id] = role
     _role_archetypes.clear()
     _role_archetypes.update(loaded)
     logger.info("Loaded %d role archetypes", len(_role_archetypes))

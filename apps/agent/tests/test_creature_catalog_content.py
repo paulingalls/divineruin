@@ -5,6 +5,8 @@ import re
 import sys
 from pathlib import Path
 
+from creature_seed_connection import CreatureSeedConnection
+
 # Re-exported so pytest collects them: the pins module's name does not match test_*.py.
 from creature_spec_pins_hollow_rend_wrack import (  # noqa: F401
     test_spec_loot_and_seed,
@@ -451,14 +453,6 @@ def test_real_validators_and_seed_submission():
     for key in SPEC:
         assert validate_creature_stat_block(rows[key]) == []
 
-    class RecordingConnection:
-        def __init__(self):
-            self.creatures = set()
-
-        async def execute(self, query, key, data):
-            if "INSERT INTO creatures" in query:
-                self.creatures.add(key)
-
-    conn = RecordingConnection()
+    conn = CreatureSeedConnection()
     asyncio.run(seed_content.seed(conn))
     assert set(SPEC) <= conn.creatures

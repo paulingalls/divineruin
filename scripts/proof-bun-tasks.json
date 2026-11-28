@@ -221,6 +221,9 @@
         "imports-of": "apps/server/src/items-load.test.ts"
       },
       {
+        "imports-of": "apps/server/src/items-damage-bonus.test.ts"
+      },
+      {
         "imports-of": "apps/server/src/livekit.test.ts"
       },
       {
@@ -248,6 +251,8 @@
         "imports-of": "apps/server/src/pricing.test.ts"
       },
       { "imports-of": "apps/server/src/sale_pricing.test.ts" },
+      { "imports-of": "apps/server/src/stock_pricing.test.ts" },
+      { "imports-of": "apps/server/src/inventory_pools.test.ts" },
       "packages/shared/fixtures/sale-price-cases.json",
       { "imports-of": "apps/server/src/aethos_clock.test.ts" },
       { "imports-of": "apps/server/src/aethos_clock_guards.test.ts" },

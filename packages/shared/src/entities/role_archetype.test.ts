@@ -125,12 +125,6 @@ describe("role_archetypes.json — row shape", () => {
 });
 
 describe("role_archetypes.json — merchant subtypes are distinct", () => {
-  test("each merchant subtype has a non-null inventory_pool, all distinct", () => {
-    const pools = MERCHANT_SUBTYPES.map((id) => byId.get(id)!.inventory_pool);
-    for (const p of pools) expect(typeof p).toBe("string");
-    expect(new Set(pools).size).toBe(MERCHANT_SUBTYPES.length);
-  });
-
   test("merchant price_modifiers span a range (not all identical)", () => {
     const mods = MERCHANT_SUBTYPES.map((id) => byId.get(id)!.price_modifier);
     expect(new Set(mods).size).toBeGreaterThan(1);

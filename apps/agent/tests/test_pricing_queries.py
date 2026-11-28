@@ -10,6 +10,7 @@ import pytest
 import durability
 import pricing_queries
 import workspace as ws
+from economy_pricing import parse_economy_pricing
 
 _CONTENT = Path(__file__).parents[3] / "content" / "pricing.json"
 # A JSON integer literal past float range: Python keeps it as an unbounded int,
@@ -23,7 +24,7 @@ def _economy_row() -> dict:
 
 
 SALE_FIELDS = {
-    **{key: value for key, value in _economy_row().items() if key.startswith("merchant_gold_")},
+    **{key: value for key, value in _economy_row().items() if key.startswith(("merchant_gold_", "purchase_"))},
     "sale_rate": 0.5,
     "sale_disposition_multipliers": {"unfriendly": 0.9, "neutral": 1.0, "friendly": 1.1, "trusted": 1.2},
     "crafted_sale_rate": 0.8,
@@ -236,3 +237,39 @@ async def test_refuses_invalid_sale_pricing(cached, field, value):
         with pytest.raises(ValueError, match=re.escape(diagnostic)):
             await pricing_queries.get_economy_pricing()
         cache_set.assert_not_awaited()
+
+
+PURCHASE_RATES = {"hostile": 1.2, "unfriendly": 1.1, "neutral": 1, "friendly": 0.9, "trusted": 0.8}
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("table", None),
+        ("hostile", None),
+        *(("hostile", value) for value in (0, -1, True, "1.2", float("inf"), 1.23456)),
+        *(("frontier", value) for value in (None, 0, -1, True, "1.25", float("inf"), 1.23456)),
+    ],
+)
+def test_refuses_invalid_purchase_pricing(field: str, value: object) -> None:
+    row = {
+        **_economy_row(),
+        "purchase_disposition_multipliers": dict(PURCHASE_RATES),
+        "purchase_frontier_multiplier": 1.25,
+    }
+    if field == "hostile":
+        if value is None:
+            del row["purchase_disposition_multipliers"][field]
+        else:
+            row["purchase_disposition_multipliers"][field] = value
+    else:
+        key = "purchase_frontier_multiplier" if field == "frontier" else "purchase_disposition_multipliers"
+        row[key] = value
+    with pytest.raises(ValueError, match="purchase_"):
+        parse_economy_pricing(row)
+
+
+def test_accepts_authored_purchase_pricing() -> None:
+    row = parse_economy_pricing(_economy_row())
+    assert row["purchase_disposition_multipliers"] == PURCHASE_RATES
+    assert row["purchase_frontier_multiplier"] == 1.25
