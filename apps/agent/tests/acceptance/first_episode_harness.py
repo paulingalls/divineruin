@@ -6,6 +6,8 @@ import uuid
 import wave
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from acceptance._livekit_client import (
@@ -31,6 +33,7 @@ from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS
 import agent
 import db
 import db_queries
+import event_types as E
 from session_data import SessionData
 
 
@@ -83,7 +86,8 @@ class Episode:
     reconnect: Callable[[], Awaitable[None]]
     connect_member: Callable[[str], Awaitable[tuple[rtc.Room, list]]]
 
-    def __init__(self):
+    def __init__(self, world_time: str | None = None) -> None:
+        self.world_time = world_time
         self.player_id = f"episode-{uuid.uuid4().hex}"
         self.model = EpisodeModel([])
         self.requests = []
@@ -92,6 +96,8 @@ class Episode:
         self.speeches = []
 
     def make_session(self, _model, userdata: SessionData, **session_options):
+        if self.world_time is not None:
+            userdata.world_time = self.world_time
         self.session = AgentSession(
             userdata=userdata,
             stt=self.stt,
@@ -122,6 +128,54 @@ class Episode:
         return [event for event, sender in self.events if event["type"] == event_type and sender == "episode-agent"]
 
 
+async def prepare_persisted_player(player_id: str, beat: int = 4) -> None:
+    import db_mutations
+    import db_mutations_companion
+    from creation_rules import build_character_data
+
+    data = build_character_data("Vale", "human", "warrior", "kaelen", "", created_at=datetime.now(UTC))
+    data["session_count"] = 7
+    data["location_id"] = "accord_market_square"
+    await db_mutations.create_player(player_id, None, data)
+    await db_mutations.set_player_flag(player_id, "onboarding_beat", beat)
+    if beat > 3:
+        await db_mutations.set_player_flag(player_id, "companion_met", True)
+        await db_mutations_companion.upsert_companion_relationship(
+            player_id,
+            "companion_lira",
+            relationship_tier=1,
+            session_count=4,
+            affinity=12,
+            session_memories=["Shared the rain."],
+        )
+
+
+async def _delete_saved_player(player_id: str) -> None:
+    pool = await db.get_pool()
+    try:
+        await pool.execute("DELETE FROM companion_relationships WHERE player_id = $1", player_id)
+    finally:
+        await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
+
+
+async def assert_episode_guest_join_snapshot(server: dict[str, str], tmp_path: Path) -> None:
+    guest = f"episode-{uuid.uuid4().hex}"
+    async with CleanupStack() as cleanup:
+        await cleanup.defer_async(_delete_saved_player, guest)
+        async with episode(
+            server, tmp_path, prepare=prepare_persisted_player, initial_agent="ExplorationAgent", world_time="morning"
+        ) as run:
+            await prepare_persisted_player(guest)
+            _, packets = await run.connect_member(guest)
+            await until(lambda: any(event["type"] == E.SESSION_INIT for event, _ in packets))
+            snapshot = next(
+                event for event, sender in packets if event["type"] == E.SESSION_INIT and sender == "episode-agent"
+            )
+            assert snapshot["character"]["player_id"] == guest
+            time = snapshot["world_state"]["time"]
+            assert time == "morning", time
+
+
 @asynccontextmanager
 async def episode(
     server,
@@ -132,8 +186,9 @@ async def episode(
     reload_companions=False,
     player_id=None,
     preserve=False,
+    world_time: str | None = None,
 ):
-    run = Episode()
+    run = Episode(world_time)
     if player_id is not None:
         run.player_id = player_id
     # The acceptance fixture opens a new event loop per case; initialize before
@@ -233,13 +288,7 @@ async def episode(
     run.connect_member = connect_member
     run.reconnect = reconnect
     receiver = asyncio.create_task(receive())
-
-    async def delete_saved_player() -> None:
-        pool = await db.get_pool()
-        try:
-            await pool.execute("DELETE FROM companion_relationships WHERE player_id = $1", run.player_id)
-        finally:
-            await pool.execute("DELETE FROM players WHERE player_id = $1", run.player_id)
+    preserve_for_followup = False
 
     with (
         patch("agent._make_agent_session", side_effect=run.make_session),
@@ -261,10 +310,11 @@ async def episode(
                     await until(lambda: run.session.current_agent is not None and run.packets("session_init"))
                     assert run.session.current_agent.__class__.__name__ == initial_agent
                 yield run
+                preserve_for_followup = preserve
         finally:
             async with CleanupStack() as cleanup:
-                if not preserve:
-                    await cleanup.defer_async(delete_saved_player)
+                if not preserve_for_followup:
+                    await cleanup.defer_async(_delete_saved_player, run.player_id)
                 await cleanup.defer_async(aclose_room, room)
                 await cleanup.defer_async(aclose_room, player)
                 await cleanup.defer_async(aclose_audio, run.source)

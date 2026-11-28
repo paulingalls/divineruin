@@ -518,6 +518,7 @@
       "type": "session_init",
       "character": {
         "player_id": "wire_patron",
+        "location_id": "accord_market_square",
         "divine_favor": {
           "patron": "veythar",
           "level": 40,
@@ -525,6 +526,11 @@
         },
         "patron_gifts": {}
       },
+      "location": {
+        "id": "accord_market_square",
+        "name": "Accord Market Square"
+      },
+      "world_state": { "time": "morning" },
       "abilities": [
         {
           "id": "veythar_scholars_ward",

@@ -96,7 +96,7 @@ async def _build_player_spells(player_id: str, player: dict | None) -> dict:
     return {"core": core, "learned": learned}
 
 
-async def get_session_init_payload(player_id: str) -> dict:
+async def get_session_init_payload(player_id: str, *, world_time: str) -> dict:
     """Build the full session_init payload for a player."""
     # Fetch player first (need location_id), then parallelize the rest
     player, revision = await db_queries.get_player_at_patron_revision(player_id)
@@ -146,7 +146,7 @@ async def get_session_init_payload(player_id: str) -> dict:
         "quests": quests,
         **inventory,
         "map_progress": map_progress,
-        "world_state": {"time": "evening"},
+        "world_state": {"time": world_time},
         "portraits": portraits,
         "spells": spell_list,
         "companion": companion,

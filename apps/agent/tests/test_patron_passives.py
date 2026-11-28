@@ -129,7 +129,7 @@ async def endurance(world):
     call = game_tools(session, enter_location, enter_mode)
     effective = base + 5 - 7
     for level in (0, 40, 35):
-        initial = await get_session_init_payload(guest)
+        initial = await get_session_init_payload(guest, world_time=session.world_time)
         assert initial["character"]["hp"] == {"current": effective, "max": effective}
         assert initial["character"]["divine_favor"]["level"] == level
         with session._bind_authenticated_actor(guest, 1, lambda *_: None):
@@ -167,7 +167,7 @@ async def endurance(world):
             await _award_xp_core(
                 player_id=guest, player=locked, amount=amount, reason="earned", conn=conn, pending_events=[]
             )
-        initial = await get_session_init_payload(guest)
+        initial = await get_session_init_payload(guest, world_time=session.world_time)
         assert initial["character"]["level"] == level
         assert initial["character"]["hp"] == {"current": base + 3, "max": level_four + 5 - 7}
         assert (await row(world))["hp"] == {"current": base + 3, "max": level_four}

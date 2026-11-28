@@ -331,6 +331,7 @@ test("patron fixture initializes the sheet and malformed snapshots reject atomic
       from: { isAgent: true },
     } as Parameters<typeof handleGameEventMessage>[0]);
   send(initial);
+  expect(sessionStore.getState().locationContext?.timeOfDay).toBe("morning");
   expect(panelStore.getState().characterDetail?.abilities as unknown).toEqual(initial.abilities);
   send(EVENTS.patron_abilities_updated);
   send(FIXTURE.patron_spent_snapshot);

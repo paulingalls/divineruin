@@ -58,7 +58,7 @@ class OnboardingAgent(BaseGameAgent):
         sd.onboarding_beat = self._onboarding_beat
         if self._publish_session_init_on_enter:
             try:
-                payload = await db_session_queries.get_session_init_payload(sd.player_id)
+                payload = await db_session_queries.get_session_init_payload(sd.player_id, world_time=sd.world_time)
                 await publish_game_event(
                     sd.room, E.SESSION_INIT, payload, sd.event_bus, destination_identities=[sd.player_id]
                 )

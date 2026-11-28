@@ -317,7 +317,7 @@ async def finalize_character(context: RunContext) -> str | tuple:
 
     # Publish session_init so client gets character data
     try:
-        payload = await db_session_queries.get_session_init_payload(sd.player_id)
+        payload = await db_session_queries.get_session_init_payload(sd.player_id, world_time=sd.world_time)
         await publish_game_event(sd.room, E.SESSION_INIT, payload, sd.event_bus, destination_identities=[sd.player_id])
     except Exception:
         steps_succeeded = False

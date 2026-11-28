@@ -10,6 +10,7 @@ import event_types as E
 def test_award_commits_attributes_and_produces_redirect(harness):
     async def check():
         walk = await IncreaseWalk().setup(harness)
+        walk.sd.world_time = "morning"
         before = await walk.row()
         receipt = await walk.command("update_quest", {"quest_id": "greyvale_anomaly", "new_stage_id": 8})
         assert not receipt.is_error, receipt.output
@@ -26,7 +27,8 @@ def test_award_commits_attributes_and_produces_redirect(harness):
         assert offer["scores"]["strength"] == 19
         assert offer["redirect_until"] == "next_long_rest"
         assert offer["resolve_with"] == "select" and "wisdom" in offer["options"]
-        assert [e for e in walk.events if e["type"] == E.SESSION_INIT]
+        (snapshot,) = [e for e in walk.events if e["type"] == E.SESSION_INIT]
+        assert snapshot["world_state"]["time"] == "morning"
         walk.events.clear()
         completed_stage_request = await walk.command(
             "update_quest", {"quest_id": "greyvale_anomaly", "new_stage_id": 8}
