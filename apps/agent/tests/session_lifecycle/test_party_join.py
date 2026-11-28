@@ -244,16 +244,15 @@ async def test_existing_remote_is_hydrated_while_primary_and_non_player_are_reje
 async def test_join_delivers_own_snapshot_after_entry_and_decay(isolated_join_snapshot):
     build, publish = isolated_join_snapshot
     order = []
-    payload = {"character": {"player_id": "player_2"}, "world_state": {}}
+    payload = {"character": {"player_id": "player_2"}}
 
-    async def snapshot(pid):
+    async def snapshot(pid, *, world_time: str):
         order.append(("snapshot", pid))
         return payload
 
     build.side_effect = snapshot
     room, _ = _recording_room("player_2")
     sd = SessionData(player_id="player_1", location_id="loc")
-    sd.world_time = "dusk"
     mods = _make_mods({"player_id": "player_2"})
     with (
         patch("session_hydration.hydrate_patron_ability_session", new_callable=AsyncMock) as entry,
@@ -268,5 +267,4 @@ async def test_join_delivers_own_snapshot_after_entry_and_decay(isolated_join_sn
             await lifecycle.aclose()
 
     assert order == [("entry", "player_2"), ("decay", "player_2"), ("snapshot", "player_2")]
-    assert payload["world_state"]["time"] == "dusk"
     publish.assert_awaited_once_with(room, "session_init", payload, sd.event_bus, destination_identities=["player_2"])

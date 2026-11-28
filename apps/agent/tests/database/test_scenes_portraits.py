@@ -34,7 +34,7 @@ async def _session_init(player: dict) -> dict:
     )
     with patch("db.get_pool", return_value=mock_pool):
         with patch("db_content_queries.get_location", return_value={"id": "tavern", "name": "Tavern"}):
-            return await db_session_queries.get_session_init_payload("p1")
+            return await db_session_queries.get_session_init_payload("p1", world_time="evening")
 
 
 class TestSessionInitPortraits:

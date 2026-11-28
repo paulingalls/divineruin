@@ -57,11 +57,14 @@ async def finish_first_episode(run):
     assert len(enemies) == 1 and enemies[0].role == "standard"
     enemies[0].hp_current = 0
     enemies[0].is_fallen = True
+    snapshot_count = len(run.packets(E.SESSION_INIT))
     receipt = await run.turn("end_combat", outcome="victory")
     assert not receipt.is_error, receipt.output
     aftermath = scene["aftermath"]
     assert json.loads(receipt.output)["first_episode"]["aftermath"] == aftermath
-    await until(lambda: run.session.current_agent.__class__.__name__ == "ExplorationAgent")
+    # LiveKit sets current_agent before the new activity can receive the next turn.
+    await until(lambda: len(run.packets(E.SESSION_INIT)) > snapshot_count)
+    assert run.session.current_agent.__class__.__name__ == "ExplorationAgent"
     run.requests.clear()
     receipt = await run.turn("query_info", kind="inventory")
     assert not receipt.is_error, receipt.output

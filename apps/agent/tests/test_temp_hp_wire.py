@@ -25,7 +25,7 @@ async def test_session_init_projects_hp_and_the_stored_pool(monkeypatch, fixture
         (db_session_queries.character_spells, "get_known", []),
     ]:
         monkeypatch.setattr(owner, name, AsyncMock(return_value=result))
-    payload = await db_session_queries.get_session_init_payload(expected["player_id"])
+    payload = await db_session_queries.get_session_init_payload(expected["player_id"], world_time="evening")
     assert {key: payload["character"][key] for key in ("player_id", "hp", "temp_hp")} == {
         key: expected[key] for key in ("player_id", "hp", "temp_hp")
     }

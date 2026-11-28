@@ -85,7 +85,7 @@ async def run(args):
         await publish_game_event(
             publisher,
             E.SESSION_INIT,
-            await db_session_queries.get_session_init_payload(current),
+            await db_session_queries.get_session_init_payload(current, world_time=sd.world_time),
             destination_identities=[current],
         )
 

@@ -11,7 +11,7 @@ import db_session_queries
 
 async def test_initial_snapshot_and_activation_are_committed_and_recipient_scoped(dev_db_pool):
     async with AbilityWalk(dev_db_pool) as w:
-        payload = await db_session_queries.get_session_init_payload(w.player)
+        payload = await db_session_queries.get_session_init_payload(w.player, world_time=w.sd.world_time)
         assert payload.get("abilities") == await w.abilities()
         assert payload["character"]["player_id"] == w.player
         rows = payload["abilities"]
@@ -37,7 +37,7 @@ async def test_initial_snapshot_and_activation_are_committed_and_recipient_scope
 async def test_unbound_session_has_empty_abilities(dev_db_pool):
     async with AbilityWalk(dev_db_pool) as w:
         await w.patch(divine_favor={"patron": "none", "level": 0, "max": 100})
-        payload = await db_session_queries.get_session_init_payload(w.player)
+        payload = await db_session_queries.get_session_init_payload(w.player, world_time=w.sd.world_time)
         assert payload.get("abilities") == []
 
 

@@ -7,8 +7,7 @@ from game_events import publish_game_event
 
 async def publish_snapshots(session, player_ids) -> None:
     for pid in sorted(set(player_ids)):
-        payload = await db_session_queries.get_session_init_payload(pid)
-        payload["world_state"]["time"] = session.world_time
+        payload = await db_session_queries.get_session_init_payload(pid, world_time=session.world_time)
         await publish_game_event(session.room, E.SESSION_INIT, payload, session.event_bus, destination_identities=[pid])
 
 

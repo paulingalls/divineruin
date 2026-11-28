@@ -199,7 +199,7 @@ async def run_creation(ctx, failure=None):
         if failure == "companion":
             raise RuntimeError("companion failed")
 
-    async def payload(*args):
+    async def payload(_player_id: str, *, world_time: str):
         log.append("payload")
         if failure == "payload":
             raise RuntimeError("payload failed")

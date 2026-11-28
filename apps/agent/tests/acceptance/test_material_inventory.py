@@ -32,9 +32,10 @@ async def test_material_reaches_inventory_dm_and_session(reset_db_pool):
     assert [(row["id"], row["name"], row["type"], row["slot_info"]["quantity"]) for row in inventory] == [
         ("wolf_pelt", "Wolf Pelt", "material", 3)
     ]
-    dm = json.loads(await _query_info_impl(make_context(player_id), "inventory"))
+    ctx = make_context(player_id)
+    dm = json.loads(await _query_info_impl(ctx, "inventory"))
     assert [(row["name"], row["type"], row["quantity"]) for row in dm["items"]] == [("Wolf Pelt", "material", 3)]
-    payload = await db_session_queries.get_session_init_payload(player_id)
+    payload = await db_session_queries.get_session_init_payload(player_id, world_time=ctx.userdata.world_time)
     assert [(row["name"], row["type"], row["slot_info"]["quantity"]) for row in payload["inventory"]] == [
         ("Wolf Pelt", "material", 3)
     ]

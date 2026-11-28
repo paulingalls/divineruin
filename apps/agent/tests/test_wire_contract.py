@@ -403,3 +403,35 @@ async def test_patron_wire_uses_projection_and_rejects_malformed_before_delivery
     )
     assert room.local_participant.publish_data.await_args is not None
     assert json.loads(room.local_participant.publish_data.await_args.args[0]) == FIXTURE["patron_spent_snapshot"]
+
+
+async def test_session_init_builder_publishes_shared_world_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    from game_events import publish_game_event
+
+    expected = FIXTURE["events"]["patron_session_init"]
+    player = {**expected["character"], "class": "warrior"}
+    player_id = player["player_id"]
+    for owner, name, result in (
+        (db_session_queries.db_queries, "get_player_at_patron_revision", (player, expected["patron_revision"])),
+        (db_session_queries.db_content_queries, "get_location", expected["location"]),
+        (db_session_queries.db_queries, "get_inventory_snapshot", {}),
+        (db_session_queries.db_queries, "get_active_player_quests", []),
+        (db_session_queries.db_activity_queries, "get_player_map_progress", {}),
+        (db_session_queries.character_spells, "get_known", []),
+    ):
+        monkeypatch.setattr(owner, name, AsyncMock(return_value=result))
+
+    room = MagicMock()
+    room.isconnected.return_value = True
+    publish = room.local_participant.publish_data = AsyncMock()
+    payload = await db_session_queries.get_session_init_payload(player_id, world_time="morning")
+    await publish_game_event(room, event_types.SESSION_INIT, payload, destination_identities=[player_id])
+
+    publish.assert_awaited_once()
+    assert publish.await_args is not None
+    wire = json.loads(publish.await_args.args[0])
+    assert wire["type"] == expected["type"] == event_types.SESSION_INIT
+    assert wire["world_state"] == expected["world_state"] == {"time": "morning"}
+    assert wire["location"] == expected["location"]
+    assert wire["character"]["player_id"] == player_id
+    assert publish.await_args.kwargs["destination_identities"] == [player_id]
