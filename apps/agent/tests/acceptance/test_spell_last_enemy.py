@@ -164,10 +164,11 @@ async def _single_attack(
         (20, True, False, False, "single", "natural_20"),
         (15, False, True, False, "single", "first_attack"),
         (15, False, False, True, "single", "last_enemy"),
+        (15, False, True, True, "single", "first_attack"),
         (15, False, False, False, "mixed", "last_enemy"),
         (15, False, False, False, "two", ""),
     ],
-    ids=["survivor", "lethal", "crit", "lethal-crit", "opener", "reloaded", "mixed", "two-enemies"],
+    ids=["survivor", "lethal", "crit", "lethal-crit", "opener", "reloaded", "reloaded-opener", "mixed", "two-enemies"],
 )
 async def test_spell_and_weapon_share_dramatic_label(
     reset_db_pool: str, face: int, lethal: bool, opening: bool, held: bool, roster: str, expected: str
