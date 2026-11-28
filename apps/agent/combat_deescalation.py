@@ -89,7 +89,7 @@ async def _resolve_deescalation_packet(
     """Resolve ONE round of a Tier-3 GROUP de-escalation in combat (M15 story-002).
 
     A Diplomat argues the WHOLE living enemy group at once: Focus + the round cap are pre-validated
-    at declare time (_gate_deescalation); here we spend the 3 Focus, roll ONE persuasion total for
+    before resolution writes (combat_packet_gate prevalidation, via _gate_deescalation); here we spend the 3 Focus, roll ONE persuasion total for
     the round, then apply that same argument to EACH living enemy INDEPENDENTLY — every enemy's
     disposition shifts by its own resistance profile (combat_resolution.resolve_argument_round),
     accumulating per enemy across rounds in ``state.deescalation_scene``. When the whole living group
