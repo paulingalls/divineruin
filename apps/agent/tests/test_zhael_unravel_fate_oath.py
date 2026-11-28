@@ -6,6 +6,7 @@ import pytest
 from _zhael_fate_fixtures import attack, defend
 from _zhael_unravel_fixtures import activate, cached, durable, favor, patch_player
 from _zhael_unravel_fixtures import unravel as unravel
+from acceptance.test_departed_member_leaves_fight_guards import leave_unravel_guest
 from combat._round_checkpoint_helpers import Fight
 from livekit.agents.llm import ToolError
 from weapon_fixtures import DAGGER
@@ -31,8 +32,8 @@ async def test_oath_breach_rewind_after_checkpoint_reload(unravel: Fight, scope:
     assert (await durable(fight))["players"][paladin]["data"]["oaths"]["records"][0]["status"] == "broken"
     if scope in ("breach_round", "departed_breacher"):
         if scope == "departed_breacher":
-            party = fight.session.party
-            party.members = [member for member in party.members if member.player_id != paladin]
+            await leave_unravel_guest(fight, paladin)
+            assert paladin in (await fight.reload())["departed_player_ids"]
         before, scratch = await durable(fight), cached(fight)
         refusal = None
         try:
