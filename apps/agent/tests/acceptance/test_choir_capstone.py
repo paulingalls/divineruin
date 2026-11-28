@@ -22,7 +22,7 @@ def mock_combat_agent_factory():
 @pytest.mark.asyncio
 async def test_committed_choir_entry_and_public_search(livekit_server, reset_db_pool):
     harness = MultiplayerVoiceHarness(livekit_server)
-    encounter = ChoirEncounterDiagnostic(harness.player_one_identity)
+    encounter = ChoirEncounterDiagnostic(harness.player_one_identity, capture_turns=True)
 
     async def prepare(room):
         await seed_player_with_pools(await db.get_pool(), player_id=harness.player_two_identity)
@@ -77,7 +77,7 @@ async def test_public_choir_encounter_requires_actual_gameplay_delivery(livekit_
     from acceptance.choir_capstone_flow import ChoirCapstoneFlow
 
     harness = MultiplayerVoiceHarness(livekit_server)
-    encounter = ChoirEncounterDiagnostic(harness.player_one_identity)
+    encounter = ChoirEncounterDiagnostic(harness.player_one_identity, capture_turns=True)
 
     async def prepare(room):
         await seed_player_with_pools(await db.get_pool(), player_id=harness.player_two_identity)
@@ -133,7 +133,7 @@ async def test_committed_choir_aura_preserves_concentration_outside_radius(livek
     import db_mutations
 
     harness = MultiplayerVoiceHarness(livekit_server)
-    encounter = ChoirEncounterDiagnostic(harness.player_one_identity)
+    encounter = ChoirEncounterDiagnostic(harness.player_one_identity, capture_turns=True)
 
     async def prepare(room):
         await seed_player_with_pools(await db.get_pool(), player_id=harness.player_two_identity)

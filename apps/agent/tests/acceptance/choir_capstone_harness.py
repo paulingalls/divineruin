@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from typing import cast
 
 from acceptance.choir_capstone_voice import ChoirVoiceDiagnostic, TurnModel
+from acceptance.choir_turn_capture import ChoirTurnCapture
 from acceptance.multiplayer_voice.test_guest_leaves import ToneTTS
 from acceptance.seeds import seed_player_with_pools
 from livekit.agents import Agent, AgentSession
@@ -22,9 +23,11 @@ from session_startup import GameplayInputOwner, gameplay_room_options
 
 
 class ChoirEncounterDiagnostic(ChoirVoiceDiagnostic):
-    def __init__(self, player_id):
+    def __init__(self, player_id, *, capture_turns: bool = False):
         super().__init__(player_id)
         self.model = TurnModel([])
+        if capture_turns:
+            self.model.capture = ChoirTurnCapture(player_id, self.transcripts)
         self.checkpoints = {}
 
     async def start(self, room):
@@ -60,7 +63,11 @@ class ChoirEncounterDiagnostic(ChoirVoiceDiagnostic):
     async def command(self, name, arguments, play):
         count = len(self.model.commands) + 1
         self.model.commands.append((name, arguments))
+        capture = self.model.capture
+        turn = capture.begin(count, name) if capture is not None else None
         await play()
+        if turn is not None:
+            turn.record("audio_published")
         await self.wait_for_receipts(count)
         receipt = list(self.model.receipts.values())[-1]
         assert receipt.name == name and receipt.output.strip(), "missing public tool receipt"

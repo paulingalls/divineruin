@@ -4,7 +4,7 @@ import asyncio
 import json
 import uuid
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, patch
 
 from acceptance.multiplayer_voice._harness import PLAYER_TWO_SPEECH, SpeechFixture
@@ -22,9 +22,13 @@ import db_mutations
 import db_queries
 from combat_agent import CombatAgent
 from multiplayer_input import MultiplayerInput
+from multiplayer_transcription import AuthenticatedTranscript
 from participant_lifecycle import _setup_party_join
 from session_data import SessionData
 from session_startup import GameplayInputOwner, gameplay_room_options
+
+if TYPE_CHECKING:
+    from acceptance.choir_turn_capture import ChoirTurnCapture, Turn
 
 
 class RecordedCommandBurst(SpeechFixture):
@@ -100,14 +104,19 @@ class BurstSTT(stt.STT):
 
 
 class TurnStream(llm.LLMStream):
+    turn: "Turn | None" = None
+
     def __init__(self, model, **kwargs):
         super().__init__(model, **kwargs)
         self.model = model
 
     async def _run(self):
         model = self.model
+        capture = model.capture
         for item in self._chat_ctx.items:
             if isinstance(item, llm.FunctionCallOutput) and item.call_id in model.calls:
+                if capture is not None and item.call_id not in model.receipts:
+                    capture.output("receipt_observed", item)
                 model.receipts[item.call_id] = item
         texts = [
             item.text_content or ""
@@ -117,29 +126,41 @@ class TurnStream(llm.LLMStream):
         available = max(
             (int(text.split("capstone turn ")[-1].split()[0]) for text in texts if "capstone turn " in text), default=0
         )
-        if len(model.calls) < min(available, len(model.commands)):
-            name, arguments = model.commands[len(model.calls)]
+        command_index = len(model.calls)
+        function_call = None
+        if command_index < min(available, len(model.commands)):
+            name, arguments = model.commands[command_index]
             call_id = uuid.uuid4().hex
             model.calls[call_id] = name
-            delta = llm.ChoiceDelta(
-                role="assistant",
-                tool_calls=[llm.FunctionToolCall(name=name, arguments=json.dumps(arguments), call_id=call_id)],
-            )
+            function_call = llm.FunctionToolCall(name=name, arguments=json.dumps(arguments), call_id=call_id)
+            delta = llm.ChoiceDelta(role="assistant", tool_calls=[function_call])
         else:
+            if self.turn is not None:
+                self.turn.record(
+                    "model_branch",
+                    f"plain_reply available={available} calls={len(model.calls)} commands={len(model.commands)}",
+                )
             delta = llm.ChoiceDelta(role="assistant", content="Your command reaches me.")
         self._event_ch.send_nowait(llm.ChatChunk(id=uuid.uuid4().hex, delta=delta))
+        if capture is not None and function_call is not None:
+            capture.tool_issued(command_index + 1, function_call.call_id, function_call.name)
 
 
 class TurnModel(ScenarioModel):
+    capture: "ChoirTurnCapture | None" = None
+
     def chat(self, *, chat_ctx, tools=None, conn_options=DEFAULT_API_CONNECT_OPTIONS, **_kwargs):
-        return TurnStream(self, chat_ctx=chat_ctx, tools=tools or [], conn_options=conn_options)
+        turn = self.capture.model_started(chat_ctx) if self.capture is not None else None
+        stream = TurnStream(self, chat_ctx=chat_ctx, tools=tools or [], conn_options=conn_options)
+        stream.turn = turn
+        return stream
 
 
 class ChoirVoiceDiagnostic:
     def __init__(self, player_id):
         self.player_id = player_id
-        self.model: ScenarioModel = TurnModel(commands("silenced_cast", player_id))
-        self.transcripts = []
+        self.model: TurnModel = TurnModel(commands("silenced_cast", player_id))
+        self.transcripts: list[AuthenticatedTranscript] = []
         self.session = self.lifecycle = self.multiplayer = None
         self.before = None
         self.tts_patch = patch("base_agent._make_tts", return_value=ToneTTS())
@@ -165,6 +186,9 @@ class ChoirVoiceDiagnostic:
 
     def attach(self, manager):
         diagnostic = self
+        if self.model.capture is not None:
+            assert self.session is not None
+            self.model.capture.attach(manager, self.session)
 
         class Receiver:
             async def receive(self):
@@ -181,7 +205,10 @@ class ChoirVoiceDiagnostic:
                 while len(self.model.receipts) < count:
                     await asyncio.sleep(0.02)
         except TimeoutError as exc:
-            raise AssertionError(f"missing separate authenticated turn {count} and gameplay receipt") from exc
+            message = f"missing separate authenticated turn {count} and gameplay receipt"
+            if self.model.capture is not None:
+                message = self.model.capture.timeout_message(count, message)
+            raise AssertionError(message) from exc
 
     async def assert_refusal_unchanged(self):
         refusal = next(iter(self.model.receipts.values()))
@@ -202,6 +229,14 @@ class ChoirVoiceDiagnostic:
         assert legal.name == "check" and not legal.is_error and legal.output.strip()
 
     async def aclose(self):
+        try:
+            await self._close_voice()
+        finally:
+            capture, self.model.capture = self.model.capture, None
+            if capture is not None:
+                capture.close()
+
+    async def _close_voice(self):
         try:
             if self.multiplayer is not None:
                 await self.multiplayer.aclose()
