@@ -20,6 +20,7 @@ import room_admin
 import session_outcome
 import spells
 from caster_state import ConcentrationState
+from combat_conditions_persist import reconcile_member_conditions
 from combat_departure import forget_participant
 from combat_round_checkpoint import combat_image
 from combat_state import CombatState
@@ -147,7 +148,8 @@ async def _end_departing_concentration(sd: SessionData, player_id: str) -> None:
         await end_concentration(sd, player_id, combat_state=state, conn=conn, updates=updates, release_combat_rows=True)
         if state is not None:
             _forget_caster_in_history(state, player_id, member.concentration.spell_id)
-            if state.get_participant(player_id) is not None:
+            if (participant := state.get_participant(player_id)) is not None:
+                await reconcile_member_conditions(participant, conn=conn)
                 state.departed_player_ids.append(player_id)
                 cancelled_roll = forget_participant(state, player_id)
             await db_mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)

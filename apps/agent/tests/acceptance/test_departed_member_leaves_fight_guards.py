@@ -16,7 +16,13 @@ from acceptance._capstone_helpers import _d20, _damage_die
 from acceptance._enemy_opportunity_helpers import move
 from acceptance._spell_hostile_condition_helpers import dev_db_pool as dev_db_pool
 from acceptance.counter_reactions_harness import RIPOSTE, WEAPON, counter_fight
-from acceptance.defensive_reactions_harness import declare_attacks, defense_fight, player_row, reload_session
+from acceptance.defensive_reactions_harness import (
+    action_packet,
+    declare_attacks,
+    defense_fight,
+    player_row,
+    reload_session,
+)
 from acceptance.disruption_reactions_harness import DOUBT, ambush, attack_damage, open_stage
 from acceptance.mawling_harness import MawlingHarness
 from acceptance.test_architect_fight import WORKS, enter, pos
@@ -42,7 +48,9 @@ import db_mutations
 from check_tools import check
 from combat_spatial import require_spatial
 from combat_state import CombatState
+from conditions import apply_condition
 from db_mutations_concentration import update_player_concentration
+from db_mutations_conditions import save_player_conditions
 from participant_lifecycle import _setup_party_join
 from query_tools import query_info
 
@@ -162,6 +170,25 @@ ROWS = [
 @pytest.mark.parametrize("row", ROWS, ids=lambda row: row.id)
 async def test_departure(reset_db_pool, row: Row) -> None:
     await run_row(row)
+
+
+async def test_departure_saves_consumption_of_inspiration(reset_db_pool) -> None:
+    async with defense_fight("warrior") as fight:
+        _, guest = fight.players
+        enemy = fight.enemies[0]
+        inspired = apply_condition([], "inspired", source="bard")
+        await save_player_conditions(guest, inspired, conn=fight.pool)
+        state = await fight.reload()
+        fighter = state.get_participant(guest)
+        assert fighter is not None
+        fighter.conditions = inspired
+        await fight.persist()
+        await fight.command("declare_phase", {"declarations": [weapon_attack(guest, enemy, "")]})
+        with patch("check_resolution.dice_roll", return_value=_d20(16)):
+            attack = action_packet(await fight.drain(), guest, "Longsword")
+        assert attack["consumed_conditions"] == ["inspired"]
+        await depart_guest(fight, guest)
+        assert (await player_row(guest))["conditions"] == []
 
 
 async def leave_unravel_guest(fight: Fight, guest: str) -> None:
