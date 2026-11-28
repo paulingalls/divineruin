@@ -8,7 +8,7 @@ from _spell_heal_fixtures import REGENERATE
 from _spell_heal_fixtures import spell_heal_walk as spell_heal_walk
 from _zhael_fate_fixtures import game_tools
 from acceptance._capstone_helpers import _d20
-from sample_fixtures import published_payloads
+from sample_fixtures import directed_hp_packets, published_payloads
 from test_spell_heal_landing import heal_die, receipt
 
 import db_mutations
@@ -16,6 +16,7 @@ import spells
 from combat_turn import resolve_phase
 from conditions import apply_condition
 from db_mutations_concentration import update_player_concentration
+from patron_passives import effective_hp
 
 
 def regeneration(actor):
@@ -87,12 +88,14 @@ async def test_recipient_turns_tick_once_across_checkpoint_reloads_and_omitted_d
     assert len(conditions) == 1 and conditions[0]["ticks_remaining"] == 600
 
 
-@pytest.mark.parametrize("kaelen,maximum", [(False, 40), (True, 45)])
-async def test_exploration_resolves_the_surge_and_hour(healer, kaelen, maximum):
+@pytest.mark.parametrize("maximum", [17, 25])
+async def test_exploration_resolves_the_surge_and_hour(healer, maximum):
     await healer.prepare(REGENERATE)
-    ally = await healer.add_player(hp=10, maximum=40)
-    if kaelen:
+    ally = await healer.add_player(hp=10)
+    if maximum == 25:
         await healer.patch_row(ally, divine_favor={"patron": "kaelen", "level": 40, "max": 100})
+    else:
+        await healer.patch_row(ally, maxhp_override=-3)
     with heal_die(19) as roll:
         cast = await healer.cast(REGENERATE, targets=[ally])
     assert cast["healing_results"] == [receipt(ally, maximum - 10, maximum, rolled=19, modifier=0, maximum=maximum)]
@@ -100,10 +103,32 @@ async def test_exploration_resolves_the_surge_and_hour(healer, kaelen, maximum):
     assert roll.call_count == 1
     assert (await healer.focus()) == 30 - spells.get_spell(REGENERATE).focus_cost
     row = await healer.read(ally)
-    assert row["hp"] == {"current": maximum, "max": 40}
-    assert {"type": "hp_changed", "current": maximum, "max": maximum, "temp_hp": 0} in published_payloads(
-        healer.sd.room
-    )
+    assert row["hp"] == {"current": maximum, "max": 20}
+    assert directed_hp_packets(healer.sd.room) == [
+        ([ally], {"type": "hp_changed", "current": maximum, "max": maximum, "temp_hp": 0})
+    ]
+
+
+@pytest.mark.parametrize("maximum", [17, 25])
+async def test_combat_exit_publishes_effective_regeneration_hp(healer, mock_combat_agent_factory, maximum):
+    await healer.prepare(REGENERATE)
+    ally = await healer.add_player(hp=5)
+    if maximum == 25:
+        await healer.patch_row(ally, divine_favor={"patron": "kaelen", "level": 40, "max": 100})
+    else:
+        await healer.patch_row(ally, maxhp_override=-3)
+    await healer.patch_row(ally, temp_hp=3)
+    await healer.enter(mock_combat_agent_factory)
+    await cast_in_combat(healer, hp=5, maximum=maximum, state=healer.fight_state, ally=ally)
+    await healer.register_end()
+    healer.sd.room.local_participant.publish_data.reset_mock()
+    assert (await healer.command("end_combat", {"outcome": "fled"}))["outcome"] == "fled"
+
+    row = await healer.read(ally)
+    assert effective_hp(row) == {"current": maximum, "max": maximum}
+    assert [packet for dest, packet in directed_hp_packets(healer.sd.room) if dest == [ally]] == [
+        {"type": "hp_changed", **effective_hp(row), "temp_hp": 3}
+    ]
 
 
 @pytest.mark.parametrize(

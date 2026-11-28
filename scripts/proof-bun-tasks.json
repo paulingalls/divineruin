@@ -249,6 +249,9 @@
       },
       { "imports-of": "apps/server/src/sale_pricing.test.ts" },
       "packages/shared/fixtures/sale-price-cases.json",
+      { "imports-of": "apps/server/src/aethos_clock.test.ts" },
+      { "imports-of": "apps/server/src/aethos_clock_guards.test.ts" },
+      "packages/shared/fixtures/aethos-day-cases.json",
       {
         "imports-of": "apps/server/src/push.test.ts"
       },

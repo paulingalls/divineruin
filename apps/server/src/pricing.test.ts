@@ -1,5 +1,6 @@
 import authoredPricing from "../../../content/pricing.json";
 import { beforeEach, describe, expect, test } from "bun:test";
+import { asRecord } from "./parse-helpers.ts";
 
 import {
   dispositionMultiplier,
@@ -10,7 +11,10 @@ import {
   wholeSilver,
 } from "./pricing.ts";
 
+const { military, ...traits } = authoredPricing[0]!.merchant_gold_personality_multipliers;
 const SALE = {
+  merchant_gold_sp: authoredPricing[0]!.merchant_gold_sp,
+  merchant_gold_personality_multipliers: authoredPricing[0]!.merchant_gold_personality_multipliers,
   sale_rate: 0.5,
   crafted_sale_rate: 0.8,
   sale_disposition_multipliers: { unfriendly: 0.9, neutral: 1, friendly: 1.1, trusted: 1.2 },
@@ -37,6 +41,9 @@ describe("parsePricingRow (fail-loud)", () => {
       repairCostSp: BASE.repair_cost_sp,
       dispositionMultipliers: BASE.disposition_multipliers,
       silverPerGold: BASE.silver_per_gold,
+      merchantGoldSp: SALE.merchant_gold_sp,
+      merchantGoldPersonalityMultipliers: traits,
+      militaryMerchantGoldMultipliers: military,
       saleRate: SALE.sale_rate,
       craftedSaleRate: SALE.crafted_sale_rate,
       saleDispositionMultipliers: SALE.sale_disposition_multipliers,
@@ -260,4 +267,39 @@ describe("getters", () => {
   test("silverPerGold returns the conversion rate", () => {
     expect(silverPerGold()).toBe(10);
   });
+});
+
+test.each([
+  ["merchant_gold_sp", null],
+  ["merchant_gold_sp.city", []],
+  ...["200", true, 1.5, -1, 2 ** 53].map(
+    (value) => ["merchant_gold_sp.city.exotic", value] as const,
+  ),
+  ["merchant_gold_personality_multipliers", null],
+  ["merchant_gold_personality_multipliers.military.arms", 0],
+  ["merchant_gold_personality_multipliers.devout", Infinity],
+  ["merchant_gold_personality_multipliers.refuge", 0.12345],
+] as const)("rejects malformed merchant pricing field %s (%j)", (path, value) => {
+  const pricing = structuredClone(authoredPricing[0]);
+  const fields = path.split(".");
+  const parent = fields
+    .slice(0, -1)
+    .reduce((row, key) => asRecord(row, key)[key], pricing as unknown);
+  asRecord(parent, path)[fields.at(-1)!] = value;
+  expect(() => parsePricingRow(pricing)).toThrow(path);
+});
+
+test.each([
+  ["merchant_gold_sp", "town"],
+  ["merchant_gold_sp.city", "black_market"],
+  ["merchant_gold_personality_multipliers", "prosperous"],
+  ["merchant_gold_personality_multipliers.military", "other"],
+] as const)("requires each merchant pricing field in %s (%s)", (path, missing) => {
+  const pricing = structuredClone(authoredPricing[0]);
+  const parent = path.split(".").reduce((row, key) => asRecord(row, key)[key], pricing as unknown);
+  const fields = asRecord(parent, path);
+  delete fields[missing];
+  expect(() => parsePricingRow(pricing)).toThrow(path);
+  fields.unknown = 1;
+  expect(() => parsePricingRow(pricing)).toThrow(path);
 });

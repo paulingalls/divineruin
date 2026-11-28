@@ -27,7 +27,8 @@ export async function withCraftedSale(
   { missingValue = false } = {},
 ) {
   const sample = cases.find((row) => row.id === "crafted_fractional_gold");
-  if (!sample) throw new Error("Missing crafted_fractional_gold pricing case");
+  if (!sample?.item || !sample.expected)
+    throw new Error("Missing crafted_fractional_gold pricing case");
   const [{ silver_per_gold }] = await queryDb<{ silver_per_gold: number }>(
     "SELECT (data->>'silver_per_gold')::numeric::float8 AS silver_per_gold FROM pricing WHERE id='economy'",
   );

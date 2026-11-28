@@ -12,8 +12,8 @@ import db_mutations_inventory
 import db_queries
 import dice
 import event_types as E
+import hp_changed_payload
 import inventory_refresh
-import temp_hp
 from combat_down import is_terminally_down
 from combat_events import EventSink, isolated_publish
 from declarations import Declaration, DeclarationType, resolve_declaration
@@ -154,7 +154,7 @@ async def consume_exploration(session: SessionData, item_id: str, target_id: str
             inventory = await inventory_refresh.inventory_payload(holder_id, conn=conn)
 
             updates = {
-                pid: {"current": hp["hp_current"], "max": hp["hp_max"], "temp_hp": temp_hp.from_player(rows[pid])}
+                pid: hp_changed_payload.from_player(rows[pid], current=hp["hp_current"])
                 for pid, hp in combat_spell_heal.hp_updates(holder_id, packet).items()
             }
 

@@ -185,6 +185,12 @@ def register_data_packet_collector(
 
 async def aclose_room(room: rtc.Room) -> None:
     if room.isconnected():
+        # Native close drops and re-registers subscribed track handles. Release
+        # ours first so Python finalizers can't race that replacement.
+        for participant in room.remote_participants.values():
+            for publication in participant.track_publications.values():
+                if (track := publication.track) is not None:
+                    track._ffi_handle.dispose()
         await room.disconnect()
 
 

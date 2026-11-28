@@ -6,7 +6,17 @@ from unittest.mock import MagicMock
 
 import pytest
 from acceptance.first_episode_harness import episode, until
-from acceptance.merchant_harness import FORGE, GRIMJAW, SWORD, merchant_session, rows, stock
+from acceptance.merchant_harness import (
+    FORGE,
+    GRIMJAW,
+    SWORD,
+    fund_merchant,
+    merchant_row,
+    merchant_scope,
+    merchant_session,
+    rows,
+    stock,
+)
 from acceptance.seeds import seed_gold
 from livekit.agents import llm
 from livekit.agents.llm.utils import prepare_function_arguments
@@ -30,12 +40,6 @@ from session_data import SessionData
         pytest.param({}, 50, 100, id="neutral"),
         pytest.param({"disposition": "friendly", "held": 3}, 55, 110, id="friendly"),
         pytest.param({"disposition": "unfriendly", "tainted": 1, "guest": True}, 45, 90, id="unfriendly-guest"),
-        pytest.param(
-            {"disposition": None, "npc": "innkeeper_maren", "location": "millhaven_inn"},
-            45,
-            90,
-            id="maren-default",
-        ),
     ],
 )
 async def test_sale_commits_receipt_and_snapshots(
@@ -63,6 +67,7 @@ async def test_sale_commits_receipt_and_snapshots(
             assert await rows(sale.primary_id) == primary_before
         assert not receipt.is_error, receipt.output
         assert json.loads(receipt.output) == {
+            "status": "sold",
             "item_id": SWORD,
             "npc_id": npc,
             "quantity": 2,
@@ -133,11 +138,14 @@ async def test_refusal_preserves_rows(
     reset_db_pool: str, overrides: dict[str, Any], reason: str, quantity: int
 ) -> None:
     async with merchant_session(**overrides) as sale:
+        npc = overrides.get("npc", GRIMJAW)
         before = await rows(sale.player_id)
-        receipt = await sale.sell(overrides.get("item", SWORD), overrides.get("npc", GRIMJAW), quantity)
+        assert await merchant_row(npc) is None
+        receipt = await sale.sell(overrides.get("item", SWORD), npc, quantity)
         assert await rows(sale.player_id) == before
         assert not sale.publications
         assert receipt.is_error and reason in receipt.output, receipt.output
+        assert await merchant_row(npc) is None
 
 
 def registered_sale() -> llm.FunctionTool:
@@ -150,7 +158,8 @@ def registered_sale() -> llm.FunctionTool:
 def test_sale_schema_has_only_ids_and_quantity() -> None:
     (schema,) = llm.ToolContext([registered_sale()]).parse_function_tools("openai", strict=True)
     params = schema["function"]["parameters"]
-    assert set(params["properties"]) == set(params["required"]) == {"item_id", "npc_id", "quantity"}
+    assert set(params["properties"]) == set(params["required"]) == {"item_id", "npc_id", "quantity", "offer_id"}
+    assert params["properties"]["offer_id"]["type"] == ["string", "null"]
     assert params["properties"]["quantity"]["type"] == "integer"
     assert params["additionalProperties"] is False
 
@@ -197,7 +206,11 @@ async def test_spoken_sell_handoff_and_return(
         await db_mutations.set_npc_disposition(GRIMJAW, pid, "neutral", "fixture")
         await stock(pid, SWORD, 2)
 
-    async with episode(livekit_server, tmp_path, prepare=prepare, initial_agent="ExplorationAgent") as run:
+    async with (
+        merchant_scope(GRIMJAW),
+        episode(livekit_server, tmp_path, prepare=prepare, initial_agent="ExplorationAgent") as run,
+    ):
+        await fund_merchant(GRIMJAW, 600, current_gold_sp=13)
         utterance = "I want to sell my two shortswords to Grimjaw."
         run.stt.transcript = utterance
         caller = run.session.current_agent
@@ -230,13 +243,27 @@ async def test_spoken_sell_handoff_and_return(
         assert npc_id == GRIMJAW
 
         item_id = next(item["id"] for item in json.loads(inventory.output)["items"] if item["id"] == SWORD)
-        run.stt.transcript = "Yes, sell them."
-        sold = await run.turn("sell_item", item_id=item_id, npc_id=npc_id, quantity=2)
-        assert not sold.is_error and json.loads(sold.output)["total_price_sp"] == 100, sold.output
+        offered = await run.turn("sell_item", item_id=item_id, npc_id=npc_id, quantity=2, offer_id="")
+        offer = json.loads(offered.output)
+        assert offer["status"] == "offer"
+        (partial,) = offer["options"]
+        assert (partial["kind"], partial["total_price_sp"]) == ("partial", 13)
+        start = len(run.requests)
+        run.stt.transcript = "Yes, I'll take the thirteen silver."
+        sold = await run.turn("sell_item", item_id=item_id, npc_id=npc_id, quantity=2, offer_id=partial["offer_id"])
+        assert any(
+            any(
+                "If the receipt says offer" in (message.text_content or "")
+                for message in request["chat_ctx"].messages()
+            )
+            and any(getattr(item, "output", None) == offered.output for item in request["chat_ctx"].items)
+            for request in run.requests[start:]
+        )
+        assert not sold.is_error and json.loads(sold.output)["total_price_sp"] == 13, sold.output
         player, inventory = await rows(run.player_id)
-        assert (SWORD, False) not in inventory and player["gold"] == 17
+        assert (SWORD, False) not in inventory and player["gold"] == 8.3
         await until(lambda: run.packets(E.CURRENCY_GAINED) and run.packets(E.INVENTORY_UPDATED))
-        assert run.packets(E.CURRENCY_GAINED)[-1]["new_balance"] == 17
+        assert run.packets(E.CURRENCY_GAINED)[-1]["new_balance"] == 8.3
         assert not any(item["id"] == SWORD for item in run.packets(E.INVENTORY_UPDATED)[-1]["inventory"])
         assert [
             p["sound_name"]

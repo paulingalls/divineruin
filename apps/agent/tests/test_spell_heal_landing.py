@@ -7,7 +7,7 @@ import asyncpg
 import pytest
 from _spell_heal_fixtures import LOCATION, MASS, PRAYER, REGENERATE, TOUCH, WOUNDS
 from _spell_heal_fixtures import spell_heal_walk as spell_heal_walk
-from sample_fixtures import published_payloads
+from sample_fixtures import directed_hp_packets, published_payloads
 from test_wire_contract import FIXTURE
 
 import db_mutations
@@ -66,8 +66,8 @@ async def test_immediate_healing_persists_and_names_the_actual_restoration(heale
     [
         (19, False, 0, (1, 20, 20)),
         (20, False, 0, (0, 20, 20)),
-        (19, True, 0, (6, 25, 25)),
-        (14, False, -5, (1, 15, 15)),
+        (23, True, 0, (2, 25, 25)),
+        (14, False, -3, (3, 17, 17)),
     ],
 )
 async def test_healing_clamps_to_effective_max(
@@ -75,6 +75,7 @@ async def test_healing_clamps_to_effective_max(
 ):
     await healer.prepare(WOUNDS)
     ally = await healer.add_player(hp=hp)
+    await healer.patch_row(ally, temp_hp=7)
     if kaelen:
         await healer.patch_row(ally, divine_favor={"patron": "kaelen", "level": 40, "max": 100})
     if override:
@@ -90,7 +91,11 @@ async def test_healing_clamps_to_effective_max(
     assert packet["healing_results"] == [receipt(ally, healed, current, maximum=maximum)]
     assert (await healer.read(ally))["hp"] == {"current": current, "max": 20}
     if combat:
-        assert (await healer.checkpoint()).get_participant(ally).hp_current == current
+        target = (await healer.checkpoint()).get_participant(ally)
+        assert (target.hp_current, target.hp_max) == (current, maximum)
+    else:
+        expected_packets = [([ally], {"type": "hp_changed", "current": current, "max": maximum, "temp_hp": 7})]
+        assert directed_hp_packets(healer.sd.room) == (expected_packets if healed else [])
 
 
 async def test_nonpositive_heal_does_not_damage_the_recipient(healer):

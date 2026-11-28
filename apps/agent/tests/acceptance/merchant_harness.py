@@ -1,6 +1,8 @@
+import asyncio
 import json
+import os
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, nullcontext
 from uuid import uuid4
 
 from acceptance.first_episode_harness import EpisodeModel
@@ -10,6 +12,7 @@ from sample_fixtures import make_mock_room
 
 import db
 import db_mutations
+import db_mutations_merchant
 import event_types as E
 from party_state import PartyState
 from session_data import SessionData
@@ -17,7 +20,22 @@ from session_data import SessionData
 FORGE = "accord_forge"
 GRIMJAW = "grimjaw_blacksmith"
 SWORD = "shortsword_basic"
+MAREN = "innkeeper_maren"
+INN = "millhaven_inn"
 SALE_EVENTS = (E.CURRENCY_GAINED, E.INVENTORY_UPDATED)
+
+
+async def wait_for_merchant_readers(count: int) -> None:
+    pool = await db.get_pool()
+    async with asyncio.timeout(10):
+        while (
+            await pool.fetchval("""
+            SELECT count(DISTINCT l.pid) FROM pg_locks l JOIN pg_stat_activity a USING (pid)
+            WHERE NOT l.granted AND a.datname=current_database() AND a.query LIKE '%merchant_state%'
+        """)
+            < count
+        ):
+            await asyncio.sleep(0.02)
 
 
 async def stock(player_id: str, item: str, quantity: int, *, tainted: bool = False, equipped: bool = False) -> None:
@@ -42,6 +60,50 @@ async def rows(player_id: str) -> tuple[dict, dict]:
     }
 
 
+async def merchant_row(npc: str) -> tuple[dict, object, object] | None:
+    pool = await db.get_pool()
+    row = await pool.fetchrow("SELECT data, created_at, updated_at FROM merchant_state WHERE npc_id=$1", npc)
+    return (json.loads(row["data"]), row["created_at"], row["updated_at"]) if row else None
+
+
+async def fund_merchant(npc: str, allocation: int, **overrides: object) -> None:
+    pool = await db.get_pool()
+    state = {
+        "current_gold_sp": allocation,
+        "max_gold_sp": allocation,
+        "last_restock_day": db_mutations_merchant.aethos_today(),
+        "buyback_history": {},
+        "consigned_items": [],
+        **overrides,
+    }
+    await pool.execute("INSERT INTO merchant_state(npc_id, data) VALUES ($1, $2::jsonb)", npc, json.dumps(state))
+
+
+@asynccontextmanager
+async def catalog_override(item: str, **changes: bool | int) -> AsyncIterator[None]:
+    pool = await db.get_pool()
+    original = await pool.fetchval("SELECT data FROM items WHERE id=$1", item)
+    redis = await db.get_redis()
+    key = os.environ.get("CONTENT_CACHE_PREFIX", "") + f"item:{item}"
+    try:
+        await pool.execute("UPDATE items SET data=data || $2::jsonb WHERE id=$1", item, json.dumps(changes))
+        await redis.delete(key)
+        yield
+    finally:
+        await pool.execute("UPDATE items SET data=$2::jsonb WHERE id=$1", item, original)
+        await redis.delete(key)
+
+
+@asynccontextmanager
+async def merchant_scope(npc: str) -> AsyncIterator[None]:
+    pool = await db.get_pool()
+    assert await merchant_row(npc) is None
+    try:
+        yield
+    finally:
+        await pool.execute("DELETE FROM merchant_state WHERE npc_id=$1", npc)
+
+
 class SaleSession:
     def __init__(self, player_id: str, primary_id: str, location: str) -> None:
         self.player_id, self.primary_id = player_id, primary_id
@@ -53,19 +115,33 @@ class SaleSession:
             self.data.party.members.append(PartyState.solo(player_id).primary)
         self.model = EpisodeModel([])
         self.session = AgentSession(userdata=self.data, llm=self.model)
+        self.packets: list[dict] = []
         self.publications: list[tuple[dict, tuple[dict, dict]]] = []
+        self.inventory_destinations: dict[str, object] = {}
 
-    async def capture_packet(self, payload: bytes, **_kwargs: object) -> None:
+    async def capture_packet(self, payload: bytes, **kwargs: object) -> None:
         packet = json.loads(payload)
+        self.packets.append(packet)
+        if packet["type"] == E.INVENTORY_UPDATED:
+            self.inventory_destinations[packet["player_id"]] = kwargs.get("destination_identities")
         if packet["type"] in SALE_EVENTS:
-            self.publications.append((packet, await rows(self.player_id)))
+            self.publications.append((packet, await rows(packet["player_id"])))
 
-    async def sell(self, item: str, npc: str, quantity: int) -> llm.FunctionCallOutput:
-        self.model.commands.append(("sell_item", {"item_id": item, "npc_id": npc, "quantity": quantity}))
+    async def sell(self, item: str, npc: str, quantity: int, offer_id: str = "") -> llm.FunctionCallOutput:
+        return await self.command("sell_item", item_id=item, npc_id=npc, quantity=quantity, offer_id=offer_id)
+
+    async def ledger(self, npc: str) -> llm.FunctionCallOutput:
+        return await self.command("query_merchant_ledger", npc_id=npc)
+
+    async def collect(self, npc: str, consignment_id: str) -> llm.FunctionCallOutput:
+        return await self.command("collect_consignment", npc_id=npc, consignment_id=consignment_id)
+
+    async def command(self, name: str, **arguments: str | int) -> llm.FunctionCallOutput:
+        self.model.commands.append((name, arguments))
         with self.data._bind_authenticated_actor(self.player_id, 1, lambda *_: None):
-            await self.session.run(user_input="I'd like to sell these.")
-        (receipt,) = self.model.receipts.values()
-        assert receipt.name == "sell_item"
+            await self.session.run(user_input="I'd like to trade.")
+        receipt = list(self.model.receipts.values())[-1]
+        assert receipt.name == name
         return receipt
 
 
@@ -80,6 +156,7 @@ async def merchant_session(
     equipped: bool = False,
     tainted: int = 0,
     guest: bool = False,
+    own_merchant: bool = True,
 ) -> AsyncIterator[SaleSession]:
     from merchant_agent import MerchantAgent
 
@@ -97,10 +174,11 @@ async def merchant_session(
         if tainted:
             await stock(pid, item, tainted, tainted=True)
         sale = SaleSession(pid, primary, location)
-        try:
-            await sale.session.start(MerchantAgent())
-            yield sale
-        finally:
-            await sale.session.aclose()
+        async with merchant_scope(npc) if own_merchant else nullcontext():
+            try:
+                await sale.session.start(MerchantAgent())
+                yield sale
+            finally:
+                await sale.session.aclose()
     finally:
         await pool.execute("DELETE FROM players WHERE player_id=ANY($1)", list({pid, primary}))

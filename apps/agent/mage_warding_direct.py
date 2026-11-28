@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import db_mutations
 import db_queries
 import event_types as E
+import hp_changed_payload
 from condition_produce import resolve_effective_targets
 from game_events import publish_game_event
 from patron_synergy_heal import grant_mage_warding, mage_warding_spell
@@ -55,7 +56,7 @@ async def settle(
     for pid, target in recipients.items():
         if target.type != "player":
             continue
-        health = {"current": target.hp_current, "max": target.hp_max, "temp_hp": target.temp_hp}
+        health = hp_changed_payload.from_participant(target)
         events.append(
             lambda pid=pid, payload=health: publish_game_event(
                 session.room, E.HP_CHANGED, payload, event_bus=session.event_bus, destination_identities=[pid]

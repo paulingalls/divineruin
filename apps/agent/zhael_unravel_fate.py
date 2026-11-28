@@ -16,6 +16,7 @@ import db_mutations
 import db_mutations_resonance
 import db_queries
 import event_types as E
+import hp_changed_payload
 import patron_ability_tools
 import reaction_spend
 from caster_state import ConcentrationState
@@ -30,7 +31,6 @@ from inventory_refresh import publish_inventory
 from oath_breach import breach_marker
 from oaths import OathBook, TimedOath
 from patron_ability_events import publish_patron_abilities
-from patron_passives import effective_hp
 from resonance_events import publish_resonance_changed
 
 if TYPE_CHECKING:
@@ -189,7 +189,7 @@ async def _publish(
             await publish_game_event(
                 session.room,
                 E.HP_CHANGED,
-                {**effective_hp(player), "temp_hp": player.get("temp_hp", 0)},
+                hp_changed_payload.from_player(player),
                 session.event_bus,
                 destination_identities=[pid],
             )

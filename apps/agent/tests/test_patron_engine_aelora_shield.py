@@ -16,10 +16,12 @@ from _aelora_shield_fixtures import (
     shield_status,
     snapshot,
 )
+from _patron_engine_fixtures import configure
 from _thyra_wrath_fixtures import add_foe, fighter
 from _unbound_path_fixtures import row
 from _unbound_path_fixtures import world as world
 from livekit.agents.llm import ToolError
+from sample_fixtures import directed_hp_packets
 
 import combat_hold
 import event_types as E
@@ -98,6 +100,18 @@ async def shield_scenario(
         assert (refreshed["available"], refreshed["spent"], refreshed["state"]) == (False, True, "spent")
         if not combat:
             await recharge(world, call, ally)
+
+
+@pytest.mark.parametrize("patron,override,maximum", [("veythar", -3, 17), ("kaelen", 0, 25)])
+async def test_shield_projects_recipient_hp(world: SimpleNamespace, patron: str, override: int, maximum: int) -> None:
+    async with shield_setup(world) as call:
+        ally = world.ids[1]
+        await configure(world, patron, "warrior", index=1, hp={"current": 20, "max": 20}, maxhp_override=override)
+        receipt = await call("activate", id=SHIELD, target_id=ally)
+        assert (await row(world, 1))["temp_hp"] == receipt["temp_hp"] > 0
+        assert directed_hp_packets(world.ctx.userdata.room) == [
+            ([ally], {"type": E.HP_CHANGED, "current": min(20, maximum), "max": maximum, "temp_hp": receipt["temp_hp"]})
+        ]
 
 
 async def recharge(world: SimpleNamespace, call: ToolCall, ally: str) -> None:

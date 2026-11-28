@@ -11,6 +11,23 @@
       "friendly": 1.1,
       "trusted": 1.2
     },
-    "crafted_sale_rate": 0.8
+    "crafted_sale_rate": 0.8,
+    "merchant_gold_sp": {
+      "hamlet": { "general": 10, "specialist": null, "exotic": null, "black_market": null },
+      "village": { "general": 25, "specialist": 50, "exotic": null, "black_market": null },
+      "town": { "general": 75, "specialist": 150, "exotic": 200, "black_market": 100 },
+      "city": { "general": 200, "specialist": 400, "exotic": 600, "black_market": 300 },
+      "keldaran_hold": { "general": 200, "specialist": 400, "exotic": 600, "black_market": 300 }
+    },
+    "merchant_gold_personality_multipliers": {
+      "prosperous": 1.5,
+      "struggling": 0.5,
+      "military": { "arms": 2, "other": 1 },
+      "scholarly": 1,
+      "corrupt": 0.25,
+      "devout": 1,
+      "frontier": 0.75,
+      "refuge": 1
+    }
   }
 ]

@@ -1,14 +1,49 @@
 """Validate merchant buying rules and quote a deterministic unit sale price."""
 
+from __future__ import annotations
+
 import json
 from typing import Literal, TypedDict
 
 import asyncpg
 
 from catalog_parse import parse_dict, parse_int, parse_str, parse_str_list
-from workspace import whole_silver
+from workspace import SettlementSize, whole_silver
 
 SALE_DISPOSITIONS = ("unfriendly", "neutral", "friendly", "trusted")
+
+
+MERCHANT_KINDS = ("general", "specialist", "exotic", "black_market")
+SETTLEMENT_PERSONALITIES = (
+    "prosperous",
+    "struggling",
+    "military",
+    "scholarly",
+    "corrupt",
+    "devout",
+    "frontier",
+    "refuge",
+)
+
+
+def merchant_gold_allocation(pool: InventoryPool, location: dict | None, pricing: dict) -> int:
+    ctx = f"locations[{pool['location']}]"
+    data = parse_dict(location, ctx)
+    tier = data.get("settlement_tier")
+    if tier not in tuple(SettlementSize):
+        raise ValueError(f"{ctx}.settlement_tier is unknown: {tier!r}")
+    personality = data.get("personality")
+    if personality not in SETTLEMENT_PERSONALITIES:
+        raise ValueError(f"{ctx}.personality is unknown: {personality!r}")
+    buys = pool["buys"]
+    kind = "general" if buys == "all" else "specialist"
+    base = pricing["merchant_gold_sp"][tier][kind]
+    if base is None:
+        raise ValueError(f"merchant_gold_sp.{tier}.{kind} is unavailable")
+    multiplier = pricing["merchant_gold_personality_multipliers"][personality]
+    if personality == "military":
+        multiplier = multiplier["arms" if buys != "all" and ("weapon" in buys or "armor" in buys) else "other"]
+    return whole_silver(int(base), multiplier)
 
 
 class InventoryPoolStock(TypedDict):
