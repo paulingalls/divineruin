@@ -292,6 +292,7 @@ async def test_public_roll_producers_carry_current_combat_spoken_eligibility(pro
     }
     content = MagicMock(
         get_item=AsyncMock(return_value=None),
+        get_npc=AsyncMock(return_value={"name": "Recipient"}),
         get_location=AsyncMock(return_value=location),
         get_gathering_nodes_at_location=AsyncMock(return_value=[]),
     )
@@ -320,7 +321,7 @@ async def test_public_roll_producers_carry_current_combat_spoken_eligibility(pro
                 ctx, "perception", "wall", hearing_only=False, queries=queries, content=content
             )
         elif producer == "social":
-            await social_tools._check_social_impl(ctx, "npc", "persuasion", "easy", queries=queries)
+            await social_tools._check_social_impl(ctx, "npc", "persuasion", "easy", queries=queries, content=content)
         elif producer == "gather":
             await gathering_tools._check_gather_impl(ctx, "", queries=queries, content=content)
         else:

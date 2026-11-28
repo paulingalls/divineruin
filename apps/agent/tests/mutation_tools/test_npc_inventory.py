@@ -114,17 +114,6 @@ class TestUpdateNpcDisposition:
         assert result["new"] == "friendly"
 
     @pytest.mark.asyncio
-    async def test_publishes_event(self):
-        mocks = self._mocks(disp="neutral")
-        room = _make_mock_room()
-        ctx = _make_context(room=room)
-        await self._call(ctx, "guildmaster_torin", 1, "helped", mocks)
-        room.local_participant.publish_data.assert_called_once()
-        call_data = json.loads(room.local_participant.publish_data.call_args[0][0])
-        assert call_data["type"] == E.DISPOSITION_CHANGED
-        assert call_data["npc_id"] == "guildmaster_torin"
-
-    @pytest.mark.asyncio
     async def test_delta_clamped_to_range(self):
         mocks = self._mocks(disp="neutral")
         ctx = _make_context()

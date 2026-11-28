@@ -6,13 +6,16 @@ import json
 from unittest.mock import patch
 
 from acceptance._capstone_helpers import _build_state, _d20, _dice_events, _enemy, _resolve_round
+from acceptance.disposition_event_assertions import assert_named_disposition, listen
 from acceptance.seeds import seed_player, seed_player_with_pools
-from sample_fixtures import make_context, make_mock_room
+from sample_fixtures import make_context, make_mock_room, published_payloads
 
 import combat_turn
 import db
 import db_mutations
-import social_tools
+from background_process import BackgroundProcess
+from check_payloads import SocialCheck
+from exploration_agent import EXPLORATION_TOOLS
 
 _NPC_ID = "guildmaster_torin"  # a real seeded NPC (content/npcs.json)
 
@@ -40,8 +43,11 @@ async def test_m46a_social_check_shifts_and_persists_disposition(reset_db_pool: 
     )
 
     ctx = make_context(player_id, room=make_mock_room())
+    bus = listen(ctx.userdata)
+    check = next(tool for tool in EXPLORATION_TOOLS if tool.__name__ == "check")
+    roll = SocialCheck(kind="social", npc_id=_NPC_ID, skill="persuasion", difficulty="easy", synergy_context="none")
     with patch("check_resolution.dice_roll", return_value=_d20(20)):
-        result = json.loads(await social_tools._check_social_impl(ctx, _NPC_ID, "persuasion", "easy"))
+        result = json.loads(await check(ctx, roll))
 
     assert result["outcome"] == "success"
     assert result["previous_disposition"] == "hostile"
@@ -55,6 +61,16 @@ async def test_m46a_social_check_shifts_and_persists_disposition(reset_db_pool: 
     )
     assert row is not None
     assert json.loads(row["data"])["disposition"] == result["new_disposition"]
+    assert_named_disposition(
+        BackgroundProcess(ctx.session, ctx.userdata),
+        bus,
+        published_payloads(ctx.userdata.room),
+        npc_id=_NPC_ID,
+        npc_name="Guildmaster Torin",
+        previous="hostile",
+        new=result["new_disposition"],
+        reason="social_check: persuasion",
+    )
 
 
 async def test_m46a_diplomat_deescalation_ends_combat(reset_db_pool: str) -> None:
