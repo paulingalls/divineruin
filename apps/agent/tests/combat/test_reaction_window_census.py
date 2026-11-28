@@ -45,10 +45,10 @@ EXPECTED: dict[str, str] = {
     "rogue_slippery": "reachable",
     "spy_slippery": "reachable",
     "warrior_opportunity_strike": "reachable",
-    "mage_counterspell": "unproducible",  # on_spell_cast: no enemy casts (combat_ability.py:300)
+    "mage_counterspell": "reachable",
 }
 
-_TOTALS = {"reachable": 24, "inapplicable": 0, "unproducible": 1}
+_TOTALS = {"reachable": 25, "inapplicable": 0, "unproducible": 0}
 
 # The measured window census of the 25 rows. Pinned literally so a content edit that RE-LABELS a
 # row's window (rather than adding one) reds here instead of silently changing what is reachable.
@@ -73,8 +73,6 @@ _COMMAND_CARRIERS = [
     ("hollow_knight_boss", "hollowed_knight", "Command Lesser"),
 ]
 _ACCUSATION_CARRIERS = [("ashmark_patrol", "ashmark_sergeant", "Accusation")]
-
-_NO_PRODUCER = {"on_spell_cast"}
 
 
 def _reaction_rows() -> list[dict]:
@@ -188,16 +186,10 @@ def test_every_row_the_table_calls_producible_has_its_window_produced():
     by_id = {row["id"]: row for row in _reaction_rows()}
     for ability_id, classification in EXPECTED.items():
         window = by_id[ability_id]["window"]
-        if classification == "unproducible":
-            assert window not in produced, (
-                f"{ability_id} is classified unproducible but the derivation opens {window!r} — "
-                "the table and the code disagree"
-            )
-        else:
-            assert window in produced, (
-                f"{ability_id} is classified {classification} but nothing opens {window!r} — "
-                "a held enemy action can never reach it"
-            )
+        assert window in produced, (
+            f"{ability_id} is classified {classification} but nothing opens {window!r} — "
+            "a held enemy action can never reach it"
+        )
 
 
 def test_the_grapple_branch_carriers_are_pinned():
@@ -228,7 +220,3 @@ def test_social_subject_carriers_are_pinned():
 
 def test_every_produced_trigger_is_a_member_of_the_closed_vocabulary():
     assert _produced_windows() <= abilities.REACTION_WINDOWS
-
-
-def test_unproducible_window_is_never_opened():
-    assert _produced_windows().isdisjoint(_NO_PRODUCER)

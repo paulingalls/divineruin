@@ -23,7 +23,7 @@ from activate_tools import activate
 from check_resolution import D20Roll
 
 ORDINARY = "arcane_mage_hand"
-UNWIRED = ("arcane_counterspell",)
+COUNTERSPELL = "arcane_counterspell"
 
 
 @pytest.mark.parametrize("spell", [SHIELD, BARK_SKIN])
@@ -78,12 +78,12 @@ async def test_combat_refuses_ordinary_reaction_cast(reset_db_pool, spell):
         assert (await resources(fight, caster))[0] == before["focus"]["current"] - 1
 
 
-async def test_only_wired_spells_reach_windows(reset_db_pool):
-    library = (SHIELD, BARK_SKIN, *UNWIRED)
+async def test_reaction_spells_require_their_own_windows(reset_db_pool):
+    library = (SHIELD, BARK_SKIN, COUNTERSPELL)
     async with defense_fight("bard", library=tuple((0, spell) for spell in library)) as fight:
         caster, ally = fight.players
         state = await fight.reload()
-        assert set(participant(state, caster).reaction_ids) & set(library) == {SHIELD, BARK_SKIN}
+        assert set(participant(state, caster).reaction_ids) & set(library) == set(library)
         await declare_attacks(fight, caster, fight.enemies[0])
         before = await resources(fight, caster)
         with patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(16 - self.modifier)):
@@ -92,15 +92,14 @@ async def test_only_wired_spells_reach_windows(reset_db_pool):
             await offered_id(fight, caster, "post_roll", BARK_SKIN)
             assert "fires on 'on_targeted'" in await fight.command("activate", {"id": SHIELD}, error=True)
             snapshot = (await fight.reload()).to_dict()
-            for spell in UNWIRED:
-                assert "does not own reaction" in await fight.command("activate", {"id": spell}, error=True)
+            assert "fires on 'on_spell_cast'" in await fight.command("activate", {"id": COUNTERSPELL}, error=True)
             assert await resources(fight, caster) == before
             assert (await fight.reload()).to_dict() == snapshot
             await fight.drain()
             await declare_attacks(fight, ally, fight.enemies[0])
             window = await open_stage(fight, "post_roll")
             assert "on_ally_hit" in window["triggers"]
-            assert UNWIRED[0] not in {offer["id"] for offer in window["reactions"]}
+            assert COUNTERSPELL not in {offer["id"] for offer in window["reactions"]}
 
 
 @pytest.mark.parametrize(

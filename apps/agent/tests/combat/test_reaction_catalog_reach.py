@@ -7,7 +7,7 @@ import pytest
 from archetype_abilities_config_fixture import load_fixture_config
 from combat._helpers import _make_combat_state, _own_reaction
 from combat.test_reaction_window_census import movement_state
-from sample_fixtures import make_context
+from sample_fixtures import catalog_encounters, make_context
 from voice_condition_fixtures import place_actors
 
 import combat_hold
@@ -16,6 +16,10 @@ import reaction_windows
 from combat_phase import PhaseBeat
 from query_tools import _query_abilities_impl
 from reaction_gate import validate_reaction_activation
+
+_CULT_CELL = next(encounter for encounter in catalog_encounters() if encounter["id"] == "cult_cell")
+_LEADER = next(enemy for enemy in _CULT_CELL["enemies"] if enemy["id"] == "cult_leader")
+_HOLD_PERSON = next(action for action in _LEADER["action_pool"] if action["name"] == "Hold Person")
 
 # The windows the real producer can emit, one entry per held-action shape it distinguishes.
 # Built by calling reaction_windows, never transcribed: a trigger set copied into this file would
@@ -35,10 +39,8 @@ _PRODUCIBLE = {
     ),
 }
 
-NO_PRODUCER = {"on_spell_cast"}
 
-
-def _paused_state(shape):
+def _paused_state(shape, *, action=None):
     if shape is None:
         state = movement_state()
     else:
@@ -46,9 +48,14 @@ def _paused_state(shape):
         state = _make_combat_state()
         if target_id == "player_2":
             place_actors(state, target_id)
+        action_name = action["name"] if action else "Scimitar"
+        if action:
+            enemy = state.get_participant("goblin_scout_1")
+            assert enemy is not None
+            enemy.action_pool = [action]
         state.held_actions = [
             combat_hold.new_head(
-                state, "goblin_scout_1", 12, {"type": "attack", "action": "Scimitar", "target_id": target_id}
+                state, "goblin_scout_1", 12, {"type": "attack", "action": action_name, "target_id": target_id}
             )
         ]
         state.open_window = reaction_windows.open_window_for(
@@ -66,7 +73,11 @@ def _paused_state(shape):
 
 
 def _produced_states():
-    return {name: _paused_state(shape) for name, shape in {**_PRODUCIBLE, "movement": None}.items()}
+    states = {name: _paused_state(shape) for name, shape in {**_PRODUCIBLE, "movement": None}.items()}
+    states["spell"] = _paused_state(
+        ("pre_roll", "attack", "player_1", reaction_windows.pre_roll_triggers(_HOLD_PERSON)), action=_HOLD_PERSON
+    )
+    return states
 
 
 async def _queried_reactions():
@@ -99,8 +110,6 @@ async def test_every_queried_reaction_window_is_answered_by_a_real_open_window()
     states = _produced_states()
     reachable = {}
     for ability_id, window in (await _queried_reactions()).items():
-        if window in NO_PRODUCER:
-            continue
         answered = {
             name: state
             for name, state in states.items()
@@ -122,18 +131,6 @@ async def test_every_queried_reaction_window_is_answered_by_a_real_open_window()
 
 
 @pytest.mark.asyncio
-async def test_a_reaction_whose_window_has_no_producer_is_refused_at_every_window():
-    unreachable = {i: w for i, w in (await _queried_reactions()).items() if w in NO_PRODUCER}
-    assert unreachable.keys() == {"mage_counterspell"}
-
-    for ability_id, window in unreachable.items():
-        for state in _produced_states().values():
-            _own_reaction(state, ability_id)
-            with pytest.raises(ValueError, match=window):
-                validate_reaction_activation(state, "player_1", ability_id)
-
-
-@pytest.mark.asyncio
 async def test_the_two_window_vocabularies_are_one():
     import abilities
 
@@ -144,4 +141,4 @@ async def test_the_two_window_vocabularies_are_one():
     consumed = set((await _queried_reactions()).values())
 
     assert produced <= abilities.REACTION_WINDOWS
-    assert produced == consumed - NO_PRODUCER
+    assert produced == consumed

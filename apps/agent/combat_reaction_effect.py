@@ -1,10 +1,4 @@
-"""What a spent reaction does to the held blow it answered.
-
-Counterspell, the third outcome game_mechanics_combat.md:187 names, is NOT here and is not faked: its window is
-``on_spell_cast`` and no enemy in content casts a spell, so the window has no producer (debt
-08bc5548). ``tests/combat/test_reaction_catalog_reach.py`` pins it refused at every window the
-engine can open, rather than shipping a guard that certifies nothing.
-"""
+"""What a spent reaction does to the held blow it answered."""
 
 from __future__ import annotations
 
@@ -13,6 +7,7 @@ from typing import cast
 
 import ability_voice_rules
 import architect_entomb
+import check_resolution
 import combat_grapple
 import combat_reaction_contest
 import combat_structures
@@ -21,12 +16,13 @@ import reaction_catalog
 import reaction_spend
 import reaction_windows
 from ability_voice_rules import IMPLANT_DOUBT
+from combat_ability import _find_action
 from combat_attack_roll import held_reaction_ac
 from combat_participant import SHIELD_SPELL_AC_BONUS
 from combat_reaction_defense import BRACE, SHIELD_SPELLS, THOUGHT_SHIELD, apply_bark_skin, brace, halve, recheck_ac
 from condition_catalog import CONDITION_CATALOG, SHIELD_OF_FAITH
 from declarations import resolve_declaration
-from session_data import CombatParticipant
+from session_data import CombatParticipant, CombatState
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -273,6 +269,27 @@ def settle_disruption_defenses(state, head: dict) -> None:
                 packet["reason"] = "The attack misses, so there is no damage to reduce."
 
 
+def _counterspell(state: CombatState, head: dict, spend: dict, rng) -> dict:
+    caster = state.get_participant(head["actor_id"])
+    reactor = state.get_participant(spend["actor_id"])
+    assert caster is not None and reactor is not None
+    action = _find_action(caster, resolve_declaration(head["declaration"]).action)
+    assert action is not None
+    check = check_resolution.resolve_check(
+        reactor.attributes["intelligence"], reactor.level, "untrained", 10 + action["spell_focus_cost"], rng=rng
+    )
+    return {
+        "counterspell_check": {
+            "roll": check.roll,
+            "modifier": check.modifier,
+            "total": check.total,
+            "dc": check.dc,
+            "success": check.success,
+        },
+        **({"mechanical_effect": "spell_negated", "countered_spell": action["name"]} if check.success else {}),
+    }
+
+
 def close(state, head: dict, window: dict, *, attack_action: dict | None, contest_rng=None) -> list[dict]:
     """Apply what every reaction spent at ``window`` does to ``head``: one packet per spend.
 
@@ -305,9 +322,12 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None, contes
     )
     packets = []
     for spend, contest in zip(spends, contests, strict=True):
-        effects = _apply(
-            state, head, window, spend, attack_action, contest, ac_spend, hesitated, defer_damage_reductions
-        )
+        if spend["ability_id"] in reaction_catalog.COUNTERSPELLS:
+            effects = _counterspell(state, head, spend, contest_rng)
+        else:
+            effects = _apply(
+                state, head, window, spend, attack_action, contest, ac_spend, hesitated, defer_damage_reductions
+            )
         reaction = reaction_catalog.get_reaction(spend["ability_id"])
         packet = {
             "actor_id": spend["actor_id"],

@@ -9,7 +9,12 @@ NATURES_GRASP = "primal_natures_grasp"
 OPPORTUNITY_STRIKE = "warrior_opportunity_strike"
 SHIELD_OF_FAITH = "divine_shield_of_faith"
 
+COUNTERSPELL = "arcane_counterspell"
+COUNTERSPELL_TWIN = "mage_counterspell"
+COUNTERSPELLS = frozenset({COUNTERSPELL, COUNTERSPELL_TWIN})
+
 SPELL_TWINS = {
+    COUNTERSPELL: frozenset({COUNTERSPELL_TWIN}),
     NATURES_GRASP: frozenset(),
     SHIELD_OF_FAITH: frozenset({"cleric_shield_of_faith", "oracle_shield_of_faith", "paladin_shield_of_faith"}),
     "arcane_shield_spell": frozenset({"mage_shield_spell"}),

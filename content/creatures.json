@@ -4271,6 +4271,7 @@
     "attacks": [
       {
         "name": "Shadow Bolt",
+        "spell_focus_cost": 0,
         "type": "ranged",
         "reach": 30,
         "to_hit": 6,
@@ -4281,6 +4282,7 @@
       },
       {
         "name": "Hold Person",
+        "spell_focus_cost": 3,
         "type": "ranged",
         "reach": 60,
         "to_hit": 0,
@@ -4294,6 +4296,7 @@
       },
       {
         "name": "Dark Pulse",
+        "spell_focus_cost": 2,
         "type": "area",
         "reach": 15,
         "to_hit": 0,

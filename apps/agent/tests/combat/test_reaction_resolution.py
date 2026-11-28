@@ -1,4 +1,4 @@
-"""Counterspell remains unwired because no enemy spell-cast window exists. Drive wired effects through the real phase and activation paths."""
+"""Drive reaction effects through the real phase and activation paths."""
 
 import pytest
 from archetype_abilities_config_fixture import load_fixture_config
