@@ -67,28 +67,11 @@ def _previous_opening(state: CombatState) -> dict:
     return history[0]
 
 
-def _restore_combat(previous: dict, live: CombatState, roster: set[str]) -> CombatState:
+def _restore_combat(previous: dict, live: CombatState) -> CombatState:
     restored = CombatState.from_dict(deepcopy(previous))
     restored.departed_player_ids = list(live.departed_player_ids)
     for pid in restored.departed_player_ids:
         forget_participant(restored, pid)
-    retained = {p.id for p in [*restored.participants, *live.participants] if p.type == "player" and p.id not in roster}
-    if not retained:
-        return restored
-    restored.participants = [p for p in restored.participants if p.id not in retained]
-    for index, participant in enumerate(live.participants):
-        if participant.id in retained:
-            restored.participants.insert(index, deepcopy(participant))
-    restored.initiative_order = [pid for pid in restored.initiative_order if pid not in retained]
-    for index, pid in enumerate(live.initiative_order):
-        if pid in retained:
-            restored.initiative_order.insert(index, pid)
-    if restored.spatial is not None and live.spatial is not None:
-        for key in ("positions", "speeds"):
-            for pid in retained:
-                restored.spatial[key].pop(pid, None)
-                if pid in live.spatial[key]:
-                    restored.spatial[key][pid] = deepcopy(live.spatial[key][pid])
     return restored
 
 
@@ -125,7 +108,7 @@ async def _require_untouched(conn: asyncpg.Connection, committed: CombatState, p
     current_opening = committed.round_checkpoints[-1]
     saved = current_opening["players"]
     roster = (party & saved.keys()) - set(committed.departed_player_ids)
-    untouched = _restore_combat(current_opening["combat"], committed, roster)
+    untouched = _restore_combat(current_opening["combat"], committed)
     if _opening_image(untouched) != _opening_image(committed):
         raise ToolError(_UNTOUCHED)
     now = await checkpoints.read_party(conn, sorted(roster))
@@ -234,6 +217,11 @@ async def activate(session: SessionData) -> str:
             if committed.combat_id != live.combat_id or committed.round_number != live.round_number:
                 raise ToolError("The fight opening changed. Reload it before using Unravel Fate.")
             previous = _previous_opening(committed)
+            if any(
+                p.type in ("player", "temporary_hollowed") and p.id not in previous["players"]
+                for p in committed.participants
+            ):
+                raise ToolError("Unravel Fate cannot rewind this round. Someone joined the fight after it began.")
             for pid, player in current.items():
                 marker = breach_marker(player)
                 if (
@@ -251,7 +239,7 @@ async def activate(session: SessionData) -> str:
             await _require_untouched(conn, committed, members.keys())
             saved = previous["players"]
             roster = (members.keys() & saved.keys()) - set(committed.departed_player_ids)
-            restored = _restore_combat(previous["combat"], committed, roster)
+            restored = _restore_combat(previous["combat"], committed)
             if saved.keys() - roster or any(
                 p.id not in roster for p in committed.participants if p.type in ("player", "temporary_hollowed")
             ):
