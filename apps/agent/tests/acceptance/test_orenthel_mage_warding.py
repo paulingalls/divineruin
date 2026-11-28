@@ -24,6 +24,7 @@ from acceptance.test_spell_new_conditions import FIRE
 from acceptance.test_still_anchors import declare, strike
 from combat.test_spell_damage_lands import spell_fight as spell_fight
 from livekit.agents import ToolError
+from sample_fixtures import directed_hp_packets
 from voice_condition_fixtures import participant, place_actors, spatial_record
 
 import db
@@ -57,6 +58,14 @@ async def update_player(pid: str, **changes: object) -> None:
     await (await db.get_pool()).execute(
         "UPDATE players SET data=data || $2::jsonb WHERE player_id=$1", pid, json.dumps(changes)
     )
+
+
+async def set_recipient_hp(pid: str, maximum: int) -> None:
+    await update_player(pid, hp={"current": 20, "max": 20})
+    if maximum == 25:
+        await update_player(pid, divine_favor={"patron": "kaelen", "level": 40, "max": 100})
+    else:
+        await update_player(pid, maxhp_override=-3)
 
 
 async def check_pools(expected: dict[str, int], state=None) -> None:
@@ -102,16 +111,12 @@ async def test_wards_the_applied_ally(mage_party, spell, combat, before):
         cast = receipt(packets, mage)
     else:
         ctx.userdata.combat_state = None
-        await update_player(ally, maxhp_override=-3)
+        maximum = 25 if spell == HASTE else 17
+        await set_recipient_hp(ally, maximum)
         cast = json.loads(await activate(ctx, spell, target_id=ally))
-        events = ctx.userdata.room.local_participant.publish_data.call_args_list
-        (health_event,) = [call for call in events if json.loads(call.args[0])["type"] == E.HP_CHANGED]
-        assert health_event.kwargs["destination_identities"] == [ally]
-        health = json.loads(health_event.args[0])
-        assert {key: health[key] for key in ("current", "max", "temp_hp")} == {
-            **effective_hp(await player_row(ally)),
-            "temp_hp": 1,
-        }
+        assert directed_hp_packets(ctx.userdata.room) == [
+            ([ally], {"type": E.HP_CHANGED, "current": min(20, maximum), "max": maximum, "temp_hp": 1})
+        ]
         state = None
     await check_pools({mage: 0, ally: max(before, 1), control: 0}, state)
     ward(cast, ally, before)
@@ -187,12 +192,25 @@ async def test_direct_combat_cast_wards_both_stores(mage_party, spell, self_cast
     ctx, mage, ally, control = mage_party
     assert ctx.userdata.in_combat
     recipient = mage if self_cast else ally
+    maximum = 25 if spell == HASTE else 17
+    if self_cast:
+        await update_player(mage, hp={"current": 20, "max": 20}, maxhp_override=-3)
+    else:
+        await set_recipient_hp(ally, maximum)
+    state = ctx.userdata.combat_state
+    projected = effective_hp(await player_row(recipient))
+    target = participant(state, recipient)
+    target.hp_current, target.hp_max = projected["current"], projected["max"]
+    await db_mutations.save_combat_state(state.combat_id, state.to_dict())
     cast = json.loads(await activate(ctx, spell, target_id=None if self_cast else ally))
     ward(cast, recipient, 0)
     stored = await db_mutations.load_combat_state(ctx.userdata.combat_state.combat_id)
     assert stored is not None
     await check_pools({mage: int(self_cast), ally: int(not self_cast), control: 0}, ctx.userdata.combat_state)
     assert participant(stored, recipient).temp_hp == 1
+    assert directed_hp_packets(ctx.userdata.room) == [
+        ([recipient], {"type": E.HP_CHANGED, "current": min(20, maximum), "max": maximum, "temp_hp": 1})
+    ]
 
 
 @pytest.mark.parametrize(("spell", "target"), [(HASTE, "foe"), (HASTE, "fallen"), (MAGE_LIGHT, "ally"), (BOLT, "self")])

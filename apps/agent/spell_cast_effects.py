@@ -5,14 +5,13 @@ from livekit.agents.llm import ToolError
 import cast_modifiers
 import combat_spell_heal
 import event_types as E
+import hp_changed_payload
 import patron_echo_choice
 import spell_item_resolution
-import temp_hp
 import unbound_tools
 from game_events import publish_game_event
 from party_state import PartyMember
 from patron_location import is_coastal_location
-from patron_passives import effective_hp
 from patron_synergy_combat import (
     NYTHERA_SALTWIND_CASTING,
     VALDRIS_ABSOLUTE_AUTHORITY,
@@ -234,7 +233,7 @@ async def _finish_cast(
         # Out of combat no WRAP push follows, so each healed recipient's own HUD needs the new HP.
         for recipient_id, hp in combat_spell_heal.hp_updates(player_id, packet).items():
             recipient = player if recipient_id == player_id else heal_rows[recipient_id]
-            health = {"current": hp["hp_current"], "max": hp["hp_max"], "temp_hp": temp_hp.from_player(recipient)}
+            health = hp_changed_payload.from_player(recipient, current=hp["hp_current"])
             events.append(
                 lambda pid=recipient_id, payload=health: publish_game_event(
                     session.room,
@@ -253,7 +252,7 @@ async def _finish_cast(
             packet["mage_warding"] = ward
             for result in ward["recipients"]:
                 pid = result["recipient_id"]
-                health = {**effective_hp(locked_rows[pid]), "temp_hp": result["temp_hp"]}
+                health = hp_changed_payload.from_player(locked_rows[pid], temporary=result["temp_hp"])
                 events.append(
                     lambda pid=pid, payload=health: publish_game_event(
                         session.room, E.HP_CHANGED, payload, event_bus=session.event_bus, destination_identities=[pid]

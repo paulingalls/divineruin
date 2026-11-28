@@ -1,6 +1,7 @@
 """Recipient-turn and combat-end healing from Regenerate."""
 
 import event_types as E
+import hp_changed_payload
 from combat_down import is_terminally_down
 from combat_events import EventSink
 from combat_spell_heal import restore
@@ -58,11 +59,10 @@ async def publish_settled_hp(
 ) -> None:
     for target in state.participants:
         if target.type == "player" or target.id in settled_hp:
-            current, maximum = settled_hp.get(target.id, (target.hp_current, target.hp_max))
             await sink.emit(
                 session.room,
                 E.HP_CHANGED,
-                {"current": current, "max": maximum, "temp_hp": target.temp_hp},
+                hp_changed_payload.from_participant(target, settled_hp=settled_hp.get(target.id)),
                 event_bus=session.event_bus,
                 destination_identities=[target.id],
             )

@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from _zhael_fate_fixtures import attack, defend
 from _zhael_unravel_fixtures import (
     GIFT,
@@ -9,17 +10,19 @@ from _zhael_unravel_fixtures import (
     discovered,
     durable,
     favor,
+    opening,
     patch_player,
     unravel_fight,
 )
 from acceptance._capstone_helpers import _d20, _damage_die
 from combat._round_checkpoint_helpers import Fight
-from sample_fixtures import published_payloads
+from sample_fixtures import directed_hp_packets, published_payloads
 from test_aelora_gift import _live_party
 
 import event_types as E
 from _gods_content import load_gods
 from combat_ui_update import build_combat_ui_update
+from patron_passives import effective_hp
 from resonance import get_resonance_state
 from session_data import CompanionState
 
@@ -29,6 +32,36 @@ def test_unravel_fate_catalog_matches_design() -> None:
     design = Path(__file__).resolve().parents[3] / "docs/game_mechanics/game_mechanics_patrons.md"
     row = next(line for line in design.read_text().splitlines() if line.startswith("| Exalted | Unravel Fate |"))
     assert zhael["layer_3_tier_abilities"]["exalted"]["effect"] == row.split("|")[3].strip()
+
+
+@pytest.mark.parametrize("maximum", [17, 25])
+async def test_rewind_publishes_restored_effective_hp(dev_db_pool, maximum: int) -> None:
+    async with unravel_fight(dev_db_pool) as fight:
+        _, guest = fight.ids
+        if maximum == 25:
+            await favor(fight, guest, "kaelen", 40)
+        await patch_player(
+            fight, guest, hp={"current": 16, "max": 20}, maxhp_override=maximum - 20 if maximum == 17 else 0, temp_hp=3
+        )
+        await opening(fight, 1)
+        state = fight.session.combat_state
+        target = state.get_participant(guest)
+        assert (target.hp_current, target.hp_max, target.temp_hp) == (16, maximum, 3)
+        target.hp_current, target.temp_hp = 12, 0
+        await patch_player(fight, guest, hp={"current": 12, "max": 20}, temp_hp=0)
+        await fight.write_row(state.to_dict())
+        await fight.declare()
+        await fight.finish_round(3)
+        before = (await durable(fight))["players"][guest]["data"]
+        assert (before["hp"]["current"], before["temp_hp"]) == (12, 0)
+        room = fight.session.room
+        room.local_participant.publish_data.reset_mock()
+        await fight.call("activate", id=GIFT)
+        restored = (await durable(fight))["players"][guest]["data"]
+        assert effective_hp(restored) == {"current": 16, "max": maximum}
+        assert [packet for dest, packet in directed_hp_packets(room) if dest == [guest]] == [
+            {"type": E.HP_CHANGED, **effective_hp(restored), "temp_hp": 3}
+        ]
 
 
 async def whole_round(world) -> None:

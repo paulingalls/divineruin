@@ -38,13 +38,13 @@ import db_mutations_conditions
 import db_queries
 import dice
 import event_types as E
+import hp_changed_payload
 import infusion
 import mentor_variants
 import patron_synergy_heal
 import reaction_gate
 import reaction_spend
 import spells
-import temp_hp
 import wild_shape
 from combat_ability_gate import (
     MARSHAL_RALLY,
@@ -417,7 +417,7 @@ async def _request_ability_activation_unlocked(
     if heal_mode:
         for pid, hp in combat_spell_heal.hp_updates(player_id, heal_packet).items():
             recipient = player if pid == player_id else heal_rows[pid]
-            health = {"current": hp["hp_current"], "max": hp["hp_max"], "temp_hp": temp_hp.from_player(recipient)}
+            health = hp_changed_payload.from_player(recipient, current=hp["hp_current"])
             with isolated_publish("Inspire healing HP"):
                 await publish_game_event(
                     session.room, E.HP_CHANGED, health, event_bus=session.event_bus, destination_identities=[pid]
