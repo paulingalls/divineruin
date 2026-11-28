@@ -20,14 +20,25 @@ const SALE = {
   crafted_sale_rate: 0.8,
   sale_disposition_multipliers: { unfriendly: 0.9, neutral: 1, friendly: 1.1, trusted: 1.2 },
 };
+const PURCHASE = {
+  purchase_disposition_multipliers: {
+    hostile: 1.2,
+    unfriendly: 1.1,
+    neutral: 1,
+    friendly: 0.9,
+    trusted: 0.8,
+  },
+  purchase_frontier_multiplier: 1.25,
+};
 const BASE = {
+  ...PURCHASE,
   repair_cost_sp: { common: 2, uncommon: 10, rare: 50, legendary: 200 },
   disposition_multipliers: { friendly: 0.8, trusted: 0.6 },
   silver_per_gold: 10,
 };
 
 function parseUnknownJson(text: string): unknown {
-  return { ...SALE, ...(JSON.parse(text) as object) };
+  return { ...SALE, ...PURCHASE, ...(JSON.parse(text) as object) };
 }
 
 // A JSON integer literal past float range: JSON.parse gives Infinity here, while
@@ -40,6 +51,8 @@ describe("parsePricingRow (fail-loud)", () => {
   test("parses the authored economy row", () => {
     expect(parsePricingRow(authoredPricing[0])).toEqual({
       repairCostSp: BASE.repair_cost_sp,
+      purchaseDispositionMultipliers: PURCHASE.purchase_disposition_multipliers,
+      purchaseFrontierMultiplier: PURCHASE.purchase_frontier_multiplier,
       dispositionMultipliers: BASE.disposition_multipliers,
       silverPerGold: BASE.silver_per_gold,
       merchantGoldSp: SALE.merchant_gold_sp,
@@ -49,6 +62,41 @@ describe("parsePricingRow (fail-loud)", () => {
       craftedSaleRate: SALE.crafted_sale_rate,
       saleDispositionMultipliers: SALE.sale_disposition_multipliers,
     });
+  });
+
+  test("requires the complete purchase disposition table", () => {
+    expect(() =>
+      parsePricingRow({ ...BASE, ...SALE, purchase_disposition_multipliers: undefined }),
+    ).toThrow("purchase_disposition_multipliers");
+    const { hostile: _hostile, ...rest } = PURCHASE.purchase_disposition_multipliers;
+    expect(() =>
+      parsePricingRow({ ...BASE, ...SALE, purchase_disposition_multipliers: rest }),
+    ).toThrow("purchase_disposition_multipliers");
+  });
+
+  test.each([0, -1, true, "1.25", Infinity, 1.23456])(
+    "rejects invalid purchase multiplier %s",
+    (value) => {
+      expect(() =>
+        parsePricingRow({
+          ...BASE,
+          ...SALE,
+          purchase_disposition_multipliers: {
+            ...PURCHASE.purchase_disposition_multipliers,
+            hostile: value,
+          },
+        }),
+      ).toThrow("purchase_disposition_multipliers.hostile");
+      expect(() =>
+        parsePricingRow({ ...BASE, ...SALE, purchase_frontier_multiplier: value }),
+      ).toThrow("purchase_frontier_multiplier");
+    },
+  );
+
+  test("requires the frontier purchase rate", () => {
+    expect(() =>
+      parsePricingRow({ ...BASE, ...SALE, purchase_frontier_multiplier: undefined }),
+    ).toThrow("purchase_frontier_multiplier");
   });
 
   const saleFields = [
@@ -215,6 +263,7 @@ describe("parsePricingRow (fail-loud)", () => {
     expect(
       parsePricingRow({
         ...SALE,
+        ...PURCHASE,
         repair_cost_sp: { common: value },
         disposition_multipliers: {},
         silver_per_gold: 10,

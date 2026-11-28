@@ -1,6 +1,7 @@
-import { MERCHANT_KIND_VALUES } from "@divineruin/shared";
+import { type Disposition, MERCHANT_KIND_VALUES } from "@divineruin/shared";
 import { ECONOMY_SIZES, ECONOMY_TRAITS } from "./economy-settlement.ts";
 import { sql } from "./db.ts";
+import { DISPOSITION_ORDER } from "./dispositions.ts";
 import { asRecord } from "./parse-helpers.ts";
 
 export interface EconomyPricing {
@@ -10,6 +11,8 @@ export interface EconomyPricing {
   saleRate: number;
   saleDispositionMultipliers: Record<SaleDisposition, number>;
   craftedSaleRate: number;
+  purchaseDispositionMultipliers: Record<Disposition, number>;
+  purchaseFrontierMultiplier: number;
   merchantGoldSp: Record<string, Record<string, number | null>>;
   merchantGoldPersonalityMultipliers: Record<string, number>;
   militaryMerchantGoldMultipliers: { arms: number; other: number };
@@ -111,6 +114,7 @@ export function parsePricingRow(raw: unknown, poolIds?: ReadonlySet<string>): Ec
     ),
     silverPerGold: parseMultiplier(d.silver_per_gold, "pricing[economy].silver_per_gold", true),
     ...parseSaleRates(d),
+    ...parsePurchaseRates(d),
     ...parseMerchantGold(d),
   };
   parseStockModifiers(d.stock_modifiers, poolIds);
@@ -146,6 +150,22 @@ function requireFields(raw: unknown, fields: readonly string[], ctx: string) {
     throw new Error(`${ctx} requires exactly ${fields.join(", ")}`);
   }
   return record;
+}
+
+function parsePurchaseRates(data: Record<string, unknown>) {
+  const ctx = "pricing[economy].purchase_disposition_multipliers";
+  const raw = requireFields(data.purchase_disposition_multipliers, DISPOSITION_ORDER, ctx);
+  for (const [disposition, value] of Object.entries(raw)) {
+    parseMultiplier(value, `${ctx}.${disposition}`, true);
+  }
+  return {
+    purchaseDispositionMultipliers: raw as Record<Disposition, number>,
+    purchaseFrontierMultiplier: parseMultiplier(
+      data.purchase_frontier_multiplier,
+      "pricing[economy].purchase_frontier_multiplier",
+      true,
+    ),
+  };
 }
 
 function parseStockModifiers(raw: unknown, poolIds: ReadonlySet<string> | undefined) {

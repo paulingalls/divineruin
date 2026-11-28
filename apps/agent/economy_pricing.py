@@ -4,6 +4,7 @@ import math
 
 from catalog_parse import parse_dict
 from inventory_pools import MERCHANT_KINDS
+from role_archetypes import DISPOSITIONS
 from sale_pricing import ECONOMY_SIZES, ECONOMY_TRAITS, SALE_DISPOSITIONS
 
 MAX_DISPOSITION_MULTIPLIER = 1e304
@@ -110,6 +111,13 @@ def parse_economy_pricing(data: dict) -> dict:
         multiplier = _validate_multiplier(multipliers.get(disposition), ctx, positive=True)
         # Keep the composed rate on a whole basis point for both rounding implementations.
         _validate_multiplier(sale_rate * multiplier, f"{ctx} * sale_rate", positive=True)
+    ctx = "pricing[economy].purchase_disposition_multipliers"
+    purchase_rates = _require_fields(data.get("purchase_disposition_multipliers"), DISPOSITIONS, ctx)
+    for disposition, multiplier in purchase_rates.items():
+        _validate_multiplier(multiplier, f"{ctx}.{disposition}", positive=True)
+    _validate_multiplier(
+        data.get("purchase_frontier_multiplier"), "pricing[economy].purchase_frontier_multiplier", positive=True
+    )
     _validate_merchant_pricing(data)
     _validate_stock_modifiers(data.get("stock_modifiers"))
     return data
