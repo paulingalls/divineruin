@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from acceptance._capstone_helpers import _damage_die
 from acceptance._enemy_opportunity_helpers import move, strikes
-from acceptance.counter_reactions_harness import RIPOSTE, WEAPON
+from acceptance.counter_reactions_harness import RIPOSTE, WEAPON, react
 from acceptance.defensive_reactions_harness import SPELL, declare_attacks, defense_fight, player_row, reaction_packet
 from acceptance.disruption_reactions_harness import open_stage
 from acceptance.test_architect_fight import pos
@@ -124,7 +124,7 @@ async def test_faith_drops_on_departure_or_combat_end(reset_db_pool, exit_kind):
         assert all(c["type"] != WARD for c in (await player_row(target)).get("conditions", []))
 
 
-@pytest.mark.parametrize("depart", [False, True])
+@pytest.mark.parametrize("depart", ["never", "at_save", "at_followup"])
 async def test_applied_faith_survives_held_concentration_save(reset_db_pool, depart):
     async with defense_fight("warden", ally_archetype="diplomat", library=((1, FAITH),), fate=True) as fight:
         ally, caster = fight.players
@@ -146,17 +146,23 @@ async def test_applied_faith_survives_held_concentration_save(reset_db_pool, dep
             assert reaction_packet(head["pending_reaction_packets"], FAITH)["target_id"] == ally
             assert (await player_row(ally))["hp"]["current"] == initial_hp - original["damage"]
             lifecycle = _live_party(fight.sd, *fight.players)
+
+            async def caster_leaves() -> None:
+                await lifecycle.authorize(caster)
+                await leave(fight.sd, caster, room_io=MagicMock())
+                assert ward_sources(await fight.reload(), ally) == []
+
             try:
-                if depart:
-                    await lifecycle.authorize(caster)
-                    await leave(fight.sd, caster, room_io=MagicMock())
-                    assert ward_sources(await fight.reload(), ally) == []
+                if depart == "at_save":
+                    await caster_leaves()
                 result = await keep_original(fight, offer)
                 packets = result["packets"]
                 for _ in range(6):
                     if (await fight.reload()).round_number == 2:
                         break
                     if next_offer := result.get("fate_offer"):
+                        if depart == "at_followup" and next_offer["roller_id"] == "lookout":
+                            await caster_leaves()
                         result = await keep_original(fight, next_offer)
                     else:
                         result = await fight.command("resolve_phase", {})
@@ -169,13 +175,14 @@ async def test_applied_faith_survives_held_concentration_save(reset_db_pool, dep
         assert (first["target_ac"], first["damage"], first["concentration_broken"]) == (18, original["damage"], SPELL)
         assert reaction_packet(packets, FAITH)["actor_id"] == caster
         followup = blow(packets, "lookout")
-        assert (followup["target_ac"], followup["hit"], followup["damage"]) == (
-            (16, True, 7) if depart else (18, False, 0)
+        assert (followup["target_ac"], followup["hit"], followup["damage"], followup["resolved"]) == (
+            (16, True, 7, True) if depart == "at_save" else (18, False, 0, True)
         )
         assert (await player_row(ally))["hp"]["current"] == initial_hp - original["damage"] - followup["damage"]
 
 
-async def test_departure_preserves_the_rechecked_miss_but_exposes_the_next_hit(reset_db_pool):
+@pytest.mark.parametrize("riposte", [False, True])
+async def test_departure_preserves_the_rechecked_miss_but_exposes_the_next_hit(reset_db_pool, riposte):
     async with defense_fight("skirmisher", ally_archetype="diplomat", library=((1, FAITH),), gear=WEAPON) as fight:
         ally, caster = fight.players
         modifier = await set_target(fight, ally, caster=caster)
@@ -195,9 +202,13 @@ async def test_departure_preserves_the_rechecked_miss_but_exposes_the_next_hit(r
                 await lifecycle.authorize(caster)
                 await leave(fight.sd, caster, room_io=MagicMock())
                 assert ward_sources(await fight.reload(), ally) == []
+                if riposte:
+                    await react(fight, RIPOSTE)
                 packets = await fight.drain()
             finally:
                 await lifecycle.aclose()
+        if riposte:
+            assert "counter_attack" in reaction_packet(packets, RIPOSTE)
         first = blow(packets)
         assert (first["attack_total"], first["target_ac"], first["hit"], first["damage"]) == (17, 18, False, 0)
         followup = blow(packets, "lookout")

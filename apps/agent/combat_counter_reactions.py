@@ -113,6 +113,12 @@ async def sidestep(
     }
 
 
+def _reactor(state: "CombatState", packet: dict) -> "CombatParticipant":
+    actor = state.get_participant(packet["actor_id"])
+    assert actor is not None, f"counter-reactor {packet['actor_id']!r} left before its counter settled"
+    return actor
+
+
 async def settle(
     session: "SessionData", state: "CombatState", head: dict, summaries: list[dict], deps: dict, fate: PhaseRolls | None
 ) -> bool:
@@ -127,9 +133,8 @@ async def settle(
         packet = queue[0]
         ability = packet["ability_id"]
         counter = continuation.setdefault("counter", {})
-        actor = state.get_participant(packet["actor_id"])
-        assert actor is not None
         if ability == RETALIATE and continuation["attack"].get("hit"):
+            actor = _reactor(state, packet)
             progress = _progress(session, counter, deps, fate)
             kind = SHIELD_BASH_ACTION["damage_type"]
             result = None
@@ -158,6 +163,7 @@ async def settle(
                 "window_id": packet["window_id"],
             }
         elif ability == RIPOSTE:
+            actor = _reactor(state, packet)
             spend = state.reactions_available[actor.id]
             if target.is_fallen:
                 packet["reason"] = "target already fell"
