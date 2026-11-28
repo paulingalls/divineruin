@@ -24,7 +24,7 @@ from acceptance.test_architect_terrain import set_favor
 from acceptance.test_departed_member_leaves_fight import GUEST, PRIMARY, THIRD, Row, Run, run_row, team
 from acceptance.test_guardian_intercept import SWORD, tool_receipt
 from acceptance.test_martial_core_kit import weapon_attack
-from acceptance.test_paladin_oath_swear import patch_player as patch_architect_player
+from acceptance.test_paladin_oath_swear import patch_player as patch_player_record
 from acceptance.test_slippery_restrain import advance
 from acceptance.test_slippery_restrain import declare as declare_entomb
 from acceptance.test_slippery_restrain import mock_combat_agent_factory as mock_combat_agent_factory
@@ -126,7 +126,7 @@ async def architect_with_rogue() -> AsyncIterator[MawlingHarness]:
     fight = MawlingHarness()
     try:
         await fight.prepare((5, 5), companion=None, location=WORKS)
-        await patch_architect_player(fight.players[GUEST], **{"class": "rogue"})
+        await patch_player_record(fight.players[GUEST], **{"class": "rogue"})
         fight.enemies = [cast(dict, (await enter(fight)).architect_encounter)["owner_id"]]
         with patch("combat_recharge.roll", return_value=SimpleNamespace(total=5)):
             yield fight
@@ -296,7 +296,7 @@ async def test_skeleton_still_fears_its_living_cleric(reset_db_pool) -> None:
 async def test_departure_preserves_the_survivors_inner_fire_save(reset_db_pool) -> None:
     async with defense_fight("mage", fate=True) as fight:
         host, guest = fight.players
-        await patch_architect_player(host, race="draethar")
+        await patch_player_record(host, race="draethar")
         with patch("check_resolution.dice_roll", return_value=_d20(5)), patch("dice.roll", return_value=_damage_die(4)):
             held = await fight.command("activate", {"id": "draethar_inner_fire"})
         assert held["fate_offer"]["roller_id"] == host

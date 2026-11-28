@@ -211,34 +211,33 @@ def intercepted(run: Run, state: CombatState) -> None:
     assert run.target_left(run.enemies[0], run.guest)["strike_index"] == 0
 
 
-def source_bound(spell: str, *, mark: bool) -> Row:
-    async def cast(run: Run) -> None:
-        cleric = run.players[THIRD] if not mark else run.guest
-        casts = (run.guest,) if mark else (run.guest, cleric)
-        targets = (run.enemies[0],) if mark else (run.host, cleric)
-        await run.declare(
-            *(ability_action(caster, spell, target) for caster, target in zip(casts, targets, strict=True))
-        )
-        await run.fight.drain()
+async def guiding_light(run: Run) -> None:
+    await run.declare(ability_action(run.guest, "divine_guiding_light", run.enemies[0]))
+    await run.fight.drain()
 
-    async def settle(run: Run) -> None:
-        if mark:
-            await run.declare(weapon_attack(run.host, run.enemies[0], ""))
-            run.faces(3, 17, 16)
-        else:
-            state = await run.fight.reload()
-            warded = {p.id for p in state.participants if any(c["type"] == "divine_ward" for c in p.conditions)}
-            assert warded == {run.players[THIRD]}
-            await run.defend()
-        await finish(run)
 
-        if mark:
-            assert [p["roll"] for p in run.hits(run.host)] == [3]
+async def strike_marked_foe(run: Run) -> None:
+    await run.declare(weapon_attack(run.host, run.enemies[0], ""))
+    run.faces(3, 17, 16)
+    await finish(run)
+    assert [p["roll"] for p in run.hits(run.host)] == [3]
 
-    classes = ("warrior", "cleric") if mark else ("warrior", "cleric", "cleric")
-    library = ((GUEST, spell),) if mark else ((GUEST, spell), (THIRD, spell))
-    name = "guiding-light-caster" if mark else "divine-ward-caster"
-    return Row(id=name, fight=team(classes, library=library), prepare=cast, settle=settle)
+
+async def divine_wards(run: Run) -> None:
+    cleric = run.players[THIRD]
+    await run.declare(
+        ability_action(run.guest, "divine_divine_ward", run.host),
+        ability_action(cleric, "divine_divine_ward", cleric),
+    )
+    await run.fight.drain()
+
+
+async def only_own_ward_left(run: Run) -> None:
+    state = await run.fight.reload()
+    warded = {p.id for p in state.participants if any(c["type"] == "divine_ward" for c in p.conditions)}
+    assert warded == {run.players[THIRD]}
+    await run.defend()
+    await finish(run)
 
 
 async def order_potion(run: Run) -> None:
@@ -260,19 +259,21 @@ async def order_potion(run: Run) -> None:
     )
 
 
-async def settle_medic(run: Run) -> None:
-    if (marshal := run.players[GUEST]) != run.guest:
-        state = await run.fight.reload()
-        assert state.order_riders[run.host][0]["source_id"] == marshal
-        assert state.pending_declarations[run.host]["healing_item"]["target_id"] == marshal
-        await finish(run)
-        return
+async def settle_patient_left(run: Run) -> None:
     await finish(run)
     enemy = (await run.fight.reload()).get_participant(run.enemies[0])
     assert enemy is not None and enemy.hp_current == enemy.hp_max
     run.target_left(run.host, run.guest)
     (item,) = [row for row in await db_queries.get_player_inventory(run.host) if row["id"] == POTION]
     assert item["slot_info"]["quantity"] == 1
+
+
+async def settle_unrelated_leaver(run: Run) -> None:
+    marshal = run.players[GUEST]
+    state = await run.fight.reload()
+    assert state.order_riders[run.host][0]["source_id"] == marshal
+    assert state.pending_declarations[run.host]["healing_item"]["target_id"] == marshal
+    await finish(run)
 
 
 async def swear(run: Run) -> None:
@@ -300,15 +301,25 @@ def oath_lapsed(run: Run, state: CombatState) -> None:
 
 medic_fight = team(("warrior", "marshal", "guardian"))
 oath_fight = team(("guardian", "guardian"))
+guiding_fight = team(("warrior", "cleric"), library=((GUEST, "divine_guiding_light"),))
+ward_fight = team(
+    ("warrior", "cleric", "cleric"), library=((GUEST, "divine_divine_ward"), (THIRD, "divine_divine_ward"))
+)
 ROWS = [
     held("pre_roll", PRIMARY),
     held("post_roll", GUEST),
     Row(id="queued-declarations", fight=team(), prepare=queue_attacks, check=queued_results),
     Row(id="intercept", fight=team(enemy="hollow_knight"), prepare=intercept, check=intercepted),
-    Row(id="field-medic-1-p1", fight=medic_fight, prepare=order_potion, settle=settle_medic),
-    Row(id="medic-unrelated-leaver", fight=medic_fight, leaver=THIRD, prepare=order_potion, settle=settle_medic),
-    source_bound("divine_guiding_light", mark=True),
-    source_bound("divine_divine_ward", mark=False),
+    Row(id="field-medic-1-p1", fight=medic_fight, prepare=order_potion, settle=settle_patient_left),
+    Row(
+        id="medic-unrelated-leaver",
+        fight=medic_fight,
+        leaver=THIRD,
+        prepare=order_potion,
+        settle=settle_unrelated_leaver,
+    ),
+    Row(id="guiding-light-caster", fight=guiding_fight, prepare=guiding_light, settle=strike_marked_foe),
+    Row(id="divine-ward-caster", fight=ward_fight, prepare=divine_wards, settle=only_own_ward_left),
     Row(id="timed-oath-lapses", fight=oath_fight, prepare=swear, settle=reach_oath_deadline, check=oath_lapsed),
 ]
 
