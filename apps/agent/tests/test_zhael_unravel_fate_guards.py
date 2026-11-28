@@ -24,9 +24,7 @@ from livekit.agents.llm import ToolError
 from test_aelora_gift import _live_party
 
 import character_spells
-import conditions
 from check_resolution import D20Roll
-from condition_catalog import SHIELD_OF_FAITH
 from encounter_roles import EncounterRole
 from session_data import CompanionState
 from session_hydration import hydrate_patron_ability_session
@@ -320,34 +318,29 @@ async def test_unravel_restores_bless_casters_and_saved_conditions(unravel: Figh
     [
         ("arcane_shield_spell", "artificer", "pre_roll", 1, "shield_spell_active"),
         ("primal_bark_skin", "beastcaller", "post_roll", 2, "bark_skin_active"),
-        ("divine_shield_of_faith", "diplomat", "post_roll", 2, None),
-        pytest.param("divine_shield_of_faith", "diplomat", "post_roll", 2, SHIELD_OF_FAITH, id="restore-live-ward"),
     ],
 )
 async def test_catalog_reaction_rewinds_resources_and_defense(unravel: Fight, spell, archetype, stage, cost, flag):
     fight = unravel
     restorer, caster = fight.ids
     await patch_player(fight, caster, **{"class": archetype})
-    faith = spell == "divine_shield_of_faith"
-    if faith:
-        await patch_player(fight, restorer, flags={"ignored": True})
     await character_spells.record_learned(caster, spell, "discovery", conn=fight.pool)
     await fight.start()
     state = fight.session.combat_state
     enemy = state.get_participant("mawling_1")
-    target = state.get_participant(restorer if faith else caster)
-    assert spell in state.get_participant(caster).reaction_ids
+    target = state.get_participant(caster)
+    assert spell in target.reaction_ids
     target.ac = 16
     enemy.initiative = 40
     state.initiative_order.remove(enemy.id)
     state.initiative_order.insert(0, enemy.id)
     state.terrain = "forest"
-    position = state.spatial["positions"][target.id]
+    position = state.spatial["positions"][caster]
     state.spatial["positions"][enemy.id] = {**position, "x": position["x"] + 5}
     start = state.round_checkpoints[-1]
     before = start["players"][caster]["data"]
     await fight.write_row(state.to_dict())
-    await fight.declare({"actor_id": enemy.id, **strike(target.id, action="Claw")})
+    await fight.declare({"actor_id": enemy.id, **strike(caster, action="Claw")})
     with (
         patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(self.dc - self.modifier)),
         patch("check_resolution_attack.dice_roll", return_value=_damage_die(3)),
@@ -361,8 +354,7 @@ async def test_catalog_reaction_rewinds_resources_and_defense(unravel: Fight, sp
                 )
             else:
                 result = await fight.call("resolve_phase")
-            window = result["next"]["waiting_on"]
-            if window is not None and window["stage"] == stage:
+            if window := result["next"]["waiting_on"]:
                 break
         assert window is not None and window["stage"] == stage, (result["packets"], result["next"])
         (offered,) = [r["id"] for r in window["reactions"] if r["actor_id"] == caster]
@@ -382,22 +374,10 @@ async def test_catalog_reaction_rewinds_resources_and_defense(unravel: Fight, sp
             resumed = await fight.call("activate", id="zhael_fates_thread", offer_id=offer["offer_id"], keep="original")
             packets += resumed["packets"]
         (defense,) = [packet for packet in packets if packet.get("ability_id") == spell]
-        assert defense["mechanical_effect"] == ("target_ac_bonus" if stage == "pre_roll" or faith else "round_ac_bonus")
+        assert defense["mechanical_effect"] == ("target_ac_bonus" if stage == "pre_roll" else "round_ac_bonus")
         if stage == "pre_roll":
             assert getattr(fight.session.combat_state.get_participant(target.id), flag)
-        if faith:
-            warded = fight.session.combat_state.get_participant(target.id)
-            assert conditions.has_condition(warded.conditions, SHIELD_OF_FAITH)
-            assert defense["target_id"] == target.id
         await fight.finish_round(start["round_number"] + 1)
-        if flag == SHIELD_OF_FAITH:
-            start = fight.session.combat_state.round_checkpoints[-1]
-            assert start["round_number"] == 2
-            await fight.declare()
-            await fight.finish_round(3)
-            assert not conditions.has_condition(
-                fight.session.combat_state.get_participant(target.id).conditions, SHIELD_OF_FAITH
-            )
     await activate(fight, restorer)
     await fight.reload()
     assert_restored(fight, await durable(fight), start, restorer)

@@ -1,239 +1,180 @@
-"""Shield of Faith through registered combat tools and saved combat state."""
+"""Shield of Faith through registered combat tools, saved state, turn boundaries and departure."""
 
-from unittest.mock import patch
+from functools import partial
+from itertools import chain, repeat
+from unittest.mock import MagicMock, patch
 
 import pytest
 from acceptance._capstone_helpers import _damage_die
-from acceptance.defensive_reactions_harness import (
-    declare_attacks,
-    defense_fight,
-    player_row,
-    reaction_packet,
-    reload_session,
-)
-from acceptance.disruption_reactions_harness import open_stage
+from acceptance.counter_reactions_harness import RIPOSTE, WEAPON, react
+from acceptance.defensive_reactions_harness import defense_fight, reload_session
 from acceptance.test_architect_fight import pos
 from acceptance.test_bark_skin import blow, keep_original
-from acceptance.test_guardian_intercept import BANDIT, SWORD, pools, tool_receipt
+from acceptance.test_guardian_intercept import BANDIT, SWORD, tool_receipt
 from acceptance.test_opportunity_strike import participant
 from acceptance.test_slippery_restrain import mock_combat_agent_factory as mock_combat_agent_factory
+from acceptance.test_spell_bless_lifecycle import leave
 from acceptance.test_spell_reaction_offers import resources
+from acceptance.test_still_anchors import strike
+from test_aelora_gift import _live_party
 
-import combat_spatial
 from check_resolution import D20Roll
+from combat_spatial import require_spatial
+from combat_structures import THORNWALL, add_wall
 
-FAITH = "divine_shield_of_faith"
-WARD = "shield_of_faith"
-
-
-BARK = "warden_bark_skin"
-
-
-async def set_target(fight, ally, *, distance=25, ac=16, caster=None):
-    state = await fight.reload()
-    participant(state, ally).ac = ac
-    positions = combat_spatial.require_spatial(state)["positions"]
-    positions.update({caster or fight.players[0]: pos(distance), ally: pos(0)})
-    sword = next(action for action in participant(state, BANDIT).action_pool if action["name"] == SWORD)
-    await fight.persist()
-    return sword["to_hit"]
+FAITH, WARD, BARK, LOOK = "divine_shield_of_faith", "shield_of_faith", "warden_bark_skin", "lookout"
+NAMES, STAGES = {"B": BANDIT, "L": LOOK, "w": "thornwall"}, {"hit": "post_roll", "miss": "post_reaction_miss"}
+faith_fight = partial(
+    defense_fight, ally_archetype="diplomat", extra_archetypes=("marshal",), library=((1, FAITH), (2, FAITH))
+)
 
 
-async def spend_faith(fight, caster, window):
-    assert (caster, FAITH) in {(offer["actor_id"], offer["id"]) for offer in window["reactions"]}
-    before = await resources(fight, caster)
-    receipt = await tool_receipt(fight, caster, "activate", {"id": FAITH})
-    assert not receipt.is_error, receipt.output
-    await reload_session(fight)
-    assert await resources(fight, caster) == (before[0] - 2, before[1] + 1)
-    state = await fight.reload()
-    spend = state.reactions_available[caster]
-    assert (spend["ability_id"], spend["window_id"], spend["held_seq"]) == (
-        FAITH,
-        window["window_id"],
-        state.held_actions[0]["seq"],
+def parse(text):
+    """'B0 i12; B@hit=faith:1,late:2; B=18/0/0 L=16/1; 1' reads: the bandit strikes seat 0 and seat 1
+    inspires seat 2; at the bandit's post-roll window seat 1 spends Faith, then seat 2 is refused; the bandit's
+    blow is (target AC, hit, damage), the lookout's (AC, hit); seat 1's ward remains on seat 0 at round end.
+    Steps: faith, bark, deny (not offered), late (offered, already warded), leave, riposte; @start acts first."""
+    strikes, events, outcomes, wards = (part.split() for part in text.split(";"))
+    seat = lambda token: NAMES.get(token) or int(token)  # noqa: E731
+    events = dict(event.split("=") for event in events)
+    return (
+        [(seat(token[0]) if token[0] != "i" else int(token[1]), seat(token[-1])) for token in strikes],
+        {(NAMES[k[0]], STAGES.get(k[2:], k[2:])) if k[0] != "@" else k[1:]: v.split(",") for k, v in events.items()},
+        {NAMES[k]: tuple(int(v) for v in val.split("/")) for k, val in (o.split("=") for o in outcomes)},
+        [int(seat) for seat in wards],
     )
 
 
-def ward_sources(state, ally):
-    return [c["originating_participant_id"] for c in participant(state, ally).conditions if c["type"] == WARD]
+def case(name, setup, *rounds):
+    return pytest.param(setup, [parse(text) for text in rounds], id=name)
 
 
-@pytest.mark.parametrize("use_reaction", [True, False])
-async def test_catalog_faith_rechecks_ally_hit_and_expires_at_caster_turn(reset_db_pool, use_reaction):
-    async with defense_fight("diplomat", ally_archetype="warden", library=((0, FAITH),)) as fight:
-        caster, ally = fight.players
-        state = await fight.reload()
-        assert {reaction for reaction in participant(state, caster).reaction_ids if reaction.endswith(WARD)} == {FAITH}
-        target = participant(state, ally)
-        target.ac = 16
-        target.hp_current = 3
-        await fight.pool.execute("UPDATE players SET data=jsonb_set(data,'{hp,current}','3') WHERE player_id=$1", ally)
-        combat_spatial.require_spatial(state)["positions"].update({caster: pos(25), ally: pos(0)})
-        sword = next(action for action in participant(state, BANDIT).action_pool if action["name"] == SWORD)
-        sword["bonus_damage"] = {"dice": "1d6", "damage_type": "necrotic"}
-        face = 17 - sword["to_hit"]
-        await fight.persist()
-        before = await resources(fight, caster)
-        await declare_attacks(fight, ally)
-        with (
-            patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(face)),
-            patch("check_resolution_attack.dice_roll", return_value=_damage_die(7)),
-        ):
-            window, original = await open_hit(fight, False, (face, 17, 16))
-            assert {"id": FAITH, "actor_id": caster}.items() <= next(
-                offer for offer in window["reactions"] if offer["id"] == FAITH
-            ).items()
-            assert "on_ally_hit" in window["triggers"]
-            await reload_session(fight)
-            if use_reaction:
-                await spend_faith(fight, caster, window)
-            packets = await fight.drain()
-            attack = blow(packets)
-            assert (attack["roll"], attack["attack_total"]) == (original["roll"], original["attack_total"])
-            if not use_reaction:
-                assert attack["hit"] and attack["damage"] >= 3
-                assert participant(await fight.reload(), ally).is_fallen
-                return
-            for actor in fight.enemies:
-                attack = blow(packets, actor)
-                assert (attack["target_ac"], attack["hit"], attack["damage"]) == (18, False, 0)
-            ward = reaction_packet(packets, FAITH)
-            assert (ward["actor_id"], ward["target_id"], ward["ac_bonus"]) == (caster, ally, 2)
-            assert (await pools(fight))[1] == (3, 0)
-            state = await fight.reload()
-            assert not participant(state, ally).is_fallen
-            assert ward_sources(state, ally) == [caster]
-
-            await declare_attacks(fight, ally, BANDIT)
-            next_attack = blow(await fight.drain())
-            assert (next_attack["target_ac"], next_attack["hit"]) == (16, True)
-            assert (await player_row(caster))["focus"]["current"] == before[0] - 2
+def ward_sources(state, actor):
+    return [c["originating_participant_id"] for c in participant(state, actor).conditions if c["type"] == WARD]
 
 
-async def test_faith_keeps_natural_twenty_and_spends_focus(reset_db_pool):
-    async with defense_fight("diplomat", ally_archetype="warden", library=((0, FAITH),)) as fight:
-        caster, ally = fight.players
-        modifier = await set_target(fight, ally, ac=24)
-        before = await pools(fight)
-        await declare_attacks(fight, ally)
-        faces = iter((20, 25 - modifier))
-        with (
-            patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(next(faces))),
-            patch("check_resolution_attack.dice_roll", return_value=_damage_die(7)),
-        ):
-            window, original = await open_hit(fight, False, (20, 20 + modifier, 24))
-            assert original["attack_total"] < 26
-            await spend_faith(fight, caster, window)
-            packets = await fight.drain()
-        attack = blow(packets)
-        assert (attack["roll"], attack["target_ac"], attack["hit"], attack["critical"]) == (20, 26, True, True)
-        assert attack["damage"] == original["damage"] > 0
-        followup = blow(packets, fight.enemies[1])
-        assert (followup["target_ac"], followup["hit"], followup["damage"]) == (26, False, 0)
-        assert (await pools(fight))[1][0] == before[1][0] - original["damage"]
+class Flow:
+    """Seat 0 is the struck ally; seats 1 and 2 hold Faith. Steps act at a window, a Fate offer or round start."""
 
+    def __init__(self, fight):
+        self.fight, self.party, self.spent, self.packets = fight, None, {}, []
 
-async def open_hit(fight, fate, expected_roll):
-    if fate:
-        for _ in range(4):
-            result = await fight.command("resolve_phase", {})
-            if offer := result.get("fate_offer"):
-                break
-            if window := result["next"]["waiting_on"]:
-                assert window["stage"] == "pre_roll", result
-        else:
-            raise AssertionError(f"No held hostile attack: {result}")
-        head = (await fight.reload()).held_actions[0]
-        assert "fate_attack" in head and offer["roller_id"] == BANDIT and offer["die"] == expected_roll[0]
+    def seat(self, key):
+        return key if isinstance(key, str) else self.fight.players[key]
+
+    async def act(self, step, window):
+        fight, (verb, _, seat) = self.fight, step.partition(":")
+        actor = fight.players[int(seat or 0)]
+        if verb == "leave":
+            self.party = self.party or _live_party(fight.sd, *fight.players)
+            for member in fight.players:
+                await self.party.authorize(member)
+            return await leave(fight.sd, actor, room_io=MagicMock())
+        if verb == "riposte":
+            return await react(fight, RIPOSTE)
+        offered = (actor, FAITH) in {(o["actor_id"], o["id"]) for o in window["reactions"]}
+        before = await resources(fight, actor)
+        receipt = await tool_receipt(fight, actor, "activate", {"id": BARK if verb == "bark" else FAITH})
         await reload_session(fight)
-        result = await fight.command("resolve_phase", {})
-        if reoffered := result.get("fate_offer"):
-            assert reoffered["die"] == offer["die"]
-            result = await keep_original(fight, reoffered)
-        window = result["next"]["waiting_on"]
-    else:
-        window = await open_stage(fight, "post_roll")
-    assert window["stage"] == "post_roll"
-    original = (await fight.reload()).held_actions[0]["roll"]["attack_result"]
-    assert (original["roll"], original["attack_total"], original["target_ac"]) == expected_roll
-    assert original["hit"]
-    return window, original
+        after = await resources(fight, actor)
+        if verb in ("deny", "late"):
+            assert receipt.is_error and offered == (verb == "late") and after == before, receipt.output
+            assert verb == "deny" or "already warded" in receipt.output
+            assert not (await fight.reload()).reactions_available.get(actor, {}).get("spent")
+        else:
+            assert not receipt.is_error and after == (before[0] - 2, before[1] + (verb == "faith")), receipt.output
+            if verb == "faith":
+                self.spent[actor] = window["target_id"]
+
+    async def round(self, strikes, events):
+        fight, events, inspire = self.fight, dict(events), dict(kind="ability", action="diplomat_inspire")
+        declarations = [
+            {"actor_id": self.seat(a), **inspire, "targets": [self.seat(t)], "argument_type": ""}
+            if isinstance(a, int)
+            else {"actor_id": a, **strike(self.seat(t), action=SWORD)}
+            for a, t in strikes
+        ]
+        await fight.command("declare_phase", {"declarations": declarations})
+        for step in events.pop("start", ()):
+            await self.act(step, None)
+        start, result = fight.sd.combat_state.round_number, await fight.command("resolve_phase", {})
+        for _ in range(20):
+            self.packets += result["packets"]
+            if (await fight.reload()).round_number != start:
+                for step in chain(*events.values()):  # no window opens when no one may react
+                    assert step.startswith("deny"), events
+                    await self.act(step, {"reactions": []})
+                return
+            offer, window = result.get("fate_offer"), result["next"]["waiting_on"]
+            key = (
+                (offer["roller_id"], offer["roll_kind"]) if offer else window and (window["actor_id"], window["stage"])
+            )
+            for step in events.pop(key, ()):
+                await self.act(step, window)
+            result = await (keep_original(fight, offer) if offer else fight.command("resolve_phase", {}))
+        raise AssertionError("round did not finish")
 
 
-@pytest.mark.parametrize(("fate", "margin"), [(False, 1), (False, 3), (True, 1), (True, 3)])
-async def test_bark_and_faith_combine_on_original_roll(reset_db_pool, fate, margin):
-    async with defense_fight("diplomat", ally_archetype="warden", library=((0, FAITH),), fate=fate) as fight:
-        caster, ally = fight.players
-        modifier = await set_target(fight, ally)
-        total = 16 + margin
-        before = await pools(fight)
-        bark_before = await resources(fight, ally)
-        await declare_attacks(fight, ally)
-        with (
-            patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(total - modifier)),
-            patch("check_resolution_attack.dice_roll", return_value=_damage_die(7)),
-        ):
-            window, original = await open_hit(fight, fate, (total - modifier, total, 16))
-            assert (ally, BARK) in {(offer["actor_id"], offer["id"]) for offer in window["reactions"]}
-            receipt = await tool_receipt(fight, ally, "activate", {"id": BARK})
-            assert not receipt.is_error, receipt.output
-            await reload_session(fight)
-            assert await resources(fight, ally) == (bark_before[0] - 2, bark_before[1])
-            await spend_faith(fight, caster, window)
-            result = await fight.command("resolve_phase", {})
-            packets = result["packets"]
-            if offer := result.get("fate_offer"):
-                packets += (await keep_original(fight, offer))["packets"]
-            if (await fight.reload()).round_number == 1:
-                packets += await fight.drain()
-        attack = blow(packets)
-        assert (attack["roll"], attack["attack_total"], attack["target_ac"], attack["hit"], attack["damage"]) == (
-            original["roll"],
-            total,
-            20,
-            False,
-            0,
-        )
-        followup = blow(packets, fight.enemies[1])
-        assert (followup["target_ac"], followup["hit"], followup["damage"]) == (20, False, 0)
-        assert reaction_packet(packets, FAITH)["actor_id"] == caster
-        assert reaction_packet(packets, BARK)["mechanical_effect"] == "round_ac_bonus"
-        assert await pools(fight) == before
-        state = await fight.reload()
-        assert ward_sources(state, ally) == [caster]
-        assert not participant(state, ally).bark_skin_active
+CASES = [
+    case("threshold-ward-expires", {"hp": 3}, "B0 L0; B@hit=faith:1; B=18/0/0 L=18/0/0; 1", "B0; ; B=16/1;"),
+    case("too-far", {"dist": 35}, "B0; B@hit=deny:1; B=16/1/7;"),
+    case("self", {}, "B1; B@hit=deny:1; B=16/1/7;"),
+    case("wall", {"wall": True, "faces": (20,)}, "Bw; B@hit=deny:1; B=19/1/7;"),
+    case("natural-20", {"ac": 24, "faces": ("nat20", 25)}, "B0 L0; B@hit=faith:1; B=26/1 L=26/0/0; 1"),
+    case("bark-after-faith-miss", {}, "B0 L0; B@hit=bark,faith:1; B=20/0/0 L=20/0/0; 1"),
+    case("bark-faith-held", {"fate": True, "faces": (19,)}, "B0 L0; B@hit=bark,faith:1; B=20/0/0 L=20/0/0; 1"),
+    case("first-caster-wards", {"faces": (19,)}, "B0; B@hit=faith:2,late:1; B=18/1/7; 2"),
+    case("warded-refuses", {"faces": (19,)}, "B0 L0; B@hit=faith:1 L@hit=deny:2; B=18/1/7 L=18/1/7; 1"),
+    case(
+        "other-recipient",
+        {"faces": (19,), LOOK: (25, 5)},
+        "B0 L1; B@hit=faith:1 L@hit=faith:2; L=18/1/7; 1",
+    ),
+    case("cancelled-caster-turn", {}, "B0; B@hit=faith:1; B=18/0/0; 1", "i12 L0; @start=leave:2; L=16/1/7;"),
+    case(
+        "held-followup",
+        {"fate": True, "faces": (18, 5, 17)},
+        "B0 L0; B@hit=faith:1 L@attack=leave:1; B=18/1 L=18/0/0;",
+    ),
+    case(
+        "riposte-after-leave",
+        {"ally": "skirmisher"},
+        "B0 L0; B@hit=faith:1 B@miss=leave:1,riposte; B=18/0/0 L=16/1/7;",
+    ),
+]
 
 
-@pytest.mark.parametrize("fate", [False, True])
-async def test_first_faith_caster_wards_the_ally_once(reset_db_pool, fate):
-    async with defense_fight(
-        "diplomat",
-        ally_archetype="warden",
-        extra_archetypes=("marshal",),
-        library=((0, FAITH), (2, FAITH)),
-        fate=fate,
-    ) as fight:
-        other, ally, first = fight.players
-        modifier = await set_target(fight, ally)
-        before = await resources(fight, other)
-        hp_before = await pools(fight)
-        await declare_attacks(fight, ally, BANDIT)
-        with (
-            patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(19 - modifier)),
-            patch("check_resolution_attack.dice_roll", return_value=_damage_die(7)),
-        ):
-            window, original = await open_hit(fight, fate, (19 - modifier, 19, 16))
-            assert {o["actor_id"] for o in window["reactions"] if o["id"] == FAITH} == {first, other}
-            await spend_faith(fight, first, window)
-            withdrawn = await tool_receipt(fight, other, "activate", {"id": FAITH})
-            await reload_session(fight)
-            budget = (await fight.reload()).reactions_available[other]
-            packets = await fight.drain()
-        attack = blow(packets)
-        assert (attack["target_ac"], attack["hit"], attack["damage"]) == (18, True, original["damage"])
-        assert (await pools(fight))[1][0] == hp_before[1][0] - attack["damage"]
-        assert withdrawn.is_error and "already warded" in withdrawn.output
-        assert not budget["spent"] and await resources(fight, other) == before
-        assert reaction_packet(packets, FAITH)["actor_id"] == first
-        assert ward_sources(await fight.reload(), ally) == [first]
+@pytest.mark.parametrize(("setup", "rounds"), CASES)
+async def test_shield_of_faith(reset_db_pool, setup, rounds):
+    ally = setup.get("ally", "warden")
+    gear, fate = WEAPON if ally == "skirmisher" else None, setup.get("fate", False)
+    async with faith_fight(ally, fate=fate, gear=gear) as fight:
+        flow, state = Flow(fight), await fight.reload()
+        for actor in fight.players:
+            participant(state, actor).ac = 16
+        target = participant(state, fight.players[0])
+        target.ac, target.hp_current = setup.get("ac", 16), setup.get("hp", target.hp_current)
+        if setup.get("wall"):
+            add_wall(state, "thornwall", "Thornwall", pos(0, -4), pos(0, 4), kind=THORNWALL)
+        positions = require_spatial(state)["positions"]
+        positions.update({fight.players[1]: pos(setup.get("dist", 25)), fight.players[0]: pos(0)})
+        positions[LOOK] = pos(*setup.get(LOOK, (-5, 5)))
+        await fight.persist()
+        faces = chain(setup.get("faces", (17,)), repeat(setup.get("faces", (17,))[-1]))
+        roll = lambda self, _rng=None: self.evaluate(20 if (t := next(faces)) == "nat20" else t - self.modifier)  # noqa: E731
+        dice = patch("check_resolution_attack.dice_roll", return_value=_damage_die(7))
+        with patch.object(D20Roll, "roll", roll), dice:
+            for strikes, events, outcomes, wards in rounds:
+                mark = len(flow.packets)
+                await flow.round(strikes, events)
+                for enemy, outcome in outcomes.items():
+                    attack = blow(flow.packets[mark:], enemy)
+                    got = (attack["target_ac"], attack["hit"], attack["damage"])
+                    assert attack["resolved"] and got[: len(outcome)] == outcome
+                assert ward_sources(await fight.reload(), fight.players[0]) == [fight.players[i] for i in wards]
+        wards = [p for p in flow.packets if p.get("ability_id") == FAITH]
+        receipts = {p["actor_id"]: (p["target_id"], p["ac_bonus"]) for p in wards}
+        assert receipts == {actor: (target, 2) for actor, target in flow.spent.items()}
+        assert all("counter_attack" in p for p in flow.packets if p.get("ability_id") == RIPOSTE)
+        inspired = any(isinstance(actor, int) for strikes, *_ in rounds for actor, _ in strikes)
+        assert any(p.get("outcome") == "target_left" for p in flow.packets) == inspired

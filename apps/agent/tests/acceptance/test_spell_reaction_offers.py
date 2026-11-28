@@ -180,11 +180,7 @@ async def test_archetype_twin_is_the_only_offer(reset_db_pool, archetype, spell_
     async with defense_fight(archetype, ally_archetype="warrior", library=((0, spell_id),)) as fight:
         caster, ally = fight.players
         before = await resources(fight, caster)
-        target = ally if spell_id == FAITH else caster
-        state = await fight.reload()
-        participant(state, target).ac = 16
-        await fight.persist()
-        await declare_attacks(fight, target, fight.enemies[0])
+        await declare_attacks(fight, ally if spell_id == FAITH else caster, fight.enemies[0])
         with patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(16 - self.modifier)):
             window, offered = await offered_id(fight, caster, stage, twin)
             assert [r["id"] for r in window["reactions"] if r["actor_id"] == caster] == [twin]

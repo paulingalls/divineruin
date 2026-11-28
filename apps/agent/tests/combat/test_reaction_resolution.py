@@ -135,15 +135,14 @@ def test_the_wired_sets_name_real_catalog_rows_at_the_right_window():
     }
     wired = (
         wired_on_hit
-        | {reaction_spend.RIPOSTE, IMPLANT_DOUBT, reaction_catalog.SHIELD_OF_FAITH}
+        | {reaction_spend.RIPOSTE, IMPLANT_DOUBT}
         | wired_on_targeted
         | set(combat_reaction_effect.AC_BONUS)
         | set(combat_reaction_effect.SAVE_ADVANTAGE)
     )
     reactions = {reaction_id: reaction_catalog.get_reaction(reaction_id) for reaction_id in wired}
     library = {reaction_id for reaction_id, reaction in reactions.items() if reaction.spell is not None}
-    assert library == {"arcane_shield_spell", "primal_bark_skin", "divine_shield_of_faith"}
-    assert reactions[reaction_catalog.SHIELD_OF_FAITH].window == "on_ally_hit"
+    assert library == {"arcane_shield_spell", "primal_bark_skin"}
     assert all(catalog[reaction_id].ability_type == "reaction" for reaction_id in wired - library)
 
     assert {reactions[i].window for i in wired_on_hit} == {"on_hit"}
