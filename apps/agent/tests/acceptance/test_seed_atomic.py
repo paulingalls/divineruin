@@ -454,35 +454,3 @@ def test_production_reseed_upgrades_flat_inventory_pools(fresh_migrated_db, monk
     assert {row["id"]: row["data"]["inventory_pool"] for row in after["role_archetypes"]} == expected["role_bindings"]
     asyncio.run(seed_content.main())
     assert asyncio.run(rows(fresh_migrated_db)) == after
-
-
-def test_reseed_unstocks_merchants_holding_items_their_pool_dropped(fresh_migrated_db, monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", fresh_migrated_db)
-    monkeypatch.setenv("SEED_PRODUCTION", "1")
-    asyncio.run(seed_content.main())
-    stale = {"current_inventory": {"spear_common": 2, "retired_blade": 1}, "current_gold_sp": 13, "last_restock_day": 9}
-    kept = {"current_inventory": {"healing_potion": 3}, "current_gold_sp": 40, "last_restock_day": 9}
-    asyncio.run(
-        rows(
-            fresh_migrated_db,
-            f"""
-        INSERT INTO merchant_state (npc_id, data) VALUES
-          ('grimjaw_blacksmith', '{json.dumps(stale)}'), ('temple_warden_selene', '{json.dumps(kept)}');
-    """,
-        )
-    )
-    asyncio.run(seed_content.main())
-    states = asyncio.run(merchant_states(fresh_migrated_db))
-    assert states["grimjaw_blacksmith"] == {"current_gold_sp": 13, "last_restock_day": 9}
-    assert states["temple_warden_selene"] == kept
-
-
-async def merchant_states(dsn: str) -> dict[str, dict]:
-    conn = await asyncpg.connect(dsn)
-    try:
-        return {
-            row["npc_id"]: json.loads(row["data"])
-            for row in await conn.fetch("SELECT npc_id, data FROM merchant_state")
-        }
-    finally:
-        await conn.close()

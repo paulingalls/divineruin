@@ -14,8 +14,7 @@ async def drop_stale_merchant_stock(conn: asyncpg.Connection) -> None:
         """
         UPDATE merchant_state m SET data = m.data - 'current_inventory'
         FROM npcs n JOIN inventory_pools p ON p.id = n.data->>'inventory_pool'
-        WHERE n.id = m.npc_id AND m.data ? 'current_inventory'
-          AND EXISTS (
+        WHERE n.id = m.npc_id AND EXISTS (
             SELECT 1 FROM jsonb_object_keys(m.data->'current_inventory') AS held(item_id)
             WHERE held.item_id NOT IN (
               SELECT e->>'item_id' FROM jsonb_array_elements((p.data->'tier_2_items') || (p.data->'tier_3_items')) e
