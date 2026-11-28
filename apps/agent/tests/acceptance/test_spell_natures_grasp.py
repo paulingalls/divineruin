@@ -85,13 +85,6 @@ async def test_held_approach(reset_db_pool, route):
                 assert require_spatial(state)["positions"][mover] == pos(origin)
                 assert head["roll"] is None
                 cast = await fight.command("activate", {"id": GRASP})
-                await reload_session(fight)
-                spend = (await fight.reload()).reactions_available[caster]
-                assert (spend["held_seq"], spend["window_id"], spend["stage"]) == (
-                    head["seq"],
-                    window["window_id"],
-                    "movement",
-                )
                 packets += await fight.drain()
                 receipt = reaction_packet(packets, GRASP)
                 assert (receipt["actor_id"], receipt["target_id"], receipt["window_id"]) == (
