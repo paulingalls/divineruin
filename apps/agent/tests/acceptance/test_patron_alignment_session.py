@@ -52,9 +52,12 @@ async def produce(run, outcome="victory"):
                 actor.hp_current = 0
                 actor.is_fallen = True
         await db_mutations.save_combat_state(cs.combat_id, cs.to_dict())
+    snapshot_count = len(run.packets(E.SESSION_INIT))
     receipt = await run.turn("end_combat", outcome=outcome)
     assert not receipt.is_error, receipt.output
-    await until(lambda: run.session.current_agent.__class__.__name__ == "ExplorationAgent")
+    # LiveKit sets current_agent before the new activity can receive the next turn.
+    await until(lambda: len(run.packets(E.SESSION_INIT)) > snapshot_count)
+    assert run.session.current_agent.__class__.__name__ == "ExplorationAgent"
 
 
 class LoopClock:

@@ -15,6 +15,7 @@ import db_mutations
 import db_mutations_companion
 import db_mutations_death
 import db_queries
+import event_types as E
 from creation_rules import build_character_data
 from exploration_agent import ExplorationAgent
 
@@ -104,13 +105,16 @@ async def reentry_and_defeat(server, tmp_path):
             "declare_phase", declarations=[{"reshape": [], "kind": "defend", "actor_id": enemy.id}]
         )
         assert not receipt.is_error, receipt.output
+        snapshot_count = len(run.packets(E.SESSION_INIT))
         for _ in range(8):
             receipt = await run.turn("resolve_phase")
             assert not receipt.is_error, receipt.output
             if sd.combat_state is None:
                 break
         assert sd.combat_state is None
-        await until(lambda: run.session.current_agent.__class__.__name__ == "ExplorationAgent")
+        # LiveKit sets current_agent before the new activity can receive the next turn.
+        await until(lambda: len(run.packets(E.SESSION_INIT)) > snapshot_count)
+        assert run.session.current_agent.__class__.__name__ == "ExplorationAgent"
         saved = await db_queries.get_player(pid)
         assert saved is not None
         assert saved["hp"]["current"] > 0 and saved["location_id"] == sd.location_id
