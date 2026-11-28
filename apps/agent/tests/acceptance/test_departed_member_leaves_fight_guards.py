@@ -33,6 +33,7 @@ from acceptance.test_valdris_party_yield import ability_action
 from acceptance.turn_undead_harness import TurnFight
 from combat._round_checkpoint_helpers import Fight
 from livekit import rtc
+from test_aelora_gift import _live_party
 
 import ability_persistence
 import db_mutations
@@ -191,6 +192,19 @@ async def test_departure_and_rejoin_survive_rewind_at_an_untouched_opening(unrav
     departure.assert_departed(unravel.session.combat_state, guest)
     saved = await player_row(guest)
     assert (saved["hp"], saved.get("conditions")) == (before["hp"], before.get("conditions"))
+
+
+async def test_departure_of_a_late_joiner_leaves_the_fight_untouched(unravel: Fight) -> None:
+    before = await opening(unravel, 0)
+    joiner = await unravel.join()
+    assert unravel.lifecycle is not None
+    await unravel.lifecycle.aclose()
+    unravel.lifecycle = _live_party(unravel.session, *unravel.ids)
+    assert unravel.session.party.contains(joiner)
+    assert unravel.session.combat_state.get_participant(joiner) is None
+    await leave_unravel_guest(unravel, joiner)
+    assert not unravel.session.party.contains(joiner)
+    assert await unravel.reload() == before
 
 
 @pytest.mark.parametrize("ids", ["x", [1], [" "], ["guest", "guest"]], ids=["shape", "type", "blank", "duplicate"])
