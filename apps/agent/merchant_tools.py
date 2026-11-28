@@ -65,7 +65,7 @@ async def merchant_visit(context: RunContext[SessionData], npc_id: str) -> Async
             raise ToolError(f"Unknown merchant: {npc_id}")
         pool_id = npc["inventory_pool"]
         if pool_id is None:
-            raise ToolError(f"{npc['name']} doesn't buy goods.")
+            raise ToolError(f"{npc['name']} doesn't trade goods.")
         pools = await inventory_pools.get_inventory_pools(conn=conn)
         pool = pools[pool_id]
         pricing = await pricing_queries.get_economy_pricing(conn=conn)
@@ -108,6 +108,77 @@ def receipt(visit: "MerchantVisit", payload: dict) -> str:
     if returned:
         payload["returned"] = returned
     return json.dumps(payload)
+
+
+def _alphanumeric(name: str) -> str:
+    return "".join(char for char in name.casefold() if char.isalnum())
+
+
+def _match_merchant_item(item_name: str, names: dict[str, str], merchant_name: str) -> str:
+    words = item_name.casefold().split()
+    matches = [item_id for item_id, name in names.items() if name.casefold().split() == words]
+    if not matches:
+        spoken = _alphanumeric(item_name)
+        for ending in ("", "s", "es"):
+            query = spoken.removesuffix(ending)
+            matches = [item_id for item_id, name in names.items() if query and query in _alphanumeric(name)]
+            if matches:
+                break
+
+    if not matches:
+        raise ToolError(f"{merchant_name} doesn't carry {item_name.strip()!r}.")
+    if len(matches) > 1:
+        choices = ", ".join(f"{names[item_id]} ({item_id})" for item_id in matches)
+        raise ToolError(f"Which item did the player mean? {choices}.")
+    return matches[0]
+
+
+def _everyday_supplies(item_ids: list[str], names: dict[str, str]) -> dict | None:
+    if not item_ids:
+        return None
+    mentioned = [{"item_id": item_id, "name": names[item_id]} for item_id in item_ids[:2]]
+    spoken = [entry["name"] for entry in mentioned]
+    line = ", ".join(spoken) + ", and other everyday supplies" if len(item_ids) > 2 else " and ".join(spoken)
+    return {"line": f"I carry {line}.", "items": mentioned}
+
+
+@function_tool()
+@db_tool
+async def query_merchant_inventory(context: RunContext[SessionData], npc_id: str, item_name: str = "") -> str:
+    """Call on entering a shop and when the player asks about a specific item.
+
+    Args:
+        npc_id: The merchant ID from the present NPCs shared at trade entry.
+        item_name: Use "" for a brief shop overview, or pass the name the player asked for.
+    """
+    async with merchant_visit(context, npc_id) as visit:
+        pool = visit.pool
+        finite_tiers = {
+            **{entry["item_id"]: 3 for entry in pool["tier_3_items"]},
+            **{entry["item_id"]: 2 for entry in pool["tier_2_items"]},
+        }
+        tier_1 = pool["tier_1_items"]
+        tiers = {**finite_tiers, **dict.fromkeys(tier_1, 1)}
+        rows = await visit.conn.fetch("SELECT id, data->>'name' FROM items WHERE id = ANY($1)", list(tiers))
+        names = dict(rows)
+        inventory = visit.merchant.state["current_inventory"]
+        items = {
+            item_id: {
+                "item_id": item_id,
+                "name": names[item_id],
+                "tier": tier,
+                "in_stock": tier == 1 or inventory.get(item_id, 0) > 0,
+            }
+            for item_id, tier in tiers.items()
+        }
+        if item_name:
+            item_id = _match_merchant_item(item_name, names, visit.npc["name"])
+            return receipt(visit, {"npc_id": npc_id, **items[item_id]})
+
+        highlights = [items[item_id] for item_id in finite_tiers if items[item_id]["in_stock"]][:4]
+        return receipt(
+            visit, {"npc_id": npc_id, "highlights": highlights, "tier_1_summary": _everyday_supplies(tier_1, names)}
+        )
 
 
 def _ledger_entry(entry: Consignment, today: int) -> dict:

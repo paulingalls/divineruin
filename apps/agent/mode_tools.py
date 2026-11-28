@@ -41,7 +41,7 @@ async def enter_mode(
       training with a mentor, or sending a companion on an errand.
     - mode="blacksmith": the player wants to repair gear at a settlement forge. A
       forge is a settlement activity; only offer it where one would plausibly exist.
-    - mode="trade": the player wants to sell goods to a shopkeeper.
+    - mode="trade": the player wants to browse, buy, or sell goods at a shop.
 
     Control returns here when the mode concludes."""
     return await _enter_mode_impl(

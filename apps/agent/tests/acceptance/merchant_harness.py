@@ -193,6 +193,9 @@ class SaleSession:
     async def sell(self, item: str, npc: str, quantity: int, offer_id: str = "") -> llm.FunctionCallOutput:
         return await self.command("sell_item", item_id=item, npc_id=npc, quantity=quantity, offer_id=offer_id)
 
+    async def browse(self, npc: str, item_name: str = "") -> llm.FunctionCallOutput:
+        return await self.command("query_merchant_inventory", npc_id=npc, item_name=item_name)
+
     async def ledger(self, npc: str) -> llm.FunctionCallOutput:
         return await self.command("query_merchant_ledger", npc_id=npc)
 
