@@ -53,7 +53,7 @@ test("fixture event types match the TS wire constants", () => {
   }
   expect(EVENTS.discover_reveal_cue.type).toBe(E.PLAY_SOUND);
   expect(EVENTS.party_yield_combat.type).toBe(E.COMBAT_UI_UPDATE);
-  expect(Object.keys(EVENTS)).toHaveLength(29);
+  expect(Object.keys(EVENTS)).toHaveLength(30);
 });
 
 test("recipient-scoped session end and cancellation use the Python wire fixture", () => {

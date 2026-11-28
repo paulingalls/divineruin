@@ -256,6 +256,14 @@
       "player_id": "player_1",
       "cancelled": true
     },
+    "disposition_changed": {
+      "type": "disposition_changed",
+      "npc_id": "guildmaster_torin",
+      "npc_name": "Guildmaster Torin",
+      "previous": "neutral",
+      "new": "friendly",
+      "reason": "world_effect: torin_disposition +1"
+    },
     "companion_cue": {
       "type": "companion_cue",
       "voice_id": "COMPANION_SABLE"

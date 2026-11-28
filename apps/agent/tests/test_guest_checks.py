@@ -162,7 +162,7 @@ async def test_guest_social_reads_and_writes_own_disposition(inspired):
             side_effect=lambda _npc, pid, value, _why, **_kw: dispositions.__setitem__(pid, value)
         )
     )
-    content = MagicMock(get_npc=AsyncMock(return_value={"default_disposition": "neutral"}))
+    content = MagicMock(get_npc=AsyncMock(return_value={"name": "Merchant", "default_disposition": "neutral"}))
     with bind(ctx):
         result = json.loads(
             await _check_social_impl(
@@ -310,7 +310,7 @@ async def test_guest_social_consumes_inspired_without_shift():
     )
     mutations = MagicMock(set_npc_disposition=AsyncMock())
     conditions_mutations = MagicMock(remove_player_conditions=AsyncMock())
-    content = MagicMock(get_npc=AsyncMock(return_value={"default_disposition": "neutral"}))
+    content = MagicMock(get_npc=AsyncMock(return_value={"name": "Merchant", "default_disposition": "neutral"}))
     with bind(ctx):
         result = json.loads(
             await _check_social_impl(
@@ -436,7 +436,7 @@ def call_check(mode, d20, ctx, queries, db_writes):
                 "hidden_elements": [{"id": "secret", "discover_skill": "perception", "dc": 19}],
             }
         ),
-        get_npc=AsyncMock(return_value={"default_disposition": "neutral"}),
+        get_npc=AsyncMock(return_value={"name": "Merchant", "default_disposition": "neutral"}),
         # A star node makes the rich find one material id, so the grant is a single write and the
         # consume guard, not the grant loop's next guard, is the one after it.
         get_gathering_nodes_at_location=AsyncMock(return_value=[dict(NODE, resource_type="star")]),

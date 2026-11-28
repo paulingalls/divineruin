@@ -228,7 +228,9 @@ async def test_tool_response_names_bond_only_with_present_ally(producer, enhance
                 )
             elif producer == "social":
                 queries.get_npc_disposition = AsyncMock(return_value="neutral")
-                content = MagicMock(get_npc=AsyncMock(return_value={"default_disposition": "neutral"}))
+                content = MagicMock(
+                    get_npc=AsyncMock(return_value={"name": "Merchant", "default_disposition": "neutral"})
+                )
                 raw = await _check_social_impl(
                     ctx,
                     "merchant",

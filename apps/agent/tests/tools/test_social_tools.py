@@ -121,7 +121,7 @@ class TestCheckSocialFallbackAndValidation:
     async def test_falls_back_to_content_default_when_unrecorded(self):
         queries, mutations, _ = _social_mocks(recorded=None)
         content = MagicMock()
-        content.get_npc = AsyncMock(return_value={"id": "elder", "default_disposition": "friendly"})
+        content.get_npc = AsyncMock(return_value={"id": "elder", "name": "Elder", "default_disposition": "friendly"})
         result = json.loads(
             await _check_social_impl(
                 _ctx_with_bus(),

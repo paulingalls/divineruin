@@ -52,6 +52,16 @@ def test_fixture_event_types_match_python_constants() -> None:
     assert FIXTURE["events"]["companion_cue"]["type"] == event_types.COMPANION_CUE
 
 
+def test_disposition_changed_serializes_to_fixture() -> None:
+    from disposition import build_disposition_changed_payload
+
+    expected = FIXTURE["events"]["disposition_changed"]
+    payload = build_disposition_changed_payload(
+        expected["npc_id"], expected["npc_name"], expected["previous"], expected["new"], expected["reason"]
+    )
+    assert {"type": event_types.DISPOSITION_CHANGED, **payload} == expected
+
+
 @pytest.mark.asyncio
 async def test_companion_cue_serializes_to_fixture_without_event_bus() -> None:
     expected = FIXTURE["events"]["companion_cue"]

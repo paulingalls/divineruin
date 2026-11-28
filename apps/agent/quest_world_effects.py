@@ -11,7 +11,7 @@ import db_mutations
 import db_mutations_reputation
 import db_queries
 import event_types as E
-from disposition import resolve_disposition
+from disposition import build_disposition_changed_payload, resolve_disposition, resolve_disposition_target
 from reputation import reputation_shift
 from role_archetypes import shift_disposition
 from session_data import SessionData
@@ -72,15 +72,25 @@ async def _apply_world_effects(
                 if session.companion is None:
                     raise ToolError("This effect requires a bound companion.")
                 npc_id = session.companion.id
+                npc_name, default_disposition = session.companion.name, "neutral"
             else:
                 npc_id = EFFECT_NPC_MAP.get(shorthand, shorthand)
+                npc_name, default_disposition = await resolve_disposition_target(
+                    npc_id, session.companion, content_mod=content
+                )
+            reason = f"world_effect: {effect_str}"
             for pid in party_ids:
-                current = await resolve_disposition(npc_id, pid, conn=conn, queries_mod=queries, content_mod=content)
+                current = await resolve_disposition(
+                    npc_id, pid, conn=conn, queries_mod=queries, default_disposition=default_disposition
+                )
                 new_disp = shift_disposition(current, delta_str, off_ladder="neutral")
-                await mutations.set_npc_disposition(npc_id, pid, new_disp, f"world_effect: {effect_str}", conn=conn)
+                await mutations.set_npc_disposition(npc_id, pid, new_disp, reason, conn=conn)
                 if pid == actor_id:
                     pending_events.append(
-                        (E.DISPOSITION_CHANGED, {"npc_id": npc_id, "previous": current, "new": new_disp})
+                        (
+                            E.DISPOSITION_CHANGED,
+                            build_disposition_changed_payload(npc_id, npc_name, current, new_disp, reason),
+                        )
                     )
                 logger.info("World effect: %s disposition %s → %s", npc_id, current, new_disp)
             continue

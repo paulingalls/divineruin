@@ -77,7 +77,16 @@ async def test_ally_social_sway_waits_and_uses_current_standing(world, party, ne
     assert await db_queries.get_npc_disposition(npc, host) is None
     assert (await row(world))["conditions"] == []
     assert (await row(world, 0))["conditions"] == INSPIRED
-    assert event_types(session) == ["dice_roll", "disposition_changed"]
+    dice, changed = published_payloads(session.room)
+    assert dice["type"] == "dice_roll"
+    assert changed == {
+        "type": "disposition_changed",
+        "npc_id": npc,
+        "npc_name": "Guildmaster Torin",
+        "previous": new_standing or "neutral",
+        "new": expected,
+        "reason": "social_check: persuasion",
+    }
 
 
 @pytest.mark.parametrize("depleted", [False, True])

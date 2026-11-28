@@ -4,6 +4,7 @@ import json
 
 import pytest
 from acceptance.artifact_choice_steps import *  # noqa: F403
+from acceptance.disposition_event_assertions import assert_named_disposition, listen
 from acceptance.emris_reveal_steps import *  # noqa: F403
 from acceptance.fragment_door_steps import *  # noqa: F403
 from acceptance.greyvale_arc_walk_harness import ROAD, TOWN, ArcWalk
@@ -19,6 +20,8 @@ from acceptance.journal_steps import *  # noqa: F403
 from acceptance.rest_walk import *  # noqa: F403
 from acceptance.ruins_fight_steps import *  # noqa: F403
 from pytest_bdd import given, parsers, scenarios, then, when
+
+from background_process import BackgroundProcess
 
 scenarios("features/greyvale_arc_walk.feature")
 
@@ -38,7 +41,8 @@ def current_arc_content(harness):
 
 @given(parsers.parse("a road quest holder using {tool}"))
 def road_holder(harness, tool):
-    harness.state["arc"] = harness.run_sync(ArcWalk().start(harness, tool))
+    arc = harness.run_sync(ArcWalk().start(harness, tool))
+    harness.state.update(arc=arc, disposition_bus=listen(arc.sd))
 
 
 @when("they arrive in Millhaven")
@@ -49,7 +53,18 @@ def arrive(harness):
 
 @then("the road reward and next objective reach the DM")
 def reward(harness):
-    harness.run_sync(harness.state["arc"].rewarded(harness.state["result"]))
+    arc = harness.state["arc"]
+    harness.run_sync(arc.rewarded(harness.state["result"]))
+    assert_named_disposition(
+        BackgroundProcess(arc.session, arc.sd),
+        harness.state["disposition_bus"],
+        arc.events,
+        npc_id="guildmaster_torin",
+        npc_name="Guildmaster Torin",
+        previous="neutral",
+        new="friendly",
+        reason="world_effect: torin_disposition +1",
+    )
 
 
 @then("later arrivals leave rewards and unrelated stages unchanged")
