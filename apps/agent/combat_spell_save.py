@@ -7,11 +7,10 @@ import check_resolution_save
 import combat_damage_affinity
 import conditions
 import dice
-import encounter_facts
 import thyra_seasons
 from combat_damage_results import AutomaticDamageResult, SaveDamageResult
 from combat_fate_rolls import packet_save
-from combat_legendary_resistance import finalize_save, override_fields
+from combat_legendary_resistance import finalize_save
 from combat_spell_profile import scaled
 from patron_synergy_combat import attack_player
 from rules_engine import attribute_modifier, proficiency_bonus
@@ -135,15 +134,7 @@ async def roll_save_damage(
             damage=sum(component["damage"] for component in rolled),
             narrative_hint=save.narrative_hint,
         )
-    save_info = {
-        "attribute": save.save_type,
-        "roll": save.roll,
-        "total": save.total,
-        "dc": dc,
-        "success": save.success,
-        "half_on_success": profile["half"],
-        **override_fields(save),
-        **save.oath_fields(),
-        **encounter_facts.rally_receipt(target.id, save.rally_sources),
-    }
+    save_info = save.receipt_fields(target.id)
+    save_info["attribute"] = save_info.pop("save_type")
+    save_info["half_on_success"] = profile["half"]
     return roll, save_info

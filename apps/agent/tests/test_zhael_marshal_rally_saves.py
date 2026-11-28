@@ -105,7 +105,18 @@ async def test_wrap_clearing_save_spends_rally(world) -> None:
         with dice(9):
             result = await f.call("resolve_phase")
         [receipt] = result["rally_saves"]
-        assert (receipt["total"], receipt["success"], receipt["rally_bonuses"]) == (10, True, [bonus(f.hero, f.ally)])
+        assert receipt == {
+            "actor_id": f.ally,
+            "condition": "frightened",
+            "roll": 9,
+            "total": 10,
+            "dc": 10,
+            "success": True,
+            "rally_bonuses": [bonus(f.hero, f.ally)],
+            "combat_id": f.combat_id,
+            "round_number": 1,
+        }
+        assert "oath_saves" not in result
         assert (await f.reload()).encounter_facts["rally_pending"] == {}
         assert not participant(f.session.combat_state, f.ally).conditions
 
@@ -179,6 +190,14 @@ async def test_enemy_save_owners_spend_rally(world, mode) -> None:
             receipt = packet if receipt_name is None else packet[receipt_name]
             assert (receipt[field], receipt["rally_bonuses"]) == (expected, [bonus(f.hero, f.ally)])
             assert receipt.get("save_success", receipt.get("success")) is True
+            prefix = "" if field == "total" else "save_"
+            assert (receipt[f"{prefix}roll"], receipt[f"{prefix}dc"]) == (faces[-1], expected)
+            assert receipt["combat_id"] == f.combat_id and receipt["round_number"] == 1
+            assert {"oath_justice", "oath_timed", "success_override"}.isdisjoint(receipt)
+            if mode == "concentration":
+                assert set(receipt) == {"roll", "total", "dc", "success", "combat_id", "round_number", "rally_bonuses"}
+            if prefix:
+                assert "save_type" in receipt
             assert (await f.reload()).encounter_facts["rally_pending"] == {}
         finally:
             if mode == "corrosion":
@@ -272,6 +291,18 @@ async def test_catalog_save_owners_spend_rally(world, mode) -> None:
         else:
             cast = next(p["cast"] for p in packets if "cast" in p)
             if mode == "shield":
+                assert cast["harmonic_shield_saves"] == [
+                    {
+                        "target_id": GOBLIN,
+                        "roll": 15,
+                        "total": 16,
+                        "dc": 16,
+                        "success": True,
+                        "combat_id": f.combat_id,
+                        "round_number": 1,
+                        "rally_bonuses": [bonus(source, target)],
+                    }
+                ]
                 [receipt] = cast["harmonic_shield_saves"]
             else:
                 receipt = next(p["save"] for p in cast["damage_results"] if p["target_id"] == target)

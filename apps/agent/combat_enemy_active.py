@@ -7,7 +7,7 @@ import conditions
 import dice
 import encounter_facts
 from combat_condition_landing import _land_condition_on_one
-from combat_legendary_resistance import finalize_save, override_fields
+from combat_legendary_resistance import finalize_save
 from combat_structures import line_blocker
 from encounter_actions import action_kind
 
@@ -100,15 +100,9 @@ def land_critical_save(state, attacker, target, action, summary, rider, result):
     condition = rider["applies_condition"]
     can_apply = not already_hollowed(target, condition)
     result = finalize_save(state, target, result, failed_conditions=(condition,) if can_apply else ())
-    summary["critical_save"] = {
-        "dc": result.dc,
-        "roll": result.roll,
-        "total": result.total,
-        "success": result.success,
-        **result.oath_fields(),
-        **override_fields(result),
-        **encounter_facts.rally_receipt(target.id, result.rally_sources),
-    }
+    receipt = result.receipt_fields(target.id)
+    del receipt["save_type"]
+    summary["critical_save"] = receipt
     if (
         can_apply
         and not result.success

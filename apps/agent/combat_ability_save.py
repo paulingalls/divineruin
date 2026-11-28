@@ -11,7 +11,7 @@ import combat_ability_gate
 import conditions
 import rules_engine
 from combat_fate_rolls import packet_save
-from combat_legendary_resistance import finalize_save, override_fields
+from combat_legendary_resistance import finalize_save
 from communication_voice_rules import can_hear
 from condition_catalog import BEACON_OF_HOPE, DIVINE_WARD, INVISIBLE, IRON_STANCE, PROTECTION_FROM_HOLLOW, WAR_CRY_RALLY
 
@@ -109,13 +109,9 @@ async def resolve_hostile_condition(
         if result is None:
             return {}
         result = finalize_save(state, target, result, failed_conditions=(cond_type,))
-        summary.update(
-            override_fields(result),
-            save_success=result.success,
-            save_roll=result.roll,
-            save_total=result.total,
-            **result.oath_fields(),
-        )
+        save_fields = result.receipt_fields(target.id, prefix="save_")
+        del save_fields["save_type"], save_fields["save_dc"]
+        summary.update(save_fields)
         if result.success:
             summary["condition_resisted"] = cond_type
             return summary

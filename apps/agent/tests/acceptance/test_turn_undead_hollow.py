@@ -116,6 +116,7 @@ async def test_turn_saves_and_flight(fight: TurnFight) -> None:
         entry = outcomes[actor_id]
         assert entry["save"]["roll"] == 2 and entry["save"]["total"] < dc
         assert entry["save"]["dc"] == dc and entry["save"]["success"] is False
+        assert set(entry["save"]) == {"attribute", "roll", "total", "dc", "success", "combat_id", "round_number"}
         assert entry["outcome"] == "frightened" and "declare" in entry["reason"].lower()
         condition = frightened(fight, actor_id)
         assert condition is not None and condition["source"] == condition["originating_participant_id"] == fight.caster

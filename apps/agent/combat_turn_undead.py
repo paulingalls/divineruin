@@ -7,12 +7,11 @@ import combat_spatial as spatial
 import combat_zero_hp
 import conditions
 import db_queries
-import encounter_facts
 import still_encounter
 from architect_reaction import Interception
 from combat_condition_landing import _land_condition_on_one
 from combat_fate_rolls import PacketRolls, packet_save
-from combat_legendary_resistance import finalize_save, override_fields
+from combat_legendary_resistance import finalize_save
 from combat_spell_recipients import caster_radius_refusal
 from combat_spell_save import spell_save_dc
 from session_data import CombatParticipant, CombatState, SessionData
@@ -90,18 +89,9 @@ async def _resolve_target(
         failed_damage=target.hp_current if destroys else 0,
         failed_conditions=() if destroys else ("frightened",),
     )
-    result = {
-        "save": {
-            "attribute": save.save_type,
-            "roll": save.roll,
-            "total": save.total,
-            "dc": save.dc,
-            "success": save.success,
-            **override_fields(save),
-            **save.oath_fields(),
-            **encounter_facts.rally_receipt(target.id, save.rally_sources),
-        }
-    }
+    save_fields = save.receipt_fields(target.id)
+    save_fields["attribute"] = save_fields.pop("save_type")
+    result = {"save": save_fields}
     if save.success:
         return {**result, "outcome": "unaffected", "reason": "Succeeded on its Wisdom save."}
     if destroys:

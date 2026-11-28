@@ -6,7 +6,6 @@ from functools import partial
 import check_resolution
 import condition_voice_rules
 import db_queries
-import encounter_facts
 import event_types as E
 from combat_damage_affinity import DAMAGE_TYPES
 from combat_events import emit_or_publish
@@ -284,18 +283,18 @@ async def turn_start(
         "dc": 15,
         "concentration_broken": broken,
         "cue": "Lost voices tug at your focus.",
-        **encounter_facts.rally_receipt(actor.id, save.rally_sources),
     }
     if sink is not None:
         await emit_or_publish(
             sink,
             session.room,
             E.DICE_ROLL,
-            build_saving_throw_dice_roll_payload(save, roll_type="choir_aura", **aura),
+            build_saving_throw_dice_roll_payload(save, roller_id=actor.id, roll_type="choir_aura", **aura),
             event_bus=session.event_bus,
         )
-    result = {"save_type": save.save_type, "success": save.success, **save.oath_fields(), **aura}
-    return result
+    save_fields = save.receipt_fields(actor.id)
+    del save_fields["roll"], save_fields["total"]
+    return {**save_fields, **aura}
 
 
 def engine_damage_spell_ids(allowed):

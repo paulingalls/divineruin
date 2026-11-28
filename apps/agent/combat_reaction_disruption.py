@@ -17,7 +17,7 @@ from combat_attack_roll import (
     serialize_roll,
 )
 from combat_fate_rolls import PacketRolls, PhaseRolls, packet_save
-from combat_legendary_resistance import finalize_save, override_fields
+from combat_legendary_resistance import finalize_save
 from combat_state import CombatState
 from dice_roll_payloads import build_attack_dice_roll_payload
 from reaction_windows import POST_ROLL, PRE_ROLL
@@ -135,16 +135,7 @@ async def _save(
     if result is None:
         return False
     result = finalize_save(state, attacker, result)
-    packet.update(
-        save_type=result.save_type,
-        save_dc=result.dc,
-        save_roll=result.roll,
-        save_modifier=result.modifier,
-        save_total=result.total,
-        save_success=result.success,
-        **override_fields(result),
-        **result.oath_fields(),
-    )
+    packet.update(result.receipt_fields(attacker.id, prefix="save_"), save_modifier=result.modifier)
     if result.success:
         packet["reason"] = "The attacker resisted the disruption."
     return True
