@@ -186,10 +186,16 @@ def test_every_row_the_table_calls_producible_has_its_window_produced():
     by_id = {row["id"]: row for row in _reaction_rows()}
     for ability_id, classification in EXPECTED.items():
         window = by_id[ability_id]["window"]
-        assert window in produced, (
-            f"{ability_id} is classified {classification} but nothing opens {window!r} — "
-            "a held enemy action can never reach it"
-        )
+        if classification == "unproducible":
+            assert window not in produced, (
+                f"{ability_id} is classified unproducible but the derivation opens {window!r} — "
+                "the table and the code disagree"
+            )
+        else:
+            assert window in produced, (
+                f"{ability_id} is classified {classification} but nothing opens {window!r} — "
+                "a held enemy action can never reach it"
+            )
 
 
 def test_the_grapple_branch_carriers_are_pinned():

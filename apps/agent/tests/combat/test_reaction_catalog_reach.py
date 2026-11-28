@@ -7,7 +7,7 @@ import pytest
 from archetype_abilities_config_fixture import load_fixture_config
 from combat._helpers import _make_combat_state, _own_reaction
 from combat.test_reaction_window_census import movement_state
-from sample_fixtures import catalog_encounters, make_context
+from sample_fixtures import make_context
 from voice_condition_fixtures import place_actors
 
 import combat_hold
@@ -16,10 +16,6 @@ import reaction_windows
 from combat_phase import PhaseBeat
 from query_tools import _query_abilities_impl
 from reaction_gate import validate_reaction_activation
-
-_CULT_CELL = next(encounter for encounter in catalog_encounters() if encounter["id"] == "cult_cell")
-_LEADER = next(enemy for enemy in _CULT_CELL["enemies"] if enemy["id"] == "cult_leader")
-_HOLD_PERSON = next(action for action in _LEADER["action_pool"] if action["name"] == "Hold Person")
 
 # The windows the real producer can emit, one entry per held-action shape it distinguishes.
 # Built by calling reaction_windows, never transcribed: a trigger set copied into this file would
@@ -31,6 +27,7 @@ _PRODUCIBLE = {
     "post_roll_hit": ("post_roll", "attack", "player_1", reaction_windows.post_roll_triggers({}, hit=True)),
     "post_roll_ally_hit": ("post_roll", "attack", "player_2", reaction_windows.post_roll_triggers({}, hit=True)),
     "post_roll_miss": ("post_roll", "attack", "player_1", reaction_windows.post_roll_triggers({}, hit=False)),
+    "pre_roll_spell": ("pre_roll", "attack", "player_1", reaction_windows.pre_roll_triggers({"spell_focus_cost": 0})),
     "post_roll_grapple": (
         "post_roll",
         "attack",
@@ -40,7 +37,7 @@ _PRODUCIBLE = {
 }
 
 
-def _paused_state(shape, *, action=None):
+def _paused_state(shape):
     if shape is None:
         state = movement_state()
     else:
@@ -48,14 +45,9 @@ def _paused_state(shape, *, action=None):
         state = _make_combat_state()
         if target_id == "player_2":
             place_actors(state, target_id)
-        action_name = action["name"] if action else "Scimitar"
-        if action:
-            enemy = state.get_participant("goblin_scout_1")
-            assert enemy is not None
-            enemy.action_pool = [action]
         state.held_actions = [
             combat_hold.new_head(
-                state, "goblin_scout_1", 12, {"type": "attack", "action": action_name, "target_id": target_id}
+                state, "goblin_scout_1", 12, {"type": "attack", "action": "Scimitar", "target_id": target_id}
             )
         ]
         state.open_window = reaction_windows.open_window_for(
@@ -73,11 +65,7 @@ def _paused_state(shape, *, action=None):
 
 
 def _produced_states():
-    states = {name: _paused_state(shape) for name, shape in {**_PRODUCIBLE, "movement": None}.items()}
-    states["spell"] = _paused_state(
-        ("pre_roll", "attack", "player_1", reaction_windows.pre_roll_triggers(_HOLD_PERSON)), action=_HOLD_PERSON
-    )
-    return states
+    return {name: _paused_state(shape) for name, shape in {**_PRODUCIBLE, "movement": None}.items()}
 
 
 async def _queried_reactions():
