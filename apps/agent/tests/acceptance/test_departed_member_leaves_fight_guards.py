@@ -190,10 +190,8 @@ async def test_departure_and_rejoin_survive_rewind_at_an_untouched_opening(unrav
 
 @pytest.mark.parametrize("ids", ["x", [1], [" "], ["guest", "guest"]], ids=["shape", "type", "blank", "duplicate"])
 async def test_reload_refuses_invalid_departure_ids(unravel: Fight, ids: object) -> None:
-    await opening(unravel, 0)
-    state = unravel.session.combat_state
-    assert state is not None
-    await db_mutations.save_combat_state(state.combat_id, {**state.to_dict(), "departed_player_ids": ids})
+    saved = await opening(unravel, 0)
+    await db_mutations.save_combat_state(saved["combat_id"], {**saved, "departed_player_ids": ids}, conn=unravel.pool)
     with pytest.raises(ValueError, match="Invalid departed player IDs"):
         await unravel.reload()
 
