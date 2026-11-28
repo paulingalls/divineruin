@@ -9,6 +9,7 @@ import db_content_queries
 import db_queries
 
 if TYPE_CHECKING:
+    from combat_state import CombatState
     from session_data import CompanionState
 
 
@@ -19,13 +20,21 @@ def build_disposition_changed_payload(
 
 
 async def resolve_disposition_target(
-    npc_id: str, companion: "CompanionState | None", *, content_mod: ModuleType
+    npc_id: str,
+    companion: "CompanionState | None",
+    *,
+    content_mod: ModuleType,
+    combat_state: "CombatState | None" = None,
 ) -> tuple[str, str]:
     npc = await content_mod.get_npc(npc_id)
     if npc is not None:
         return npc["name"], npc.get("default_disposition", "neutral")
     if companion is not None and companion.id == npc_id:
         return companion.name, "neutral"
+    # A creature combatant is an instance with no npcs row.
+    participant = combat_state.get_participant(npc_id) if combat_state is not None else None
+    if participant is not None:
+        return participant.name, "neutral"
     raise ToolError(f"Unknown NPC '{npc_id}'.")
 
 

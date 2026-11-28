@@ -15,6 +15,7 @@ import db
 import db_mutations
 from background_process import BackgroundProcess
 from check_payloads import SocialCheck
+from combat_agent import COMBAT_AGENT_TOOLS
 from exploration_agent import EXPLORATION_TOOLS
 
 _NPC_ID = "guildmaster_torin"  # a real seeded NPC (content/npcs.json)
@@ -71,6 +72,38 @@ async def test_m46a_social_check_shifts_and_persists_disposition(reset_db_pool: 
         new=result["new_disposition"],
         reason="social_check: persuasion",
     )
+
+
+async def test_m46a_social_check_against_creature_combatant(reset_db_pool: str) -> None:
+    """A creature combatant has no npcs row; the participant is the disposition target."""
+    pool = await db.get_pool()
+    player_id = "cap_m46a_social_combat"
+    await seed_player(pool, player_id=player_id, class_="diplomat")
+    state = _build_state("combat_cap_m46a_social", player_id, [_enemy("goblin_scout_1", hp=7)])
+    ctx = make_context(player_id, room=make_mock_room())
+    await db_mutations.save_combat_state(state.combat_id, state.to_dict(), conn=pool)
+    ctx.userdata.combat_state = state
+    bus = listen(ctx.userdata)
+    check = next(tool for tool in COMBAT_AGENT_TOOLS if tool.__name__ == "check")
+    roll = SocialCheck(
+        kind="social", npc_id="goblin_scout_1", skill="intimidation", difficulty="easy", synergy_context="none"
+    )
+    try:
+        with patch("check_resolution.dice_roll", return_value=_d20(20)):
+            result = json.loads(await check(ctx, roll))
+        assert result["previous_disposition"] == "neutral"
+        assert_named_disposition(
+            BackgroundProcess(ctx.session, ctx.userdata),
+            bus,
+            published_payloads(ctx.userdata.room),
+            npc_id="goblin_scout_1",
+            npc_name="Goblin Scout 1",
+            previous="neutral",
+            new=result["new_disposition"],
+            reason="social_check: intimidation",
+        )
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id, conn=pool)
 
 
 async def test_m46a_diplomat_deescalation_ends_combat(reset_db_pool: str) -> None:

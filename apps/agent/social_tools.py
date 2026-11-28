@@ -98,7 +98,9 @@ async def _check_social_impl(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
-    npc_name, default_disposition = await resolve_disposition_target(npc_id, session.companion, content_mod=content)
+    npc_name, default_disposition = await resolve_disposition_target(
+        npc_id, session.companion, content_mod=content, combat_state=session.combat_state
+    )
     session_id = session.session_id
     binding = (
         await zhael_foretold_words.pending(player_id, npc_id, session_id)
