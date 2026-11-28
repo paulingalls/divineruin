@@ -11,6 +11,7 @@ import combat_hollow_resonance
 import db
 import db_mutations
 import reaction_gate
+from reaction_catalog import NATURES_GRASP
 from session_data import SessionData
 from spell_cast_resolution import _resolve_cast
 from spell_cast_result import CastResult
@@ -50,6 +51,8 @@ async def _activate_locked(session: SessionData, spell: Spell) -> CastResult:
             combat_state=working,
             prepared_reaction=True,
         )
+        if spell.id == NATURES_GRASP:
+            spend["cast_packet"] = {"resonance_modifiers": result.packet["resonance_modifiers"]}
         combat_hold.record_spend(working, actor_id, spend)
         await db_mutations.save_combat_state(working.combat_id, working.to_dict(), conn=conn)
 

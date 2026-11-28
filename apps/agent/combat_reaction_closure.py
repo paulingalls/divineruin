@@ -8,6 +8,7 @@ import patron_synergy_combat
 import reaction_spend
 from combat_hold_actions import _attack_action
 from combat_multiattack import strike_summary
+from combat_natures_grasp import finish_held
 from combat_state import CombatState
 from patron_synergy_heal import grant_mage_warding
 from reaction_windows import POST_ROLL
@@ -56,7 +57,7 @@ async def close_window(
                 },
             )
         )
-        state.held_actions.pop(0)
+        finish_held(state)
     else:
         for packet in list(reaction_packets):
             if packet["ability_id"] == reaction_spend.SIDESTEP:

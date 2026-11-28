@@ -5,7 +5,7 @@ The [catalog](../../content/spells.json) supplies the IDs. The [magic design](..
 
 ## Classification
 
-The 87 spells include **28 engine**, **4 narrated**, **55 unwired** and **0 uncertified**.
+The 87 spells include **29 engine**, **4 narrated**, **54 unwired** and **0 uncertified**.
 
 - **engine** — The named function resolves the effect and the linked committed test asserts the outcome.
 - **narrated** — The design assigns the result to the DM’s narration.
@@ -94,7 +94,7 @@ The dead-reactions sprint is changing the archetype `mage_shield_spell`, which h
 | `primal_conjure_animals` | unwired | RUN `primal_conjure_animals` (3 Focus). Concentration started and the roster stayed the same. [M14.1](14_engine_completeness.md#spell-primal_conjure_animals). |
 | `primal_protection_from_hollow` | engine | `combat_attack_roll.attack_roll_inputs` and `check_resolution_save.resolve_saving_throw` apply Hollow-specific roll modes. [Mawling and bandit controls](../../apps/agent/tests/acceptance/test_spell_lasting_buffs.py) and [Still and Fate coverage](../../apps/agent/tests/acceptance/test_spell_lasting_buffs_guards.py). |
 | `primal_water_breathing` | unwired | RUN `primal_water_breathing` (3 Focus). The recipient row gained no underwater breathing capability or expiry. [M14.1](14_engine_completeness.md#spell-primal_water_breathing). |
-| `primal_natures_grasp` | unwired | RUN `primal_natures_grasp` (2 Focus). Ordinary cast succeeded. The enemy moved 10 ft through forest with no spell offer, STR save or restraint. [M14.1](14_engine_completeness.md#spell-primal_natures_grasp). |
+| `primal_natures_grasp` | engine | `combat_opportunity.prepare_held` offers the 2 Focus reaction before movement on natural terrain. `combat_natures_grasp.settle` resolves the STR save. Failure stops the move and restrains the mover through its turn. Success lets the move finish. [Movement and turn boundary](../../apps/agent/tests/acceptance/test_spell_natures_grasp.py) · [Fate, save modifiers and rewind](../../apps/agent/tests/acceptance/test_spell_natures_grasp_guards.py). |
 | `primal_wild_shape` | engine | `wild_shape.transform`, with `wild_shape.land_damage` and `wild_shape.require_casting`. [`test_transform`](../../apps/agent/tests/acceptance/test_wild_shape.py) asserts the persisted form, beast HP, form AC and the one 4 Focus + 3 Stamina debit. [`test_wild_shape_hp.py`](../../apps/agent/tests/acceptance/test_wild_shape_hp.py) covers beast-HP absorption and overflow. Reclassified by sprint wild-shape (2026-11-26). |
 | `primal_wall_of_thorns` | unwired | RUN `primal_wall_of_thorns` (5 Focus). Settlement explicitly deferred crossing damage. The enemy crossed at ordinary movement cost with no barrier, cover or save. [M14.1](14_engine_completeness.md#spell-primal_wall_of_thorns). |
 | `primal_commune_with_nature` | unwired | RUN `primal_commune_with_nature` (3 Focus). The forest cast returned no terrain, water, life, corruption, settlement or creature facts. [M14.1](14_engine_completeness.md#spell-primal_commune_with_nature). |
