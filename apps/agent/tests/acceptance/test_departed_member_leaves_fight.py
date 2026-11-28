@@ -4,6 +4,7 @@ from contextlib import AbstractAsyncContextManager
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
+from itertools import chain, repeat
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -29,6 +30,7 @@ from combat_phase import PhaseBeat
 from combat_state import CombatState
 
 PRIMARY, GUEST, THIRD = 0, 1, 2
+POTION = "healing_potion_minor"
 
 
 def assert_departed(state: CombatState, guest: str) -> None:
@@ -56,20 +58,17 @@ class Run:
         self.guest = self.players[leaver]
         self.host = next(pid for pid in self.players if pid != self.guest)
         self.enemies: list[str] = fight.enemies
-        self.dice: Iterator[int] = iter(())
-        self.last_face = 16
-        self.offer: dict | None = None
+        self.dice: Iterator[int] = repeat(16)
         self.packets: list[dict] = []
         self.results: list[dict] = []
         self.before: dict[str, dict] = {}
         self.after: dict[str, dict] = {}
 
     def faces(self, *faces: int) -> None:
-        *first, self.last_face = faces
-        self.dice = iter(first)
+        self.dice = chain(faces, repeat(faces[-1]))
 
     def roll(self, *_: Any, **__: Any) -> SimpleNamespace:
-        return _d20(next(self.dice, self.last_face))
+        return _d20(next(self.dice))
 
     async def declare(self, *declarations: dict) -> None:
         await self.fight.command("declare_phase", {"declarations": list(declarations)})
@@ -86,32 +85,25 @@ class Run:
     async def react(self, actor: str, ability: str) -> None:
         receipt = await tool_receipt(self.fight, actor, "activate", {"id": ability})
         assert not receipt.is_error, receipt.output
-        self.offer = json.loads(receipt.output).get("fate_offer") or self.offer
 
     async def resolve(self) -> dict:
-        if self.offer and self.fight.sd.fate_offer is not None:
-            result = await keep_original(self.fight, self.offer)
+        if offer := self.fight.sd.fate_offer:
+            result = await keep_original(self.fight, {"offer_id": offer.id})
         else:
             result = await self.fight.command("resolve_phase", {})
-        self.offer = result.get("fate_offer")
         self.results.append(result)
         self.packets.extend(result["packets"])
         return result
 
-    async def window(self, stage: str) -> dict:
+    async def pause(self, stage: str | None = None) -> dict:
         for _ in range(12):
             result = await self.resolve()
             shown = result["next"]["waiting_on"] or {}
-            if stage in (shown.get("stage"), *(r["id"] for r in shown.get("reactions", ()))):
+            if stage is None and result.get("fate_offer"):
+                return result["fate_offer"]
+            if stage is not None and stage in (shown.get("stage"), *(r["id"] for r in shown.get("reactions", ()))):
                 return shown
-        raise AssertionError(f"Reaction window {stage!r} was not reached")
-
-    async def fate_offer(self) -> None:
-        for _ in range(12):
-            result = await self.resolve()
-            if result.get("fate_offer"):
-                return
-        raise AssertionError("Fate offer was not reached")
+        raise AssertionError(f"Did not reach {stage or 'a Fate offer'}")
 
     def hits(self, actor: str) -> list[dict]:
         return [p for p in self.packets if p["actor_id"] == actor and "hit" in p]
@@ -181,7 +173,7 @@ def held(stage: str, leaver: int) -> Row:
     async def at_window(run: Run) -> None:
         first, second = run.enemies
         await run.declare(swing(first, run.guest), swing(second, run.host))
-        shown = await run.window(stage)
+        shown = await run.pause(stage)
         assert shown["actor_id"] == first and shown["target_id"] == run.guest
 
     def check(run: Run, state: CombatState) -> None:
@@ -211,7 +203,7 @@ def queued_results(run: Run, state: CombatState) -> None:
 
 async def intercept(run: Run) -> None:
     await run.declare(run.fight.composite([run.host, run.host]), swing(run.enemies[1], run.host))
-    await run.window("post_roll")
+    await run.pause("post_roll")
     await run.react(run.guest, "guardian_intercept")
 
 
@@ -233,17 +225,15 @@ def source_bound(spell: str, *, mark: bool) -> Row:
             await run.declare(weapon_attack(run.host, run.enemies[0], ""))
             run.faces(3, 17, 16)
         else:
-            survivor = (await run.fight.reload()).get_participant(run.players[THIRD])
-            assert survivor is not None and any(c["type"] == "divine_ward" for c in survivor.conditions)
+            state = await run.fight.reload()
+            warded = {p.id for p in state.participants if any(c["type"] == "divine_ward" for c in p.conditions)}
+            assert warded == {run.players[THIRD]}
             await run.defend()
         await finish(run)
 
     def check(run: Run, state: CombatState) -> None:
         if mark:
             assert [p["roll"] for p in run.hits(run.host)] == [3]
-        else:
-            host = state.get_participant(run.host)
-            assert host is not None and "divine_ward" not in {c["type"] for c in host.conditions}
 
     return Row(
         id="guiding-light-caster" if mark else "divine-ward-caster",
@@ -255,9 +245,6 @@ def source_bound(spell: str, *, mark: bool) -> Row:
         settle=settle,
         check=check,
     )
-
-
-POTION = "healing_potion_minor"
 
 
 async def order_potion(run: Run) -> None:
@@ -291,9 +278,8 @@ async def swear(run: Run) -> None:
     await patch_player(run.guest, **{"class": "paladin", "divine_favor": {"patron": "zhael", "level": 90, "max": 100}})
     choice = json.loads((await tool_receipt(run.fight, run.guest, "query_info", {"kind": "combat"})).output)
     pledge = {"choice_id": choice["oath_choice"]["choice_id"], "option": "timed", "objective_kind": "defeat_target"}
-    receipt = await tool_receipt(
-        run.fight, run.guest, "select", {**pledge, "target_id": run.enemies[0], "last_round": 4}
-    )
+    pledge.update(target_id=run.enemies[0], last_round=4)
+    receipt = await tool_receipt(run.fight, run.guest, "select", pledge)
     assert not receipt.is_error, receipt.output
 
 
