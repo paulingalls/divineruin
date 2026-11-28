@@ -37,6 +37,10 @@ PROFICIENCIES = (*CATEGORIES, *KINDS, *CATEGORY_RANGES, *GROUP_KINDS, "light_wea
 
 
 def validate_weapon_profile(item_id: str, data: dict) -> dict[str, str] | None:
+    if "damage_bonus" in data:
+        bonus = data["damage_bonus"]
+        if data.get("type") != "weapon" or type(bonus) is not int or bonus <= 0:
+            raise ValueError(f"item {item_id!r} damage_bonus must be a positive integer on a weapon")
     if data.get("type") != "weapon":
         return None
     profile = {}

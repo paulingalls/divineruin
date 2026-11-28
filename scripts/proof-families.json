@@ -55,6 +55,7 @@
       "apps/agent/tests/acceptance/test_valdris_sanctuary\\.py",
       "apps/agent/tests/acceptance/test_valdris_witness\\.py",
       "apps/agent/tests/acceptance/test_weapon_proficiency_equip\\.py",
+      "apps/agent/tests/acceptance/test_masterwork_weapons\\.py",
       "apps/agent/tests/acceptance/test_nythera_(?:unseen_coast|first_order|vessel)\\.py",
       "apps/agent/tests/acceptance/test_orenthel_guardian_ward\\.py",
       "apps/agent/tests/acceptance/test_orenthel_mage_warding\\.py",

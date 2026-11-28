@@ -343,6 +343,104 @@
           "presence_chance": 1,
           "restock_check": "weekly",
           "rotation_group": "masterwork_weapons"
+        },
+        {
+          "item_id": "masterwork_spear",
+          "settlements": ["city", "capital"],
+          "presence_chance": 1,
+          "restock_check": "weekly",
+          "rotation_group": "masterwork_weapons"
+        },
+        {
+          "item_id": "masterwork_dagger",
+          "settlements": ["city", "capital"],
+          "presence_chance": 1,
+          "restock_check": "weekly",
+          "rotation_group": "masterwork_weapons"
+        },
+        {
+          "item_id": "masterwork_handaxe",
+          "settlements": ["city", "capital"],
+          "presence_chance": 1,
+          "restock_check": "weekly",
+          "rotation_group": "masterwork_weapons"
+        },
+        {
+          "item_id": "masterwork_mace",
+          "settlements": ["city", "capital"],
+          "presence_chance": 1,
+          "restock_check": "weekly",
+          "rotation_group": "masterwork_weapons"
+        },
+        {
+          "item_id": "masterwork_shortsword",
+          "settlements": ["city", "capital"],
+          "presence_chance": 1,
+          "restock_check": "weekly",
+          "rotation_group": "masterwork_weapons"
+        },
+        {
+          "item_id": "masterwork_battleaxe",
+          "settlements": ["city", "capital"],
+          "presence_chance": 1,
+          "restock_check": "weekly",
+          "rotation_group": "masterwork_weapons"
+        },
+        {
+          "item_id": "masterwork_shortbow",
+          "settlements": ["city", "capital"],
+          "presence_chance": 1,
+          "restock_check": "weekly",
+          "rotation_group": "masterwork_weapons"
+        },
+        {
+          "item_id": "masterwork_light_crossbow",
+          "settlements": ["city", "capital"],
+          "presence_chance": 1,
+          "restock_check": "weekly",
+          "rotation_group": "masterwork_weapons"
+        },
+        {
+          "item_id": "masterwork_rapier",
+          "settlements": ["city", "capital"],
+          "presence_chance": 1,
+          "restock_check": "weekly",
+          "rotation_group": "masterwork_weapons"
+        },
+        {
+          "item_id": "masterwork_greatsword",
+          "settlements": ["city", "capital"],
+          "presence_chance": 1,
+          "restock_check": "weekly",
+          "rotation_group": "masterwork_weapons"
+        },
+        {
+          "item_id": "masterwork_warhammer",
+          "settlements": ["city", "capital"],
+          "presence_chance": 1,
+          "restock_check": "weekly",
+          "rotation_group": "masterwork_weapons"
+        },
+        {
+          "item_id": "masterwork_longbow",
+          "settlements": ["city", "capital"],
+          "presence_chance": 1,
+          "restock_check": "weekly",
+          "rotation_group": "masterwork_weapons"
+        },
+        {
+          "item_id": "masterwork_heavy_crossbow",
+          "settlements": ["city", "capital"],
+          "presence_chance": 1,
+          "restock_check": "weekly",
+          "rotation_group": "masterwork_weapons"
+        },
+        {
+          "item_id": "masterwork_hand_crossbow",
+          "settlements": ["city", "capital"],
+          "presence_chance": 1,
+          "restock_check": "weekly",
+          "rotation_group": "masterwork_weapons"
         }
       ]
     },
@@ -777,6 +875,81 @@
       "value_base": 100,
       "rarity": "rare",
       "type": "equipment"
+    },
+    "masterwork_spear": {
+      "value_base": 2,
+      "rarity": "uncommon",
+      "type": "weapon"
+    },
+    "masterwork_dagger": {
+      "value_base": 100,
+      "rarity": "uncommon",
+      "type": "weapon"
+    },
+    "masterwork_handaxe": {
+      "value_base": 4,
+      "rarity": "uncommon",
+      "type": "weapon"
+    },
+    "masterwork_mace": {
+      "value_base": 10,
+      "rarity": "uncommon",
+      "type": "weapon"
+    },
+    "masterwork_shortsword": {
+      "value_base": 200,
+      "rarity": "uncommon",
+      "type": "weapon"
+    },
+    "masterwork_battleaxe": {
+      "value_base": 16,
+      "rarity": "uncommon",
+      "type": "weapon"
+    },
+    "quality_longsword": {
+      "value_base": 400,
+      "rarity": "uncommon",
+      "type": "weapon"
+    },
+    "masterwork_shortbow": {
+      "value_base": 30,
+      "rarity": "uncommon",
+      "type": "weapon"
+    },
+    "masterwork_light_crossbow": {
+      "value_base": 30,
+      "rarity": "uncommon",
+      "type": "weapon"
+    },
+    "masterwork_rapier": {
+      "value_base": 30,
+      "rarity": "uncommon",
+      "type": "weapon"
+    },
+    "masterwork_greatsword": {
+      "value_base": 50,
+      "rarity": "uncommon",
+      "type": "weapon"
+    },
+    "masterwork_warhammer": {
+      "value_base": 20,
+      "rarity": "uncommon",
+      "type": "weapon"
+    },
+    "masterwork_longbow": {
+      "value_base": 60,
+      "rarity": "uncommon",
+      "type": "weapon"
+    },
+    "masterwork_heavy_crossbow": {
+      "value_base": 60,
+      "rarity": "uncommon",
+      "type": "weapon"
+    },
+    "masterwork_hand_crossbow": {
+      "value_base": 80,
+      "rarity": "uncommon",
+      "type": "weapon"
     }
   },
   "spec_encodings": {
@@ -858,7 +1031,23 @@
         "Faction-restricted items (Thornwatch gear sold to outsiders, Ashmark intelligence reports)": "ashmark_intelligence_report"
       },
       "rotations": {
-        "Quality / masterwork variant": ["quality_longsword"],
+        "Quality / masterwork variant": [
+          "quality_longsword",
+          "masterwork_spear",
+          "masterwork_dagger",
+          "masterwork_handaxe",
+          "masterwork_mace",
+          "masterwork_shortsword",
+          "masterwork_battleaxe",
+          "masterwork_shortbow",
+          "masterwork_light_crossbow",
+          "masterwork_rapier",
+          "masterwork_greatsword",
+          "masterwork_warhammer",
+          "masterwork_longbow",
+          "masterwork_heavy_crossbow",
+          "masterwork_hand_crossbow"
+        ],
         "Exotic feature item examples": [
           "drathian_ceremonial_blade",
           "keldaran_mining_tool",
@@ -1362,5 +1551,22 @@
       "value": "rations_basic",
       "diagnostic": ".tier_1_items[1]"
     }
-  ]
+  ],
+  "masterwork_variants": {
+    "spear_common": "masterwork_spear",
+    "dagger_balanced": "masterwork_dagger",
+    "handaxe_common": "masterwork_handaxe",
+    "mace_common": "masterwork_mace",
+    "shortsword_basic": "masterwork_shortsword",
+    "battleaxe_common": "masterwork_battleaxe",
+    "longsword_guild": "quality_longsword",
+    "shortbow_common": "masterwork_shortbow",
+    "crossbow_light": "masterwork_light_crossbow",
+    "rapier_dueling": "masterwork_rapier",
+    "greatsword_war": "masterwork_greatsword",
+    "warhammer_common": "masterwork_warhammer",
+    "longbow_common": "masterwork_longbow",
+    "crossbow_heavy": "masterwork_heavy_crossbow",
+    "crossbow_hand": "masterwork_hand_crossbow"
+  }
 }

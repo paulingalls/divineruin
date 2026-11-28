@@ -304,17 +304,19 @@ def test_invalid_weapon_catalog_rolls_back(fresh_migrated_db, tmp_path, monkeypa
         FIXTURE["malformed_proficiencies"]["valid_then_unknown"],
         "weapon_proficiencies",
     )
-    for args in (invalid_item, invalid_archetype):
+    invalid_bonus = ("items.json", "quality_longsword", {"set": {"damage_bonus": 0}, "delete": []}, "damage_bonus")
+    for args in (invalid_item, invalid_archetype, invalid_bonus):
         check_refusal(*args)
         assert not any(asyncio.run(row_counts(fresh_migrated_db)).values())
     if gate == "python":
-        assert len(typescript_calls) == 2
+        assert len(typescript_calls) == 3
     if gate == "both" and mode == "":
         asyncio.run(seed_content.main())
         before = asyncio.run(rows(fresh_migrated_db))
         assert before["items"] and before["archetypes"]
-        check_refusal(*invalid_item)
-        assert asyncio.run(rows(fresh_migrated_db)) == before
+        for args in (invalid_item, invalid_bonus):
+            check_refusal(*args)
+            assert asyncio.run(rows(fresh_migrated_db)) == before
 
 
 @pytest.mark.parametrize("gate", ["python", "typescript"])
@@ -429,6 +431,10 @@ def test_production_reseed_upgrades_flat_inventory_pools(fresh_migrated_db, monk
 
     expected = json.loads((POOL_FIXTURES / "inventory-pool-cases.json").read_text())
     after = asyncio.run(rows(fresh_migrated_db))
+    variant_ids = set(expected["masterwork_variants"].values())
+    assert {row["id"]: row["data"].get("damage_bonus") for row in after["items"] if row["id"] in variant_ids} == {
+        item_id: 1 for item_id in variant_ids
+    }
     assert {row["id"]: row["data"] for row in after["inventory_pools"]} == {row["id"]: row for row in expected["pools"]}
     assert {row["id"]: row["data"]["inventory_pool"] for row in after["npcs"] if row["data"]["inventory_pool"]} == (
         expected["npc_bindings"]
